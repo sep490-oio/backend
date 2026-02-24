@@ -1,0 +1,18 @@
+﻿using OIO.Application.Abstractions.Messaging;
+using OIO.Domain.Context.UserContext.Repositories;
+using OIO.Domain.SeedWork.Checks.Extensions;
+using OIO.Domain.SeedWork.Errors;
+
+namespace OIO.Application.UserContext.Commands.ConfirmPhoneNumber;
+
+public sealed record ConfirmPhoneNumberCommand(
+    string VerificationCode) : ICommand, IHasValidate
+{
+    public ViolationsError Validate()
+    {
+        return ConfirmPhoneNumberCommand.Check()
+            .WithOwnerName("ConfirmPhoneNumber")
+            .Field(VerificationCode)
+            .NotWhiteSpace();
+    }
+}

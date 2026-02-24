@@ -1,0 +1,21 @@
+﻿using MediatR;
+using OIO.Api.Common;
+using OIO.Api.Extensions;
+using OIO.Application.UserContext.Queries.GetUserProfile;
+
+namespace OIO.Api.Endpoints.Users;
+
+public class GetCurrentUserProfileEndpoint : IEndpoint
+{
+    public void MapEndpoint(IEndpointRouteBuilder app)
+    {
+        app.MapGet("api/users/me/profile", async (ISender sender, CancellationToken ct) =>
+            {
+                var result = await sender.Send(new GetUserProfileQuery(), ct);
+
+                return result.IsFailure ? result.Error.ProcessError() : Results.Ok(result.Value);
+            })
+            .RequireAuthorization()
+            .WithTags(Tags.Users);
+    }
+}

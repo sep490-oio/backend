@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+  </Folder>
+  <Folder Name="/src/" />
+  <Folder Name="/src/core/">
+    <Project Path="src/core/OIO.Application/OIO.Application.csproj" />
+    <Project Path="src/core/OIO.Domain/OIO.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/infrastructure/">
+    <Project Path="src/infrastructure/OIO.Infrastructure/OIO.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/presentation/">
+    <Project Path="src/presentation/OIO.Api/OIO.Api.csproj" />
+  </Folder>
+</Solution>
