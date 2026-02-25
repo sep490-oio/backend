@@ -12,7 +12,9 @@ public class RemoveAddressEndpoint : IEndpoint
         app.MapDelete("api/users/me/addresses/{addressId:guid}",
                 async (Guid addressId, ISender sender, CancellationToken ct) =>
                 {
-                    var result = await sender.Send(new RemoveAddressCommand(addressId), ct);
+                    var command = new RemoveAddressCommand(addressId);
+                    
+                    var result = await sender.Send(command, ct);
 
                     return result.IsFailure ? result.Error.ProcessError() : Results.NoContent();
                 })

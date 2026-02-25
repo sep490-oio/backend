@@ -14,7 +14,7 @@ using OIO.Domain.SeedWork.Errors;
 namespace OIO.Application.UserContext.Queries.GetUserAddresses;
 
 internal sealed class GetUserAddressesQueryHandler
-    : IQueryHandler<GetUserAddressesQuery, PagedResult<UserAddressDto>>
+    : IQueryHandler<GetUserAddressesQuery, PagedList<UserAddressDto>>
 {
     private readonly IDbContext _dbContext;
     private readonly ICurrentUser _currentUser;
@@ -27,7 +27,7 @@ internal sealed class GetUserAddressesQueryHandler
         _currentUser = currentUser;
     }
 
-    public async Task<Result<PagedResult<UserAddressDto>, Error>> Handle(
+    public async Task<Result<PagedList<UserAddressDto>, Error>> Handle(
         GetUserAddressesQuery request,
         CancellationToken cancellationToken)
     {
@@ -37,15 +37,25 @@ internal sealed class GetUserAddressesQueryHandler
         var addresses = await _dbContext.Set<UserAddress>()
             .Where(a => a.UserId == _currentUser.UserId)
             .OrderByDescending(ua => ua.CreatedAt)
-            .Paged(request.PagedParameters)
-            .Select(UserAddress.UserAddressProjectToDto())
+            .Page(request.PagedParameters)
+            .Select(address => new UserAddressDto(
+                Id: address.Id.Value,
+                Type: address.Type.Id,
+                RecipientName: address.RecipientName,
+                PhoneNumber: address.PhoneNumber,
+                Street: address.Address.Street,
+                Ward: address.Address.Ward,
+                District: address.Address.District,
+                City: address.Address.City,
+                PostalCode: address.Address.PostalCode,
+                IsDefault: address.IsDefault))
             .ToListAsync(cancellationToken);
         
         var totalCount = await _dbContext.Set<UserAddress>()
             .Where(u => u.UserId == _currentUser.UserId)
             .CountAsync(cancellationToken);
 
-        return  PagedResult<UserAddressDto>.ToPagedList(
+        return  PagedList<UserAddressDto>.ToPagedList(
             addresses,
             totalCount, 
             request.PagedParameters);

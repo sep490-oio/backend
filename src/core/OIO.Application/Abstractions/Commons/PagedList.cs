@@ -1,13 +1,12 @@
 namespace OIO.Application.Abstractions.Commons;
-
-public class PagedResult<T> 
+public class PagedList<T>
 {
     public IReadOnlyCollection<T> Items { get; set; }
-    public MetaData MetaData { get; set; }
+    public Metadata Metadata { get; set; }
 
-    public PagedResult(IReadOnlyCollection<T> items, int count, int pageNumber, int pageSize)
+    public PagedList(IReadOnlyCollection<T> items, int count, int pageNumber, int pageSize)
     {
-        MetaData = new MetaData
+        Metadata = new Metadata
         {
             TotalCount = count,
             PageSize = pageSize,
@@ -15,12 +14,12 @@ public class PagedResult<T>
             TotalPages = (int)Math.Ceiling(count / (double)pageSize)
         };
 
-        Items =  items;
+        Items = items;
     }
 
-    public static PagedResult<T> ToPagedList(IReadOnlyCollection<T> source, int count, IPagedParameter pagedParameter)
+    public static PagedList<T> ToPagedList(IReadOnlyCollection<T> source, int count, IPagedParameter pagedParameter)
     {
 
-        return new PagedResult<T>(source, count, pagedParameter.PageNumber, pagedParameter.PageSize);
+        return new PagedList<T>(source, count, pagedParameter.PageNumber, pagedParameter.PageSize);
     }
 }

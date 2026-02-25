@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using System.ComponentModel.DataAnnotations;
+using MediatR;
 using OIO.Api.Common;
 using OIO.Api.Extensions;
 using OIO.Application.UserContext.Commands.RegisterUser;
@@ -8,9 +9,9 @@ namespace OIO.Api.Endpoints.Auth;
 public class RegisterUserEndpoint : IEndpoint
 {
     public sealed record Request(
-        string UserName,
-        string Email,
-        string Password,
+        [Required] string UserName,
+        [Required] string Email,
+        [Required] string Password,
         string? FirstName = null,
         string? LastName = null);
     

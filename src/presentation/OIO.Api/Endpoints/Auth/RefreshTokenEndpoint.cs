@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Api.Extensions;
@@ -9,8 +10,8 @@ namespace OIO.Api.Endpoints.Auth;
 public class RefreshTokenEndpoint : IEndpoint
 {
     public sealed record Request(
-        string RefreshToken,
-        Guid DeviceId);
+        [Required] string RefreshToken,
+        [Required] Guid DeviceId);
     
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

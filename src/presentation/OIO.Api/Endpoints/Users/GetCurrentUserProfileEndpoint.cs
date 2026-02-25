@@ -11,7 +11,9 @@ public class GetCurrentUserProfileEndpoint : IEndpoint
     {
         app.MapGet("api/users/me/profile", async (ISender sender, CancellationToken ct) =>
             {
-                var result = await sender.Send(new GetUserProfileQuery(), ct);
+                var query = new GetUserProfileQuery();
+                
+                var result = await sender.Send(query, ct);
 
                 return result.IsFailure ? result.Error.ProcessError() : Results.Ok(result.Value);
             })

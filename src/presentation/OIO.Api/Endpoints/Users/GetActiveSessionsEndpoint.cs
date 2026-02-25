@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Api.Extensions;
@@ -8,16 +9,21 @@ namespace OIO.Api.Endpoints.Users;
 
 public class GetActiveSessionsEndpoint : IEndpoint
 {
+    public sealed record Parameters : PagedParameters
+    {
+        public Guid? DeviceId { get; init; }
+    }
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("api/users/me/sessions",
                 async (
-                    Guid currentDeviceId, 
-                    [AsParameters] PagedParameters pagedParameters,
+                    [AsParameters] Parameters parameters,
                     ISender sender, 
                     CancellationToken ct) =>
                 {
-                    var result = await sender.Send(new GetActiveSessionsQuery(currentDeviceId, pagedParameters), ct);
+                    var query = new GetActiveSessionsQuery(parameters.DeviceId, parameters);
+                    
+                    var result = await sender.Send(query, ct);
 
                     return result.IsFailure ? result.Error.ProcessError() : Results.Ok(result.Value);
                 })

@@ -1,5 +1,4 @@
-﻿using System.Linq.Expressions;
-using OIO.Application.UserContext.DTOs;
+﻿using OIO.Application.UserContext.DTOs;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 
 namespace OIO.Application.UserContext.Mappings;
@@ -60,39 +59,5 @@ internal static class UserMappings
             AvatarUrl: user.Profile?.AvatarUrl?.Value,
             Status: user.Status.Id,
             CreatedAt: user.CreatedAt);
-    }
-}
-
-internal static class UserQueries
-{
-    extension(UserAddress)
-    {
-        public static Expression<Func<UserAddress, UserAddressDto>> UserAddressProjectToDto()
-        {
-            return address => new UserAddressDto(
-                Id: address.Id.Value,
-                Type: address.Type.Id,
-                RecipientName: address.RecipientName,
-                PhoneNumber: address.PhoneNumber,
-                Street: address.Address.Street,
-                Ward: address.Address.Ward,
-                District: address.Address.District,
-                City: address.Address.City,
-                PostalCode: address.Address.PostalCode,
-                IsDefault: address.IsDefault);
-        }
-    }
-
-    extension(UserLoginHistory)
-    {
-        public static Expression<Func<UserLoginHistory, LoginHistoryDto>> UserLoginHistoryProjectToDto()
-        {
-            return h => new LoginHistoryDto(
-                h.Id.Value,
-                h.IpAddress.ToString(),
-                h.UserAgent,
-                h.LoginAt,
-                h.Status.Id);
-        }
     }
 }

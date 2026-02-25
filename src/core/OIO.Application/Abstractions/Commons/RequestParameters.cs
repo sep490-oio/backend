@@ -1,4 +1,6 @@
-﻿namespace OIO.Application.Abstractions.Commons;
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace OIO.Application.Abstractions.Commons;
 
 public interface IPagedParameter
 {
@@ -19,57 +21,51 @@ public interface IDataShapingParameter
 [Serializable]
 public record PagedParameters : IPagedParameter
 {
-    const int MaxPageSize = 50;
-    private int _pageSize = 10;
-    private int _pageNumber = 1;
+    public const int DefaultPageNumber = 1;
+    public const int DefaultPageSize = 10;
+    public const int MaxPageSize = 50;
 
-    public PagedParameters(
-        int? pageNumber,
-        int? pageSize)
-    {
-        _pageNumber = pageNumber ?? _pageNumber;
-        _pageSize = pageSize ?? _pageSize;
-    }
+    public int? PageNumber { get; init; }
+    public int? PageSize { get; init; }
 
-    public int PageNumber
-    {
-        get => _pageNumber;
-        init => _pageNumber = value;
-    }
+    int IPagedParameter.PageNumber => NormalizePageNumber(PageNumber);
+    int IPagedParameter.PageSize => NormalizePageSize(PageSize);
 
+    public int EffectivePageNumber => NormalizePageNumber(PageNumber);
+    public int EffectivePageSize => NormalizePageSize(PageSize);
 
-    public int PageSize
-    {
-        get => _pageSize;
-        init => _pageSize = value > MaxPageSize ? MaxPageSize : value;
-    }
+    private static int NormalizePageNumber(int? value)
+        => value is null or <= 0 ? DefaultPageNumber : value.Value;
+
+    private static int NormalizePageSize(int? value)
+        => value is null or <= 0 ? DefaultPageSize : Math.Min(value.Value, MaxPageSize);
 }
 
-public record OrderByParameters
-    : PagedParameters, IOrderByParameter
-{
-    public OrderByParameters(
-        string? orderBy,
-        int? pageNumber,
-        int? pageSize) : base(pageNumber, pageSize)
-    {
-        OrderBy = orderBy;
-    }
-    
-    public string? OrderBy { get; init; }
-}
-
-public record DataShapingParameters
-    : OrderByParameters, IDataShapingParameter
-{
-    public DataShapingParameters(
-        string? fields,
-        string? orderBy,
-        int? pageNumber,
-        int? pageSize) : base(orderBy, pageNumber, pageSize)
-    {
-        Fields = fields;
-    }
-    
-    public string? Fields { get; init; }
-}
+// public record OrderByParameters
+//     : PagedParameters, IOrderByParameter
+// {
+//     public OrderByParameters(
+//         string? orderBy,
+//         int? pageNumber,
+//         int? pageSize) : base(pageNumber, pageSize)
+//     {
+//         OrderBy = orderBy;
+//     }
+//     
+//     public string? OrderBy { get; init; }
+// }
+//
+// public record DataShapingParameters
+//     : OrderByParameters, IDataShapingParameter
+// {
+//     public DataShapingParameters(
+//         string? fields,
+//         string? orderBy,
+//         int? pageNumber,
+//         int? pageSize) : base(orderBy, pageNumber, pageSize)
+//     {
+//         Fields = fields;
+//     }
+//     
+//     public string? Fields { get; init; }
+// }

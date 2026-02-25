@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using System.ComponentModel.DataAnnotations;
+using MediatR;
 using OIO.Api.Common;
 using OIO.Api.Extensions;
 using OIO.Application.UserContext.Commands.ConfirmPhoneNumber;
@@ -7,7 +8,8 @@ namespace OIO.Api.Endpoints.Users;
 
 public class ConfirmPhoneNumberEndpoint : IEndpoint
 {
-    public sealed record Request(string VerificationCode);
+    public sealed record Request(
+        [Required] string VerificationCode);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

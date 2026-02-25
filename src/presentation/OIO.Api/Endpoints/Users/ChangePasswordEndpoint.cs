@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using System.ComponentModel.DataAnnotations;
+using MediatR;
 using OIO.Api.Common;
 using OIO.Api.Extensions;
 using OIO.Application.UserContext.Commands.ChangePassword;
@@ -8,8 +9,8 @@ namespace OIO.Api.Endpoints.Users;
 public class ChangePasswordEndpoint : IEndpoint
 {
     public sealed record Request(
-        string CurrentPassword,
-        string NewPassword);
+        [Required] string CurrentPassword,
+        [Required] string NewPassword);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

@@ -8,11 +8,15 @@ namespace OIO.Api.Endpoints.Users;
 
 public class GetAddressesEndpoint : IEndpoint
 {
+    public sealed record Parameters : PagedParameters;
+    
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("api/users/me/addresses", async ([AsParameters] PagedParameters pagedParameters, ISender sender, CancellationToken ct) =>
+        app.MapGet("api/users/me/addresses", async ([AsParameters] Parameters parameters, ISender sender, CancellationToken ct) =>
             {
-                var result = await sender.Send(new GetUserAddressesQuery(pagedParameters), ct);
+                var query = new GetUserAddressesQuery(parameters);
+                
+                var result = await sender.Send(query, ct);
 
                 return result.IsFailure ? result.Error.ProcessError() : Results.Ok(result.Value);
             })

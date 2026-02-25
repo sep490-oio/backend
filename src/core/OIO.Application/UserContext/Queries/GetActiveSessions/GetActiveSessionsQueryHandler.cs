@@ -13,7 +13,7 @@ using OIO.Domain.SeedWork.Errors;
 namespace OIO.Application.UserContext.Queries.GetActiveSessions;
 
 internal sealed class GetActiveSessionsQueryHandler
-    : IQueryHandler<GetActiveSessionsQuery, PagedResult<UserSessionDto>>
+    : IQueryHandler<GetActiveSessionsQuery, PagedList<UserSessionDto>>
 {
     private readonly IDbContext _dbContext;
     private readonly ICurrentUser _currentUser;
@@ -29,7 +29,7 @@ internal sealed class GetActiveSessionsQueryHandler
         _clock = clock;
     }
 
-    public async Task<Result<PagedResult<UserSessionDto>, Error>> Handle(
+    public async Task<Result<PagedList<UserSessionDto>, Error>> Handle(
         GetActiveSessionsQuery request,
         CancellationToken cancellationToken)
     {
@@ -38,7 +38,7 @@ internal sealed class GetActiveSessionsQueryHandler
             return UserErrors.Auth.UserNotLoggedIn;
 
         var sessions = await _dbContext.Set<UserRefreshTokenFamily>()
-            .Where(t => t.UserId == _currentUser.UserId && t.IsActive && !t.IsExpired(nowUtc))
+            .Where(t => t.UserId == _currentUser.UserId && t.IsActive && nowUtc < t.ExpiresAt)
             .OrderByDescending(f => f.LastRotatedAt)
             .Select(f => new UserSessionDto(
                 SessionId: f.Id.Value,
@@ -58,7 +58,7 @@ internal sealed class GetActiveSessionsQueryHandler
         var totalCount = await _dbContext.Set<UserLoginHistory>()
             .Where(u => u.UserId == _currentUser.UserId).CountAsync(cancellationToken);
 
-        return  PagedResult<UserSessionDto>.ToPagedList(
+        return  PagedList<UserSessionDto>.ToPagedList(
             sessions,
             totalCount, 
             request.PagedParameters);

@@ -11,7 +11,9 @@ public class DisableTwoFactorEndpoint : IEndpoint
     {
         app.MapPost("api/users/me/two-factor/disable", async (ISender sender, CancellationToken ct) =>
             {
-                var result = await sender.Send(new DisableTwoFactorCommand(), ct);
+                var command = new DisableTwoFactorCommand();
+                
+                var result = await sender.Send(command, ct);
 
                 return result.IsFailure ? result.Error.ProcessError() : Results.NoContent();
             })

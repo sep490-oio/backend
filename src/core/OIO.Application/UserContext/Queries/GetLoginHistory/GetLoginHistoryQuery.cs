@@ -4,4 +4,4 @@ using OIO.Application.UserContext.DTOs;
 
 namespace OIO.Application.UserContext.Queries.GetLoginHistory;
 
-public sealed record GetLoginHistoryQuery(PagedParameters PagedParameters) : IQuery<PagedResult<LoginHistoryDto>>;
+public sealed record GetLoginHistoryQuery(PagedParameters PagedParameters) : IQuery<PagedList<LoginHistoryDto>>;

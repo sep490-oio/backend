@@ -11,7 +11,9 @@ public class GetCurrentUserEndpoint : IEndpoint
     {
         app.MapGet("api/users/me", async (ISender sender, CancellationToken ct) =>
             {
-                var result = await sender.Send(new GetCurrentUserQuery(), ct);
+                var query = new GetCurrentUserQuery();
+                
+                var result = await sender.Send(query, ct);
 
                 return result.IsFailure ? result.Error.ProcessError() : Results.Ok(result.Value);
             })

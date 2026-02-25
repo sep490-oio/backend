@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using System.ComponentModel.DataAnnotations;
+using MediatR;
 using OIO.Api.Common;
 using OIO.Api.Extensions;
 using OIO.Application.UserContext.Commands.SetPhoneNumber;
@@ -9,7 +10,7 @@ namespace OIO.Api.Endpoints.Users;
 public class SetPhoneNumberEndpoint : IEndpoint
 {
     public sealed record Request(
-        string PhoneNumber,
+        [Required] string PhoneNumber,
         string? CountryCode = PhoneNumber.DefaultRegion);
 
     public void MapEndpoint(IEndpointRouteBuilder app)

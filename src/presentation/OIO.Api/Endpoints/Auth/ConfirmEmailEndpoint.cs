@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Api.Extensions;
@@ -8,8 +9,8 @@ namespace OIO.Api.Endpoints.Auth;
 public class ConfirmEmailEndpoint : IEndpoint
 {
     public sealed record Request(
-        Guid UserId, 
-        string Token);
+        [Required] Guid UserId, 
+        [Required] string Token);
     
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

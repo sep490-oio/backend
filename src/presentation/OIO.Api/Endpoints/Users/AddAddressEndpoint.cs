@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using System.ComponentModel.DataAnnotations;
+using MediatR;
 using OIO.Api.Common;
 using OIO.Api.Extensions;
 using OIO.Application.UserContext.Commands.AddAddress;
@@ -9,32 +10,32 @@ namespace OIO.Api.Endpoints.Users;
 public class AddAddressEndpoint : IEndpoint
 {
     public sealed record Request(
-        string Type,
-        string RecipientName,
-        string Street,
-        string Ward,
-        string District,
-        string City,
+        [Required] string Type,
+        [Required] string RecipientName,
+        [Required] string Street,
+        [Required] string Ward,
+        [Required] string District,
+        [Required] string City,
         string? PostalCode,
-        string PhoneNumber,
-        string CountryCode = PhoneNumber.DefaultRegion,
-        bool IsDefault = false);
+        [Required] string PhoneNumber,
+        [Required] string CountryCode = PhoneNumber.DefaultRegion,
+        [Required] bool IsDefault = false);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost("api/users/me/addresses", async (Request request, ISender sender, CancellationToken ct) =>
             {
                 var command = new AddAddressCommand(
-                    request.Type,
-                    request.RecipientName,
-                    request.Street,
-                    request.Ward,
-                    request.District,
-                    request.City,
-                    request.PostalCode,
-                    request.PhoneNumber,
-                    request.CountryCode,
-                    request.IsDefault);
+                    Type: request.Type,
+                    RecipientName: request.RecipientName,
+                    Street: request.Street,
+                    Ward: request.Ward,
+                    District: request.District,
+                    City: request.City,
+                    PostalCode: request.PostalCode,
+                    PhoneNumber: request.PhoneNumber,
+                    CountryCode: request.CountryCode,
+                    IsDefault: request.IsDefault);
 
                 var result = await sender.Send(command, ct);
 

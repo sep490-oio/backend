@@ -12,7 +12,9 @@ public class SetDefaultAddressEndpoint : IEndpoint
         app.MapPatch("api/users/me/addresses/{addressId:guid}/default",
                 async (Guid addressId, ISender sender, CancellationToken ct) =>
                 {
-                    var result = await sender.Send(new SetDefaultAddressCommand(addressId), ct);
+                    var command = new SetDefaultAddressCommand(addressId);
+                    
+                    var result = await sender.Send(command, ct);
 
                     return result.IsFailure ? result.Error.ProcessError() : Results.NoContent();
                 })

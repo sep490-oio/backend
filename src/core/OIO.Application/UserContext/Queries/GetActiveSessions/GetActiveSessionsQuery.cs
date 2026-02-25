@@ -5,6 +5,6 @@ using OIO.Application.UserContext.DTOs;
 namespace OIO.Application.UserContext.Queries.GetActiveSessions;
 
 public sealed record GetActiveSessionsQuery(
-    Guid CurrentDeviceId,
-    PagedParameters PagedParameters) 
-    : IQuery<PagedResult<UserSessionDto>>;
+    Guid? CurrentDeviceId,
+    PagedParameters PagedParameters)
+    : IQuery<PagedList<UserSessionDto>>;

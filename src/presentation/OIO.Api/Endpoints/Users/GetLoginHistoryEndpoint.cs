@@ -1,5 +1,4 @@
 ﻿using MediatR;
-using Microsoft.AspNetCore.Mvc;
 using OIO.Api.Common;
 using OIO.Api.Extensions;
 using OIO.Application.Abstractions.Commons;
@@ -10,12 +9,15 @@ namespace OIO.Api.Endpoints.Users;
 
 public class GetLoginHistoryEndpoint : IEndpoint
 {
+    public sealed record Parameters : PagedParameters;
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("api/users/me/login-history",
-                async ([AsParameters] PagedParameters parameter, ISender sender,CancellationToken ct = default) =>
+                async ([AsParameters] Parameters parameters, ISender sender,CancellationToken ct = default) =>
                 {
-                    var result = await sender.Send(new GetLoginHistoryQuery(parameter), ct);
+                    var query = new GetLoginHistoryQuery(parameters);
+                    
+                    var result = await sender.Send(query, ct);
 
                     return result.IsFailure ? result.Error.ProcessError() : Results.Ok(result.Value);
                 })
