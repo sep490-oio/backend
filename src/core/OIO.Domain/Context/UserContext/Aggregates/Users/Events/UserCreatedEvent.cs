@@ -6,70 +6,70 @@ using OIO.Domain.SeedWork.DomainEvents;
 namespace OIO.Domain.Context.UserContext.Aggregates.Users.Events;
 
 public sealed record UserCreatedEvent(
-    UserId UserId,
-    UserName UserName,
-    UserEmail Email,
+    string UserId,
+    string UserName,
+    string Email,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
 
 public sealed record UserPasswordChangedEvent(
-    UserId UserId,
+    string UserId,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
 
 public sealed record UserEmailConfirmedEvent(
-    UserId UserId,
-    UserEmail Email,
+    string UserId,
+    string Email,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
 
 public sealed record UserPhoneConfirmedEvent(
-    UserId UserId,
-    PhoneNumber PhoneNumber,
+    string UserId,
+    string PhoneNumber,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
 
 public sealed record UserStatusChangedEvent(
-    UserId UserId,
-    UserStatus OldUserStatus,
-    UserStatus NewUserStatus,
+    string UserId,
+    string OldUserStatus,
+    string NewUserStatus,
     DateTime OccurredAt) 
     : DomainEvent(OccurredAt);
 
 public sealed record UserLockedOutEvent(
-    UserId UserId,
+    string UserId,
     DateTime LockoutEnd,
     int AccessFailedCount,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
 
 public sealed record LoginAttemptedEvent(
-    UserId UserId,
-    IPAddress IpAddress,
+    string UserId,
+    string IpAddress,
     string UserAgent,
     bool IsSuccess,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
 
 public sealed record SessionRevokedEvent(
-    UserId UserId,
-    UserRefreshTokenFamilyId SessionId,
+    string UserId,
+    string SessionId,
     Guid DeviceId,
     string Reason,
     DateTime OccurredAt) 
     : DomainEvent(OccurredAt);
 
 public sealed record RefreshTokenRotatedEvent(
-    UserId UserId,
-    UserRefreshTokenFamilyId SessionId,
-    UserRefreshTokenId CurrentRefreshTokenId,
-    UserRefreshTokenId NewRefreshTokenId,
+    string UserId,
+    string SessionId,
+    string CurrentRefreshTokenId,
+    string NewRefreshTokenId,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
 
 public sealed record SessionNearingExpirationEvent(
-    UserId UserId,
-    UserRefreshTokenFamilyId SessionId,
+    string UserId,
+    string SessionId,
     DateTime AbsoluteExpiresAt,
     TimeSpan RemainingTime,
     DateTime OccurredAt)
