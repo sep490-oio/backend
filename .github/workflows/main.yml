@@ -120,35 +120,12 @@ jobs:
           rm -rf aspire-output deploy-bundle
           aspire do prepare-compose --environment production
 
-          mkdir -p deploy-bundle
-
-          COMPOSE_FILE=$(find aspire-output -type f \( -name 'docker-compose.yaml' -o -name 'docker-compose.yml' \) | head -n 1)
-          ENV_FILE=$(find aspire-output -type f \( -name '.env' -o -name '.env.*' \) | head -n 1)
-
-          if [ -z "$COMPOSE_FILE" ]; then
-            echo "docker-compose file not found under aspire-output"
-            exit 1
-          fi
-
-          if [ -z "$ENV_FILE" ]; then
-            echo ".env file not found under aspire-output"
-            exit 1
-          fi
-
-          cp "$COMPOSE_FILE" deploy-bundle/docker-compose.yaml
-          cp "$ENV_FILE" deploy-bundle/.env.production
-
-          echo "Generated files:"
-          ls -la deploy-bundle
-          echo "Compose source: $COMPOSE_FILE"
-          echo "Env source: $ENV_FILE"
-
       - name: Upload deployment bundle
         uses: actions/upload-artifact@v4
         with:
           name: aspire-compose-bundle
           include-hidden-files: true
-          path: src/aspire/OIO.AppHost/deploy-bundle
+          path: src/aspire/OIO.AppHost/aspire-output
 
   deploy-to-vps:
     runs-on: ubuntu-latest
@@ -161,7 +138,7 @@ jobs:
         with:
           name: aspire-compose-bundle
           include-hidden-files: true
-          path: deploy-bundle
+          path: src/aspire/OIO.AppHost/aspire-output
 
       - name: Install SSH client
         run: |
@@ -188,8 +165,10 @@ jobs:
           VPS_PORT: ${{ secrets.VPS_PORT }}
         run: |
           ssh -T -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" "mkdir -p /opt/myapp"
-          scp -P "${VPS_PORT:-22}" deploy-bundle/docker-compose.yaml "$VPS_USER@$VPS_HOST:/opt/myapp/docker-compose.yaml"
-          scp -P "${VPS_PORT:-22}" deploy-bundle/.env.production "$VPS_USER@$VPS_HOST:/opt/myapp/.env"
+          
+          scp -P "${VPS_PORT:-22}" src/aspire/OIO.AppHost/aspire-output/docker-compose.yaml "$VPS_USER@$VPS_HOST:/opt/myapp/docker-compose.yaml"
+          
+          scp -P "${VPS_PORT:-22}" src/aspire/OIO.AppHost/aspire-output/.env.production "$VPS_USER@$VPS_HOST:/opt/myapp/.env"
           sleep 3
 
       - name: Deploy on VPS
@@ -209,7 +188,7 @@ jobs:
             if [ -n "${GHCR_PULL_USERNAME:-}" ] && [ -n "${GHCR_PULL_TOKEN:-}" ]; then
               echo "$GHCR_PULL_TOKEN" | docker login ghcr.io -u "$GHCR_PULL_USERNAME" --password-stdin
             fi
-            docker compose -f docker-compose.yaml --env-file .env pull
-            docker compose -f docker-compose.yaml --env-file .env up -d --remove-orphans
+            docker compose -f docker-compose.yaml pull
+            docker compose -f docker-compose.yaml up -d --remove-orphans
             docker image prune -af --filter "until=168h" || true
           EOF
