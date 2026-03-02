@@ -40,6 +40,16 @@
     depends_on:
       - database
     restart: unless-stopped
+    
+  caddy:
+    image: caddy:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    command: caddy reverse-proxy --from api.newlsun.com --to oio.api:8080
+    depends_on:
+      - oio.api
 
 volumes:
   postgres_data:
