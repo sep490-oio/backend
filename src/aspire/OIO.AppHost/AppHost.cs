@@ -49,6 +49,7 @@ var db = builder.AddPostgres("database")
     .WithDataVolume()
     .AddDatabase("oio-mcbc");
 
+
 builder.AddProject<Projects.OIO_Api>("oio-api")
     // .WithHttpHealthCheck("/health")
     .WithReference(db, connectionName: "Database")
@@ -56,6 +57,7 @@ builder.AddProject<Projects.OIO_Api>("oio-api")
     .PublishAsDockerComposeService((resource, service) =>
     {
         service.Name = "oio-api";
+        
         // Lấy các biến môi trường đã được truyền từ GitHub Actions workflow
         var endpoint = Environment.GetEnvironmentVariable("REGISTRY_ENDPOINT") ?? "ghcr.io";
         // GHCR yêu cầu tên repo phải viết thường toàn bộ
@@ -64,6 +66,12 @@ builder.AddProject<Projects.OIO_Api>("oio-api")
         
         // Chỉ định rõ cấu trúc Image để ghi vào file docker-compose.yaml
         service.Image = $"{endpoint}/{repo}/oio-api:{version}";
+    })
+    .WithContainerRegistry(registry)
+    .WithImagePushOptions(context =>
+    {
+        var version = Environment.GetEnvironmentVariable("APP_VERSION") ?? "latest";
+        context.Options.RemoteImageTag = version;
     })
 
     // Jwt
