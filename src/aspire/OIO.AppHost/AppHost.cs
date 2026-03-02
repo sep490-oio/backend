@@ -26,7 +26,8 @@ var api = builder.AddProject<Projects.OIO_Api>("oio-api")
     .PublishAsDockerComposeService((resource, service) =>
     {
         service.Name = "oio-api";
-        service.Ports.Add("8080:8080");
+        service.Ports.Clear();
+        service.Ports.Add("8080:5010");
 
         // Lấy các biến môi trường đã được truyền từ GitHub Actions workflow
         var endpoint = Environment.GetEnvironmentVariable("REGISTRY_ENDPOINT") ?? "ghcr.io";
@@ -42,7 +43,8 @@ var api = builder.AddProject<Projects.OIO_Api>("oio-api")
     {
         var version = Environment.GetEnvironmentVariable("APP_VERSION") ?? "latest";
         context.Options.RemoteImageTag = version;
-    });
+    })
+    .WithEnvironment("ASPNETCORE_HTTP_PORTS", "5010");
 
 AddEnvIfNotNull("JWT_SECRET_KEY", "Jwt__SecretKey");
 AddEnvIfNotNull("JWT_AUDIENCE", "Jwt__Audience");
