@@ -81,7 +81,7 @@ jobs:
           Parameters__default_account_password: ${{ secrets.DEFAULT_ACCOUNT_PASSWORD }}
           Parameters__default_account_first_name: ${{ vars.DEFAULT_ACCOUNT_FIRSTNAME }}
           Parameters__default_account_last_name: ${{ vars.DEFAULT_ACCOUNT_LASTNAME }}
-          Parameters__default_account_distplay_name: ${{ vars.DEFAULT_ACCOUNT_DISPLAYNAME }}
+          Parameters__default_account_display_name: ${{ vars.DEFAULT_ACCOUNT_DISPLAYNAME }}
         run: |
           aspire do push
 
@@ -114,7 +114,7 @@ jobs:
           Parameters__default_account_password: ${{ secrets.DEFAULT_ACCOUNT_PASSWORD }}
           Parameters__default_account_first_name: ${{ vars.DEFAULT_ACCOUNT_FIRSTNAME }}
           Parameters__default_account_last_name: ${{ vars.DEFAULT_ACCOUNT_LASTNAME }}
-          Parameters__default_account_distplay_name: ${{ vars.DEFAULT_ACCOUNT_DISPLAYNAME }}
+          Parameters__default_account_display_name: ${{ vars.DEFAULT_ACCOUNT_DISPLAYNAME }}
           
         run: |
           rm -rf aspire-output deploy-bundle
