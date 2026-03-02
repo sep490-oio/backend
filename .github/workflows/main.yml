@@ -209,7 +209,7 @@ jobs:
             if [ -n "${GHCR_PULL_USERNAME:-}" ] && [ -n "${GHCR_PULL_TOKEN:-}" ]; then
               echo "$GHCR_PULL_TOKEN" | docker login ghcr.io -u "$GHCR_PULL_USERNAME" --password-stdin
             fi
-            docker compose -f docker-compose.yaml pull
-            docker compose -f docker-compose.yaml up -d --remove-orphans
+            docker compose -f docker-compose.yaml --env-file .env pull
+            docker compose -f docker-compose.yaml --env-file .env up -d --remove-orphans
             docker image prune -af --filter "until=168h" || true
           EOF
