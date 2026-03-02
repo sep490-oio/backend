@@ -4,12 +4,10 @@ using OIO.Application;
 using OIO.Infrastructure;
 using OIO.Infrastructure.Persistence.Extensions;
 using OIO.Infrastructure.Settings;
-using OIO.ServiceDefaults;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddServiceDefaults();
 
 builder.Services.AddApi(builder.Configuration);
 builder.Services.AddApplication(builder.Configuration);
@@ -17,7 +15,6 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
-app.MapDefaultEndpoints();
 app.UseStaticFiles();
 
 // Configure the HTTP request pipeline.

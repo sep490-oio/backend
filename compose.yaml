@@ -1,0 +1,48 @@
+﻿services:
+  database:
+    image: "postgres:17.6"
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "${DATABASE_PASSWORD}"
+    ports:
+      - "5432:5432" # (Chỉ mở ra ngoài nếu bạn muốn dùng DBeaver/DataGrip truy cập vào VPS)
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  oio.api:
+    image: "ghcr.io/sep490-oio/backend/oio-api:${APP_VERSION:-latest}"
+    build:
+      context: .
+      dockerfile: src/presentation/OIO.Api/Dockerfile
+    environment:
+      - ConnectionStrings__Database=Host=database;Port=5432;Username=postgres;Password=${DATABASE_PASSWORD};Database=oio-mcbc
+      - Jwt__SecretKey=${JWT_SECRET_KEY}
+      - Jwt__Audience=${JWT_AUDIENCE}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__AccessTokenExpiration=${JWT_ACCESS_TOKEN_EXPIRATION}
+      - Jwt__RefreshTokenExpiration=${JWT_REFRESH_TOKEN_EXPIRATION}
+      - Jwt__RefreshTokenFamilySlidingExpiration=${JWT_REFRESH_TOKEN_FAMILY_SLIDING_EXPIRATION}
+      - Jwt__RefreshTokenFamilyAbsoluteExpiration=${JWT_REFRESH_TOKEN_FAMILY_ABSOLUTE_EXPIRATION}
+      - MediatR__LicenseKey=${MEDIATR_LICENSE_KEY}
+      - Email__Host=${EMAIL_HOST}
+      - Email__Port=${EMAIL_PORT}
+      - Email__Username=${EMAIL_USERNAME}
+      - Email__Password=${EMAIL_PASSWORD}
+      - Email__UseStartTls=${EMAIL_USE_START_TLS}
+      - Email__FromAddress=${EMAIL_FROM_ADDRESS}
+      - Email__FromName=${EMAIL_FROM_NAME}
+      - DefaultAccount__Email=${DEFAULT_ACCOUNT_EMAIL}
+      - DefaultAccount__UserName=${DEFAULT_ACCOUNT_USERNAME}
+      - DefaultAccount__Password=${DEFAULT_ACCOUNT_PASSWORD}
+      - DefaultAccount__FirstName=${DEFAULT_ACCOUNT_FIRSTNAME}
+      - DefaultAccount__LastName=${DEFAULT_ACCOUNT_LASTNAME}
+      - DefaultAccount__DisplayName=${DEFAULT_ACCOUNT_DISPLAYNAME}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - database
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

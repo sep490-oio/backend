@@ -1,4 +1,4 @@
-name: Deploy Aspire to VPS via Docker Compose
+name: Deploy to VPS via Pure Docker Compose
 
 on:
   push:
@@ -9,136 +9,48 @@ concurrency:
   group: production-deploy
   cancel-in-progress: true
 
-jobs:
-  build-and-package:
-    runs-on: ubuntu-latest
-    environment: production
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/oio-api 
 
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
 
-    defaults:
-      run:
-        shell: bash
-        working-directory: src/aspire/OIO.AppHost
-
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Install Aspire CLI
-        run: |
-          curl -sSL https://aspire.dev/install.sh | bash
-          echo "$HOME/.aspire/bin" >> "$GITHUB_PATH"
-
-      - name: Show versions
-        run: |
-          dotnet --info
-          aspire --version
-          docker version
-          docker compose version
-
-      - name: Login to GHCR
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push app images
-        env:
-          REGISTRY_ENDPOINT: ghcr.io
-          REGISTRY_REPOSITORY: ${{ github.repository }}
-          APP_VERSION: ${{ github.sha }}
-
-          # Aspire Parameters for AppHost
-          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-          JWT_AUDIENCE: ${{ vars.JWT_AUDIENCE }}
-          JWT_ISSUER: ${{ vars.JWT_ISSUER }}
-          JWT_ACCESS_TOKEN_EXPIRATION: ${{ vars.JWT_ACCESS_TOKEN_EXPIRATION }}
-          JWT_REFRESH_TOKEN_EXPIRATION: ${{ vars.JWT_REFRESH_TOKEN_EXPIRATION }}
-          JWT_REFRESH_TOKEN_FAMILY_SLIDING_EXPIRATION: ${{ vars.JWT_REFRESH_TOKEN_FAMILY_SLIDING_EXPIRATION }}
-          JWT_REFRESH_TOKEN_FAMILY_ABSOLUTE_EXPIRATION: ${{ vars.JWT_REFRESH_TOKEN_FAMILY_ABSOLUTE_EXPIRATION }}
-
-          MEDIATR_LICENSE_KEY: ${{ secrets.MEDIATR_LICENSE_KEY }}
-
-          EMAIL_HOST: ${{ vars.EMAIL_HOST }}
-          EMAIL_PORT: ${{ vars.EMAIL_PORT }}
-          EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
-          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-          EMAIL_USE_START_TLS: ${{ vars.EMAIL_USE_START_TLS }}
-          EMAIL_FROM_ADDRESS: ${{ vars.EMAIL_FROM_ADDRESS }}
-          EMAIL_FROM_NAME: ${{ vars.EMAIL_FROM_NAME }}
-
-          DEFAULT_ACCOUNT_EMAIL: ${{ secrets.DEFAULT_ACCOUNT_EMAIL }}
-          DEFAULT_ACCOUNT_USERNAME: ${{ secrets.DEFAULT_ACCOUNT_USERNAME }}
-          DEFAULT_ACCOUNT_PASSWORD: ${{ secrets.DEFAULT_ACCOUNT_PASSWORD }}
-          DEFAULT_ACCOUNT_FIRSTNAME: ${{ vars.DEFAULT_ACCOUNT_FIRSTNAME }}
-          DEFAULT_ACCOUNT_LASTNAME: ${{ vars.DEFAULT_ACCOUNT_LASTNAME }}
-          DEFAULT_ACCOUNT_DISPLAYNAME: ${{ vars.DEFAULT_ACCOUNT_DISPLAYNAME }}
-        run: |
-          aspire do push
-
-      - name: Generate Docker Compose deployment assets
-        env:
-          REGISTRY_ENDPOINT: ghcr.io
-          REGISTRY_REPOSITORY: ${{ github.repository }}
-          APP_VERSION: ${{ github.sha }}
-
-          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-          JWT_AUDIENCE: ${{ vars.JWT_AUDIENCE }}
-          JWT_ISSUER: ${{ vars.JWT_ISSUER }}
-          JWT_ACCESS_TOKEN_EXPIRATION: ${{ vars.JWT_ACCESS_TOKEN_EXPIRATION }}
-          JWT_REFRESH_TOKEN_EXPIRATION: ${{ vars.JWT_REFRESH_TOKEN_EXPIRATION }}
-          JWT_REFRESH_TOKEN_FAMILY_SLIDING_EXPIRATION: ${{ vars.JWT_REFRESH_TOKEN_FAMILY_SLIDING_EXPIRATION }}
-          JWT_REFRESH_TOKEN_FAMILY_ABSOLUTE_EXPIRATION: ${{ vars.JWT_REFRESH_TOKEN_FAMILY_ABSOLUTE_EXPIRATION }}
-
-          MEDIATR_LICENSE_KEY: ${{ secrets.MEDIATR_LICENSE_KEY }}
-
-          EMAIL_HOST: ${{ vars.EMAIL_HOST }}
-          EMAIL_PORT: ${{ vars.EMAIL_PORT }}
-          EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
-          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-          EMAIL_USE_START_TLS: ${{ vars.EMAIL_USE_START_TLS }}
-          EMAIL_FROM_ADDRESS: ${{ vars.EMAIL_FROM_ADDRESS }}
-          EMAIL_FROM_NAME: ${{ vars.EMAIL_FROM_NAME }}
-
-          DEFAULT_ACCOUNT_EMAIL: ${{ secrets.DEFAULT_ACCOUNT_EMAIL }}
-          DEFAULT_ACCOUNT_USERNAME: ${{ secrets.DEFAULT_ACCOUNT_USERNAME }}
-          DEFAULT_ACCOUNT_PASSWORD: ${{ secrets.DEFAULT_ACCOUNT_PASSWORD }}
-          DEFAULT_ACCOUNT_FIRSTNAME: ${{ vars.DEFAULT_ACCOUNT_FIRSTNAME }}
-          DEFAULT_ACCOUNT_LASTNAME: ${{ vars.DEFAULT_ACCOUNT_LASTNAME }}
-          DEFAULT_ACCOUNT_DISPLAYNAME: ${{ vars.DEFAULT_ACCOUNT_DISPLAYNAME }}
-          
-        run: |
-          rm -rf aspire-output deploy-bundle
-          aspire do prepare-compose --environment production
-
-      - name: Upload deployment bundle
-        uses: actions/upload-artifact@v4
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
         with:
-          name: aspire-compose-bundle
-          include-hidden-files: true
-          path: src/aspire/OIO.AppHost/aspire-output
+          context: .
+          file: ./src/presentation/OIO.Api/Dockerfile 
+          push: true
+          # Gắn 2 tag: 1 tag version (mã commit) để dễ trace, 1 tag latest
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
   deploy-to-vps:
     runs-on: ubuntu-latest
     environment: production
-    needs: build-and-package
+    needs: build-and-push
 
     steps:
-      - name: Download deployment bundle
-        uses: actions/download-artifact@v4
-        with:
-          name: aspire-compose-bundle
-          include-hidden-files: true
-          path: src/aspire/OIO.AppHost/aspire-output
+      # Checkout code lại để lấy file docker-compose.yml tĩnh ở thư mục gốc
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Install SSH client
         run: |
@@ -154,28 +66,54 @@ jobs:
           chmod 700 ~/.ssh
           printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keygen -y -f ~/.ssh/id_ed25519 > /dev/null
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
-      - name: Upload compose bundle to VPS
+      # Tự động gom toàn bộ Secret/Var thành 1 file .env
+      - name: Generate .env file
+        run: |
+          cat << EOF > .env
+          APP_VERSION=${{ github.sha }}
+          DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}
+          JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+          JWT_AUDIENCE=${{ vars.JWT_AUDIENCE }}
+          JWT_ISSUER=${{ vars.JWT_ISSUER }}
+          JWT_ACCESS_TOKEN_EXPIRATION=${{ vars.JWT_ACCESS_TOKEN_EXPIRATION }}
+          JWT_REFRESH_TOKEN_EXPIRATION=${{ vars.JWT_REFRESH_TOKEN_EXPIRATION }}
+          JWT_REFRESH_TOKEN_FAMILY_SLIDING_EXPIRATION=${{ vars.JWT_REFRESH_TOKEN_FAMILY_SLIDING_EXPIRATION }}
+          JWT_REFRESH_TOKEN_FAMILY_ABSOLUTE_EXPIRATION=${{ vars.JWT_REFRESH_TOKEN_FAMILY_ABSOLUTE_EXPIRATION }}
+          MEDIATR_LICENSE_KEY=${{ secrets.MEDIATR_LICENSE_KEY }}
+          EMAIL_HOST=${{ vars.EMAIL_HOST }}
+          EMAIL_PORT=${{ vars.EMAIL_PORT }}
+          EMAIL_USERNAME=${{ secrets.EMAIL_USERNAME }}
+          EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_USE_START_TLS=${{ vars.EMAIL_USE_START_TLS }}
+          EMAIL_FROM_ADDRESS=${{ vars.EMAIL_FROM_ADDRESS }}
+          EMAIL_FROM_NAME=${{ vars.EMAIL_FROM_NAME }}
+          DEFAULT_ACCOUNT_EMAIL=${{ secrets.DEFAULT_ACCOUNT_EMAIL }}
+          DEFAULT_ACCOUNT_USERNAME=${{ secrets.DEFAULT_ACCOUNT_USERNAME }}
+          DEFAULT_ACCOUNT_PASSWORD=${{ secrets.DEFAULT_ACCOUNT_PASSWORD }}
+          DEFAULT_ACCOUNT_FIRSTNAME=${{ vars.DEFAULT_ACCOUNT_FIRSTNAME }}
+          DEFAULT_ACCOUNT_LASTNAME=${{ vars.DEFAULT_ACCOUNT_LASTNAME }}
+          DEFAULT_ACCOUNT_DISPLAYNAME=${{ vars.DEFAULT_ACCOUNT_DISPLAYNAME }}
+          EOF
+
+      - name: Upload compose files to VPS
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
         run: |
-          scp -P "${VPS_PORT:-22}" src/aspire/OIO.AppHost/aspire-output/docker-compose.yaml "$VPS_USER@$VPS_HOST:/opt/myapp/docker-compose.yaml"
-          
-          scp -P "${VPS_PORT:-22}" src/aspire/OIO.AppHost/aspire-output/.env.production "$VPS_USER@$VPS_HOST:/opt/myapp/.env"
+          # Copy file compose tĩnh trong repo và file .env vừa tạo lên VPS
+          scp -P "${VPS_PORT:-22}" docker-compose.yml "$VPS_USER@$VPS_HOST:/opt/myapp/docker-compose.yaml"
+          scp -P "${VPS_PORT:-22}" .env "$VPS_USER@$VPS_HOST:/opt/myapp/.env"
           sleep 3
-
+          
       - name: Deploy on VPS
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
-
-          # Chỉ cần nếu GHCR image là private
           GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
           GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
         run: |
@@ -186,7 +124,7 @@ jobs:
             if [ -n "${GHCR_PULL_USERNAME:-}" ] && [ -n "${GHCR_PULL_TOKEN:-}" ]; then
               echo "$GHCR_PULL_TOKEN" | docker login ghcr.io -u "$GHCR_PULL_USERNAME" --password-stdin
             fi
-            docker compose -f docker-compose.yaml pull
-            docker compose -f docker-compose.yaml up -d --remove-orphans
+            docker compose pull
+            docker compose up -d --remove-orphans
             docker image prune -af --filter "until=168h" || true
           EOF

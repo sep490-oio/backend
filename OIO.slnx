@@ -1,14 +1,11 @@
 <Solution>
   <Folder Name="/Solution Items/">
     <File Path=".gitignore" />
+    <File Path="compose.yaml" />
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
   </Folder>
   <Folder Name="/src/" />
-  <Folder Name="/src/aspire/">
-    <Project Path="src/aspire/OIO.AppHost/OIO.AppHost.csproj" />
-    <Project Path="src/aspire/OIO.ServiceDefaults/OIO.ServiceDefaults.csproj" />
-  </Folder>
   <Folder Name="/src/core/">
     <Project Path="src/core/OIO.Application/OIO.Application.csproj" />
     <Project Path="src/core/OIO.Domain/OIO.Domain.csproj" />
