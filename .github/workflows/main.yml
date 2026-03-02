@@ -101,7 +101,7 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
         run: |
-          scp -P "${VPS_PORT:-22}" compose.yml "$VPS_USER@$VPS_HOST:/opt/myapp/docker-compose.yaml"
+          scp -P "${VPS_PORT:-22}" compose.yaml "$VPS_USER@$VPS_HOST:/opt/myapp/docker-compose.yaml"
           scp -P "${VPS_PORT:-22}" .env "$VPS_USER@$VPS_HOST:/opt/myapp/.env"
           sleep 3
           

@@ -11,10 +11,7 @@
     restart: unless-stopped
 
   oio.api:
-    image: oio.api
-    build:
-      context: .
-      dockerfile: src/presentation/OIO.Api/Dockerfile
+    image: "ghcr.io/sep490-oio/backend/oio-api:${APP_VERSION:-latest}"
     environment:
       - ConnectionStrings__Database=Host=database;Port=5432;Username=postgres;Password=${DATABASE_PASSWORD};Database=oio-mcbc
       - Jwt__SecretKey=${JWT_SECRET_KEY}
