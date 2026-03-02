@@ -13,7 +13,7 @@ COPY ["src/core/OIO.Domain/OIO.Domain.csproj", "src/core/OIO.Domain/"]
 COPY ["src/infrastructure/OIO.Infrastructure/OIO.Infrastructure.csproj", "src/infrastructure/OIO.Infrastructure/"]
 RUN dotnet restore "src/presentation/OIO.Api/OIO.Api.csproj"
 COPY . .
-WORKDIR "/src/src/presentation/OIO.Api"
+WORKDIR "src/presentation/OIO.Api"
 RUN dotnet build "./OIO.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
