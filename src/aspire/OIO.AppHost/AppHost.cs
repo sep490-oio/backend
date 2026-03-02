@@ -19,20 +19,16 @@ var db = builder.AddPostgres("database")
     .AddDatabase("oio-mcbc");
 
 
-var api = builder.AddProject<Projects.OIO_Api>("oio-api")
-    // .WithHttpHealthCheck("/health")
-    .WithEnvironment("ASPNETCORE_HTTP_PORTS", "8080")
+var api = builder.AddProject<Projects.OIO_Api>("oio-api", launchProfileName: null)
     .WithReference(db, connectionName: "Database")
     .WaitFor(db)
+    .WithEnvironment("ASPNETCORE_HTTP_PORTS", "8080")
     .PublishAsDockerComposeService((resource, service) =>
     {
         service.Name = "oio-api";
-        service.Expose.Clear(); 
-        
-        // Ghi đè port ra ngoài
+        // Lấy các biến môi trường đã được truyền từ GitHub Actions workflow
         service.Ports.Clear();
         service.Ports.Add("8080:8080");
-        // Lấy các biến môi trường đã được truyền từ GitHub Actions workflow
         var endpoint = Environment.GetEnvironmentVariable("REGISTRY_ENDPOINT") ?? "ghcr.io";
         // GHCR yêu cầu tên repo phải viết thường toàn bộ
         var repo = Environment.GetEnvironmentVariable("REGISTRY_REPOSITORY")?.ToLower();
