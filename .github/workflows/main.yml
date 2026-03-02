@@ -147,6 +147,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: aspire-compose-bundle
+          include-hidden-files: true
           path: src/aspire/OIO.AppHost/deploy-bundle
 
   deploy-to-vps:
@@ -159,6 +160,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: aspire-compose-bundle
+          include-hidden-files: true
           path: deploy-bundle
 
       - name: Install SSH client
