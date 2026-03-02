@@ -52,6 +52,7 @@ var db = builder.AddPostgres("database")
 
 builder.AddProject<Projects.OIO_Api>("oio-api")
     // .WithHttpHealthCheck("/health")
+    .WithHttpEndpoint(port: 8080, targetPort: 8080, name: "http")
     .WithReference(db, connectionName: "Database")
     .WaitFor(db)
     .PublishAsDockerComposeService((resource, service) =>
