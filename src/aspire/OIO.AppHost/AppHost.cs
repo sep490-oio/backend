@@ -33,7 +33,7 @@ var defaulAccountLastName = builder.AddParameter("default-account-last-name");
 var defaulAccountDisplayName = builder.AddParameter("default-account-display-name");
 
 
-var docker = builder.AddDockerComposeEnvironment("env")
+var docker = builder.AddDockerComposeEnvironment("compose")
     .WithDashboard(enabled: false);
 
 var registryEndpoint = builder.AddParameterFromConfiguration("registryEndpoint", "REGISTRY_ENDPOINT");
@@ -46,7 +46,7 @@ var registry = builder.AddContainerRegistry(
 
 var db = builder.AddPostgres("database")
     .WithHostPort(15432)
-    .WithDataVolume()
+    .WithDataVolume("/opt/myapp/postgres-data")
     .AddDatabase("oio-mcbc");
 
 builder.AddProject<Projects.OIO_Api>("oio-api")
