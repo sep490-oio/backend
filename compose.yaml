@@ -11,7 +11,7 @@
     restart: unless-stopped
 
   oio.api:
-    image: "ghcr.io/sep490-oio/backend/oio-api:${APP_VERSION:-latest}"
+    image: oio.api
     build:
       context: .
       dockerfile: src/presentation/OIO.Api/Dockerfile
@@ -39,7 +39,7 @@
       - DefaultAccount__LastName=${DEFAULT_ACCOUNT_LASTNAME}
       - DefaultAccount__DisplayName=${DEFAULT_ACCOUNT_DISPLAYNAME}
     ports:
-      - "8080:8080"
+      - "8080:8080" # Map cứng không cần lằng nhằng
     depends_on:
       - database
     restart: unless-stopped

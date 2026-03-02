@@ -7,13 +7,15 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
+COPY ["Directory.Build.props", "./"]
+COPY ["Directory.Packages.props", "./"]
 COPY ["src/presentation/OIO.Api/OIO.Api.csproj", "src/presentation/OIO.Api/"]
 COPY ["src/core/OIO.Application/OIO.Application.csproj", "src/core/OIO.Application/"]
 COPY ["src/core/OIO.Domain/OIO.Domain.csproj", "src/core/OIO.Domain/"]
 COPY ["src/infrastructure/OIO.Infrastructure/OIO.Infrastructure.csproj", "src/infrastructure/OIO.Infrastructure/"]
 RUN dotnet restore "src/presentation/OIO.Api/OIO.Api.csproj"
 COPY . .
-WORKDIR "src/presentation/OIO.Api"
+WORKDIR "/src/src/presentation/OIO.Api"
 RUN dotnet build "./OIO.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
