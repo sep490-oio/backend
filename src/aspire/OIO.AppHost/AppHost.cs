@@ -56,6 +56,14 @@ builder.AddProject<Projects.OIO_Api>("oio-api")
     .PublishAsDockerComposeService((resource, service) =>
     {
         service.Name = "oio-api";
+        // Lấy các biến môi trường đã được truyền từ GitHub Actions workflow
+        var endpoint = Environment.GetEnvironmentVariable("REGISTRY_ENDPOINT") ?? "ghcr.io";
+        // GHCR yêu cầu tên repo phải viết thường toàn bộ
+        var repo = Environment.GetEnvironmentVariable("REGISTRY_REPOSITORY")?.ToLower(); 
+        var version = Environment.GetEnvironmentVariable("APP_VERSION") ?? "latest";
+        
+        // Chỉ định rõ cấu trúc Image để ghi vào file docker-compose.yaml
+        service.Image = $"{endpoint}/{repo}/oio-api:{version}";
     })
     .WithContainerRegistry(registry)
     .WithImagePushOptions(context =>
