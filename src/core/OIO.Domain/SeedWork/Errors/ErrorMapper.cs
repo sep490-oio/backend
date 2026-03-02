@@ -30,7 +30,7 @@ public class ErrorMapper : IResultErrorMapper<Error, ProblemHttpResult>
         var errorsDict = validationError.Violations.GroupBy(e => ((ICheckError)e).PropertyName)
             .ToDictionary(g => g.Key, 
                 g => 
-                    g.Select(e => new {e.Message, e.Code}).ToArray());
+                    g.Select(e => e.Message).ToArray());
         
         problemDetails.Extensions["errors"] = errorsDict;
 
