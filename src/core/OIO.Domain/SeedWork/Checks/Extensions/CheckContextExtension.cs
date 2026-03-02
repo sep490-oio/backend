@@ -23,8 +23,8 @@ public static class CheckContextExtension
                 state: context.State,
                 isInvariant: context.IsInvariant,
                 ownerName: context.OwnerName,
-                propertyName: propertyName.ToTitleCase(),
-                fieldName: (fieldName?.ToTitleCase() ?? propertyName.ToTitleCase()),
+                propertyName: propertyName,
+                fieldName: (fieldName ?? propertyName),
                 separator: separator ?? context.Separator,
                 fieldFailed: false
             );
@@ -43,8 +43,8 @@ public static class CheckContextExtension
                 state: context.State,
                 isInvariant: context.IsInvariant,
                 ownerName: context.OwnerName,
-                propertyName: propertyName.ToTitleCase(),
-                fieldName: (fieldName?.ToTitleCase() ?? propertyName.ToTitleCase()),
+                propertyName: propertyName,
+                fieldName: (fieldName ?? propertyName),
                 separator: separator ?? context.Separator,
                 fieldFailed: false
             );

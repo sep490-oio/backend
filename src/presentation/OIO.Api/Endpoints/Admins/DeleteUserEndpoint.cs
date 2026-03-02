@@ -1,24 +1,26 @@
 using MediatR;
 using OIO.Api.Common;
-using OIO.Api.Extensions;
 using OIO.Application.UserContext.Commands.DeleteUser;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.Admins;
 
-public class DeleteUserEndpoint : IEndpoint
+public class RemoveUserEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapDelete("api/admin/users/{userId:guid}", async (Guid userId, ISender sender, CancellationToken ct) =>
+        app.MapDelete(ApiEndpoint.Url.Admins.DeleteUser, async (
+                Guid userId,
+                ISender sender,
+                CancellationToken ct) =>
             {
                 var command = new DeleteUserCommand(userId);
                 var result = await sender.Send(command, ct);
 
-                return result.IsFailure ? 
-                    result.Error.ProcessError() : 
-                    Results.NoContent();
+                return result.ToNoContentHttpResult();
             })
-            .AllowAnonymous()
-            .WithTags(Tags.Admins);
+            .RequireAuthorization(App.Permissions.Catalogs.Users.Remove)
+            .WithName(ApiEndpoint.Names.Admins.DeleteUser)
+            .WithTags(ApiEndpoint.Tags.Admins);
     }
 }

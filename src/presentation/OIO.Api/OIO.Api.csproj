@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
     <ItemGroup>
+      <ProjectReference Include="..\..\aspire\OIO.ServiceDefaults\OIO.ServiceDefaults.csproj" />
       <ProjectReference Include="..\..\core\OIO.Application\OIO.Application.csproj" />
       <ProjectReference Include="..\..\infrastructure\OIO.Infrastructure\OIO.Infrastructure.csproj" />
     </ItemGroup>

@@ -2,6 +2,7 @@ using MediatR;
 using OIO.Api.Common;
 using OIO.Api.Extensions;
 using OIO.Application.UserContext.Commands.RemoveAddress;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.Users;
 
@@ -9,16 +10,19 @@ public class RemoveAddressEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapDelete("api/users/me/addresses/{addressId:guid}",
-                async (Guid addressId, ISender sender, CancellationToken ct) =>
+        app.MapDelete(ApiEndpoint.Url.Users.RemoveAddress, async (
+                    Guid addressId,
+                    ISender sender,
+                    CancellationToken ct) =>
                 {
                     var command = new RemoveAddressCommand(addressId);
                     
                     var result = await sender.Send(command, ct);
 
-                    return result.IsFailure ? result.Error.ProcessError() : Results.NoContent();
+                    return result.ToNoContentHttpResult();
                 })
-            .RequireAuthorization()
-            .WithTags(Tags.Users);
+            .RequireAuthorization(App.Permissions.Catalogs.Users.RemoveAddresses)
+            .WithName(ApiEndpoint.Names.Users.RemoveAddress)
+            .WithTags(ApiEndpoint.Tags.Users);
     }
 }

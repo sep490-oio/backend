@@ -8,7 +8,7 @@ using OIO.Application.UserContext.DTOs;
 using OIO.Application.UserContext.Services;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Errors;
-using OIO.Domain.Context.UserContext.Repositories;
+
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.UserContext.Queries.GetLoginHistory;
@@ -20,7 +20,6 @@ internal sealed class GetLoginHistoryQueryHandler
     private readonly ICurrentUser _currentUser;
 
     public GetLoginHistoryQueryHandler(
-        IUserRepository userRepository,
         IDbContext dbContext,
         ICurrentUser currentUser)
     {
@@ -32,8 +31,7 @@ internal sealed class GetLoginHistoryQueryHandler
         GetLoginHistoryQuery request,
         CancellationToken cancellationToken)
     {
-        if (_currentUser.UserId is null)
-            return UserErrors.Auth.UserNotLoggedIn;
+        
 
         var items = await _dbContext.Set<UserLoginHistory>()
             .Where(u => u.UserId == _currentUser.UserId)

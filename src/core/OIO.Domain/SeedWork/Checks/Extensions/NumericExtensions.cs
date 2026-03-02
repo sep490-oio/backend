@@ -1,6 +1,5 @@
 ﻿using System.Globalization;
 using System.Numerics;
-using FluentCheck.Errors;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Domain.SeedWork.Checks.Extensions;
@@ -18,29 +17,8 @@ public static class NumericExtensions
         if (!check.ShouldContinue || check.Property > T.Zero) 
             return check;
 
-        var err = error ?? check.Property.PositiveError(
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, T?> PositiveIfHasValue<TOwner, T>(
-        this CheckField<TOwner, T?> check,
-        string? message = null,
-        Error? error = null)
-        where T : struct, INumber<T>
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue)
-            return check;
-
-        var v = check.Property.Value;
-        if (v > T.Zero) return check;
-
-        var err = error ?? v.PositiveError(
+        var err = error ?? Error.Positive(
+            property: check.Property,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
             propertyName: check.PropertyName,
@@ -59,30 +37,8 @@ public static class NumericExtensions
         if (!check.ShouldContinue || check.Property < T.Zero)
             return check;
 
-        var err = error ?? check.Property.NegativeError(
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, T?> NegativeIfHasValue<TOwner, T>(
-        this CheckField<TOwner, T?> check,
-        string? message = null,
-        Error? error = null)
-        where T : struct, INumber<T>
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue) return check;
-
-        var v = check.Property.Value;
-        
-        if (v < T.Zero)
-            return check;
-
-        var err = error ?? v.NegativeError(
+        var err = error ?? Error.Negative(
+            property: check.Property,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
             propertyName: check.PropertyName,
@@ -98,36 +54,11 @@ public static class NumericExtensions
         Error? error = null)
         where T : INumber<T>
     {
-        if (!check.ShouldContinue)
+        if (!check.ShouldContinue || check.Property <= T.Zero)
             return check;
 
-        if (check.Property <= T.Zero) 
-            return check;
-
-        var err = error ?? check.Property.NonPositiveError(
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, T?> NonPositiveIfHasValue<TOwner, T>(
-        this CheckField<TOwner, T?> check,
-        string? message = null,
-        Error? error = null)
-        where T : struct, INumber<T>
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue) return check;
-
-        var v = check.Property.Value;
-        
-        if (v <= T.Zero)
-            return check;
-
-        var err = error ?? v.NonPositiveError(
+        var err = error ?? Error.NonPositive(
+            property: check.Property,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
             propertyName: check.PropertyName,
@@ -146,30 +77,8 @@ public static class NumericExtensions
         if (!check.ShouldContinue || check.Property >= T.Zero)
             return check;
 
-        var err = error ?? check.Property.NonNegativeError(
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, T?> NonNegativeIfHasValue<TOwner, T>(
-        this CheckField<TOwner, T?> check,
-        string? message = null,
-        Error? error = null)
-        where T : struct, INumber<T>
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue) return check;
-
-        var v = check.Property.Value;
-        
-        if (v >= T.Zero)
-            return check;
-
-        var err = error ?? v.NonNegativeError(
+        var err = error ?? Error.NonNegative(
+            property:check.Property,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
             propertyName: check.PropertyName,
@@ -188,30 +97,8 @@ public static class NumericExtensions
         if (!check.ShouldContinue || check.Property == T.Zero)
             return check;
 
-        var err = error ?? check.Property.ZeroError(
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, T?> ZeroIfHasValue<TOwner, T>(
-        this CheckField<TOwner, T?> check,
-        string? message = null,
-        Error? error = null)
-        where T : struct, INumber<T>
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue) return check;
-
-        var v = check.Property.Value;
-        
-        if (v == T.Zero)
-            return check;
-
-        var err = error ?? v.ZeroError(
+        var err = error ?? Error.Zero(
+            property: check.Property,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
             propertyName: check.PropertyName,
@@ -230,30 +117,8 @@ public static class NumericExtensions
         if (!check.ShouldContinue || check.Property != T.Zero)
             return check;
 
-        var err = error ?? check.Property.NonZeroError(
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, T?> NonZeroIfHasValue<TOwner, T>(
-        this CheckField<TOwner, T?> check,
-        string? message = null,
-        Error? error = null)
-        where T : struct, INumber<T>
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue) return check;
-
-        var v = check.Property.Value;
-        
-        if (v != T.Zero) 
-            return check;
-
-        var err = error ?? v.NonZeroError(
+        var err = error ?? Error.NonZero(
+            property: check.Property,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
             propertyName: check.PropertyName,
@@ -264,7 +129,8 @@ public static class NumericExtensions
     }
 
     #endregion
-     #region MultipleOf
+    
+    #region MultipleOf
 
     public static CheckField<TOwner, T> MultipleOf<TOwner, T>(
         this CheckField<TOwner, T> check,
@@ -283,33 +149,8 @@ public static class NumericExtensions
         if (check.Property % step == T.Zero) 
             return check;
 
-        var err = error ?? check.Property.MultipleOfError(
-            step: step,
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, T?> MultipleOfIfHasValue<TOwner, T>(
-        this CheckField<TOwner, T?> check,
-        T step,
-        string? message = null,
-        Error? error = null)
-        where T : struct, INumber<T>
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue) return check;
-
-        if (step == T.Zero)
-            throw new ArgumentOutOfRangeException(nameof(step), "step must be non-zero.");
-
-        var v = check.Property.Value;
-        if (v % step == T.Zero) return check;
-
-        var err = error ?? v.MultipleOfError(
+        var err = error ?? Error.MultipleOf(
+            property: check.Property,
             step: step,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
@@ -343,39 +184,8 @@ public static class NumericExtensions
         if (IsWithinPrecisionScale(check.Property, precision, scale))
             return check;
 
-        var err = error ?? check.Property.PrecisionScaleError(
-            precision: precision,
-            scale: scale,
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, T?> PrecisionScaleIfHasValue<TOwner, T>(
-        this CheckField<TOwner, T?> check,
-        int precision,
-        int scale,
-        string? message = null,
-        Error? error = null)
-        where T : struct, INumber<T>
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue) return check;
-
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(precision);
-        ArgumentOutOfRangeException.ThrowIfNegative(scale);
-        
-        if (scale > precision) 
-            throw new ArgumentOutOfRangeException(nameof(scale), "scale must be <= precision.");
-
-        var v = check.Property.Value;
-        if (IsWithinPrecisionScale(v, precision, scale))
-            return check;
-
-        var err = error ?? v.PrecisionScaleError(
+        var err = error ?? Error.PrecisionScale(
+            property: check.Property,
             precision: precision,
             scale: scale,
             isInvariant: check.IsInvariant,
@@ -392,7 +202,7 @@ public static class NumericExtensions
     {
         // Best effort:
         // - decimal: exact digits
-        // - other: invariant string representation (may be scientific notation -> handle roughly)
+        // - other: invariant string representation (maybe scientific notation -> handle roughly)
         if (value is decimal dec)
             return DecimalWithinPrecisionScale(dec, precision, scale);
 

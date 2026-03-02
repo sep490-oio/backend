@@ -1,7 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
-using OIO.Api.Extensions;
 using OIO.Application.UserContext.Commands.ChangePassword;
 
 namespace OIO.Api.Endpoints.Users;
@@ -14,7 +13,10 @@ public class ChangePasswordEndpoint : IEndpoint
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPut("api/users/me/password", async (Request request, ISender sender, CancellationToken ct) =>
+        app.MapPut(ApiEndpoint.Url.Users.ChangePassword, async (
+                Request request,
+                ISender sender,
+                CancellationToken ct) =>
             {
                 var command = new ChangePasswordCommand(
                     request.CurrentPassword,
@@ -22,9 +24,10 @@ public class ChangePasswordEndpoint : IEndpoint
 
                 var result = await sender.Send(command, ct);
 
-                return result.IsFailure ? result.Error.ProcessError() : Results.NoContent();
+                return result.ToNoContentHttpResult();
             })
             .RequireAuthorization()
-            .WithTags(Tags.Users);
+            .WithName(ApiEndpoint.Names.Users.ChangePassword)
+            .WithTags(ApiEndpoint.Tags.Users);
     }
 }

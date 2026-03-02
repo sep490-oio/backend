@@ -26,7 +26,7 @@ public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
         TId id,
         Func<IQueryable<TEntity>, IQueryable<TEntity>>? queryBuilder = null,
         CancellationToken cancellationToken = default)
-        where TId : GuidIdType<TId>, new()
+        where TId : IEntityId, new()
         where TEntity : class, IEntity<TId>
     {
         IQueryable<TEntity> query = Set<TEntity>();
@@ -34,7 +34,7 @@ public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
         if (queryBuilder is not null)
             query = queryBuilder(query);
         
-        return await query.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
+        return await query.FirstOrDefaultAsync(e => e.Id.Equals(id), cancellationToken);
     }
 
     public void Insert<TEntity>(TEntity entity) where TEntity : class, IEntity

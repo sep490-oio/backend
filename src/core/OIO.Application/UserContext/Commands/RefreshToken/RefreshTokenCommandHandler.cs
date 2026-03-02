@@ -45,12 +45,9 @@ internal sealed class RefreshTokenCommandHandler
         RefreshTokenCommand request,
         CancellationToken cancellationToken)
     {
-        if (_currentUser.UserId is null)
-            return UserErrors.RefreshToken.Invalid;
-
         var user = await _dbContext.Set<User>()
             .Where(u => u.Id == _currentUser.UserId)
-            .Include(u => u.RefreshTokenFamilies)
+            .Include(u => u.Sessions)
             .ThenInclude(f => f.Tokens)
             .Include(u => u.Roles)
             .ThenInclude(r => r.Role)
@@ -62,9 +59,9 @@ internal sealed class RefreshTokenCommandHandler
         var tokenHash = _tokenHasher.Hash(request.RefreshToken);
 
         UserRefreshToken? currentToken = null;
-        UserRefreshTokenFamily? session = null;
+        UserSession? session = null;
 
-        foreach (var f in user.RefreshTokenFamilies)
+        foreach (var f in user.Sessions)
         {
             var token = f.Tokens.FirstOrDefault(t => t.TokenHash == tokenHash);
             
@@ -85,7 +82,7 @@ internal sealed class RefreshTokenCommandHandler
         {
             // Device mismatch — potential token theft!
             // Revoke entire session for safety
-            user.RevokeTokenFamily(session.Id, 
+            user.RevokeSession(session.Id, 
                 $"Device mismatch: expected '{session.DeviceId}', got '{request.DeviceId}'", nowUtc);
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);

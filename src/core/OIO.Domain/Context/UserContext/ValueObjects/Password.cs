@@ -1,5 +1,4 @@
 ﻿using CSharpFunctionalExtensions;
-using OIO.Domain.Constants;
 using OIO.Domain.Context.UserContext.Services;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
@@ -8,6 +7,7 @@ namespace OIO.Domain.Context.UserContext.ValueObjects;
 
 public sealed class Password : ValueObject
 {
+    private Password() {}
     private Password(string hashedValue) => HashedValue = hashedValue;
     
     public string HashedValue { get; private set; }
@@ -17,11 +17,11 @@ public sealed class Password : ValueObject
         var validateResult = Password
             .Field(plainPassword, "Value")!
             .NotNullOrWhiteSpace()
-            .MaxLength(Constraints.Password.MaxLength)
-            .MinLength(Constraints.Password.MinLength)
+            .MaxLength(AppDefinitions.App.Constraint.Password.MaxLength)
+            .MinLength(AppDefinitions.App.Constraint.Password.MinLength)
             .Format(
-                message: Constraints.Password.FormatMessage,
-                validators: Constraints.Password.Validator)
+                message: AppDefinitions.App.Constraint.Password.FormatMessage,
+                validators: AppDefinitions.App.Constraint.Password.Validator)
             .ToViolationsError();
 
         if (validateResult.HasErrors)

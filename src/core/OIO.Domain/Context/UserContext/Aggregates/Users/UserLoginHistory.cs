@@ -1,10 +1,12 @@
 ﻿using System.Net;
 using OIO.Domain.Context.UserContext.Enums;
 using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.SeedWork.Entities;
 
 namespace OIO.Domain.Context.UserContext.Aggregates.Users;
 
-public sealed class UserLoginHistory : SeedWork.Entities.Entity<UserLoginHistoryId>
+public sealed class UserLoginHistory : BaseEntity<UserLoginHistoryId>
 {
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
     private UserLoginHistory() {}
@@ -27,7 +29,7 @@ public sealed class UserLoginHistory : SeedWork.Entities.Entity<UserLoginHistory
         LoginStatus status,
         DateTime loginAt)
     {
-        Id = UserLoginHistoryId.Create();
+        Id = UserLoginHistoryId.From(Guid.CreateVersion7());
         UserId = userId;
         IpAddress = ipAddress;
         UserAgent = userAgent;

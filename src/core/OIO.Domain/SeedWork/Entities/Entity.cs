@@ -1,9 +1,11 @@
-﻿namespace OIO.Domain.SeedWork.Entities;
+﻿using CSharpFunctionalExtensions;
 
-public abstract class Entity<TId> : CSharpFunctionalExtensions.Entity<TId>, IEntity<TId>
+namespace OIO.Domain.SeedWork.Entities;
+
+public abstract class BaseEntity<TId> : Entity<TId>, IEntity<TId>
     where TId : IEntityId, IComparable<TId>
 {
-    protected Entity(TId id) : base(id) {}
+    protected BaseEntity(TId id) : base(id) {}
     
-    protected Entity() : base() {}
+    protected BaseEntity() : base() {}
 }

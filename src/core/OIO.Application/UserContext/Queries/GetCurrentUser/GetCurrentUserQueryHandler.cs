@@ -8,6 +8,7 @@ using OIO.Application.UserContext.Services;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Errors;
 using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.UserContext.Queries.GetCurrentUser;
@@ -30,8 +31,7 @@ internal sealed class GetCurrentUserQueryHandler
         GetCurrentUserQuery request,
         CancellationToken cancellationToken)
     {
-        if (_currentUser.UserId is null)
-            return UserErrors.Auth.UserNotLoggedIn;
+        
 
         var user = await _dbContext.GetByIdAsync<User, UserId>(
             _currentUser.UserId,

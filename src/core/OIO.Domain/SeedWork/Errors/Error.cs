@@ -1,5 +1,4 @@
-﻿using FluentCheck.Errors;
-using OIO.Domain.SeedWork.Errors.ErrorCatalogs;
+﻿using OIO.Domain.SeedWork.Errors.ErrorCatalogs;
 using OIO.Domain.SeedWork.Utils;
 
 namespace OIO.Domain.SeedWork.Errors;

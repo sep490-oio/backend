@@ -1,4 +1,4 @@
-namespace FluentCheck.Errors;
+namespace OIO.Domain.SeedWork.Errors;
 
 public class InvalidErrorException : Exception
 {

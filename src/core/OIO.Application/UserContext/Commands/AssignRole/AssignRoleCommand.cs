@@ -6,7 +6,7 @@ namespace OIO.Application.UserContext.Commands.AssignRole;
 
 public sealed record AssignRoleCommand(
     Guid UserId,
-    Guid RoleId) : ICommand, IHasValidate
+    int RoleId) : ICommand, IHasValidate
 {
     public ViolationsError Validate()
     {
@@ -15,6 +15,6 @@ public sealed record AssignRoleCommand(
             .Field(UserId)
             .NotEmptyGuid()
             .Field(RoleId)
-            .NotEmptyGuid();
+            .NotDefault();
     }
 }

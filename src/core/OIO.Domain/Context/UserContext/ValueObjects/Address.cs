@@ -1,5 +1,4 @@
 ﻿using CSharpFunctionalExtensions;
-using OIO.Domain.Constants;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
 using Error = OIO.Domain.SeedWork.Errors.Error;
@@ -8,13 +7,7 @@ namespace OIO.Domain.Context.UserContext.ValueObjects;
 
 public sealed class Address : ValueObject
 {
-    public string Street { get; }
-    public string Ward { get; }
-    public string District { get; }
-    public string City { get; }
-    public string? PostalCode { get; }
-
-    
+    private Address(){}
     private Address(string street, string ward, string district, string city, string? postalCode)
     {
         Street = street;
@@ -24,6 +17,12 @@ public sealed class Address : ValueObject
         PostalCode = postalCode;
     }
 
+    public string Street { get; private set; }
+    public string Ward { get; private set; }
+    public string District { get; private set; }
+    public string City { get; private set; }
+    public string? PostalCode { get; private set; }
+    
     public static Result<Address, Error> Create(
         string street, 
         string ward, 
@@ -34,18 +33,18 @@ public sealed class Address : ValueObject
         var result = Address.Check(isInvariant: true)
             .Field(street, x => x.Street)!
             .NotNullOrWhiteSpace()
-            .MaxLength(Constraints.Address.StreetMaxLength)
+            .MaxLength(AppDefinitions.App.Constraint.Address.StreetMaxLength)
             .Field(district, x => x.District)!
             .NotNullOrWhiteSpace()
-            .MaxLength(Constraints.Address.DistrictMaxLength)
+            .MaxLength(AppDefinitions.App.Constraint.Address.DistrictMaxLength)
             .Field(ward, x => x.Ward)!
             .NotNullOrWhiteSpace()
-            .MaxLength(Constraints.Address.WardMaxLength)
+            .MaxLength(AppDefinitions.App.Constraint.Address.WardMaxLength)
             .Field(city, x => x.City)!
             .NotNullOrWhiteSpace()
-            .MaxLength(Constraints.Address.CityMaxLength)
+            .MaxLength(AppDefinitions.App.Constraint.Address.CityMaxLength)
             .Field(postalCode, x => x.PostalCode)
-            .MaxLengthIfNotNull(Constraints.Address.PostalCodeMaxLenght)
+            .WhenHasValue(x => x.MaxLength(AppDefinitions.App.Constraint.Address.PostalCodeMaxLenght))
             .ToResult();
 
         if (result.IsFailure)

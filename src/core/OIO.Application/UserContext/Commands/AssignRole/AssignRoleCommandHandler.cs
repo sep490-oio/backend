@@ -5,7 +5,7 @@ using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Errors;
-using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.UserContext.Commands.AssignRole;
@@ -41,7 +41,7 @@ internal sealed class AssignRoleCommandHandler
             queryBuilder: query => query
                 .Include(x => x.Roles),
             cancellationToken: cancellationToken);
-        
+
         if (user is null)
             return UserErrors.User.NotFound(userId);
 
@@ -52,7 +52,6 @@ internal sealed class AssignRoleCommandHandler
             return assignRoleResult;
         }
 
-        _dbContext.Update(user);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return assignRoleResult;

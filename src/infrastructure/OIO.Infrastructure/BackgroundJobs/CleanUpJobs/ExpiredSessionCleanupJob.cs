@@ -52,7 +52,7 @@ public sealed class ExpiredSessionCleanupJob : BackgroundService
         var nowUtc = clock.UtcNow;
 
         // 1. Revoke families that passed absolute expiration
-        var absoluteExpiredCount = await dbContext.Set<UserRefreshTokenFamily>()
+        var absoluteExpiredCount = await dbContext.Set<UserSession>()
             .Where(s => s.IsActive && s.AbsoluteExpiresAt <= nowUtc)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(f => f.IsActive, false)
@@ -61,7 +61,7 @@ public sealed class ExpiredSessionCleanupJob : BackgroundService
                 ct);
 
         // 2. Revoke families that passed sliding expiration
-        var slidingExpiredCount = await dbContext.Set<UserRefreshTokenFamily>()
+        var slidingExpiredCount = await dbContext.Set<UserSession>()
             .Where(f => f.IsActive && f.ExpiresAt <= nowUtc)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(f => f.IsActive, false)
@@ -81,7 +81,7 @@ public sealed class ExpiredSessionCleanupJob : BackgroundService
         // 4. Delete very old inactive families (older than 90 days)
         //TODO: bring number of day to app-settings
         var purgeThreshold = nowUtc.AddDays(-90);
-        var purgedCount = await dbContext.Set<UserRefreshTokenFamily>()
+        var purgedCount = await dbContext.Set<UserSession>()
             .Where(f => !f.IsActive && f.CreatedAt < purgeThreshold)
             .ExecuteDeleteAsync(ct);
 

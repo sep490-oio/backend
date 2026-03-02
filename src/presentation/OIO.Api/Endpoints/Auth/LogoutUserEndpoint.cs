@@ -1,6 +1,5 @@
 ﻿using MediatR;
 using OIO.Api.Common;
-using OIO.Api.Extensions;
 using OIO.Application.UserContext.Commands.Logout;
 
 namespace OIO.Api.Endpoints.Auth;
@@ -12,17 +11,19 @@ public class LogoutUserEndpoint : IEndpoint
     
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("api/auth/logout", async (Request request, ISender sender, CancellationToken ct) =>
+        app.MapPost(ApiEndpoint.Url.Auth.Logout, async (
+                Request request,
+                ISender sender, 
+                CancellationToken ct) =>
             {
                 var command = new LogoutCommand(request.DeviceId);
                 
                 var result = await sender.Send(command, ct);
 
-                return result.IsFailure ? 
-                    result.Error.ProcessError() : 
-                    Results.Ok();
+                return result.ToNoContentHttpResult();
             })
             .AllowAnonymous()
-            .WithTags(Tags.Auth);
+            .WithName(ApiEndpoint.Names.Auth.Logout)
+            .WithTags(ApiEndpoint.Tags.Auth);
     }
 }

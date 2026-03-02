@@ -1,6 +1,4 @@
 using CSharpFunctionalExtensions;
-using OIO.Domain.Context.UserContext.Errors;
-using OIO.Domain.SeedWork.Checks;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
 using PhoneNumbers;
@@ -15,6 +13,8 @@ public sealed class PhoneNumber : ValueObject
     public string Value { get; private set;}
     public string CountryCode { get; private set;} // Ví dụ: VN, US
 
+    private PhoneNumber(){}
+    
     private PhoneNumber(string value, string countryCode)
     {
         Value = value;
@@ -38,7 +38,10 @@ public sealed class PhoneNumber : ValueObject
             
             var isValid = PhoneUtil.IsValidNumber(numberProto);
             if (!isValid)
-                return value.FormatError(isInvariant: true, message: $"{value} is not valid phone number for {defaultRegion} region.");
+                return Error.Format(
+                    property: value,
+                    isInvariant: true,
+                    message: $"{value} is not valid phone number for {defaultRegion} region.");
 
             var formattedValue = PhoneUtil.Format(numberProto, PhoneNumberFormat.E164);
             
@@ -48,7 +51,10 @@ public sealed class PhoneNumber : ValueObject
         }
         catch (NumberParseException ex)
         {
-            return value.FormatError(message: ex.Message, isInvariant: true);
+            return Error.Format(
+                property: value,
+                isInvariant: true,
+                message: ex.Message);
         }
     }
 

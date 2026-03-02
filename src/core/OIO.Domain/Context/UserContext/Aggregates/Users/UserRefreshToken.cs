@@ -1,10 +1,10 @@
 ﻿using System.Net;
-using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
 
 namespace OIO.Domain.Context.UserContext.Aggregates.Users;
 
-public sealed class UserRefreshToken : SeedWork.Entities.Entity<UserRefreshTokenId>, ICreatedAtEntity
+public sealed class UserRefreshToken : BaseEntity<UserRefreshTokenId>, ICreatedAtEntity
 {
     
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
@@ -15,7 +15,7 @@ public sealed class UserRefreshToken : SeedWork.Entities.Entity<UserRefreshToken
 
     public string TokenHash { get; private set; }
 
-    public UserRefreshTokenFamilyId FamilyId { get; private set; }
+    public UserSessionId SessionId { get; private set; }
 
     public UserRefreshTokenId? ParentTokenId { get; private set; }
 
@@ -37,12 +37,12 @@ public sealed class UserRefreshToken : SeedWork.Entities.Entity<UserRefreshToken
 
     public DateTime? UsedAt { get; private set; }
 
-    public UserRefreshTokenFamily? RefreshTokenFamily { get; private set; }
+    public UserSession? RefreshTokenFamily { get; private set; }
     
     internal UserRefreshToken(
         UserRefreshTokenId id,
         UserId userId,
-        UserRefreshTokenFamilyId familyId,
+        UserSessionId sessionId,
         string tokenHash,
         UserRefreshTokenId? parentTokenId,
         IPAddress ipAddress,
@@ -52,7 +52,7 @@ public sealed class UserRefreshToken : SeedWork.Entities.Entity<UserRefreshToken
     {
         Id = id;
         UserId = userId;
-        FamilyId = familyId;
+        SessionId = sessionId;
         TokenHash = tokenHash;
         ParentTokenId = parentTokenId;
         CreatedByIp = ipAddress;
@@ -64,7 +64,7 @@ public sealed class UserRefreshToken : SeedWork.Entities.Entity<UserRefreshToken
 
     public static UserRefreshToken Create(
         UserId userId,
-        UserRefreshTokenFamilyId familyId,
+        UserSessionId sessionId,
         string tokenHash,
         UserRefreshTokenId? parentTokenId,
         IPAddress ipAddress,
@@ -73,9 +73,9 @@ public sealed class UserRefreshToken : SeedWork.Entities.Entity<UserRefreshToken
         int rotationCounter)
     {
         return new UserRefreshToken(
-            UserRefreshTokenId.Create(),
+            UserRefreshTokenId.From(Guid.CreateVersion7()),
             userId,
-            familyId,
+            sessionId,
             tokenHash,
             parentTokenId,
             ipAddress,

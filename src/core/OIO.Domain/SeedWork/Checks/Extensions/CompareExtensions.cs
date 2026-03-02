@@ -1,5 +1,4 @@
-﻿using FluentCheck.Errors;
-using OIO.Domain.SeedWork.Errors;
+﻿using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Domain.SeedWork.Checks.Extensions;
 
@@ -16,12 +15,16 @@ public static class CompareCheckFieldExtensions
             Error? error = null,
             IEqualityComparer<T>? comparer = null)
         {
-            if (!check.ShouldContinue) return check;
+            if (!check.ShouldContinue)
+                return check;
 
             comparer ??= EqualityComparer<T>.Default;
-            if (comparer.Equals(check.Property, value)) return check;
+            
+            if (comparer.Equals(check.Property, value))
+                return check;
 
-            var err = error ?? check.Property.EqualError(
+            var err = error ?? Error.Equal(
+                property: check.Property,
                 value: value,
                 isInvariant: check.IsInvariant,
                 codePrefix: check.OwnerName,
@@ -37,58 +40,16 @@ public static class CompareCheckFieldExtensions
             Error? error = null,
             IEqualityComparer<T>? comparer = null)
         {
-            if (!check.ShouldContinue) return check;
+            if (!check.ShouldContinue)
+                return check;
 
             comparer ??= EqualityComparer<T>.Default;
-            if (!comparer.Equals(check.Property, value)) return check;
+            
+            if (!comparer.Equals(check.Property, value)) 
+                return check;
 
-            var err = error ?? check.Property.NotEqualError(
-                value: value,
-                isInvariant: check.IsInvariant,
-                codePrefix: check.OwnerName,
-                propertyName: check.PropertyName,
-                field: check.FieldName,
-                message: message);
-
-            return check.Fail(err);
-        }
-    }
-
-    // Nullable structs: only validate when has value
-    extension<TOwner, T>(CheckField<TOwner, T?> check) where T : struct
-    {
-        public CheckField<TOwner, T?> EqualToIfHasValue(T value,
-            string? message = null,
-            Error? error = null,
-            IEqualityComparer<T>? comparer = null)
-        {
-            if (!check.ShouldContinue || !check.Property.HasValue) return check;
-
-            comparer ??= EqualityComparer<T>.Default;
-            if (comparer.Equals(check.Property.Value, value)) return check;
-
-            var err = error ?? check.Property.Value.EqualError(
-                value: value,
-                isInvariant: check.IsInvariant,
-                codePrefix: check.OwnerName,
-                propertyName: check.PropertyName,
-                field: check.FieldName,
-                message: message);
-
-            return check.Fail(err);
-        }
-
-        public CheckField<TOwner, T?> NotEqualToIfHasValue(T value,
-            string? message = null,
-            Error? error = null,
-            IEqualityComparer<T>? comparer = null)
-        {
-            if (!check.ShouldContinue || !check.Property.HasValue) return check;
-
-            comparer ??= EqualityComparer<T>.Default;
-            if (!comparer.Equals(check.Property.Value, value)) return check;
-
-            var err = error ?? check.Property.Value.NotEqualError(
+            var err = error ?? Error.NotEqual(
+                property: check.Property,
                 value: value,
                 isInvariant: check.IsInvariant,
                 codePrefix: check.OwnerName,
@@ -112,15 +73,16 @@ public static class CompareCheckFieldExtensions
             Error? error = null,
             IComparer<T>? comparer = null)
         {
-            if (!check.ShouldContinue) return check;
-
-            comparer ??= Comparer<T>.Default;
-            var v = check.Property;
-
-            if (comparer.Compare(v, min) >= 0 && comparer.Compare(v, max) <= 0)
+            if (!check.ShouldContinue) 
                 return check;
 
-            var err = error ?? v.BetweenInclusiveError(
+            comparer ??= Comparer<T>.Default;
+
+            if (comparer.Compare(check.Property, min) >= 0 && comparer.Compare(check.Property, max) <= 0)
+                return check;
+
+            var err = error ?? Error.BetweenInclusive(
+                property: check.Property,
                 min: min,
                 max: max,
                 isInvariant: check.IsInvariant,
@@ -138,15 +100,16 @@ public static class CompareCheckFieldExtensions
             Error? error = null,
             IComparer<T>? comparer = null)
         {
-            if (!check.ShouldContinue) return check;
-
-            comparer ??= Comparer<T>.Default;
-            var v = check.Property;
-
-            if (comparer.Compare(v, min) > 0 && comparer.Compare(v, max) < 0)
+            if (!check.ShouldContinue)
                 return check;
 
-            var err = error ?? v.BetweenExclusiveError(
+            comparer ??= Comparer<T>.Default;
+
+            if (comparer.Compare(check.Property, min) > 0 && comparer.Compare(check.Property, max) < 0)
+                return check;
+
+            var err = error ?? Error.BetweenExclusive(
+                property: check.Property,
                 min: min,
                 max: max,
                 isInvariant: check.IsInvariant,
@@ -163,12 +126,16 @@ public static class CompareCheckFieldExtensions
             Error? error = null,
             IComparer<T>? comparer = null)
         {
-            if (!check.ShouldContinue) return check;
+            if (!check.ShouldContinue)
+                return check;
 
             comparer ??= Comparer<T>.Default;
-            if (comparer.Compare(check.Property, value) > 0) return check;
+            
+            if (comparer.Compare(check.Property, value) > 0)
+                return check;
 
-            var err = error ?? check.Property.GreaterThanError(
+            var err = error ?? Error.GreaterThan(
+                property: check.Property,
                 value: value,
                 isInvariant: check.IsInvariant,
                 codePrefix: check.OwnerName,
@@ -192,7 +159,8 @@ public static class CompareCheckFieldExtensions
             if (comparer.Compare(check.Property, value) >= 0) 
                 return check;
 
-            var err = error ?? check.Property.GreaterThanOrEqualError(
+            var err = error ?? Error.GreaterThanOrEqual(
+                property: check.Property,
                 value: value,
                 isInvariant: check.IsInvariant,
                 codePrefix: check.OwnerName,
@@ -208,14 +176,16 @@ public static class CompareCheckFieldExtensions
             Error? error = null,
             IComparer<T>? comparer = null)
         {
-            if (!check.ShouldContinue) return check;
+            if (!check.ShouldContinue)
+                return check;
 
             comparer ??= Comparer<T>.Default;
             
             if (comparer.Compare(check.Property, value) < 0) 
                 return check;
 
-            var err = error ?? check.Property.LessThanError(
+            var err = error ?? Error.LessThan(
+                property: check.Property,
                 value: value,
                 isInvariant: check.IsInvariant,
                 codePrefix: check.OwnerName,
@@ -231,7 +201,8 @@ public static class CompareCheckFieldExtensions
             Error? error = null,
             IComparer<T>? comparer = null)
         {
-            if (!check.ShouldContinue) return check;
+            if (!check.ShouldContinue)
+                return check;
 
             comparer ??= Comparer<T>.Default;
             
@@ -239,151 +210,9 @@ public static class CompareCheckFieldExtensions
                 return check;
 
          
-            var err = error ?? check.Property.LessThanOrEqualError(
+            var err = error ?? Error.LessThanOrEqual(
+                property: check.Property,
                 value: value,
-                isInvariant: check.IsInvariant,
-                codePrefix: check.OwnerName,
-                propertyName: check.PropertyName,
-                field: check.FieldName,
-                message: message);
-
-            return check.Fail(err);
-        }
-    }
-
-    // ---------------------------
-    // Nullable comparable (struct?): validate only when has value
-    // ---------------------------
-
-    extension<TOwner, T>(CheckField<TOwner, T?> check) where T : struct, IComparable<T>
-    {
-        public CheckField<TOwner, T?> BetweenInclusiveIfHasValue(T min,
-            T max,
-            string? message = null,
-            Error? error = null,
-            IComparer<T>? comparer = null)
-        {
-            if (!check.ShouldContinue || !check.Property.HasValue) return check;
-
-            comparer ??= Comparer<T>.Default;
-            var v = check.Property.Value;
-
-            if (comparer.Compare(v, min) >= 0 && comparer.Compare(v, max) <= 0)
-                return check;
-
-            var err = error ?? v.BetweenInclusiveError(
-                min: min,
-                max: max,
-                isInvariant: check.IsInvariant,
-                codePrefix: check.OwnerName,
-                propertyName: check.PropertyName,
-                field: check.FieldName,
-                message: message);
-
-            return check.Fail(err);
-        }
-
-        public CheckField<TOwner, T?> BetweenExclusiveIfHasValue(T min,
-            T max,
-            string? message = null,
-            Error? error = null,
-            IComparer<T>? comparer = null)
-        {
-            if (!check.ShouldContinue || !check.Property.HasValue) return check;
-
-            comparer ??= Comparer<T>.Default;
-            var v = check.Property.Value;
-
-            if (comparer.Compare(v, min) > 0 && comparer.Compare(v, max) < 0)
-                return check;
-
-            var err = error ?? v.BetweenExclusiveError(
-                min: min,
-                max: max,
-                isInvariant: check.IsInvariant,
-                codePrefix: check.OwnerName,
-                propertyName: check.PropertyName,
-                field: check.FieldName,
-                message: message);
-
-            return check.Fail(err);
-        }
-
-        public CheckField<TOwner, T?> GreaterThanIfHasValue(T value,
-            string? message = null,
-            Error? error = null,
-            IComparer<T>? comparer = null)
-        {
-            if (!check.ShouldContinue || !check.Property.HasValue) return check;
-
-            comparer ??= Comparer<T>.Default;
-            if (comparer.Compare(check.Property.Value, value) > 0) return check;
-
-            var err = error ?? check.Property.Value.GreaterThanError(
-                value: value,
-                isInvariant: check.IsInvariant,
-                codePrefix: check.OwnerName,
-                propertyName: check.PropertyName,
-                field: check.FieldName,
-                message: message);
-
-            return check.Fail(err);
-        }
-
-        public CheckField<TOwner, T?> GreaterThanOrEqualIfHasValue(T value,
-            string? message = null,
-            Error? error = null,
-            IComparer<T>? comparer = null)
-        {
-            if (!check.ShouldContinue || !check.Property.HasValue) return check;
-
-            comparer ??= Comparer<T>.Default;
-            if (comparer.Compare(check.Property.Value, value) >= 0) return check;
-
-            var err = error ?? check.Property.Value.GreaterThanOrEqualError(
-                value: value,
-                isInvariant: check.IsInvariant,
-                codePrefix: check.OwnerName,
-                propertyName: check.PropertyName,
-                field: check.FieldName,
-                message: message);
-
-            return check.Fail(err);
-        }
-
-        public CheckField<TOwner, T?> LessThanIfHasValue(T value,
-            string? message = null,
-            Error? error = null,
-            IComparer<T>? comparer = null)
-        {
-            if (!check.ShouldContinue || !check.Property.HasValue) return check;
-
-            comparer ??= Comparer<T>.Default;
-            if (comparer.Compare(check.Property.Value, value) < 0) return check;
-
-            var err = error ?? check.Property.Value.LessThanError(
-                value: value,
-                isInvariant: check.IsInvariant,
-                codePrefix: check.OwnerName,
-                propertyName: check.PropertyName,
-                field: check.FieldName,
-                message: message);
-
-            return check.Fail(err);
-        }
-
-        public CheckField<TOwner, T?> LessThanOrEqualIfHasValue(T value,
-            string? message = null,
-            Error? error = null,
-            IComparer<T>? comparer = null)
-        {
-            if (!check.ShouldContinue || !check.Property.HasValue) return check;
-
-            comparer ??= Comparer<T>.Default;
-            if (comparer.Compare(check.Property.Value, value) <= 0) return check;
-
-            var err = error ?? check.Property.Value.LessThanOrEqualError(
-                value: (object)value!,
                 isInvariant: check.IsInvariant,
                 codePrefix: check.OwnerName,
                 propertyName: check.PropertyName,

@@ -10,7 +10,9 @@ using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Enums;
 using OIO.Domain.Context.UserContext.Errors;
 using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
+using OIO.Domain.SeedWork.Extensions;
 
 namespace OIO.Application.UserContext.Commands.AddAddress;
 
@@ -52,9 +54,6 @@ internal sealed class AddAddressCommandHandler
         {
             return result.Error;
         }
-        
-        if (_currentUser.UserId is null)
-            return UserErrors.Auth.UserNotLoggedIn;
         
         var user = await _dbContext.GetByIdAsync<User, UserId>(
             id: _currentUser.UserId,

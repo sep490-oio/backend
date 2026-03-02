@@ -14,13 +14,12 @@ public interface IDbContext
         TId id,
         Func<IQueryable<TEntity>, IQueryable<TEntity>>? queryBuilder = null,
         CancellationToken cancellationToken = default)
-        where TId : GuidIdType<TId>, new()
+        where TId : IEntityId, new()
         where TEntity : class, IEntity<TId>;
     
     void Insert<TEntity>(TEntity entity)
         where TEntity : class, IEntity;
-
-
+    
     void InsertRange<TEntity>(IReadOnlyCollection<TEntity> entities)
         where TEntity : class, IEntity;
 

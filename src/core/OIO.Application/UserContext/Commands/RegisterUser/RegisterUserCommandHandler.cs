@@ -10,6 +10,7 @@ using OIO.Domain.Context.UserContext.Errors;
 using OIO.Domain.Context.UserContext.Services;
 using OIO.Domain.Context.UserContext.ValueObjects;
 using OIO.Domain.SeedWork.Errors;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Application.UserContext.Commands.RegisterUser;
 
@@ -76,6 +77,8 @@ internal sealed class RegisterUserCommandHandler
             password);
 
         user.UpdateProfile(nowUtc, firstName, lastName);
+
+        user.AssignRole(App.Roles.Definitions.Bidder.Id, nowUtc);
         
         _dbContext.Insert(user);
         

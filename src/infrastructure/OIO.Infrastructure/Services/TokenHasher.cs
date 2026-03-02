@@ -9,8 +9,11 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using OIO.Application.Abstractions.Caching;
 using OIO.Application.UserContext.Services;
+using OIO.Domain.Context.UserContext.Errors;
 using OIO.Domain.Context.UserContext.Services;
 using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.SeedWork.Exceptions;
 using OIO.Infrastructure.Authorizations;
 using OIO.Infrastructure.Settings;
 using JwtRegisteredClaimNames = Microsoft.IdentityModel.JsonWebTokens.JwtRegisteredClaimNames;
@@ -66,7 +69,7 @@ internal sealed class TokenProvider : ITokenProvider
     {
         var claims = new List<Claim>
         {
-            new(JwtRegisteredClaimNames.Sub, userId.GetValueAsString()),
+            new(JwtRegisteredClaimNames.Sub, userId.ToString()),
             new(JwtRegisteredClaimNames.Email, email),
             new(JwtRegisteredClaimNames.Name, userName),
             new(JwtRegisteredClaimNames.Jti, $"{Guid.CreateVersion7()}"),
@@ -106,15 +109,18 @@ public sealed class CurrentUser : ICurrentUser
         _httpContextAccessor = httpContextAccessor;
     }
 
-    public UserId? UserId
+    public UserId UserId
     {
         get
         {
             var idClaim = _httpContextAccessor.HttpContext?.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+
+            if (string.IsNullOrWhiteSpace(idClaim))
+            {
+                UnauthorizeException.ThrowWithError(UserErrors.Auth.UserNotLoggedIn);
+            }
             
-            return string.IsNullOrWhiteSpace(idClaim) 
-                ? null 
-                : UserId.From(Guid.Parse(idClaim)); 
+            return UserId.From(Guid.Parse(idClaim!)); 
         }
     }
 
@@ -145,7 +151,7 @@ internal sealed class EmailConfirmationService : IEmailConfirmationService
         UserId userId, CancellationToken ct = default)
     {
         var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
-        var cacheKey = $"{CachePrefix}{userId.GetValueAsString()}";
+        var cacheKey = $"{CachePrefix}{userId.ToString()}";
         var options = new HybridCacheEntryOptions
         {
             Expiration = TimeSpan.FromMinutes(TokenExpirationMinutes),
@@ -163,7 +169,7 @@ internal sealed class EmailConfirmationService : IEmailConfirmationService
     public async Task<bool> ValidateTokenAsync(
         UserId userId, string token, CancellationToken ct = default)
     {
-        var cacheKey = $"{CachePrefix}{userId.GetValueAsString()}";
+        var cacheKey = $"{CachePrefix}{userId.ToString()}";
         var storedToken = await _cache.TryGetValueAsync<string>(cacheKey, ct);
 
         if (!storedToken.Exists || !string.Equals(storedToken.Value, token, StringComparison.Ordinal))
@@ -196,7 +202,7 @@ internal sealed class PhoneVerificationService : IPhoneVerificationService
         UserId userId, PhoneNumber phoneNumber, CancellationToken ct = default)
     {
         var code = GenerateCode();
-        var cacheKey = $"{CachePrefix}{userId.GetValueAsString()}:{phoneNumber.Value}";
+        var cacheKey = $"{CachePrefix}{userId.ToString()}:{phoneNumber.Value}";
 
         var options = new HybridCacheEntryOptions
         {

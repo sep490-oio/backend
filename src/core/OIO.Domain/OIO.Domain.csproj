@@ -8,9 +8,12 @@
 
     <ItemGroup>
       <PackageReference Include="CSharpFunctionalExtensions" />
+      <PackageReference Include="CSharpFunctionalExtensions.HttpResults" />
       <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+      <PackageReference Include="FormatWith" />
       <PackageReference Include="libphonenumber-csharp" />
       <PackageReference Include="MediatR.Contracts" />
+      <PackageReference Include="Vogen" />
     </ItemGroup>
 
     <ItemGroup>

@@ -4,6 +4,7 @@ using OIO.Api.Common;
 using OIO.Api.Extensions;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.UserContext.Queries.GetActiveSessions;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.Users;
 
@@ -15,7 +16,7 @@ public class GetActiveSessionsEndpoint : IEndpoint
     }
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("api/users/me/sessions",
+        app.MapGet(ApiEndpoint.Url.Users.GetActiveSessions,
                 async (
                     [AsParameters] Parameters parameters,
                     ISender sender, 
@@ -25,9 +26,10 @@ public class GetActiveSessionsEndpoint : IEndpoint
                     
                     var result = await sender.Send(query, ct);
 
-                    return result.IsFailure ? result.Error.ProcessError() : Results.Ok(result.Value);
+                    return result.ToOkHttpResult();
                 })
-            .RequireAuthorization()
-            .WithTags(Tags.Users);
+            .RequireAuthorization(App.Permissions.Catalogs.Users.ReadSessions)
+            .WithName(ApiEndpoint.Names.Users.GetActiveSessions)
+            .WithTags(ApiEndpoint.Tags.Users);
     }
 }

@@ -34,10 +34,9 @@ internal sealed class GetActiveSessionsQueryHandler
         CancellationToken cancellationToken)
     {
         var nowUtc =  _clock.UtcNow;
-        if (_currentUser.UserId is null)
-            return UserErrors.Auth.UserNotLoggedIn;
+        
 
-        var sessions = await _dbContext.Set<UserRefreshTokenFamily>()
+        var sessions = await _dbContext.Set<UserSession>()
             .Where(t => t.UserId == _currentUser.UserId && t.IsActive && nowUtc < t.ExpiresAt)
             .OrderByDescending(f => f.LastRotatedAt)
             .Select(f => new UserSessionDto(

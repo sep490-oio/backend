@@ -1,7 +1,7 @@
 ﻿using MediatR;
 using OIO.Api.Common;
-using OIO.Api.Extensions;
 using OIO.Application.UserContext.Commands.AssignRole;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.Admins;
 
@@ -9,16 +9,19 @@ public class AssignRoleToUserEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("api/admin/users/roles/{roleId:guid}", async (Guid userId, Guid roleId, ISender sender, CancellationToken ct) =>
+        app.MapPost(ApiEndpoint.Url.Admins.AssignRole, async (
+                Guid userId,
+                int roleId,
+                ISender sender,
+                CancellationToken ct) =>
             {
                 var command = new AssignRoleCommand(userId, roleId);
                 var result = await sender.Send(command, ct);
 
-                return result.IsFailure ? 
-                    result.Error.ProcessError() : 
-                    Results.NoContent();
+                return result.ToNoContentHttpResult();
             })
-            .AllowAnonymous()
-            .WithTags(Tags.Admins);
+            .RequireAuthorization(App.Permissions.Catalogs.Users.AssignRoles)
+            .WithName(ApiEndpoint.Names.Admins.AssignRole)
+            .WithTags(ApiEndpoint.Tags.Admins);
     }
 }

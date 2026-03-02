@@ -1,10 +1,10 @@
 ﻿using OIO.Application.Abstractions.Messaging;
 using OIO.Application.UserContext.DTOs;
-using OIO.Domain.Constants;
 using OIO.Domain.Context.UserContext.Enums;
 using OIO.Domain.Context.UserContext.ValueObjects;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Application.UserContext.Commands.AddAddress;
 
@@ -26,18 +26,18 @@ public sealed record AddAddressCommand(
             .WithOwnerName("AddAddress")
             .Field(Street)
             .NotWhiteSpace()
-            .MaxLength(Constraints.Address.StreetMaxLength)
+            .MaxLength(App.Constraint.Address.StreetMaxLength)
             .Field(District)
             .NotWhiteSpace()
-            .MaxLength(Constraints.Address.DistrictMaxLength)
+            .MaxLength(App.Constraint.Address.DistrictMaxLength)
             .Field(Ward)
             .NotWhiteSpace()
-            .MaxLength(Constraints.Address.WardMaxLength)
+            .MaxLength(App.Constraint.Address.WardMaxLength)
             .Field(City)
             .NotWhiteSpace()
-            .MaxLength(Constraints.Address.CityMaxLength)
+            .MaxLength(App.Constraint.Address.CityMaxLength)
             .Field(PostalCode)
-            .MaxLengthIfNotNull(Constraints.Address.PostalCodeMaxLenght)
+            .WhenHasValue(x => x.MaxLength(App.Constraint.Address.PostalCodeMaxLenght))
             .Field(Type)
             .NotWhiteSpace()
             .InSet(AddressType.All.Select(x => x.Id))
@@ -47,6 +47,6 @@ public sealed record AddAddressCommand(
             .NotWhiteSpace()
             .Field(RecipientName)
             .NotWhiteSpace()
-            .MaxLength(Constraints.UserAddress.RecipientNameMaxLength);
+            .MaxLength(App.Constraint.UserAddress.RecipientNameMaxLength);
     }
 }

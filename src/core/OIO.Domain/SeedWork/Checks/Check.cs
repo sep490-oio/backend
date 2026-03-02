@@ -23,7 +23,7 @@ public sealed class CheckContext<TOwner>
 
     public CheckContext<TOwner> WithOwnerName(params string[] ownerName)
     {
-        OwnerName = string.Join(Separator, ownerName).ToTitleCase();
+        OwnerName = string.Join(Separator, ownerName);
         return this;
     }
 
@@ -93,13 +93,13 @@ public readonly struct CheckField<TOwner, TProperty>
     }
 
     public CheckField<TOwner, TProperty> WithOwnerName(params string[] ownerName)
-        => With(ownerName: string.Join(Separator, ownerName).ToTitleCase());
+        => With(ownerName: string.Join(Separator, ownerName));
 
     public CheckField<TOwner, TProperty> WithPropertyName(string propertyName)
-        => With(propertyName: propertyName.ToTitleCase());
+        => With(propertyName: propertyName);
 
     public CheckField<TOwner, TProperty> WithFieldName(string fieldName)
-        => With(fieldName: fieldName.ToTitleCase());
+        => With(fieldName: fieldName);
     
  
     public CheckField<TOwner, TNewProperty> Field<TNewProperty>(
@@ -110,14 +110,14 @@ public readonly struct CheckField<TOwner, TProperty>
         [CallerArgumentExpression("newProperty")] string expr = "")
     {
         propertyName ??= expr.ExtractLastMember();
-        var pn = propertyName.ToTitleCase();
+        var pn = propertyName;
         return new CheckField<TOwner, TNewProperty>(
             property: newProperty,
             state: State,
             isInvariant: IsInvariant,
             ownerName: OwnerName,
             propertyName: pn,
-            fieldName: (fieldName?.ToTitleCase() ?? pn),
+            fieldName: (fieldName ?? pn),
             separator: separator ?? Separator,
             fieldFailed: false
         );
@@ -131,7 +131,7 @@ public readonly struct CheckField<TOwner, TProperty>
         string? separator = null)
     {
         propertyName ??= exprPropertyName.GetOrAddName();
-        var pn = propertyName.ToTitleCase();
+        var pn = propertyName;
 
         return new CheckField<TOwner, TNewProperty>(
             property: newProperty,
@@ -139,7 +139,7 @@ public readonly struct CheckField<TOwner, TProperty>
             isInvariant: IsInvariant,
             ownerName: OwnerName,
             propertyName: pn,
-            fieldName: (fieldName?.ToTitleCase() ?? pn),
+            fieldName: (fieldName ?? pn),
             separator: separator ?? Separator,
             fieldFailed: false
         );

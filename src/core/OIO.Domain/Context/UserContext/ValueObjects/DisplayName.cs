@@ -1,5 +1,4 @@
 using CSharpFunctionalExtensions;
-using OIO.Domain.Constants;
 using OIO.Domain.SeedWork.Checks;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
@@ -8,6 +7,7 @@ namespace OIO.Domain.Context.UserContext.ValueObjects;
 
 public sealed class DisplayName : ValueObject
 {
+    private DisplayName(){}
     private DisplayName(string value)
     {
         Value = value;
@@ -20,8 +20,8 @@ public sealed class DisplayName : ValueObject
         var validateResult =  DisplayName
             .Field(value, nameof(Value))
             .NotNullOrWhiteSpace()
-            .MaxLength(Constraints.DisplayName.MaxLength)
-            .MinLength(Constraints.DisplayName.MinLength)
+            .MaxLength(AppDefinitions.App.Constraint.DisplayName.MaxLength)
+            .MinLength(AppDefinitions.App.Constraint.DisplayName.MinLength)
             .ToViolationsError();
         
         if (validateResult.HasErrors)

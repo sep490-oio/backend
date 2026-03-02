@@ -1,11 +1,11 @@
 ﻿using OIO.Application.Abstractions.Messaging;
 using OIO.Application.UserContext.DTOs;
-using OIO.Domain.Constants;
 using OIO.Domain.Context.UserContext.Enums;
-using OIO.Domain.Context.UserContext.Repositories;
+
 using OIO.Domain.Context.UserContext.ValueObjects;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Application.UserContext.Commands.UpdateAddress;
 
@@ -30,21 +30,21 @@ public sealed record UpdateAddressCommand(
             .Field(Street)
             .WhenHasValue(x => x
                 .NotWhiteSpace()
-                .MaxLength(Constraints.Address.StreetMaxLength))
+                .MaxLength(App.Constraint.Address.StreetMaxLength))
             .Field(District)
             .WhenHasValue(x => x
                 .NotWhiteSpace()
-                .MaxLength(Constraints.Address.DistrictMaxLength))
+                .MaxLength(App.Constraint.Address.DistrictMaxLength))
             .Field(Ward)
             .WhenHasValue(x => x
                 .NotWhiteSpace()
-                .MaxLength(Constraints.Address.WardMaxLength))
+                .MaxLength(App.Constraint.Address.WardMaxLength))
             .Field(City)
             .WhenHasValue(x => x
                 .NotWhiteSpace()
-                .MaxLength(Constraints.Address.CityMaxLength))
+                .MaxLength(App.Constraint.Address.CityMaxLength))
             .Field(PostalCode)
-            .MaxLengthIfNotNull(Constraints.Address.PostalCodeMaxLenght)
+            .WhenHasValue(x => x.MaxLength(App.Constraint.Address.PostalCodeMaxLenght))
             .Field(Type)
             .WhenHasValue(x => x
                 .NotWhiteSpace()
@@ -57,6 +57,6 @@ public sealed record UpdateAddressCommand(
             .Field(RecipientName)
             .WhenHasValue(x => x
                 .NotWhiteSpace()
-                .MaxLength(Constraints.UserAddress.RecipientNameMaxLength));
+                .MaxLength(App.Constraint.UserAddress.RecipientNameMaxLength));
     }
 }

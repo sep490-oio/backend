@@ -74,31 +74,8 @@ public static class CollectionCheckExtensions
 
         var itemStr = itemToString?.Invoke(item) ?? item?.ToString() ?? string.Empty;
 
-        var err = error ?? check.Property.NotContainsError(
-            item: itemStr,
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, IEnumerable<T>?> NotContainsIfNotNull<TOwner, T>(
-        this CheckField<TOwner, IEnumerable<T>?> check,
-        T item,
-        string? message = null,
-        Error? error = null,
-        IEqualityComparer<T>? comparer = null,
-        Func<T, string>? itemToString = null)
-    {
-        if (!check.ShouldContinue || check.Property is null || !ContainsItem(check.Property, item, comparer))
-            return check;
-
-        var itemStr = itemToString?.Invoke(item) ?? item?.ToString() ?? string.Empty;
-
-        var err = error ?? check.Property.NotContainsError(
+        var err = error ?? Error.NotContains(
+            property: check.Property,
             item: itemStr,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
@@ -132,37 +109,8 @@ public static class CollectionCheckExtensions
             return check;
         
         var setStr = SetString(allowed, formatter);
-        var err = error ?? check.Property.InSetError(
-            setString: setStr,
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-
-    }
-
-    public static CheckField<TOwner, IEnumerable<T>?> InSetIfNotNull<TOwner, T>(
-        this CheckField<TOwner, IEnumerable<T>?> check,
-        IEnumerable<T> allowedSet,
-        string? message = null,
-        Error? error = null,
-        IEqualityComparer<T>? comparer = null,
-        Func<T, string>? formatter = null)
-    {
-        if (!check.ShouldContinue || check.Property is null) return check;
-
-        comparer ??= EqualityComparer<T>.Default;
-        var allowed = new HashSet<T>(allowedSet ?? [], comparer);
-
-        if (check.Property.All(x => allowed.Contains(x)))
-            return check;
-        
-        var setStr = SetString(allowed, formatter);
-        
-        var err = error ?? check.Property.InSetError(
+        var err = error ?? Error.InSet(
+            property: check.Property,
             setString: setStr,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
@@ -191,36 +139,8 @@ public static class CollectionCheckExtensions
             return check;
         
         var setStr = SetString(blocked, formatter);
-        var err = error ?? check.Property.NotInSetError(
-            setString: setStr,
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-
-    }
-
-    public static CheckField<TOwner, IEnumerable<T>?> NotInSetIfNotNull<TOwner, T>(
-        this CheckField<TOwner, IEnumerable<T>?> check,
-        IEnumerable<T> blockedSet,
-        string? message = null,
-        Error? error = null,
-        IEqualityComparer<T>? comparer = null,
-        Func<T, string>? formatter = null)
-    {
-        if (!check.ShouldContinue || check.Property is null) return check;
-
-        comparer ??= EqualityComparer<T>.Default;
-        var blocked = new HashSet<T>(blockedSet ?? [], comparer);
-
-        if (!check.Property.Any(x => blocked.Contains(x)))
-            return check;
-        
-        var setStr = SetString(blocked, formatter);
-        var err = error ?? check.Property.NotInSetError(
+        var err = error ?? Error.NotInSet(
+            property: check.Property,
             setString: setStr,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
@@ -250,30 +170,8 @@ public static class CollectionCheckExtensions
 
         var dupStr = itemToString?.Invoke(dup) ?? dup?.ToString() ?? string.Empty;
 
-        var err = error ?? check.Property.NoDuplicatesError(
-            duplicate: dupStr,
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, IEnumerable<T>?> NoDuplicatesIfNotNull<TOwner, T>(
-        this CheckField<TOwner, IEnumerable<T>?> check,
-        string? message = null,
-        Error? error = null,
-        IEqualityComparer<T>? comparer = null,
-        Func<T, string>? itemToString = null)
-    {
-        if (!check.ShouldContinue || check.Property is null || !TryGetFirstDuplicate(check.Property, out var dup, comparer))
-            return check;
-
-        var dupStr = itemToString?.Invoke(dup) ?? dup?.ToString() ?? string.Empty;
-
-        var err = error ?? check.Property.NoDuplicatesError(
+        var err = error ?? Error.NoDuplicates(
+            property: check.Property,
             duplicate: dupStr,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
@@ -298,29 +196,8 @@ public static class CollectionCheckExtensions
         var count = CountOf(check.Property);
         if (count >= min) return check;
 
-        var err = error ?? check.Property.CountMinError(
-            min: min,
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, IEnumerable?> CountMinIfNotNull<TOwner>(
-        this CheckField<TOwner, IEnumerable?> check,
-        int min,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || check.Property is null) return check;
-
-        var count = CountOf(check.Property);
-        if (count >= min) return check;
-
-        var err = error ?? check.Property.CountMinError(
+        var err = error ?? Error.CountMin(
+            property: check.Property,
             min: min,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
@@ -342,29 +219,8 @@ public static class CollectionCheckExtensions
         var count = CountOf(check.Property);
         if (count <= max) return check;
 
-        var err = error ?? check.Property.CountMaxError(
-            max: max,
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, IEnumerable?> CountMaxIfNotNull<TOwner>(
-        this CheckField<TOwner, IEnumerable?> check,
-        int max,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || check.Property is null) return check;
-
-        var count = CountOf(check.Property);
-        if (count <= max) return check;
-
-        var err = error ?? check.Property.CountMaxError(
+        var err = error ?? Error.CountMax(
+            property: check.Property,
             max: max,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
@@ -387,31 +243,8 @@ public static class CollectionCheckExtensions
         var count = CountOf(check.Property);
         if (count >= min && count <= max) return check;
 
-        var err = error ?? check.Property.CountBetweenError(
-            min: min,
-            max: max,
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, IEnumerable?> CountBetweenIfNotNull<TOwner>(
-        this CheckField<TOwner, IEnumerable?> check,
-        int min,
-        int max,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || check.Property is null) return check;
-
-        var count = CountOf(check.Property);
-        if (count >= min && count <= max) return check;
-
-        var err = error ?? check.Property.CountBetweenError(
+        var err = error ?? Error.CountBetween(
+            property: check.Property,
             min: min,
             max: max,
             isInvariant: check.IsInvariant,

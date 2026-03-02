@@ -31,8 +31,7 @@ internal sealed class GetUserAddressesQueryHandler
         GetUserAddressesQuery request,
         CancellationToken cancellationToken)
     {
-        if (_currentUser.UserId is null)
-            return UserErrors.Auth.UserNotLoggedIn;
+        
 
         var addresses = await _dbContext.Set<UserAddress>()
             .Where(a => a.UserId == _currentUser.UserId)

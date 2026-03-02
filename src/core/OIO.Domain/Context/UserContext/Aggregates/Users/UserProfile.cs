@@ -1,12 +1,13 @@
 ﻿using CSharpFunctionalExtensions;
 using OIO.Domain.Context.UserContext.Enums;
 using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Domain.Context.UserContext.Aggregates.Users;
 
-public sealed class UserProfile : SeedWork.Entities.Entity<UserId>, IAuditableEntity
+public sealed class UserProfile : BaseEntity<UserId>, IAuditableEntity
 {
     private UserProfile() {}
     

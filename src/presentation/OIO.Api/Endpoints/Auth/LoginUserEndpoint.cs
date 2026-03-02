@@ -15,7 +15,12 @@ public class LoginUserEndpoint : IEndpoint
     
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("api/auth/login", async (HttpContext ctx, HttpRequest httpRequest,  Request request, ISender sender, CancellationToken ct) =>
+        app.MapPost(ApiEndpoint.Url.Auth.Login, async (
+                HttpContext ctx, 
+                HttpRequest httpRequest,
+                Request request,
+                ISender sender,
+                CancellationToken ct) =>
             {
                 var command = new LoginUserCommand(
                     request.Account,
@@ -26,11 +31,10 @@ public class LoginUserEndpoint : IEndpoint
                 
                 var result = await sender.Send(command, ct);
 
-                return result.IsFailure ? 
-                    result.Error.ProcessError() : 
-                    Results.Ok(result.Value);
+                return result.ToOkHttpResult();
             })
             .AllowAnonymous()
-            .WithTags(Tags.Auth);
+            .WithName(ApiEndpoint.Names.Auth.Login)
+            .WithTags(ApiEndpoint.Tags.Auth);
     }
 }

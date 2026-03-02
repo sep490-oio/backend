@@ -1,8 +1,6 @@
-﻿using System.Text.Json;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using OIO.Domain.Context.UserContext.Errors;
@@ -73,7 +71,8 @@ public sealed class CustomJwtBearerEvents : JwtBearerEvents
     
     private async Task WriteErrorAsync(HttpContext httpContext, int statusCode, Error error)
     {
-        if (httpContext.Response.HasStarted) return;
+        if (httpContext.Response.HasStarted)
+            return;
 
         var problemDetails = new ProblemDetails()
         {
@@ -87,12 +86,6 @@ public sealed class CustomJwtBearerEvents : JwtBearerEvents
             HttpContext = httpContext,
             ProblemDetails = problemDetails
         });
-
-        if (!ok)
-        {
-            httpContext.Response.StatusCode = statusCode;
-            httpContext.Response.ContentType = "application/json";
-            await httpContext.Response.WriteAsJsonAsync(problemDetails);
-        }
+        
     }
 }

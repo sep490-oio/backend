@@ -7,6 +7,7 @@ using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Enums;
 using OIO.Domain.Context.UserContext.Errors;
 using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.UserContext.Commands.ChangeUserStatus;
@@ -41,7 +42,7 @@ internal sealed class ChangeUserStatusCommandHandler
         var user = await _dbContext.GetByIdAsync<User, UserId>(
             userId,
             queryBuilder: query => query
-                .Include(x => x.RefreshTokenFamilies)
+                .Include(x => x.Sessions)
                 .ThenInclude(x => x.Tokens),
             cancellationToken: cancellationToken);
         
@@ -55,10 +56,10 @@ internal sealed class ChangeUserStatusCommandHandler
             return changeStatusResult;
         }
 
-        // If banned or suspended, revoke all sessions
-        if (newStatus == UserStatus.Banned || newStatus == UserStatus.Suspended)
+        // If locked or suspended, revoke all sessions
+        if (newStatus == UserStatus.Locked || newStatus == UserStatus.Suspended)
         {
-            user.RevokeAllTokenFamilies($"Account {newStatus} by admin",  nowUtc);
+            user.RevokeAllSession($"Account {newStatus} by admin",  nowUtc);
         }
         
         await _unitOfWork.SaveChangesAsync(cancellationToken);

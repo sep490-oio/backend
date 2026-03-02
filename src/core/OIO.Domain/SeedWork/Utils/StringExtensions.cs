@@ -58,16 +58,16 @@ public static partial class StringExtensions
             });
         }
 
-        public string ToTitleCase()
-        {
-            if (string.IsNullOrWhiteSpace(text)) return "Value";
-            
-            text = text.ToLower().Trim();
-    
-            var textInfo = CultureInfo.CurrentCulture.TextInfo;
-    
-            return textInfo.ToTitleCase(text);
-        }
+        // public string ToTitleCase()
+        // {
+        //     if (string.IsNullOrWhiteSpace(text)) return "Value";
+        //     
+        //     text = text.Trim();
+        //
+        //     var textInfo = CultureInfo.CurrentCulture.TextInfo;
+        //
+        //     return textInfo.ToTitleCase(text);
+        // }
     }
 
     extension<TOwner, TProperty>(Expression<Func<TOwner, TProperty>> expr)

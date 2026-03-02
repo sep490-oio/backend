@@ -4,6 +4,7 @@ using OIO.Domain.Context.UserContext.Aggregates.Users.Events;
 using OIO.Domain.Context.UserContext.Enums;
 using OIO.Domain.Context.UserContext.Errors;
 using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
 using OIO.Domain.SeedWork.Errors;
 
@@ -20,7 +21,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
     private readonly List<UserRole> _roles = [];
     private readonly List<UserPermission> _permissions = [];
     private readonly List<UserLoginHistory> _loginHistories = [];
-    private readonly List<UserRefreshTokenFamily> _refreshTokenFamilies = [];
+    private readonly List<UserSession> _sessions = [];
 
     private User() {}
     
@@ -69,7 +70,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
     public IReadOnlyList<UserRole> Roles => _roles;
     public IReadOnlyList<UserPermission> Permissions => _permissions;
     public IReadOnlyList<UserLoginHistory> LoginHistories => _loginHistories;
-    public IReadOnlyList<UserRefreshTokenFamily> RefreshTokenFamilies => _refreshTokenFamilies;
+    public IReadOnlyList<UserSession> Sessions => _sessions;
     
     private User(
         UserId userId,
@@ -100,7 +101,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         Password? password = null)
     {
         var user = new User(
-            UserId.Create(),
+            UserId.From(Guid.CreateVersion7()),
             userName,
             email,
             now,
@@ -110,7 +111,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         user.Profile = new UserProfile(user.Id, now);
 
         user.RaiseDomainEvent(new UserCreatedEvent(
-            user.Id.GetValueAsString(),
+            user.Id.ToString(),
             user.UserName, 
             user.Email, 
             now));
@@ -132,7 +133,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         Password = newPassword;
         ModifiedAt = now;
 
-        RaiseDomainEvent(new UserPasswordChangedEvent(Id.GetValueAsString(), now));
+        RaiseDomainEvent(new UserPasswordChangedEvent(Id.ToString(), now));
         
         return unitResult;
     }
@@ -181,7 +182,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
 
         ModifiedAt = now;
 
-        RaiseDomainEvent(new UserEmailConfirmedEvent(Id.GetValueAsString(), Email, now));
+        RaiseDomainEvent(new UserEmailConfirmedEvent(Id.ToString(), Email, now));
         
         return unitResult;
     }
@@ -223,7 +224,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         PhoneNumberConfirmedAt = now;
         ModifiedAt = now;
 
-        RaiseDomainEvent(new UserPhoneConfirmedEvent(Id.GetValueAsString(), PhoneNumber, now));
+        RaiseDomainEvent(new UserPhoneConfirmedEvent(Id.ToString(), PhoneNumber, now));
         
         return unitResult;
     }
@@ -298,7 +299,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         Status = newStatus;
         ModifiedAt = now;
 
-        RaiseDomainEvent(new UserStatusChangedEvent(Id.GetValueAsString(), oldStatus.Id, newStatus.Id, now));
+        RaiseDomainEvent(new UserStatusChangedEvent(Id.ToString(), oldStatus.Id, newStatus.Id, now));
         
         return unitResult;
     }
@@ -323,10 +324,10 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         if (LockoutEnabled && AccessFailedCount >= MaxFailedAccessAttempts)
         {
             LockoutEnd = now.AddMinutes(DefaultLockoutMinutes);
-            RaiseDomainEvent(new UserLockedOutEvent(Id.GetValueAsString(), LockoutEnd.Value, AccessFailedCount, now));
+            RaiseDomainEvent(new UserLockedOutEvent(Id.ToString(), LockoutEnd.Value, AccessFailedCount, now));
         }
 
-        RaiseDomainEvent(new LoginAttemptedEvent(Id.GetValueAsString(), ipAddress.ToString(), userAgent, false, now));
+        RaiseDomainEvent(new LoginAttemptedEvent(Id.ToString(), ipAddress.ToString(), userAgent, false, now));
 
         return unitResult;
     }
@@ -349,7 +350,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
 
         _loginHistories.Add(new UserLoginHistory(Id, ipAddress, userAgent, LoginStatus.Success, now));
 
-        RaiseDomainEvent(new LoginAttemptedEvent(Id.GetValueAsString(), ipAddress.ToString(), userAgent, true, now));
+        RaiseDomainEvent(new LoginAttemptedEvent(Id.ToString(), ipAddress.ToString(), userAgent, true, now));
 
         return unitResult;
     }
@@ -627,7 +628,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         return unitResult;
     }
     
-    public Result<UserRefreshTokenFamily, Error> CreateSession(
+    public Result<UserSession, Error> CreateSession(
         Guid deviceId,
         string userAgent,
         IPAddress ipAddress,
@@ -644,7 +645,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         }
 
         // Enforce max active families
-        var activeSessions = _refreshTokenFamilies
+        var activeSessions = _sessions
             .Where(f => f.IsActive && !f.IsExpired(now)).ToList();
         
         if (activeSessions.Count >= MaxTokenFamilies)
@@ -655,11 +656,11 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
                 .First();
             oldest.Revoke("Max active families exceeded", now);
 
-            RaiseDomainEvent(new SessionRevokedEvent(Id.GetValueAsString(), oldest.Id.GetValueAsString(), oldest.DeviceId, "Max active families exceeded", now));
+            RaiseDomainEvent(new SessionRevokedEvent(Id.ToString(), oldest.Id.ToString(), oldest.DeviceId, "Max active families exceeded", now));
         }
 
         // Check if device already has an active family — revoke it
-        var existingForDevices = _refreshTokenFamilies
+        var existingForDevices = _sessions
             .Where(f => f.DeviceId == deviceId && f.IsActive);
 
         foreach (var existingForDevice in existingForDevices)
@@ -667,7 +668,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
             existingForDevice.Revoke("New session started on same device", now);
         }
 
-        var session = UserRefreshTokenFamily
+        var session = UserSession
             .Create(
                 Id,
                 deviceId,
@@ -682,13 +683,13 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
             return session.Error;
         }
         
-        _refreshTokenFamilies.Add(session.Value);
+        _sessions.Add(session.Value);
 
         return session;
     }
     
     public Result<UserRefreshToken, Error> CreateRefreshToken(
-        UserRefreshTokenFamilyId sessionId,
+        UserSessionId sessionId,
         string tokenHash,
         IPAddress ipAddress,
         TimeSpan timeRefreshTokenExpiration,
@@ -701,13 +702,13 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
             return unitResult.Error;
         }
 
-        var family = _refreshTokenFamilies.FirstOrDefault(f => f.Id == sessionId);
+        var family = _sessions.FirstOrDefault(f => f.Id == sessionId);
 
         return family?.CreateToken(tokenHash, ipAddress, timeRefreshTokenExpiration, now) ?? UserErrors.Auth.SessionNotFound;
     }
 
     public Result<UserRefreshToken, Error> RotateRefreshToken(
-        UserRefreshTokenFamilyId sessionId,
+        UserSessionId sessionId,
         UserRefreshToken currentToken,
         string newTokenHash,
         IPAddress ipAddress,
@@ -723,7 +724,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
             return unitResult.Error;
         }
 
-        var family = _refreshTokenFamilies.FirstOrDefault(f => f.Id == sessionId);
+        var family = _sessions.FirstOrDefault(f => f.Id == sessionId);
 
         if (family is null)
         {
@@ -743,13 +744,13 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
             return newToken.Error;
         }
         
-        RaiseDomainEvent(new RefreshTokenRotatedEvent(Id.GetValueAsString(), sessionId.GetValueAsString(), currentToken.Id.GetValueAsString(), newToken.Value.Id.GetValueAsString(), now));
+        RaiseDomainEvent(new RefreshTokenRotatedEvent(Id.ToString(), sessionId.ToString(), currentToken.Id.ToString(), newToken.Value.Id.ToString(), now));
         
         if (family.IsNearingAbsoluteExpiration(now))
         {
             RaiseDomainEvent(new SessionNearingExpirationEvent(
-                UserId: Id.GetValueAsString(),
-                SessionId: sessionId.GetValueAsString(),
+                UserId: Id.ToString(),
+                SessionId: sessionId.ToString(),
                 AbsoluteExpiresAt: family.AbsoluteExpiresAt,
                 RemainingTime: family.RemainingAbsoluteTime(now),
                 now));
@@ -758,9 +759,9 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         return newToken;
     }
     
-    public void RevokeTokenFamilyByDevice(Guid deviceId, string reason, DateTime now)
+    public void RevokeSessionByDevice(Guid deviceId, string reason, DateTime now)
     {
-        var session = _refreshTokenFamilies
+        var session = _sessions
             .FirstOrDefault(f => f.DeviceId == deviceId && f.IsActive);
         
         if (session is null) 
@@ -768,26 +769,26 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
 
         session.Revoke(reason, now);
 
-        RaiseDomainEvent(new SessionRevokedEvent(Id.GetValueAsString(), session.Id.GetValueAsString(), deviceId, reason, now));
+        RaiseDomainEvent(new SessionRevokedEvent(Id.ToString(), session.Id.ToString(), deviceId, reason, now));
     }
     
-    public void RevokeTokenFamily(UserRefreshTokenFamilyId sessionId, string reason, DateTime now)
+    public void RevokeSession(UserSessionId sessionId, string reason, DateTime now)
     {
-        var session = _refreshTokenFamilies.FirstOrDefault(f => f.Id == sessionId);
+        var session = _sessions.FirstOrDefault(f => f.Id == sessionId);
         
         if (session is null || !session.IsActive) 
             return;
 
         session.Revoke(reason, now);
-        RaiseDomainEvent(new SessionRevokedEvent(Id.GetValueAsString(), session.Id.GetValueAsString(), session.DeviceId, reason, now));
+        RaiseDomainEvent(new SessionRevokedEvent(Id.ToString(), session.Id.ToString(), session.DeviceId, reason, now));
     }
 
-    public void RevokeAllTokenFamilies(string reason, DateTime now)
+    public void RevokeAllSession(string reason, DateTime now)
     {
-        foreach (var session in _refreshTokenFamilies.Where(f => f.IsActive))
+        foreach (var session in _sessions.Where(f => f.IsActive))
         {
             session.Revoke(reason, now);
-            RaiseDomainEvent(new SessionRevokedEvent(Id.GetValueAsString(), session.Id.GetValueAsString(), session.DeviceId, reason, now));
+            RaiseDomainEvent(new SessionRevokedEvent(Id.ToString(), session.Id.ToString(), session.DeviceId, reason, now));
         }
     }
     
@@ -800,7 +801,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         Status = UserStatus.Inactive;
         ModifiedAt = deletedAt;
         
-        RevokeAllTokenFamilies("User account deleted", deletedAt);
+        RevokeAllSession("User account deleted", deletedAt);
     }
     
     public UnitResult<Error> EnsureNotDeleted()

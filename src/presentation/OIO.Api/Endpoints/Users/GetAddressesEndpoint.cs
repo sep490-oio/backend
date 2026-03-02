@@ -1,8 +1,8 @@
 using MediatR;
 using OIO.Api.Common;
-using OIO.Api.Extensions;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.UserContext.Queries.GetUserAddresses;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.Users;
 
@@ -12,15 +12,16 @@ public class GetAddressesEndpoint : IEndpoint
     
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("api/users/me/addresses", async ([AsParameters] Parameters parameters, ISender sender, CancellationToken ct) =>
+        app.MapGet(ApiEndpoint.Url.Users.GetAddresses, async ([AsParameters] Parameters parameters, ISender sender, CancellationToken ct) =>
             {
                 var query = new GetUserAddressesQuery(parameters);
                 
                 var result = await sender.Send(query, ct);
 
-                return result.IsFailure ? result.Error.ProcessError() : Results.Ok(result.Value);
+                return result.ToOkHttpResult();
             })
-            .RequireAuthorization()
-            .WithTags(Tags.Users);
+            .RequireAuthorization(App.Permissions.Catalogs.Users.ReadAddresses)
+            .WithName(ApiEndpoint.Names.Users.GetAddresses)
+            .WithTags(ApiEndpoint.Tags.Users);
     }
 }

@@ -6,6 +6,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Errors;
 using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.UserContext.Commands.DeleteUser;
@@ -37,7 +38,7 @@ internal sealed class DeleteUserCommandHandler
         
         var user = await _dbContext.GetByIdAsync<User, UserId>(userId,
             queryBuilder: query => query
-                .Include(x => x.RefreshTokenFamilies)
+                .Include(x => x.Sessions)
                 .ThenInclude(x => x.Tokens),
             cancellationToken: cancellationToken);
         

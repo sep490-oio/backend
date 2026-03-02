@@ -1,6 +1,4 @@
-﻿using OIO.Domain.SeedWork.DomainEvents;
-
-namespace OIO.Domain.SeedWork.Entities;
+﻿namespace OIO.Domain.SeedWork.Entities;
 
 public interface IEntity;
 

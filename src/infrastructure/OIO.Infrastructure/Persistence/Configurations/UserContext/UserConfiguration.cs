@@ -1,12 +1,14 @@
 ﻿using System.Net;
+using EFCore.ComplexIndexes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using OIO.Domain.Constants;
 using OIO.Domain.Context.UserContext.Aggregates.Roles;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Enums;
 using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Infrastructure.Outbox;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Infrastructure.Persistence.Configurations.UserContext;
 
@@ -25,39 +27,39 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasConversion(x => x.Value, value => UserId.From(value));
 
         // ==================== Properties ====================
-        builder.OwnsOne(e => e.UserName, userNameBuilder =>
+        builder.ComplexProperty(e => e.UserName, userNameBuilder =>
             {
                 userNameBuilder.Property(userName => userName.Value)
-                    .HasMaxLength(Constraints.UserName.MaxLength)
+                    .HasMaxLength(App.Constraint.UserName.MaxLength)
                     .HasColumnName("user_name");
                 
                 userNameBuilder.Property(normalizedUserName => normalizedUserName.Normalized)
-                    .HasMaxLength(Constraints.UserName.MaxLength)
+                    .HasMaxLength(App.Constraint.UserName.MaxLength)
                     .HasComputedColumnSql("upper((user_name)::text)", true)
-                    .HasColumnName("normalized_user_name");
+                    .HasColumnName("normalized_user_name")
+                    .HasComplexIndex(
+                        isUnique: true,
+                        filter: "(deleted_at IS NULL)",
+                        indexName: "idx_unique_users_normalized_user_name_active");
                 
-                userNameBuilder.HasIndex(e => e.Normalized, "idx_unique_users_normalized_user_name_active")
-                    .IsUnique()
-                    .HasFilter("(deleted_at IS NULL)");
             });
         
-        builder.OwnsOne(e => e.Email, emailBuilder =>
+        builder.ComplexProperty(e => e.Email, emailBuilder =>
         {
             emailBuilder.Property(email => email.Value)
-                .HasMaxLength(Constraints.UserEmail.MaxLength)
+                .HasMaxLength(App.Constraint.UserEmail.MaxLength)
                 .HasColumnName("email")
                 .IsRequired();
                 
             emailBuilder.Property(normalizedEmail => normalizedEmail.Normalized)
-                .HasMaxLength(Constraints.UserEmail.MaxLength)
+                .HasMaxLength(App.Constraint.UserEmail.MaxLength)
                 .HasComputedColumnSql("upper((email)::text)", true)
-                .HasColumnName("normalized_email");
-            
-            emailBuilder.HasIndex(e => e.Normalized, "idx_unique_users_normalized_email_active")
-                .IsUnique()
-                .HasFilter("(deleted_at IS NULL)");
+                .HasColumnName("normalized_email")
+                .HasComplexIndex(
+                    isUnique: true,
+                    filter: "(deleted_at IS NULL)",
+                    indexName: "idx_unique_users_normalized_email_active");
         });
-        
 
         builder.Property(u => u.EmailConfirmed)
             .HasColumnName("email_confirmed")
@@ -71,7 +73,7 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasColumnName("password_hash")
             .HasConversion(password => password!.HashedValue, value => Password.CreateFromHash(value));
 
-        builder.OwnsOne(u => u.PhoneNumber, phoneNumberBuilder =>
+        builder.ComplexProperty(u => u.PhoneNumber, phoneNumberBuilder =>
             {
                 phoneNumberBuilder.Property(u => u.Value)
                     .HasColumnName("phone_number")
@@ -169,7 +171,7 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasForeignKey(h => h.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasMany(u => u.RefreshTokenFamilies)
+        builder.HasMany(u => u.Sessions)
             .WithOne()
             .HasForeignKey(f => f.UserId)
             .OnDelete(DeleteBehavior.Cascade);
@@ -198,17 +200,17 @@ internal sealed class UserProfileConfiguration : IEntityTypeConfiguration<UserPr
 
         builder.Property(p => p.FirstName)
             .HasColumnName("first_name")
-            .HasMaxLength(Constraints.FirstName.MaxLength)
+            .HasMaxLength(App.Constraint.FirstName.MaxLength)
             .HasConversion(x => x!.Value, value => FirstName.Create(value).GetValueOrDefault());
 
         builder.Property(p => p.LastName)
             .HasColumnName("last_name")
-            .HasMaxLength(Constraints.LastName.MaxLength)
+            .HasMaxLength(App.Constraint.LastName.MaxLength)
             .HasConversion(x => x!.Value, value => LastName.Create(value).GetValueOrDefault());
 
         builder.Property(p => p.DisplayName)
             .HasColumnName("display_name")
-            .HasMaxLength(Constraints.DisplayName.MaxLength)
+            .HasMaxLength(App.Constraint.DisplayName.MaxLength)
             .HasConversion(x => x!.Value, value => DisplayName.Create(value).GetValueOrDefault());
 
         builder.Property(p => p.AvatarUrl)
@@ -266,7 +268,7 @@ internal sealed class UserAddressConfiguration : IEntityTypeConfiguration<UserAd
             .HasMaxLength(100)
             .IsRequired();
 
-        builder.OwnsOne(u => u.PhoneNumber, phoneNumberBuilder =>
+        builder.ComplexProperty(u => u.PhoneNumber, phoneNumberBuilder =>
         {
             phoneNumberBuilder.Property(u => u.Value)
                 .HasColumnName("phone_number")
@@ -280,31 +282,31 @@ internal sealed class UserAddressConfiguration : IEntityTypeConfiguration<UserAd
         });
 
         // ==================== Address Value Object ====================
-        builder.OwnsOne(a => a.Address, addressBuilder =>
+        builder.ComplexProperty(a => a.Address, addressBuilder =>
         {
             addressBuilder.Property(ad => ad.Street)
                 .HasColumnName("address")
-                .HasMaxLength(Constraints.Address.StreetMaxLength)
+                .HasMaxLength(App.Constraint.Address.StreetMaxLength)
                 .IsRequired();
 
             addressBuilder.Property(ad => ad.Ward)
                 .HasColumnName("ward")
-                .HasMaxLength(Constraints.Address.WardMaxLength)
+                .HasMaxLength(App.Constraint.Address.WardMaxLength)
                 .IsRequired();
 
             addressBuilder.Property(ad => ad.District)
                 .HasColumnName("district")
-                .HasMaxLength(Constraints.Address.DistrictMaxLength)
+                .HasMaxLength(App.Constraint.Address.DistrictMaxLength)
                 .IsRequired();
 
             addressBuilder.Property(ad => ad.City)
                 .HasColumnName("city")
-                .HasMaxLength(Constraints.Address.CityMaxLength)
+                .HasMaxLength(App.Constraint.Address.CityMaxLength)
                 .IsRequired();
 
             addressBuilder.Property(ad => ad.PostalCode)
                 .HasColumnName("postal_code")
-                .HasMaxLength(Constraints.Address.PostalCodeMaxLenght);
+                .HasMaxLength(App.Constraint.Address.PostalCodeMaxLenght);
         });
 
         builder.Property(a => a.IsDefault)
@@ -434,18 +436,18 @@ internal sealed class UserLoginHistoryConfiguration : IEntityTypeConfiguration<U
     }
 }
 
-internal sealed class RefreshTokenFamilyConfiguration : IEntityTypeConfiguration<UserRefreshTokenFamily>
+internal sealed class RefreshTokenFamilyConfiguration : IEntityTypeConfiguration<UserSession>
 {
-    public void Configure(EntityTypeBuilder<UserRefreshTokenFamily> builder)
+    public void Configure(EntityTypeBuilder<UserSession> builder)
     {
-        builder.ToTable("user_refresh_token_families");
+        builder.ToTable("user_sessions");
 
         builder.HasKey(f => f.Id);
 
         builder.Property(f => f.Id)
             .ValueGeneratedNever()
             .HasColumnName("id")
-            .HasConversion(x => x.Value, value => UserRefreshTokenFamilyId.From(value));
+            .HasConversion(x => x.Value, value => UserSessionId.From(value));
 
         builder.Property(f => f.UserId)
             .HasColumnName("user_id")
@@ -497,21 +499,21 @@ internal sealed class RefreshTokenFamilyConfiguration : IEntityTypeConfiguration
         // ==================== Relationships ====================
         builder.HasMany(f => f.Tokens)
             .WithOne(t => t.RefreshTokenFamily)
-            .HasForeignKey(t => t.FamilyId)
+            .HasForeignKey(t => t.SessionId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // ==================== Indexes ====================
         builder.HasIndex(f => f.UserId)
-            .HasDatabaseName("ix_user_refresh_token_families_user");
+            .HasDatabaseName("ix_user_sessions_user");
 
         builder.HasIndex(f => new { f.UserId, f.IsActive })
-            .HasDatabaseName("ix_user_refresh_token_families_user_active");
+            .HasDatabaseName("ix_user_sessions_user_active");
         
         builder.HasIndex(f => f.ExpiresAt)
-            .HasDatabaseName("ix_user_refresh_token_families_expires_at");
+            .HasDatabaseName("ix_user_sessions_expires_at");
         
         builder.HasIndex(f => f.AbsoluteExpiresAt)
-            .HasDatabaseName("ix_user_refresh_token_families_absolute_expires_at");
+            .HasDatabaseName("ix_user_sessions_absolute_expires_at");
         
         
     }
@@ -549,14 +551,14 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<UserR
             .HasColumnName("token_hash")
             .IsRequired();
 
-        builder.Property(t => t.FamilyId)
-            .HasColumnName("family_id")
+        builder.Property(t => t.SessionId)
+            .HasColumnName("session_id")
             .IsRequired()
-            .HasConversion(x => x.Value, value => UserRefreshTokenFamilyId.From(value));
+            .HasConversion(x => x.Value, value => UserSessionId.From(value));
 
         builder.Property(t => t.ParentTokenId)
             .HasColumnName("parent_token_id")
-            .HasConversion(x => x!.Value, value => UserRefreshTokenId.From(value));
+            .HasConversion(x => x!.Value.Value, value => UserRefreshTokenId.From(value));
 
         builder.Property(t => t.CreatedAt)
             .HasColumnName("created_at")
@@ -606,11 +608,11 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<UserR
             .IsUnique()
             .HasDatabaseName("ix_user_refresh_tokens_token_hash");
 
-        builder.HasIndex(t => t.FamilyId)
-            .HasDatabaseName("ix_user_refresh_tokens_family_id");
+        builder.HasIndex(t => t.SessionId)
+            .HasDatabaseName("ix_user_refresh_session_id");
 
-        builder.HasIndex(t => new { t.FamilyId, t.CreatedAt })
-            .HasDatabaseName("ix_user_refresh_tokens_family_family_id_created_at");
+        builder.HasIndex(t => new { SessionId = t.SessionId, t.CreatedAt })
+            .HasDatabaseName("ix_user_refresh_tokens_session_session_id_created_at");
 
         builder.HasIndex(t => t.ExpiresAt)
             .HasDatabaseName("ix_user_refresh_tokens_expires_at");

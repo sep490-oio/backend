@@ -1,5 +1,5 @@
 using OIO.Domain.Context.UserContext.Aggregates.Roles;
-using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
 
 namespace OIO.Domain.Context.UserContext.Aggregates.Users;

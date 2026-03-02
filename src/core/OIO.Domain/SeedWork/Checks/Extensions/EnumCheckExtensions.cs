@@ -22,9 +22,10 @@ public static class EnumCheckExtensions
             return check;
 
         var enumName = typeof(TEnum).Name;
-        var valueStr = check.Property.ToString() ?? string.Empty;
+        var valueStr = check.Property.ToString();
 
-        var err = error ?? check.InEnumError(
+        var err = error ?? Error.InEnum(
+            property: check.Property,
             field: check.FieldName,
             enumName: enumName,
             value: valueStr,
@@ -34,37 +35,6 @@ public static class EnumCheckExtensions
 
         return check.Fail(err);
     }
-
-    public static CheckField<TOwner, TEnum?> InEnumIfHasValue<TOwner, TEnum>(
-        this CheckField<TOwner, TEnum?> check,
-        string? message = null,
-        Error? error = null)
-        where TEnum : struct, Enum
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue)
-            return check;
-        
-        var value =  check.Property.Value;
-        
-        var ok = Enum.IsDefined(value);
-        
-        if (ok)
-            return check;
-        
-        var enumName = typeof(TEnum).Name;
-        var valueStr = check.Property.ToString() ?? string.Empty;
-        
-        var err = error ?? check.InEnumError(
-            field: check.FieldName,
-            enumName: enumName,
-            value: valueStr,
-            codePrefix: check.CodePrefix,
-            isInvariant: check.IsInvariant,
-            message: message);
-
-        return check.Fail(err);
-    }
-        
 
     // ---------------------------------------------------------------
     // InEnum for underlying numeric (int / long)
@@ -85,7 +55,8 @@ public static class EnumCheckExtensions
         var enumName = typeof(TEnum).Name;
         var valueStr = check.Property.ToString();
 
-        var err = error ?? check.InEnumError(
+        var err = error ?? Error.InEnum(
+            property: check.Property,
             field: check.FieldName,
             enumName: enumName,
             value: valueStr,
@@ -112,7 +83,8 @@ public static class EnumCheckExtensions
         var enumName = typeof(TEnum).Name;
         var valueStr = check.Property.ToString();
 
-        var err = error ?? check.InEnumError(
+        var err = error ?? Error.InEnum(
+            property: check.Property,
             field: check.FieldName,
             enumName: enumName,
             value: valueStr,
@@ -143,9 +115,10 @@ public static class EnumCheckExtensions
             return check;
 
         var enumName = typeof(TEnum).Name;
-        var valueStr = check.Property ?? string.Empty;
+        var valueStr = check.Property;
 
-        var err = error ?? check.InEnumError(
+        var err = error ?? Error.InEnum(
+            property: check.Property,
             field: check.FieldName,
             enumName: enumName,
             value: valueStr,
@@ -154,20 +127,5 @@ public static class EnumCheckExtensions
             message: message);
 
         return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, string?> InEnumIfNotNull<TOwner, TEnum>(
-        this CheckField<TOwner, string?> check,
-        bool ignoreCase = true,
-        string? message = null,
-        Error? error = null)
-        where TEnum : struct, Enum
-    {
-        if (check.Property is null)
-        {
-            return check;
-        }
-
-        return check.NotNull().InEnum<TOwner, TEnum>(ignoreCase, message, error)!;
     }
 }

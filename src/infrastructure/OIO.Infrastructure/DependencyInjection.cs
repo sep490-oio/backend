@@ -8,8 +8,6 @@ using Microsoft.Extensions.Hosting;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.UserContext.Services;
-using OIO.Domain.Constants.AppPermissions;
-using OIO.Domain.Context.UserContext.Repositories;
 using OIO.Domain.Context.UserContext.Services;
 using OIO.Infrastructure.Authorizations;
 using OIO.Infrastructure.BackgroundJobs.CleanUpJobs;
@@ -17,9 +15,9 @@ using OIO.Infrastructure.Clock;
 using OIO.Infrastructure.HealthChecks;
 using OIO.Infrastructure.Persistence;
 using OIO.Infrastructure.Persistence.Interceptors;
-using OIO.Infrastructure.Persistence.Repositories;
 using OIO.Infrastructure.Services;
 using OIO.Infrastructure.Settings;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Infrastructure;
 
@@ -83,8 +81,6 @@ public static class DependencyInjection
                 }
             });
 
-            // Repositories
-            services.AddScoped<IUserRepository, UserRepository>();
 
             // Unit of Work
             services.AddScoped<IDbContext>(serviceProvider => serviceProvider.GetRequiredService<ApplicationDbContext>());
@@ -107,21 +103,25 @@ public static class DependencyInjection
                 {
                     options.EventsType =  typeof(CustomJwtBearerEvents);
                 })
-                .AddJwtBearer(AppPermission.ExpiredTokenAllowed,options =>
+                .AddJwtBearer(App.Policy.ExpiredTokenAllowed,options =>
                 {
                     options.EventsType = typeof(CustomJwtBearerEvents);
                 });
             
             services.AddAuthorizationBuilder()
-                .AddPolicy(AppPermission.ExpiredTokenAllowed, policy =>
+                .AddPolicy(App.Policy.ExpiredTokenAllowed, policy =>
                 {
-                    policy.AddAuthenticationSchemes(AppPermission.ExpiredTokenAllowed);
+                    policy.AddAuthenticationSchemes(App.Policy.ExpiredTokenAllowed);
                     policy.RequireAuthenticatedUser();
                 });
             
             // Settings
             services.Configure<JwtOptions>(
                 configuration.GetSection(JwtOptions.SectionName));
+            services.Configure<DefaultAccountOptions>(configuration.GetSection(DefaultAccountOptions.SectionName));
+            services.Configure<CorsOptions>(configuration.GetSection(CorsOptions.SectionName));
+            services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+            
             services.ConfigureOptions<JwtBearerOptionsSetup>();
             services.ConfigureOptions<JwtBearerOptionsForExpiredTokenSetup>();
 

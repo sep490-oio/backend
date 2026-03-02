@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using FormatWith;
 using OIO.Domain.SeedWork.Utils;
 
 namespace OIO.Domain.SeedWork.Errors.ErrorCatalogs;
@@ -20,7 +21,7 @@ public static partial class ErrorCatalog
 
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field });
                 
                 return isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -38,7 +39,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field });
 
                 return isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -56,7 +57,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                  
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field });
                 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -75,7 +76,7 @@ public static partial class ErrorCatalog
 
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["default"] = @default });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["default"] = @default });
 
                 return isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -93,7 +94,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);               
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field });
                 
                 return isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -115,7 +116,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);               
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["pattern"] = pattern });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["pattern"] = pattern });
                 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -134,7 +135,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);               
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["prefix"] = prefix });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["prefix"] = prefix });
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
                     Error.Validation(field, code, message);
@@ -152,7 +153,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);               
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["suffix"] = suffix });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["suffix"] = suffix });
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
                     Error.Validation(field, code, message);
@@ -170,7 +171,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);               
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["substring"] = substring });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["substring"] = substring });
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
                     Error.Validation(field, code, message);
@@ -188,7 +189,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);               
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["max"] = max });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["max"] = max });
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
                     Error.Validation(field, code, message);
@@ -206,7 +207,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["min"] = min });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["min"] = min });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -225,7 +226,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["length"] = length });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["length"] = length });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -245,7 +246,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["min"] = min, ["max"] = max });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["min"] = min, ["max"] = max });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -263,7 +264,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field});
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field});
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -284,7 +285,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -302,7 +303,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -320,7 +321,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -338,7 +339,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -356,7 +357,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -374,7 +375,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -393,7 +394,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["step"] = step });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["step"] = step });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -414,7 +415,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["precision"] = precision, ["scale"] = scale });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["precision"] = precision, ["scale"] = scale });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -436,7 +437,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["item"] = item });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["item"] = item });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -455,7 +456,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["set"] = setString });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["set"] = setString });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -474,7 +475,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["set"] = setString });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["set"] = setString });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -493,7 +494,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["duplicate"] = duplicate });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["duplicate"] = duplicate });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -512,7 +513,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["min"] = min });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["min"] = min });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -531,7 +532,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["max"] = max });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["max"] = max });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -551,7 +552,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["min"] = min, ["max"] = max });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["min"] = min, ["max"] = max });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -571,9 +572,9 @@ public static partial class ErrorCatalog
                 const string rule = Rule.Scalar.InSet;
                 const string defaultMessage = DefaultTemplate.Scalar.InSet;
 
-                var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule).ToTitleCase();
+                var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["set"] = setString });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["set"] = setString });
 
                 return isInvariant
                     ? Error.Invariant(field, code, message)
@@ -590,9 +591,9 @@ public static partial class ErrorCatalog
                 const string rule = Rule.Scalar.NotInSet;
                 const string defaultMessage = DefaultTemplate.Scalar.NotInSet;
 
-                var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule).ToTitleCase();
+                var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["set"] = setString });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["set"] = setString });
 
                 return isInvariant
                     ? Error.Invariant(field, code, message)
@@ -613,9 +614,9 @@ public static partial class ErrorCatalog
                 const string rule = Rule.Enum.InEnum;
                 const string defaultMessage = DefaultTemplate.Enum.InEnum;
 
-                var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule).ToTitleCase();
+                var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["enum"] = enumName, ["value"] = value });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["enum"] = enumName, ["value"] = value });
 
                 return isInvariant
                     ? Error.Invariant(field, code, message)
@@ -637,7 +638,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["value"] = value });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["value"] = value });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -656,7 +657,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["value"] = value });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["value"] = value });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -676,7 +677,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["min"] = min, ["max"] = max });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["min"] = min, ["max"] = max });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -696,7 +697,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["min"] = min, ["max"] = max });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["min"] = min, ["max"] = max });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -715,7 +716,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["value"] = value });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["value"] = value });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -734,7 +735,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["value"] = value });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["value"] = value });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -753,7 +754,7 @@ public static partial class ErrorCatalog
                     
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["value"] = value });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["value"] = value });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -772,7 +773,7 @@ public static partial class ErrorCatalog
 
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["value"] = value });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["value"] = value });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -794,7 +795,7 @@ public static partial class ErrorCatalog
 
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["time"] = time });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["time"] = time });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -813,7 +814,7 @@ public static partial class ErrorCatalog
 
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["time"] = time });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["time"] = time });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -833,7 +834,7 @@ public static partial class ErrorCatalog
 
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field, ["start"] = timeStart, ["end"] = timeEnd });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field, ["start"] = timeStart, ["end"] = timeEnd });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -851,7 +852,7 @@ public static partial class ErrorCatalog
 
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -869,7 +870,7 @@ public static partial class ErrorCatalog
 
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -887,7 +888,7 @@ public static partial class ErrorCatalog
 
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field });
 
                 return  isInvariant ?
                     Error.Invariant(field, code, message) :
@@ -905,7 +906,7 @@ public static partial class ErrorCatalog
 
                 var code = string.Join(Constant.DefaultErrorCodeSeparator, codeBase, rule);
                 
-                message ??= defaultMessage.Format(new Dictionary<string, object?> { ["field"] = field });
+                message ??= defaultMessage.FormatWith(new Dictionary<string, object?> { ["field"] = field });
 
                 return isInvariant ?
                     Error.Invariant(field, code, message) :

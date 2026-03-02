@@ -3,7 +3,7 @@ using MediatR;
 using OIO.Api.Common;
 using OIO.Api.Extensions;
 using OIO.Application.UserContext.Commands.RefreshToken;
-using OIO.Domain.Constants.AppPermissions;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.Auth;
 
@@ -15,8 +15,11 @@ public class RefreshTokenEndpoint : IEndpoint
     
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("api/auth/refresh",
-                async (HttpContext ctx, Request request, ISender sender, CancellationToken ct) =>
+        app.MapPost(ApiEndpoint.Url.Auth.RefreshToken, async (
+                HttpContext ctx, 
+                Request request,
+                ISender sender,
+                CancellationToken ct) =>
                 {
                     var command = new RefreshTokenCommand(
                         request.RefreshToken,
@@ -24,10 +27,11 @@ public class RefreshTokenEndpoint : IEndpoint
                         ctx.GetIpAddress());
 
                     var result = await sender.Send(command, ct);
-
-                    return result.IsFailure ? result.Error.ProcessError() : Results.Ok(result.Value);
+                    
+                    return result.ToOkHttpResult();
                 })
-            .WithTags(Tags.Auth)
-            .RequireAuthorization(AppPermission.ExpiredTokenAllowed);
+            .RequireAuthorization(App.Policy.ExpiredTokenAllowed)
+            .WithName(ApiEndpoint.Names.Auth.RefreshToken)
+            .WithTags(ApiEndpoint.Tags.Auth);
     }
 }

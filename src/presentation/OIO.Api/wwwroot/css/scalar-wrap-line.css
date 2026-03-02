@@ -1,4 +1,4 @@
-/* Set the width constraints */
+/* Set the width App.Constraint */
 .cm-editor, .cm-scroller, .cm-content {
     min-width: 0 !important;
     max-width: calc(100% - 46px); !important; /* account for gutter and border */

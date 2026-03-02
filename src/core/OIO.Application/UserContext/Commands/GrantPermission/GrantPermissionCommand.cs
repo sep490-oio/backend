@@ -6,7 +6,7 @@ namespace OIO.Application.UserContext.Commands.GrantPermission;
 
 public sealed record GrantPermissionCommand(
     Guid UserId,
-    Guid PermissionId) : ICommand, IHasValidate
+    int PermissionId) : ICommand, IHasValidate
 {
     public ViolationsError Validate()
     {
@@ -15,6 +15,6 @@ public sealed record GrantPermissionCommand(
             .Field(UserId)
             .NotEmptyGuid()
             .Field(PermissionId)
-            .NotEmptyGuid();
+            .NotDefault();
     }
 }

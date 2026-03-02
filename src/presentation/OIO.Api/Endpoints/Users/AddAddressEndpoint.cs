@@ -4,6 +4,7 @@ using OIO.Api.Common;
 using OIO.Api.Extensions;
 using OIO.Application.UserContext.Commands.AddAddress;
 using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.Users;
 
@@ -23,7 +24,10 @@ public class AddAddressEndpoint : IEndpoint
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("api/users/me/addresses", async (Request request, ISender sender, CancellationToken ct) =>
+        app.MapPost(ApiEndpoint.Url.Users.AddAddress, async (
+                Request request,
+                ISender sender,
+                CancellationToken ct) =>
             {
                 var command = new AddAddressCommand(
                     Type: request.Type,
@@ -39,11 +43,10 @@ public class AddAddressEndpoint : IEndpoint
 
                 var result = await sender.Send(command, ct);
 
-                return result.IsFailure
-                    ? result.Error.ProcessError()
-                    : Results.Created("api/users/me/addresses", result.Value);
+                return result.ToCreatedHttpResult();
             })
-            .RequireAuthorization()
-            .WithTags(Tags.Users);
+            .RequireAuthorization(App.Permissions.Catalogs.Users.AddAddresses)
+            .WithName(ApiEndpoint.Names.Users.AddAddress)
+            .WithTags(ApiEndpoint.Tags.Users);
     }
 }

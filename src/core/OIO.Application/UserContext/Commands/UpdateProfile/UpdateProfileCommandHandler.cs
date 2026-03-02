@@ -9,8 +9,9 @@ using OIO.Application.UserContext.Services;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Enums;
 using OIO.Domain.Context.UserContext.Errors;
-using OIO.Domain.Context.UserContext.Repositories;
+
 using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Checks;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
@@ -60,8 +61,7 @@ internal sealed class UpdateProfileCommandHandler
         if (request.DisplayName is not null &&  isFailure)
             return error;
         
-        if (_currentUser.UserId is null)
-            return UserErrors.Auth.UserNotLoggedIn;
+        
 
         var user = await _dbContext.GetByIdAsync<User, UserId>(
             _currentUser.UserId,

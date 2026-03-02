@@ -1,7 +1,7 @@
 ﻿using OIO.Application.Abstractions.Messaging;
-using OIO.Domain.Constants;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Application.UserContext.Commands.ChangePassword;
 
@@ -17,10 +17,10 @@ public sealed record ChangePasswordCommand(
             .NotNullOrWhiteSpace()
             .Field(NewPassword)!
             .NotNullOrWhiteSpace()
-            .MaxLength(Constraints.Password.MaxLength)
-            .MinLength(Constraints.Password.MinLength)
+            .MaxLength(App.Constraint.Password.MaxLength)
+            .MinLength(App.Constraint.Password.MinLength)
             .Format(
-                message: Constraints.Password.FormatMessage,
-                validators: Constraints.Password.Validator);
+                message: App.Constraint.Password.FormatMessage,
+                validators: App.Constraint.Password.Validator);
     }
 }

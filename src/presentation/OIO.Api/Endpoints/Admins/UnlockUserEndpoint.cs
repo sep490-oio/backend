@@ -1,7 +1,7 @@
 using MediatR;
 using OIO.Api.Common;
-using OIO.Api.Extensions;
 using OIO.Application.UserContext.Commands.UnlockUser;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.Admins;
 
@@ -9,16 +9,15 @@ public class UnlockUserEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPatch("api/admin/users/{userId:guid}/unlock", async (Guid userId, ISender sender, CancellationToken ct) =>
+        app.MapPatch(ApiEndpoint.Url.Admins.UnlockUser, async (Guid userId, ISender sender, CancellationToken ct) =>
             {
                 var command = new UnlockUserCommand(userId);
                 var result = await sender.Send(command, ct);
 
-                return result.IsFailure ? 
-                    result.Error.ProcessError() : 
-                    Results.NoContent();
+                return result.ToNoContentHttpResult();
             })
-            .AllowAnonymous()
-            .WithTags(Tags.Admins);
+            .RequireAuthorization(App.Permissions.Catalogs.Users.Unlock)
+            .WithName(ApiEndpoint.Names.Admins.UnlockUser)
+            .WithTags(ApiEndpoint.Tags.Admins);
     }
 }

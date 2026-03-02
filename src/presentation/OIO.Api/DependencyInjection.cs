@@ -1,9 +1,10 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.OpenApi;
 using OIO.Api.Extensions;
 using OIO.Api.Middleware;
-using OIO.Api.Settings;
+using OIO.Infrastructure.Settings;
 
 namespace OIO.Api;
 
@@ -76,14 +77,14 @@ public static class DependencyInjection
 
     private static void AddCorsPolicy(this IServiceCollection services, IConfiguration configuration)
     {
-        var corsOptions = configuration.GetSection(CorsOptions.SectionName).Get<CorsOptions>()!;
+        var cors = configuration.GetSection(CorsOptions.SectionName).Get<CorsOptions>()!;
 
         services.AddCors(options =>
         {
             options.AddPolicy(CorsOptions.PolicyName, policy =>
             {
                 policy
-                    .WithOrigins(corsOptions.AllowedOrigins)
+                    .WithOrigins(cors.AllowedOrigins)
                     .AllowAnyMethod()
                     .AllowAnyHeader();
             });
@@ -116,11 +117,10 @@ public static class DependencyInjection
         services.AddProblemDetails(options =>
                 options.CustomizeProblemDetails = ctx =>
                 {
-                    ctx.ProblemDetails.Extensions.Add(
-                        "instance",
-                        $"{ctx.HttpContext.Request.Method} {ctx.HttpContext.Request.Path}"
-                    );
-                    ctx.ProblemDetails.Extensions.TryAdd("traceId", ctx.HttpContext.TraceIdentifier);
+                    ctx.ProblemDetails.Instance = $"{ctx.HttpContext.Request.Method} {ctx.HttpContext.Request.Path}";
+                    ctx.ProblemDetails.Extensions.TryAdd("requestId", ctx.HttpContext.TraceIdentifier);
+                    var activity = ctx.HttpContext.Features.Get<IHttpActivityFeature>()?.Activity;
+                    ctx.ProblemDetails.Extensions.TryAdd("traceId", activity?.Id);
                 }
             );
         services.AddExceptionHandler<GlobalExceptionHandler>();

@@ -6,7 +6,4 @@
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <NoWarn>$(NoWarn);1591</NoWarn>
 	</PropertyGroup>
-    <ItemGroup>
-        <Using Include="OIO.Domain.SeedWork.Extensions" />
-    </ItemGroup>
 </Project>

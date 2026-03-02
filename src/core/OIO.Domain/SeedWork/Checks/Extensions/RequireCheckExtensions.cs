@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using FluentCheck.Errors;
 using OIO.Domain.SeedWork.Errors;
 
 // ReSharper disable All
@@ -22,7 +21,8 @@ public static class RequiredCheckFieldExtensions
         if (check.Property is not null) 
             return check.Narrow(check.Property!);
         
-        var err = error ?? check.Property.NotNullError(
+        var err = error ?? Error.NotNull(
+            property: check.Property,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
             propertyName: check.PropertyName,
@@ -49,7 +49,8 @@ public static class RequiredCheckFieldExtensions
         if (check.Property is not null) 
             return check.Narrow(check.Property.Value);
         
-        var err = error ?? check.Property.NotNullError(
+        var err = error ?? Error.NotNull(
+            property: check.Property,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
             propertyName: check.PropertyName,
@@ -75,7 +76,8 @@ public static class RequiredCheckFieldExtensions
         if (!string.IsNullOrEmpty(check.Property)) 
             return check.Narrow(check.Property!);
         
-        var err = error ?? check.Property.NotEmptyError(
+        var err = error ?? Error.NotEmpty(
+            property: check.Property,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
             propertyName: check.PropertyName,
@@ -94,7 +96,8 @@ public static class RequiredCheckFieldExtensions
         if (!check.ShouldContinue || check.Property.Length != 0)
             return check;
 
-        var err = error ?? check.Property.NotEmptyError(
+        var err = error ?? Error.NotEmpty(
+            property: check.Property,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
             propertyName: check.PropertyName,
@@ -119,7 +122,8 @@ public static class RequiredCheckFieldExtensions
 
         if (string.IsNullOrWhiteSpace(check.Property))
         {
-            var err = error ?? check.Property.NotBlankError(
+            var err = error ?? Error.NotBlank(
+                property: check.Property,
                 isInvariant: check.IsInvariant,
                 codePrefix: check.OwnerName,
                 propertyName: check.PropertyName,
@@ -142,7 +146,8 @@ public static class RequiredCheckFieldExtensions
 
         if (string.IsNullOrWhiteSpace(check.Property))
         {
-            var err = error ?? check.Property.NotBlankError(
+            var err = error ?? Error.NotBlank(
+                property: check.Property,
                 isInvariant: check.IsInvariant,
                 codePrefix: check.OwnerName,
                 propertyName: check.PropertyName,
@@ -169,7 +174,8 @@ public static class RequiredCheckFieldExtensions
 
         if (!check.Property.HasValue || check.Property.Value == Guid.Empty)
         {
-            var err = error ?? check.Property.NotEmptyGuidError(
+            var err = error ?? Error.NotEmpty(
+                property: check.Property,
                 isInvariant: check.IsInvariant,
                 codePrefix: check.OwnerName,
                 propertyName: check.PropertyName,
@@ -192,7 +198,8 @@ public static class RequiredCheckFieldExtensions
 
         if (check.Property == Guid.Empty)
         {
-            var err = error ?? check.Property.NotEmptyGuidError(
+            var err = error ?? Error.NotEmpty(
+                property: check.Property,
                 isInvariant: check.IsInvariant,
                 codePrefix: check.OwnerName,
                 propertyName: check.PropertyName,
@@ -224,7 +231,8 @@ public static class RequiredCheckFieldExtensions
 
         if (!check.Property.HasValue || EqualityComparer<T>.Default.Equals(check.Property.Value, defaultValue))
         {
-            var err = error ?? check.Property.NotDefaultError(
+            var err = error ?? Error.NotDefault(
+                property: check.Property,
                 @default: defaultValue,
                 isInvariant: check.IsInvariant,
                 codePrefix: check.OwnerName,
@@ -252,7 +260,8 @@ public static class RequiredCheckFieldExtensions
 
         if (EqualityComparer<T>.Default.Equals(check.Property, defaultValue))
         {
-            var err = error ?? check.Property.NotDefaultError(
+            var err = error ?? Error.NotDefault(
+                property: check.Property,
                 @default: defaultValue,
                 isInvariant: check.IsInvariant,
                 codePrefix: check.OwnerName,
@@ -281,7 +290,8 @@ public static class RequiredCheckFieldExtensions
 
         if (check.Property is null || check.Property.Count == 0)
         {
-            var err = error ?? check.Property.NotEmptyError(
+            var err = error ?? Error.NotEmpty(
+                property: check.Property,
                 isInvariant: check.IsInvariant,
                 codePrefix: check.OwnerName,
                 propertyName: check.PropertyName,
@@ -304,7 +314,8 @@ public static class RequiredCheckFieldExtensions
 
         if (check.Property is null || check.Property.Length == 0)
         {
-            var err = error ?? check.Property.NotEmptyError(
+            var err = error ?? Error.NotEmpty(
+                property: check.Property,
                 isInvariant: check.IsInvariant,
                 codePrefix: check.OwnerName,
                 propertyName: check.PropertyName,

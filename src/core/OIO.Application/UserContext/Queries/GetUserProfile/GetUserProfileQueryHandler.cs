@@ -6,7 +6,7 @@ using OIO.Application.UserContext.Mappings;
 using OIO.Application.UserContext.Services;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Errors;
-using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.UserContext.Queries.GetUserProfile;
@@ -29,9 +29,6 @@ internal sealed class GetUserProfileQueryHandler
         GetUserProfileQuery request,
         CancellationToken cancellationToken)
     {
-        if (_currentUser.UserId is null)
-            return UserErrors.Auth.UserNotLoggedIn;
-
         var userProfile = await _dbContext.GetByIdAsync<UserProfile, UserId>( _currentUser.UserId, cancellationToken: cancellationToken);
         
         if (userProfile is null)

@@ -1,7 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
-using OIO.Api.Extensions;
 using OIO.Application.UserContext.Commands.RegisterUser;
 
 namespace OIO.Api.Endpoints.Auth;
@@ -17,7 +16,10 @@ public class RegisterUserEndpoint : IEndpoint
     
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("api/auth/register", async (Request request, ISender sender, CancellationToken ct) =>
+        app.MapPost(ApiEndpoint.Url.Auth.Register, async (
+                Request request,
+                ISender sender,
+                CancellationToken ct) =>
             {
                 var command = new RegisterUserCommand(
                     request.UserName,
@@ -28,11 +30,10 @@ public class RegisterUserEndpoint : IEndpoint
                 
                 var result = await sender.Send(command, ct);
 
-                return result.IsFailure ? 
-                    result.Error.ProcessError() : 
-                    Results.Created($"/api/auth/register", result.Value);
+                return result.ToCreatedHttpResult();
             })
             .AllowAnonymous()
-            .WithTags(Tags.Auth);
+            .WithName(ApiEndpoint.Names.Auth.Register)
+            .WithTags(ApiEndpoint.Tags.Auth);
     }
 }

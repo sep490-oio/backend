@@ -6,8 +6,9 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.UserContext.Services;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Errors;
-using OIO.Domain.Context.UserContext.Repositories;
+
 using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
 
@@ -50,13 +51,12 @@ internal sealed class LogoutCommandHandler
     {
         var nowUtc = _clock.UtcNow;
         
-        if (_currentUser.UserId is null)
-            return UserErrors.Auth.UserNotLoggedIn;
+        
 
         var user = await _dbContext.GetByIdAsync<User, UserId>(
             id: _currentUser.UserId,
             queryBuilder: query => query
-                .Include(x => x.RefreshTokenFamilies)
+                .Include(x => x.Sessions)
                 .ThenInclude(x => x.Tokens),
             cancellationToken: cancellationToken);
         if (user is null)
@@ -65,12 +65,12 @@ internal sealed class LogoutCommandHandler
         if (request.DeviceId.HasValue)
         {
             // Logout specific session
-            user.RevokeTokenFamilyByDevice(request.DeviceId.Value, "User logout", nowUtc);
+            user.RevokeSessionByDevice(request.DeviceId.Value, "User logout", nowUtc);
         }
         else
         {
             // Logout all sessions
-            user.RevokeAllTokenFamilies("User logout all", nowUtc);
+            user.RevokeAllSession("User logout all", nowUtc);
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);

@@ -1,12 +1,13 @@
 ﻿using CSharpFunctionalExtensions;
 using OIO.Domain.Context.UserContext.Enums;
 using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Domain.Context.UserContext.Aggregates.Users;
 
-public sealed class UserAddress : SeedWork.Entities.Entity<UserAddressId>, IAuditableEntity
+public sealed class UserAddress : BaseEntity<UserAddressId>, IAuditableEntity
 {
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
     private UserAddress() {}
@@ -37,7 +38,7 @@ public sealed class UserAddress : SeedWork.Entities.Entity<UserAddressId>, IAudi
         DateTime now,
         bool isDefault = false)
     {
-        Id = UserAddressId.Create();
+        Id = UserAddressId.From(Guid.CreateVersion7());
         UserId = userId;
         Type = type;
         RecipientName = recipientName;

@@ -1,9 +1,9 @@
-using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
 
 namespace OIO.Domain.Context.UserContext.Aggregates.Roles;
 
-public sealed class Permission : Entity<PermissionId>
+public sealed class Permission : BaseEntity<PermissionId>
 {
     private readonly List<RolePermission> _rolePermissions = [];
     
@@ -15,9 +15,8 @@ public sealed class Permission : Entity<PermissionId>
 
     public string? NormalizedPermissionCode { get; private set; }
 
-    private Permission(PermissionId id, string permissionCode)
+    private Permission(string permissionCode)
     {
-        Id = id;
         PermissionCode = permissionCode;
         NormalizedPermissionCode = permissionCode.ToUpperInvariant();
     }
@@ -28,6 +27,27 @@ public sealed class Permission : Entity<PermissionId>
         string permissionCode
     )
     {
-        return new Permission(PermissionId.Create(), permissionCode);
+        return new Permission(permissionCode);
+    }
+    
+    public static Permission Create(
+        PermissionId permissionId,
+        string permissionCode
+    )
+    {
+        return new Permission(permissionCode)
+        {
+            Id = permissionId
+        };
+    }
+    internal static Permission Create(
+        int id,
+        string permissionCode
+    )
+    {
+        return new Permission(permissionCode)
+        {
+            Id = PermissionId.From(id)
+        };
     }
 }

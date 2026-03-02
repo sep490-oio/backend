@@ -1,6 +1,5 @@
 ﻿using OIO.Application.Abstractions.Messaging;
 using OIO.Domain.Context.UserContext.Enums;
-using OIO.Domain.Context.UserContext.Repositories;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
 

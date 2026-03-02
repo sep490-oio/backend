@@ -1,4 +1,5 @@
 ﻿using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Domain.Context.UserContext.Errors;
@@ -118,9 +119,9 @@ public static class UserErrors
             description: "The user is not active."
         );
         
-        public static readonly Error UserBanned = Error.Forbidden( 
-            code: "User.Banned",
-            description: "The user is banned due to suspension."
+        public static readonly Error UserLocked = Error.Forbidden( 
+            code: "User.Locked",
+            description: "The user is locked due to suspension."
         );
 
         public static readonly Error InvalidConfirmationToken = Error.Unauthorized(

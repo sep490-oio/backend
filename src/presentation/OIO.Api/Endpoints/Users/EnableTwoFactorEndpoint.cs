@@ -2,6 +2,7 @@
 using OIO.Api.Common;
 using OIO.Api.Extensions;
 using OIO.Application.UserContext.Commands.EnableTwoFactor;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.Users;
 
@@ -11,15 +12,16 @@ public class EnableTwoFactorEndpoint : IEndpoint
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("api/users/me/two-factor/enable", async (Request request, ISender sender, CancellationToken ct) =>
+        app.MapPost(ApiEndpoint.Url.Users.EnableTwoFactor, async (Request request, ISender sender, CancellationToken ct) =>
             {
                 var command = new EnableTwoFactorCommand(request.Provider);
 
                 var result = await sender.Send(command, ct);
 
-                return result.IsFailure ? result.Error.ProcessError() : Results.NoContent();
+                return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
-            .WithTags(Tags.Users);
+            .RequireAuthorization(App.Permissions.Catalogs.Users.EnableTwoFactor)
+            .WithName(ApiEndpoint.Names.Users.EnableTwoFactor)
+            .WithTags(ApiEndpoint.Tags.Users);
     }
 }

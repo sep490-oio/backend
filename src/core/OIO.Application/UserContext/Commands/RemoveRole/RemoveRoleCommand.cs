@@ -6,7 +6,7 @@ namespace OIO.Application.UserContext.Commands.RemoveRole;
 
 public sealed record RemoveRoleCommand(
     Guid UserId,
-    Guid RoleId) : ICommand, IHasValidate
+    int RoleId) : ICommand, IHasValidate
 {
     public ViolationsError Validate()
     {
@@ -15,6 +15,6 @@ public sealed record RemoveRoleCommand(
             .Field(UserId)
             .NotEmptyGuid()
             .Field(RoleId)
-            .NotEmptyGuid();
+            .NotDefault();
     }
 }

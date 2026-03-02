@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Globalization;
-using FluentCheck.Errors;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Domain.SeedWork.Checks.Extensions;
@@ -91,31 +90,8 @@ public static class TimeCheckFieldExtensions
         if (!check.ShouldContinue || check.Property > time) 
             return check;
 
-        var err = error ?? check.Property.AfterError(
-            time: F(time),
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, DateTime?> AfterIfHasValue<TOwner>(
-        this CheckField<TOwner, DateTime?> check,
-        DateTime time,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue) return check;
-
-        var v = check.Property.Value;
-        
-        if (v > time) 
-            return check;
-
-        var err = error ?? v.AfterError(
+        var err = error ?? Error.After(
+            property: check.Property,
             time: F(time),
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
@@ -135,31 +111,8 @@ public static class TimeCheckFieldExtensions
         if (!check.ShouldContinue || check.Property < time)
             return check;
 
-        var err = error ?? check.Property.BeforeError(
-            time: F(time),
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, DateTime?> BeforeIfHasValue<TOwner>(
-        this CheckField<TOwner, DateTime?> check,
-        DateTime time,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue) return check;
-
-        var v = check.Property.Value;
-        
-        if (v < time) 
-            return check;
-
-        var err = error ?? v.BeforeError(
+        var err = error ?? Error.Before(
+            property: check.Property,
             time: F(time),
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
@@ -177,40 +130,11 @@ public static class TimeCheckFieldExtensions
         string? message = null,
         Error? error = null)
     {
-        if (!check.ShouldContinue) return check;
-
-        var v = check.Property;
-        
-        if (v >= start && v <= end) 
+        if (!check.ShouldContinue || check.Property >= start && check.Property <= end)
             return check;
 
-        var err = error ?? v.TimeRangeError(
-            timeStart: F(start),
-            timeEnd: F(end),
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, DateTime?> TimeRangeIfHasValue<TOwner>(
-        this CheckField<TOwner, DateTime?> check,
-        DateTime start,
-        DateTime end,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue) return check;
-
-        var v = check.Property.Value;
-        
-        if (v >= start && v <= end)
-            return check;
-
-        var err = error ?? v.TimeRangeError(
+        var err = error ?? Error.TimeRange(
+            property: check.Property,
             timeStart: F(start),
             timeEnd: F(end),
             isInvariant: check.IsInvariant,
@@ -236,29 +160,8 @@ public static class TimeCheckFieldExtensions
         if (check.Property >= now)
             return check;
 
-        var err = error ?? check.Property.NotInPastError(
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, DateTime?> NotInPastIfHasValue<TOwner>(
-        this CheckField<TOwner, DateTime?> check,
-        Func<DateTime>? nowProvider = null,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue) return check;
-
-        var now = (nowProvider ?? (() => DateTime.UtcNow))();
-        if (check.Property.Value >= now) 
-            return check;
-
-        var err = error ?? check.Property.Value.NotInPastError(
+        var err = error ?? Error.NotInPast(
+            property: check.Property,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
             propertyName: check.PropertyName,
@@ -282,31 +185,8 @@ public static class TimeCheckFieldExtensions
         if (check.Property <= now) 
             return check;
 
-        var err = error ?? check.Property.NotInFutureError(
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, DateTime?> NotInFutureIfHasValue<TOwner>(
-        this CheckField<TOwner, DateTime?> check,
-        Func<DateTime>? nowProvider = null,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue) 
-            return check;
-
-        var now = (nowProvider ?? (() => DateTime.UtcNow))();
-        
-        if (check.Property.Value <= now)
-            return check;
-
-        var err = error ?? check.Property.Value.NotInFutureError(
+        var err = error ?? Error.NotInFuture(
+            property: check.Property,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
             propertyName: check.PropertyName,
@@ -324,30 +204,8 @@ public static class TimeCheckFieldExtensions
         if (!check.ShouldContinue || check.Property.Kind == DateTimeKind.Utc) 
             return check;
 
-        var err = error ?? check.Property.UtcError(
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, DateTime?> UtcIfHasValue<TOwner>(
-        this CheckField<TOwner, DateTime?> check,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue) 
-            return check;
-
-        var v = check.Property.Value;
-        
-        if (v.Kind == DateTimeKind.Utc) 
-            return check;
-
-        var err = error ?? v.UtcError(
+        var err = error ?? Error.Utc(
+            property: check.Property,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
             propertyName: check.PropertyName,
@@ -370,17 +228,21 @@ public static class TimeCheckFieldExtensions
         string? message = null,
         Error? error = null)
     {
-        if (!start.ShouldContinue) return start;
+        if (!start.ShouldContinue) 
+            return start;
 
         // overlap iff start < otherEnd && otherStart < end
         var overlap = start.Property < otherEnd && otherStart < end;
-        if (!overlap) return start;
+        
+        if (!overlap)
+            return start;
         
         message ??= $"{start.FieldName} must not overlap with [{otherStart:O}, {otherEnd:O}). " +
                     $"Current: [{start.Property:O}, {end:O}).";
 
 
-        var err = error ?? start.Property.NotOverlappingError(
+        var err = error ?? Error.NotOverlapping(
+            property: start.Property,
             isInvariant: start.IsInvariant,
             codePrefix: start.OwnerName,
             propertyName: start.PropertyName,
@@ -403,31 +265,8 @@ public static class TimeCheckFieldExtensions
         if (!check.ShouldContinue || check.Property > time)
             return check;
 
-        var err = error ?? check.Property.AfterError(
-            time: F(time),
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, DateTimeOffset?> AfterIfHasValue<TOwner>(
-        this CheckField<TOwner, DateTimeOffset?> check,
-        DateTimeOffset time,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue) 
-            return check;
-
-        var v = check.Property.Value;
-        
-        if (v > time) return check;
-
-        var err = error ?? v.AfterError(
+        var err = error ?? Error.After(
+            property:  check.Property,
             time: F(time),
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
@@ -447,31 +286,8 @@ public static class TimeCheckFieldExtensions
         if (!check.ShouldContinue || check.Property < time)
             return check;
 
-        var err = error ?? check.Property.BeforeError(
-            time: F(time),
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, DateTimeOffset?> BeforeIfHasValue<TOwner>(
-        this CheckField<TOwner, DateTimeOffset?> check,
-        DateTimeOffset time,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue)
-            return check;
-
-        var v = check.Property.Value;
-        
-        if (v < time) return check;
-
-        var err = error ?? v.BeforeError(
+        var err = error ?? Error.Before(
+            property: check.Property,
             time: F(time),
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
@@ -489,42 +305,11 @@ public static class TimeCheckFieldExtensions
         string? message = null,
         Error? error = null)
     {
-        if (!check.ShouldContinue)
+        if (!check.ShouldContinue || check.Property >= start && check.Property <= end)
             return check;
 
-        var v = check.Property;
-        
-        if (v >= start && v <= end)
-            return check;
-
-        var err = error ?? v.TimeRangeError(
-            timeStart: F(start),
-            timeEnd: F(end),
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, DateTimeOffset?> TimeRangeIfHasValue<TOwner>(
-        this CheckField<TOwner, DateTimeOffset?> check,
-        DateTimeOffset start,
-        DateTimeOffset end,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue)
-            return check;
-
-        var v = check.Property.Value;
-        
-        if (v >= start && v <= end)
-            return check;
-
-        var err = error ?? v.TimeRangeError(
+        var err = error ?? Error.TimeRange(
+            property: check.Property,
             timeStart: F(start),
             timeEnd: F(end),
             isInvariant: check.IsInvariant,
@@ -550,31 +335,8 @@ public static class TimeCheckFieldExtensions
         if (check.Property >= now) 
             return check;
 
-        var err = error ?? check.Property.NotInPastError(
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, DateTimeOffset?> NotInPastIfHasValue<TOwner>(
-        this CheckField<TOwner, DateTimeOffset?> check,
-        Func<DateTimeOffset>? nowProvider = null,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue)
-            return check;
-
-        var now = (nowProvider ?? (() => DateTimeOffset.UtcNow))();
-        
-        if (check.Property.Value >= now)
-            return check;
-
-        var err = error ?? check.Property.Value.NotInPastError(
+        var err = error ?? Error.NotInPast(
+            property: check.Property,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
             propertyName: check.PropertyName,
@@ -598,31 +360,8 @@ public static class TimeCheckFieldExtensions
         if (check.Property <= now)
             return check;
 
-        var err = error ?? check.Property.NotInFutureError(
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, DateTimeOffset?> NotInFutureIfHasValue<TOwner>(
-        this CheckField<TOwner, DateTimeOffset?> check,
-        Func<DateTimeOffset>? nowProvider = null,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue)
-            return check;
-
-        var now = (nowProvider ?? (() => DateTimeOffset.UtcNow))();
-        
-        if (check.Property.Value <= now) 
-            return check;
-
-        var err = error ?? check.Property.Value.NotInFutureError(
+        var err = error ?? Error.NotInFuture(
+            property: check.Property,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
             propertyName: check.PropertyName,
@@ -640,30 +379,8 @@ public static class TimeCheckFieldExtensions
         if (!check.ShouldContinue || check.Property.Offset == TimeSpan.Zero) 
             return check;
 
-        var err = error ?? check.Property.UtcError(
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, DateTimeOffset?> UtcIfHasValue<TOwner>(
-        this CheckField<TOwner, DateTimeOffset?> check,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue) 
-            return check;
-
-        var v = check.Property.Value;
-        
-        if (v.Offset == TimeSpan.Zero)
-            return check;
-
-        var err = error ?? v.UtcError(
+        var err = error ?? Error.Utc(
+            property: check.Property,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
             propertyName: check.PropertyName,
@@ -689,7 +406,8 @@ public static class TimeCheckFieldExtensions
         if (!overlap)
             return start;
 
-        var err = error ?? start.Property.NotOverlappingError(
+        var err = error ?? Error.NotOverlapping(
+            property: start.Property,
             isInvariant: start.IsInvariant,
             codePrefix: start.OwnerName,
             propertyName: start.PropertyName,
@@ -712,32 +430,8 @@ public static class TimeCheckFieldExtensions
         if (!check.ShouldContinue || check.Property > time) 
             return check;
 
-        var err = error ?? check.Property.AfterError(
-            time: F(time),
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, DateOnly?> AfterIfHasValue<TOwner>(
-        this CheckField<TOwner, DateOnly?> check,
-        DateOnly time,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue) 
-            return check;
-
-        var v = check.Property.Value;
-        
-        if (v > time)
-            return check;
-
-        var err = error ?? v.AfterError(
+        var err = error ?? Error.After(
+            property: check.Property,
             time: F(time),
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
@@ -757,32 +451,8 @@ public static class TimeCheckFieldExtensions
         if (!check.ShouldContinue || check.Property < time) 
             return check;
 
-        var err = error ?? check.Property.BeforeError(
-            time: F(time),
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, DateOnly?> BeforeIfHasValue<TOwner>(
-        this CheckField<TOwner, DateOnly?> check,
-        DateOnly time,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue)
-            return check;
-
-        var v = check.Property.Value;
-        
-        if (v < time) 
-            return check;
-
-        var err = error ?? v.BeforeError(
+        var err = error ?? Error.Before(
+            property: check.Property,
             time: F(time),
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
@@ -800,42 +470,11 @@ public static class TimeCheckFieldExtensions
         string? message = null,
         Error? error = null)
     {
-        if (!check.ShouldContinue) 
+        if (!check.ShouldContinue || check.Property >= start && check.Property <= end) 
             return check;
 
-        var v = check.Property;
-        
-        if (v >= start && v <= end) 
-            return check;
-
-        var err = error ?? v.TimeRangeError(
-            timeStart: F(start),
-            timeEnd: F(end),
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, DateOnly?> TimeRangeIfHasValue<TOwner>(
-        this CheckField<TOwner, DateOnly?> check,
-        DateOnly start,
-        DateOnly end,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue) 
-            return check;
-
-        var v = check.Property.Value;
-        
-        if (v >= start && v <= end) 
-            return check;
-
-        var err = error ?? v.TimeRangeError(
+        var err = error ?? Error.TimeRange(
+            property: check.Property,
             timeStart: F(start),
             timeEnd: F(end),
             isInvariant: check.IsInvariant,
@@ -860,31 +499,8 @@ public static class TimeCheckFieldExtensions
         if (check.Property >= today)
             return check;
 
-        var err = error ?? check.Property.NotInPastError(
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, DateOnly?> NotInPastIfHasValue<TOwner>(
-        this CheckField<TOwner, DateOnly?> check,
-        Func<DateOnly>? todayProvider = null,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue)
-            return check;
-
-        var today = (todayProvider ?? (() => DateOnly.FromDateTime(DateTime.UtcNow)))();
-        
-        if (check.Property.Value >= today)
-            return check;
-
-        var err = error ?? check.Property.Value.NotInPastError(
+        var err = error ?? Error.NotInPast(
+            property: check.Property,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
             propertyName: check.PropertyName,
@@ -908,31 +524,8 @@ public static class TimeCheckFieldExtensions
         if (check.Property <= today) 
             return check;
 
-        var err = error ?? check.Property.NotInFutureError(
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, DateOnly?> NotInFutureIfHasValue<TOwner>(
-        this CheckField<TOwner, DateOnly?> check,
-        Func<DateOnly>? todayProvider = null,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue)
-            return check;
-
-        var today = (todayProvider ?? (() => DateOnly.FromDateTime(DateTime.UtcNow)))();
-        
-        if (check.Property.Value <= today)
-            return check;
-
-        var err = error ?? check.Property.Value.NotInFutureError(
+        var err = error ?? Error.NotInFuture(
+            property: check.Property,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
             propertyName: check.PropertyName,
@@ -960,7 +553,8 @@ public static class TimeCheckFieldExtensions
 
         message ??= $"{start.FieldName} must not overlap with [{F(otherStart)}, {F(otherEnd)}).";
 
-        var err = error ?? start.Property.NotOverlappingError(
+        var err = error ?? Error.NotOverlapping(
+            property: start.Property,
             isInvariant: start.IsInvariant,
             codePrefix: start.OwnerName,
             propertyName: start.PropertyName,
@@ -983,7 +577,8 @@ public static class TimeCheckFieldExtensions
         if (!check.ShouldContinue || check.Property > time) 
             return check;
 
-        var err = error ?? check.Property.AfterError(
+        var err = error ?? Error.After(
+            property: check.Property,
             time: F(time),
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
@@ -1000,9 +595,11 @@ public static class TimeCheckFieldExtensions
         string? message = null,
         Error? error = null)
     {
-        if (!check.ShouldContinue || check.Property < time) return check;
+        if (!check.ShouldContinue || check.Property < time) 
+            return check;
 
-        var err = error ?? check.Property.BeforeError(
+        var err = error ?? Error.Before(
+            property: check.Property,
             time: F(time),
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
@@ -1020,14 +617,11 @@ public static class TimeCheckFieldExtensions
         string? message = null,
         Error? error = null)
     {
-        if (!check.ShouldContinue) return check;
-
-        var v = check.Property;
-        
-        if (v >= start && v <= end) 
+        if (!check.ShouldContinue || check.Property >= start && check.Property <= end)
             return check;
 
-        var err = error ?? v.TimeRangeError(
+        var err = error ?? Error.TimeRange(
+            property: check.Property,
             timeStart: F(start),
             timeEnd: F(end),
             isInvariant: check.IsInvariant,
@@ -1053,31 +647,8 @@ public static class TimeCheckFieldExtensions
         if (check.Property >= now)
             return check;
 
-        var err = error ?? check.Property.NotInPastError(
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, TimeSpan?> NotInPastIfHasValue<TOwner>(
-        this CheckField<TOwner, TimeSpan?> check,
-        Func<TimeSpan>? nowTimeOfDayProvider = null,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue) 
-            return check;
-
-        var now = (nowTimeOfDayProvider ?? (() => DateTime.UtcNow.TimeOfDay))();
-        
-        if (check.Property.Value >= now)
-            return check;
-
-        var err = error ?? check.Property.Value.NotInPastError(
+        var err = error ?? Error.NotInPast(
+            property: check.Property,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
             propertyName: check.PropertyName,
@@ -1101,31 +672,8 @@ public static class TimeCheckFieldExtensions
         if (check.Property <= now) 
             return check;
 
-        var err = error ?? check.Property.NotInFutureError(
-            isInvariant: check.IsInvariant,
-            codePrefix: check.OwnerName,
-            propertyName: check.PropertyName,
-            field: check.FieldName,
-            message: message);
-
-        return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, TimeSpan?> NotInFutureIfHasValue<TOwner>(
-        this CheckField<TOwner, TimeSpan?> check,
-        Func<TimeSpan>? nowTimeOfDayProvider = null,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue) 
-            return check;
-
-        var now = (nowTimeOfDayProvider ?? (() => DateTime.UtcNow.TimeOfDay))();
-        
-        if (check.Property.Value <= now)
-            return check;
-
-        var err = error ?? check.Property.Value.NotInFutureError(
+        var err = error ?? Error.NotInFuture(
+            property: check.Property,
             isInvariant: check.IsInvariant,
             codePrefix: check.OwnerName,
             propertyName: check.PropertyName,
@@ -1143,14 +691,16 @@ public static class TimeCheckFieldExtensions
         string? message = null,
         Error? error = null)
     {
-        if (!start.ShouldContinue) return start;
+        if (!start.ShouldContinue) 
+            return start;
 
         var overlap = start.Property < otherEnd && otherStart < end;
         
         if (!overlap)
             return start;
 
-        var err = error ?? start.Property.NotOverlappingError(
+        var err = error ?? Error.NotOverlapping(
+            property: start.Property,
             isInvariant: start.IsInvariant,
             codePrefix: start.OwnerName,
             propertyName: start.PropertyName,
@@ -1159,54 +709,6 @@ public static class TimeCheckFieldExtensions
 
         return start.Fail(err);
     }
-    
-    extension<TOwner>(CheckField<TOwner, TimeSpan?> check)
-    {
-        public CheckField<TOwner, TimeSpan?> AfterIfHasValue(TimeSpan time,
-            string? message = null, Error? error = null)
-        {
-            if (!check.ShouldContinue || !check.Property.HasValue) 
-                return check;
-        
-            return check.Property.Value
-                .Narrowed(check)
-                .After(time, message, error)
-                .Widen();
-        }
-
-        public CheckField<TOwner, TimeSpan?> BeforeIfHasValue(TimeSpan time,
-            string? message = null, Error? error = null)
-        {
-            if (!check.ShouldContinue || !check.Property.HasValue)
-                return check;
-        
-            return check.Property.Value
-                .Narrowed(check)
-                .Before(time, message, error)
-                .Widen();
-        }
-
-        public CheckField<TOwner, TimeSpan?> TimeRangeIfHasValue(TimeSpan start, TimeSpan end,
-            string? message = null, Error? error = null)
-        {
-            if (!check.ShouldContinue || !check.Property.HasValue)
-                return check;
-        
-            return check.Property.Value
-                .Narrowed(check)
-                .TimeRange(start, end, message, error)
-                .Widen();
-        }
-    }
-
-    // --- tiny helpers to reuse non-null impl without duplicating logic
-    private static CheckField<TOwner, TimeSpan> Narrowed<TOwner>(
-        this TimeSpan value, CheckField<TOwner, TimeSpan?> origin)
-        => origin.Narrow(value);
-
-    private static CheckField<TOwner, TimeSpan?> Widen<TOwner>(
-        this CheckField<TOwner, TimeSpan> narrowed)
-        => narrowed.Narrow<TimeSpan?>(narrowed.Property);
 
     #region TimeSpan Time Of Day Checks
 
@@ -1225,7 +727,8 @@ public static class TimeCheckFieldExtensions
             if (check.Property >= now.TimeOfDay)
                 return check;
 
-            var err = error ?? check.Property.NotInPastError(
+            var err = error ?? Error.NotInPast(
+                property: check.Property,
                 isInvariant: check.IsInvariant,
                 codePrefix: check.OwnerName,
                 propertyName: check.PropertyName,
@@ -1248,7 +751,8 @@ public static class TimeCheckFieldExtensions
             if (check.Property <= now.TimeOfDay)
                 return check;
 
-            var err = error ?? check.Property.NotInFutureError(
+            var err = error ?? Error.NotInFuture(
+                property: check.Property,
                 isInvariant: check.IsInvariant,
                 codePrefix: check.OwnerName,
                 propertyName: check.PropertyName,
@@ -1257,36 +761,6 @@ public static class TimeCheckFieldExtensions
 
             return check.Fail(err);
         }
-    }
-
-    // nullable (skip if null)
-    public static CheckField<TOwner, TimeSpan?> NotInPastTimeOfDayIfHasValue<TOwner>(
-        this CheckField<TOwner, TimeSpan?> check,
-        Func<DateTime>? nowProvider = null,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue)
-            return check;
-        
-        return check
-            .Narrow(check.Property.Value)
-            .NotInPastTimeOfDay(nowProvider, message, error)
-            .Narrow<TimeSpan?>(check.Property);
-    }
-
-    public static CheckField<TOwner, TimeSpan?> NotInFutureTimeOfDayIfHasValue<TOwner>(
-        this CheckField<TOwner, TimeSpan?> check,
-        Func<DateTime>? nowProvider = null,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue)
-            return check;
-        return check
-            .Narrow(check.Property.Value)
-            .NotInFutureTimeOfDay(nowProvider, message, error)
-            .Narrow<TimeSpan?>(check.Property);
     }
     
     // ---------------------------------------------------------------------
@@ -1302,7 +776,8 @@ public static class TimeCheckFieldExtensions
         string? message = null,
         Error? error = null)
     {
-        if (!check.ShouldContinue) return check;
+        if (!check.ShouldContinue)
+            return check;
 
         GuardTimeOfDay(start, nameof(start));
         GuardTimeOfDay(end, nameof(end));
@@ -1311,7 +786,8 @@ public static class TimeCheckFieldExtensions
         {
             // Property invalid as time-of-day
             message ??= $"{check.FieldName} must be a time-of-day in [00:00, 24:00).";
-            var errInvalid = error ?? check.Property.TimeRangeError(
+            var errInvalid = error ?? Error.TimeRange(
+                property: check.Property,
                 timeStart: F(TimeSpan.Zero),
                 timeEnd: F(MaxTimeOfDay),
                 isInvariant: check.IsInvariant,
@@ -1326,7 +802,8 @@ public static class TimeCheckFieldExtensions
         if (ContainsCircular(check.Property, start, end, inclusiveEnd, treatEqualAsFullDay))
             return check;
 
-        var err = error ?? check.Property.TimeRangeError(
+        var err = error ?? Error.TimeRange(
+            property: check.Property,
             timeStart: F(start),
             timeEnd: F(end),
             isInvariant: check.IsInvariant,
@@ -1336,25 +813,6 @@ public static class TimeCheckFieldExtensions
             message: message);
 
         return check.Fail(err);
-    }
-
-    public static CheckField<TOwner, TimeSpan?> TimeOfDayRangeIfHasValue<TOwner>(
-        this CheckField<TOwner, TimeSpan?> check,
-        TimeSpan start,
-        TimeSpan end,
-        bool inclusiveEnd = true,
-        bool treatEqualAsFullDay = true,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!check.ShouldContinue || !check.Property.HasValue) return check;
-
-        // reuse non-null impl (carry fieldFailed via Narrow)
-        var narrowed = check
-            .Narrow(check.Property.Value)
-            .TimeOfDayRange(start, end, inclusiveEnd, treatEqualAsFullDay, message, error);
-
-        return check; // state đã được fail vào State; nullable check giữ nguyên type
     }
 
     // ---------------------------------------------------------------------
@@ -1387,44 +845,28 @@ public static class TimeCheckFieldExtensions
         var aCount = Expand(start.Property, end, aBuf, treatEqualAsFullDay);
         var bCount = Expand(otherStart, otherEnd, bBuf, treatEqualAsFullDay);
 
-        for (int i = 0; i < aCount; i++)
-        for (int j = 0; j < bCount; j++)
+        for (var i = 0; i < aCount; i++)
+        for (var j = 0; j < bCount; j++)
         {
-            if (OverlapsHalfOpen(aBuf[i], bBuf[j]))
-            {
-                // Bạn có thể tự override message cho rõ overlap với khoảng nào
-                message ??= $"{start.FieldName} must not overlap with [{F(otherStart)}, {F(otherEnd)}) (time-of-day).";
+            if (!OverlapsHalfOpen(aBuf[i], bBuf[j]))
+                continue;
+            
+            // Bạn có thể tự override message cho rõ overlap với khoảng nào
+            message ??= $"{start.FieldName} must not overlap with [{F(otherStart)}, {F(otherEnd)}) (time-of-day).";
 
-                var err = error ?? start.Property.NotOverlappingError(
-                    isInvariant: start.IsInvariant,
-                    codePrefix: start.OwnerName,
-                    propertyName: start.PropertyName,
-                    field: start.FieldName,
-                    message: message);
+            var err = error ?? Error.NotOverlapping(
+                property: start.Property,
+                isInvariant: start.IsInvariant,
+                codePrefix: start.OwnerName,
+                propertyName: start.PropertyName,
+                field: start.FieldName,
+                message: message);
 
-                return start.Fail(err);
-            }
+            return start.Fail(err);
         }
 
         return start;
     }
-
-    public static CheckField<TOwner, TimeSpan?> NotOverlappingTimeOfDayIfHasValue<TOwner>(
-        this CheckField<TOwner, TimeSpan?> start,
-        TimeSpan end,
-        TimeSpan otherStart,
-        TimeSpan otherEnd,
-        bool treatEqualAsFullDay = true,
-        string? message = null,
-        Error? error = null)
-    {
-        if (!start.ShouldContinue || !start.Property.HasValue) return start;
-
-        // narrow then validate overlap; state fail sẽ được ghi vào State
-        start.Narrow(start.Property.Value)
-            .NotOverlappingTimeOfDay(end, otherStart, otherEnd, treatEqualAsFullDay, message, error);
-
-        return start;
-    }
+    
     #endregion
 }

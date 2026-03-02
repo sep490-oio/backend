@@ -1,8 +1,8 @@
 ﻿using OIO.Application.Abstractions.Messaging;
 using OIO.Application.UserContext.DTOs;
-using OIO.Domain.Constants;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Application.UserContext.Commands.RegisterUser;
 
@@ -20,29 +20,29 @@ public sealed record RegisterUserCommand(
             .WithOwnerName("RegisterUser")
             .Field(Email)
             .NotWhiteSpace()
-            .MaxLength(Constraints.UserEmail.MaxLength)
-            .Matches(Constraints.UserEmail.Regex)
+            .MaxLength(App.Constraint.UserEmail.MaxLength)
+            .Matches(App.Constraint.UserEmail.Regex)
             .Field(UserName)
             .NotWhiteSpace()
-            .MinLength(Constraints.UserName.MinLength)
-            .MaxLength(Constraints.UserName.MaxLength)
-            .Matches(Constraints.UserName.Regex)
+            .MinLength(App.Constraint.UserName.MinLength)
+            .MaxLength(App.Constraint.UserName.MaxLength)
+            .Matches(App.Constraint.UserName.Regex)
             .Field(Password)
             .NotWhiteSpace()
-            .MinLength(Constraints.Password.MinLength)
-            .MaxLength(Constraints.Password.MaxLength)
+            .MinLength(App.Constraint.Password.MinLength)
+            .MaxLength(App.Constraint.Password.MaxLength)
             .Format(
-                message: Constraints.Password.FormatMessage,
-                validators: Constraints.Password.Validator)
+                message: App.Constraint.Password.FormatMessage,
+                validators: App.Constraint.Password.Validator)
             .Field(FirstName)
             .When(FirstName is not null, x => 
                 x.NotNullOrWhiteSpace()
-                .MaxLength(Constraints.UserName.MaxLength)
-                .MinLength(Constraints.UserName.MinLength)!)
+                .MaxLength(App.Constraint.FirstName.MaxLength)
+                .MinLength(App.Constraint.FirstName.MinLength)!)
             .Field(LastName)
             .When(LastName is not null, x => 
                 x.NotNullOrWhiteSpace()
-                .MaxLength(Constraints.UserName.MaxLength)
-                .MinLength(Constraints.UserName.MinLength)!);
+                .MaxLength(App.Constraint.LastName.MaxLength)
+                .MinLength(App.Constraint.LastName.MinLength)!);
     }
 }

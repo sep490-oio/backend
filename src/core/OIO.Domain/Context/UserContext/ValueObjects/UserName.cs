@@ -1,5 +1,4 @@
 ﻿using CSharpFunctionalExtensions;
-using OIO.Domain.Constants;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
 
@@ -7,6 +6,7 @@ namespace OIO.Domain.Context.UserContext.ValueObjects;
 
 public sealed class UserName : ValueObject
 {
+    private UserName(){}
     private UserName(string value)
     {
         Value = value;
@@ -17,14 +17,14 @@ public sealed class UserName : ValueObject
     
     public string Normalized { get; private set; }
     
-    public static Result<UserName, ViolationsError> Create(string value)
+    public static Result<UserName, ViolationsError> Create(string? value)
     {
         var validateResult =  UserName
-            .Field(value, x => x.Value)!
+            .Field(value, x => x.Value)
             .NotNullOrWhiteSpace()
-            .MaxLength(Constraints.UserName.MaxLength)
-            .MinLength(Constraints.UserName.MinLength)
-            .Matches(Constraints.UserName.Regex, message: "User name can only contain alphanumeric characters and dashes.")
+            .MaxLength(AppDefinitions.App.Constraint.UserName.MaxLength)
+            .MinLength(AppDefinitions.App.Constraint.UserName.MinLength)
+            .Matches(AppDefinitions.App.Constraint.UserName.Regex, message: "User name can only contain alphanumeric characters and dashes.")
             .ToViolationsError();
 
         if (validateResult.HasErrors)

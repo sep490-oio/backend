@@ -1,7 +1,7 @@
 using MediatR;
 using OIO.Api.Common;
-using OIO.Api.Extensions;
 using OIO.Application.UserContext.Commands.ChangeUserStatus;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.Admins;
 
@@ -11,16 +11,19 @@ public class ChangeUserStatusEndpoint : IEndpoint
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPatch("api/admin/users/{userId:guid}/status", async (Guid userId, Request request, ISender sender, CancellationToken ct) =>
+        app.MapPatch(ApiEndpoint.Url.Admins.ChangeUserStatus, async (
+                Guid userId,
+                Request request,
+                ISender sender,
+                CancellationToken ct) =>
             {
                 var command = new ChangeUserStatusCommand(userId, request.Status);
                 var result = await sender.Send(command, ct);
 
-                return result.IsFailure ? 
-                    result.Error.ProcessError() : 
-                    Results.NoContent();
+                return result.ToNoContentHttpResult();
             })
-            .AllowAnonymous()
-            .WithTags(Tags.Admins);
+            .RequireAuthorization(App.Permissions.Catalogs.Users.UpdateStatus)
+            .WithName(ApiEndpoint.Names.Admins.ChangeUserStatus)
+            .WithTags(ApiEndpoint.Tags.Admins);
     }
 }

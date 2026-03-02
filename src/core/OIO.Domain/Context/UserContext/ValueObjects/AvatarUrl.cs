@@ -1,5 +1,4 @@
 using CSharpFunctionalExtensions;
-using OIO.Domain.Constants;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
 
@@ -7,6 +6,7 @@ namespace OIO.Domain.Context.UserContext.ValueObjects;
 
 public sealed class AvatarUrl : ValueObject
 {
+    private AvatarUrl(){}
     private AvatarUrl(string value)
     {
         Value = value;
@@ -19,8 +19,8 @@ public sealed class AvatarUrl : ValueObject
         var validateResult = AvatarUrl
             .Field(value, nameof(Value))
             .NotNullOrWhiteSpace()
-            .MaxLength(Constraints.AvatarUrl.MaxLength)
-            .MinLength(Constraints.AvatarUrl.MinLength)
+            .MaxLength(AppDefinitions.App.Constraint.AvatarUrl.MaxLength)
+            .MinLength(AppDefinitions.App.Constraint.AvatarUrl.MinLength)
             .ToViolationsError();
 
         if (validateResult.HasErrors)

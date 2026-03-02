@@ -6,9 +6,9 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.UserContext.Services;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Errors;
-using OIO.Domain.Context.UserContext.Repositories;
 using OIO.Domain.Context.UserContext.Services;
 using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.UserContext.Commands.ChangePassword;
@@ -23,7 +23,6 @@ internal sealed class ChangePasswordCommandHandler
     private readonly IClock _clock;
 
     public ChangePasswordCommandHandler(
-        IUserRepository userRepository,
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
@@ -43,13 +42,10 @@ internal sealed class ChangePasswordCommandHandler
     {
         var nowUtc = _clock.UtcNow;
 
-        if (_currentUser.UserId is null)
-            return UserErrors.Auth.UserNotLoggedIn;
-
         var user = await _dbContext.GetByIdAsync<User, UserId>(
             _currentUser.UserId,
             queryBuilder: query => query
-                .Include(x => x.RefreshTokenFamilies)
+                .Include(x => x.Sessions)
                 .ThenInclude(x => x.Tokens),
             cancellationToken: cancellationToken);
         
@@ -70,7 +66,7 @@ internal sealed class ChangePasswordCommandHandler
         user.ChangePassword(newHashR.Value, nowUtc);
 
         // Revoke all refresh tokens for security
-        user.RevokeAllTokenFamilies("Password changed", nowUtc);
+        user.RevokeAllSession("Password changed", nowUtc);
         
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

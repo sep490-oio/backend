@@ -2,16 +2,17 @@
 using CSharpFunctionalExtensions;
 using OIO.Domain.Context.UserContext.Errors;
 using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Domain.Context.UserContext.Aggregates.Users;
 
 //TODO: đổi tên UserRefreshTokenFamily thành UserSession
-public sealed class UserRefreshTokenFamily : SeedWork.Entities.Entity<UserRefreshTokenFamilyId>, ICreatedAtEntity
+public sealed class UserSession : BaseEntity<UserSessionId>, ICreatedAtEntity
 {
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
-    private UserRefreshTokenFamily() {}
+    private UserSession() {}
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
     
     private readonly List<UserRefreshToken> _tokens = [];
@@ -41,8 +42,8 @@ public sealed class UserRefreshTokenFamily : SeedWork.Entities.Entity<UserRefres
     
     public bool IsExpired(DateTime now) => now >= ExpiresAt;
     
-    internal UserRefreshTokenFamily(
-        UserRefreshTokenFamilyId id,
+    internal UserSession(
+        UserSessionId id,
         UserId userId,
         Guid deviceId,
         string userAgent,
@@ -78,7 +79,7 @@ public sealed class UserRefreshTokenFamily : SeedWork.Entities.Entity<UserRefres
     public bool IsNearingAbsoluteExpiration(DateTime now) =>
         RemainingAbsoluteTime(now) < TimeSpan.FromDays(1) && !IsAbsoluteExpired(now);
 
-    public static Result<UserRefreshTokenFamily, Error> Create(
+    public static Result<UserSession, Error> Create(
         UserId userId,
         Guid deviceId,
         string userAgent,
@@ -87,9 +88,9 @@ public sealed class UserRefreshTokenFamily : SeedWork.Entities.Entity<UserRefres
         TimeSpan absoluteExpiration,
         DateTime now)
     {
-        var family = new UserRefreshTokenFamily
+        var session = new UserSession
         {
-            Id = UserRefreshTokenFamilyId.Create(),
+            Id = UserSessionId.From(Guid.CreateVersion7()),
             UserId = userId,
             DeviceId = deviceId,
             UserAgent = userAgent,
@@ -101,7 +102,7 @@ public sealed class UserRefreshTokenFamily : SeedWork.Entities.Entity<UserRefres
             LastRotatedAt = now
         };
 
-        return family;
+        return session;
     }
 
     internal Result<UserRefreshToken, Error> CreateToken(
@@ -117,7 +118,7 @@ public sealed class UserRefreshTokenFamily : SeedWork.Entities.Entity<UserRefres
 
         var token = UserRefreshToken.Create(
             userId: UserId,
-            familyId: Id,
+            sessionId: Id,
             tokenHash: tokenHash,
             parentTokenId: null,
             ipAddress: ipAddress,
@@ -142,7 +143,7 @@ public sealed class UserRefreshTokenFamily : SeedWork.Entities.Entity<UserRefres
         if (activeR.IsFailure) 
             return Result.Failure<UserRefreshToken, Error>(activeR.Error);
 
-        if (currentToken.FamilyId != Id)
+        if (currentToken.SessionId != Id)
             return UserErrors.RefreshToken.NotInSession;
 
         if (currentToken.IsUsed)
@@ -165,7 +166,7 @@ public sealed class UserRefreshTokenFamily : SeedWork.Entities.Entity<UserRefres
         
         var newToken = UserRefreshToken.Create(
             userId: UserId,
-            familyId: Id,
+            sessionId: Id,
             tokenHash: newTokenHash,
             parentTokenId: currentToken.Id,
             ipAddress: ipAddress,

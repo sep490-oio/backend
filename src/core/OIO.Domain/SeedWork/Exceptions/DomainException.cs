@@ -1,18 +1,20 @@
-﻿namespace OIO.Domain.SeedWork.Exceptions;
+﻿using OIO.Domain.SeedWork.Errors;
+
+namespace OIO.Domain.SeedWork.Exceptions;
 
 public abstract class DomainException : Exception
 {
-    public string Code { get; }
+    public Error Error { get; }
 
-    protected DomainException(string code, string message)
-        : base(message)
+    protected DomainException(Error error)
+        : base(error.Message)
     {
-        Code = code;
+        Error = error;
     }
 
-    protected DomainException(string code, string message, Exception innerException)
-        : base(message, innerException)
+    protected DomainException(Error error, Exception innerException)
+        : base(error.Message, innerException)
     {
-        Code = code;
+        Error = error;
     }
 }

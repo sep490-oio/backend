@@ -8,7 +8,7 @@ using OIO.Application.UserContext.Services;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Enums;
 using OIO.Domain.Context.UserContext.Errors;
-using OIO.Domain.Context.UserContext.Repositories;
+
 using OIO.Domain.Context.UserContext.Services;
 using OIO.Domain.Context.UserContext.ValueObjects;
 using OIO.Domain.SeedWork.Errors;
@@ -27,7 +27,6 @@ internal sealed class LoginUserCommandHandler
     private readonly IClock _clock;
 
     public LoginUserCommandHandler(
-        IUserRepository userRepository,
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
@@ -58,7 +57,7 @@ internal sealed class LoginUserCommandHandler
         
         var user = await _dbContext.Set<User>()
             .Where(x => x.Email.Normalized == account || x.UserName.Normalized == account)
-            .Include(x => x.RefreshTokenFamilies)
+            .Include(x => x.Sessions)
             .ThenInclude(x => x.Tokens)
             .Include(x => x.Roles)
             .ThenInclude(x => x.Role)
@@ -76,8 +75,8 @@ internal sealed class LoginUserCommandHandler
         if (lockedR.IsFailure)
             return await FailLogin(lockedR.Error);
 
-        if (user.Status == UserStatus.Banned)
-            return UserErrors.User.UserBanned;
+        if (user.Status == UserStatus.Locked)
+            return UserErrors.User.UserLocked;
         
         if (user.Status == UserStatus.Inactive)
             return UserErrors.User.UserInactive;
