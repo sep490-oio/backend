@@ -58,30 +58,30 @@ jobs:
           APP_VERSION: ${{ github.sha }}
 
           # Aspire Parameters for AppHost
-          Parameters__jwt_secret_key: ${{ secrets.JWT_SECRET_KEY }}
-          Parameters__jwt_audience: ${{ vars.JWT_AUDIENCE }}
-          Parameters__jwt_issuer: ${{ vars.JWT_ISSUER }}
-          Parameters__jwt_access_token_expiration: ${{ vars.JWT_ACCESS_TOKEN_EXPIRATION }}
-          Parameters__jwt_refresh_token_expiration: ${{ vars.JWT_REFRESH_TOKEN_EXPIRATION }}
-          Parameters__jwt_refresh_token_family_sliding_expiration: ${{ vars.JWT_REFRESH_TOKEN_FAMILY_SLIDING_EXPIRATION }}
-          Parameters__jwt_refresh_token_family_absolute_expiration: ${{ vars.JWT_REFRESH_TOKEN_FAMILY_ABSOLUTE_EXPIRATION }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          JWT_AUDIENCE: ${{ vars.JWT_AUDIENCE }}
+          JWT_ISSUER: ${{ vars.JWT_ISSUER }}
+          JWT_ACCESS_TOKEN_EXPIRATION: ${{ vars.JWT_ACCESS_TOKEN_EXPIRATION }}
+          JWT_REFRESH_TOKEN_EXPIRATION: ${{ vars.JWT_REFRESH_TOKEN_EXPIRATION }}
+          JWT_REFRESH_TOKEN_FAMILY_SLIDING_EXPIRATION: ${{ vars.JWT_REFRESH_TOKEN_FAMILY_SLIDING_EXPIRATION }}
+          JWT_REFRESH_TOKEN_FAMILY_ABSOLUTE_EXPIRATION: ${{ vars.JWT_REFRESH_TOKEN_FAMILY_ABSOLUTE_EXPIRATION }}
 
-          Parameters__mediatr_license_key: ${{ secrets.MEDIATR_LICENSE_KEY }}
+          MEDIATR_LICENSE_KEY: ${{ secrets.MEDIATR_LICENSE_KEY }}
 
-          Parameters__email_host: ${{ vars.EMAIL_HOST }}
-          Parameters__email_port: ${{ vars.EMAIL_PORT }}
-          Parameters__email_username: ${{ secrets.EMAIL_USERNAME }}
-          Parameters__email_password: ${{ secrets.EMAIL_PASSWORD }}
-          Parameters__email_use_start_tls: ${{ vars.EMAIL_USE_START_TLS }}
-          Parameters__email_from_address: ${{ vars.EMAIL_FROM_ADDRESS }}
-          Parameters__email_from_name: ${{ vars.EMAIL_FROM_NAME }}
+          EMAIL_HOST: ${{ vars.EMAIL_HOST }}
+          EMAIL_PORT: ${{ vars.EMAIL_PORT }}
+          EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_USE_START_TLS: ${{ vars.EMAIL_USE_START_TLS }}
+          EMAIL_FROM_ADDRESS: ${{ vars.EMAIL_FROM_ADDRESS }}
+          EMAIL_FROM_NAME: ${{ vars.EMAIL_FROM_NAME }}
 
-          Parameters__default_account_email: ${{ secrets.DEFAULT_ACCOUNT_EMAIL }}
-          Parameters__default_account_user_name: ${{ secrets.DEFAULT_ACCOUNT_USERNAME }}
-          Parameters__default_account_password: ${{ secrets.DEFAULT_ACCOUNT_PASSWORD }}
-          Parameters__default_account_first_name: ${{ vars.DEFAULT_ACCOUNT_FIRSTNAME }}
-          Parameters__default_account_last_name: ${{ vars.DEFAULT_ACCOUNT_LASTNAME }}
-          Parameters__default_account_display_name: ${{ vars.DEFAULT_ACCOUNT_DISPLAYNAME }}
+          DEFAULT_ACCOUNT_EMAIL: ${{ secrets.DEFAULT_ACCOUNT_EMAIL }}
+          DEFAULT_ACCOUNT_USERNAME: ${{ secrets.DEFAULT_ACCOUNT_USERNAME }}
+          DEFAULT_ACCOUNT_PASSWORD: ${{ secrets.DEFAULT_ACCOUNT_PASSWORD }}
+          DEFAULT_ACCOUNT_FIRSTNAME: ${{ vars.DEFAULT_ACCOUNT_FIRSTNAME }}
+          DEFAULT_ACCOUNT_LASTNAME: ${{ vars.DEFAULT_ACCOUNT_LASTNAME }}
+          DEFAULT_ACCOUNT_DISPLAYNAME: ${{ vars.DEFAULT_ACCOUNT_DISPLAYNAME }}
         run: |
           aspire do push
 
@@ -91,30 +91,30 @@ jobs:
           REGISTRY_REPOSITORY: ${{ github.repository }}
           APP_VERSION: ${{ github.sha }}
 
-          Parameters__jwt_secret_key: ${{ secrets.JWT_SECRET_KEY }}
-          Parameters__jwt_audience: ${{ vars.JWT_AUDIENCE }}
-          Parameters__jwt_issuer: ${{ vars.JWT_ISSUER }}
-          Parameters__jwt_access_token_expiration: ${{ vars.JWT_ACCESS_TOKEN_EXPIRATION }}
-          Parameters__jwt_refresh_token_expiration: ${{ vars.JWT_REFRESH_TOKEN_EXPIRATION }}
-          Parameters__jwt_refresh_token_family_sliding_expiration: ${{ vars.JWT_REFRESH_TOKEN_FAMILY_SLIDING_EXPIRATION }}
-          Parameters__jwt_refresh_token_family_absolute_expiration: ${{ vars.JWT_REFRESH_TOKEN_FAMILY_ABSOLUTE_EXPIRATION }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          JWT_AUDIENCE: ${{ vars.JWT_AUDIENCE }}
+          JWT_ISSUER: ${{ vars.JWT_ISSUER }}
+          JWT_ACCESS_TOKEN_EXPIRATION: ${{ vars.JWT_ACCESS_TOKEN_EXPIRATION }}
+          JWT_REFRESH_TOKEN_EXPIRATION: ${{ vars.JWT_REFRESH_TOKEN_EXPIRATION }}
+          JWT_REFRESH_TOKEN_FAMILY_SLIDING_EXPIRATION: ${{ vars.JWT_REFRESH_TOKEN_FAMILY_SLIDING_EXPIRATION }}
+          JWT_REFRESH_TOKEN_FAMILY_ABSOLUTE_EXPIRATION: ${{ vars.JWT_REFRESH_TOKEN_FAMILY_ABSOLUTE_EXPIRATION }}
 
-          Parameters__mediatr_license_key: ${{ secrets.MEDIATR_LICENSE_KEY }}
+          MEDIATR_LICENSE_KEY: ${{ secrets.MEDIATR_LICENSE_KEY }}
 
-          Parameters__email_host: ${{ vars.EMAIL_HOST }}
-          Parameters__email_port: ${{ vars.EMAIL_PORT }}
-          Parameters__email_username: ${{ secrets.EMAIL_USERNAME }}
-          Parameters__email_password: ${{ secrets.EMAIL_PASSWORD }}
-          Parameters__email_use_start_tls: ${{ vars.EMAIL_USE_START_TLS }}
-          Parameters__email_from_address: ${{ vars.EMAIL_FROM_ADDRESS }}
-          Parameters__email_from_name: ${{ vars.EMAIL_FROM_NAME }}
+          EMAIL_HOST: ${{ vars.EMAIL_HOST }}
+          EMAIL_PORT: ${{ vars.EMAIL_PORT }}
+          EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_USE_START_TLS: ${{ vars.EMAIL_USE_START_TLS }}
+          EMAIL_FROM_ADDRESS: ${{ vars.EMAIL_FROM_ADDRESS }}
+          EMAIL_FROM_NAME: ${{ vars.EMAIL_FROM_NAME }}
 
-          Parameters__default_account_email: ${{ secrets.DEFAULT_ACCOUNT_EMAIL }}
-          Parameters__default_account_user_name: ${{ secrets.DEFAULT_ACCOUNT_USERNAME }}
-          Parameters__default_account_password: ${{ secrets.DEFAULT_ACCOUNT_PASSWORD }}
-          Parameters__default_account_first_name: ${{ vars.DEFAULT_ACCOUNT_FIRSTNAME }}
-          Parameters__default_account_last_name: ${{ vars.DEFAULT_ACCOUNT_LASTNAME }}
-          Parameters__default_account_display_name: ${{ vars.DEFAULT_ACCOUNT_DISPLAYNAME }}
+          DEFAULT_ACCOUNT_EMAIL: ${{ secrets.DEFAULT_ACCOUNT_EMAIL }}
+          DEFAULT_ACCOUNT_USERNAME: ${{ secrets.DEFAULT_ACCOUNT_USERNAME }}
+          DEFAULT_ACCOUNT_PASSWORD: ${{ secrets.DEFAULT_ACCOUNT_PASSWORD }}
+          DEFAULT_ACCOUNT_FIRSTNAME: ${{ vars.DEFAULT_ACCOUNT_FIRSTNAME }}
+          DEFAULT_ACCOUNT_LASTNAME: ${{ vars.DEFAULT_ACCOUNT_LASTNAME }}
+          DEFAULT_ACCOUNT_DISPLAYNAME: ${{ vars.DEFAULT_ACCOUNT_DISPLAYNAME }}
           
         run: |
           rm -rf aspire-output deploy-bundle
@@ -189,7 +189,7 @@ jobs:
         run: |
           ssh -T -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" "mkdir -p /opt/myapp"
           scp -P "${VPS_PORT:-22}" deploy-bundle/docker-compose.yaml "$VPS_USER@$VPS_HOST:/opt/myapp/docker-compose.yaml"
-          scp -P "${VPS_PORT:-22}" deploy-bundle/.env "$VPS_USER@$VPS_HOST:/opt/myapp/.env"
+          scp -P "${VPS_PORT:-22}" deploy-bundle/.env.Production "$VPS_USER@$VPS_HOST:/opt/myapp/.env.Production"
           sleep 3
 
       - name: Deploy on VPS
@@ -209,7 +209,7 @@ jobs:
             if [ -n "${GHCR_PULL_USERNAME:-}" ] && [ -n "${GHCR_PULL_TOKEN:-}" ]; then
               echo "$GHCR_PULL_TOKEN" | docker login ghcr.io -u "$GHCR_PULL_USERNAME" --password-stdin
             fi
-            docker compose -f docker-compose.yaml --env-file .env pull
-            docker compose -f docker-compose.yaml --env-file .env up -d --remove-orphans
+            docker compose -f docker-compose.yaml --env-file .env.Production pull
+            docker compose -f docker-compose.yaml --env-file .env.Production up -d --remove-orphans
             docker image prune -af --filter "until=168h" || true
           EOF

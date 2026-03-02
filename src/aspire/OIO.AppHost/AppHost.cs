@@ -2,37 +2,6 @@
 #pragma warning disable ASPIRECOMPUTE003
 var builder = DistributedApplication.CreateBuilder(args);
 
-// =========================
-// Parameters
-// =========================
-// Secret
-var mediatrLicenseKey = builder.AddParameter("mediatr-license-key", secret: true);
-
-// Non-secret
-var jwtSecretKey = builder.AddParameter("jwt-secret-key", secret: true);
-var jwtAudience = builder.AddParameter("jwt-audience");
-var jwtIssuer = builder.AddParameter("jwt-issuer");
-var jwtAccessTokenExpiration = builder.AddParameter("jwt-access-token-expiration");
-var jwtRefreshTokenExpiration = builder.AddParameter("jwt-refresh-token-expiration");
-var jwtRefreshTokenFamilySlidingExpiration = builder.AddParameter("jwt-refresh-token-family-sliding-expiration");
-var jwtRefreshTokenFamilyAbsoluteExpiration = builder.AddParameter("jwt-refresh-token-family-absolute-expiration");
-
-var emailHost = builder.AddParameter("email-host");
-var emailPassword = builder.AddParameter("email-password", secret: true);
-var emailPort = builder.AddParameter("email-port");
-var emailUsername = builder.AddParameter("email-username");
-var emailUseStartTls = builder.AddParameter("email-use-start-tls");
-var emailFromAddress = builder.AddParameter("email-from-address");
-var emailFromName = builder.AddParameter("email-from-name");
-
-var defaulAccountEmail = builder.AddParameter("default-account-email");
-var defaulAccountUsername = builder.AddParameter("default-account-user-name");
-var defaulAccountPassword = builder.AddParameter("default-account-password");
-var defaulAccountFirstName = builder.AddParameter("default-account-first-name");
-var defaulAccountLastName = builder.AddParameter("default-account-last-name");
-var defaulAccountDisplayName = builder.AddParameter("default-account-display-name");
-
-
 var docker = builder.AddDockerComposeEnvironment("compose")
     .WithDashboard(enabled: false);
 
@@ -50,20 +19,20 @@ var db = builder.AddPostgres("database")
     .AddDatabase("oio-mcbc");
 
 
-builder.AddProject<Projects.OIO_Api>("oio-api")
+var api = builder.AddProject<Projects.OIO_Api>("oio-api")
     // .WithHttpHealthCheck("/health")
     .WithReference(db, connectionName: "Database")
     .WaitFor(db)
     .PublishAsDockerComposeService((resource, service) =>
     {
         service.Name = "oio-api";
-        
+
         // Lấy các biến môi trường đã được truyền từ GitHub Actions workflow
         var endpoint = Environment.GetEnvironmentVariable("REGISTRY_ENDPOINT") ?? "ghcr.io";
         // GHCR yêu cầu tên repo phải viết thường toàn bộ
-        var repo = Environment.GetEnvironmentVariable("REGISTRY_REPOSITORY")?.ToLower(); 
+        var repo = Environment.GetEnvironmentVariable("REGISTRY_REPOSITORY")?.ToLower();
         var version = Environment.GetEnvironmentVariable("APP_VERSION") ?? "latest";
-        
+
         // Chỉ định rõ cấu trúc Image để ghi vào file docker-compose.yaml
         service.Image = $"{endpoint}/{repo}/oio-api:{version}";
     })
@@ -72,34 +41,37 @@ builder.AddProject<Projects.OIO_Api>("oio-api")
     {
         var version = Environment.GetEnvironmentVariable("APP_VERSION") ?? "latest";
         context.Options.RemoteImageTag = version;
-    })
+    });
 
-    // Jwt
-    .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
-    .WithEnvironment("Jwt__Audience", jwtAudience)
-    .WithEnvironment("Jwt__Issuer", jwtIssuer)
-    .WithEnvironment("Jwt__AccessTokenExpiration", jwtAccessTokenExpiration)
-    .WithEnvironment("Jwt__RefreshTokenExpiration", jwtRefreshTokenExpiration)
-    .WithEnvironment("Jwt__RefreshTokenFamilySlidingExpiration", jwtRefreshTokenFamilySlidingExpiration)
-    .WithEnvironment("Jwt__RefreshTokenFamilyAbsoluteExpiration", jwtRefreshTokenFamilyAbsoluteExpiration)
+AddEnvIfNotNull("JWT_SECRET_KEY", "Jwt__SecretKey");
+AddEnvIfNotNull("JWT_AUDIENCE", "Jwt__Audience");
+AddEnvIfNotNull("JWT_ISSUER", "Jwt__Issuer");
+AddEnvIfNotNull("JWT_ACCESS_TOKEN_EXPIRATION", "Jwt__AccessTokenExpiration");
+AddEnvIfNotNull("JWT_REFRESH_TOKEN_EXPIRATION", "Jwt__RefreshTokenExpiration");
+AddEnvIfNotNull("JWT_REFRESH_TOKEN_FAMILY_SLIDING_EXPIRATION", "Jwt__RefreshTokenFamilySlidingExpiration");
+AddEnvIfNotNull("JWT_REFRESH_TOKEN_FAMILY_ABSOLUTE_EXPIRATION", "Jwt__RefreshTokenFamilyAbsoluteExpiration");
+AddEnvIfNotNull("MEDIATR_LICENSE_KEY", "MediatR__LicenseKey");
+AddEnvIfNotNull("EMAIL_HOST", "Email__Host");
+AddEnvIfNotNull("EMAIL_PORT", "Email__Port");
+AddEnvIfNotNull("EMAIL_USERNAME", "Email__Username");
+AddEnvIfNotNull("EMAIL_PASSWORD", "Email__Password");
+AddEnvIfNotNull("EMAIL_USE_START_TLS", "Email__UseStartTls");
+AddEnvIfNotNull("EMAIL_FROM_ADDRESS", "Email__FromAddress");
+AddEnvIfNotNull("EMAIL_FROM_NAME", "Email__FromName");
+AddEnvIfNotNull("DEFAULT_ACCOUNT_EMAIL", "DefaultAccount__Email");
+AddEnvIfNotNull("DEFAULT_ACCOUNT_USERNAME", "DefaultAccount__UserName");
+AddEnvIfNotNull("DEFAULT_ACCOUNT_PASSWORD", "DefaultAccount__Password");
+AddEnvIfNotNull("DEFAULT_ACCOUNT_FIRSTNAME", "DefaultAccount__FirstName");
+AddEnvIfNotNull("DEFAULT_ACCOUNT_LASTNAME", "DefaultAccount__LastName");
+AddEnvIfNotNull("DEFAULT_ACCOUNT_DISPLAYNAME", "DefaultAccount__DisplayName");
 
-    // MediatR
-    .WithEnvironment("MediatR__LicenseKey", mediatrLicenseKey)
-
-    // Email
-    .WithEnvironment("Email__Host", emailHost)
-    .WithEnvironment("Email__Port", emailPort)
-    .WithEnvironment("Email__Username", emailUsername)
-    .WithEnvironment("Email__Password", emailPassword)
-    .WithEnvironment("Email__UseStartTls", emailUseStartTls)
-    .WithEnvironment("Email__FromAddress", emailFromAddress)
-    .WithEnvironment("Email__FromName", emailFromName)
-    
-    //DefaultAccount
-    .WithEnvironment("DefaultAccount__Email", defaulAccountEmail)
-    .WithEnvironment("DefaultAccount__UserName", defaulAccountUsername)
-    .WithEnvironment("DefaultAccount__Password", defaulAccountPassword)
-    .WithEnvironment("DefaultAccount__FirstName", defaulAccountFirstName)
-    .WithEnvironment("DefaultAccount__LastName", defaulAccountLastName)
-    .WithEnvironment("DefaultAccount__DisplayName", defaulAccountDisplayName);
 builder.Build().Run();
+
+void AddEnvIfNotNull(string envName, string targetConfigKey)
+{
+    var value = Environment.GetEnvironmentVariable(envName);
+    if (!string.IsNullOrEmpty(value))
+    {
+        api.WithEnvironment(targetConfigKey, value);
+    }
+}
