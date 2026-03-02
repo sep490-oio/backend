@@ -2,7 +2,7 @@ name: Deploy Aspire to VPS via Docker Compose
 
 on:
   push:
-    branches: [main]
+    branches: [develop]
   workflow_dispatch:
 
 concurrency:
@@ -187,9 +187,10 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
         run: |
-          ssh -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" "mkdir -p /opt/myapp"
+          ssh -T -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" "mkdir -p /opt/myapp"
           scp -P "${VPS_PORT:-22}" deploy-bundle/docker-compose.yaml "$VPS_USER@$VPS_HOST:/opt/myapp/docker-compose.yaml"
           scp -P "${VPS_PORT:-22}" deploy-bundle/.env "$VPS_USER@$VPS_HOST:/opt/myapp/.env"
+          sleep 3
 
       - name: Deploy on VPS
         env:
@@ -201,17 +202,14 @@ jobs:
           GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
           GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
         run: |
-          ssh -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" << 'EOF'
+          ssh -T -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" \
+            "export GHCR_PULL_USERNAME='${GHCR_PULL_USERNAME}'; export GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}'; bash -se" <<'EOF'
             set -euo pipefail
-
             cd /opt/myapp
-
             if [ -n "${GHCR_PULL_USERNAME:-}" ] && [ -n "${GHCR_PULL_TOKEN:-}" ]; then
               echo "$GHCR_PULL_TOKEN" | docker login ghcr.io -u "$GHCR_PULL_USERNAME" --password-stdin
             fi
-
             docker compose -f docker-compose.yaml --env-file .env pull
             docker compose -f docker-compose.yaml --env-file .env up -d --remove-orphans
-
             docker image prune -af --filter "until=168h" || true
           EOF
