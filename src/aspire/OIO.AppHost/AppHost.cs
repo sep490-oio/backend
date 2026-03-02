@@ -46,7 +46,7 @@ var registry = builder.AddContainerRegistry(
 
 var db = builder.AddPostgres("database")
     .WithHostPort(15432)
-    .WithDataVolume("/opt/myapp/postgres-data")
+    .WithDataVolume()
     .AddDatabase("oio-mcbc");
 
 builder.AddProject<Projects.OIO_Api>("oio-api")
