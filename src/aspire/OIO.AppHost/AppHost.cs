@@ -53,6 +53,10 @@ builder.AddProject<Projects.OIO_Api>("oio-api")
     // .WithHttpHealthCheck("/health")
     .WithReference(db, connectionName: "Database")
     .WaitFor(db)
+    .PublishAsDockerComposeService((resource, service) =>
+    {
+        service.Name = "oio-api";
+    })
     .WithContainerRegistry(registry)
     .WithImagePushOptions(context =>
     {
