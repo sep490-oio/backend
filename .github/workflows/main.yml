@@ -1,0 +1,213 @@
+name: Deploy Aspire to VPS via Docker Compose
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: true
+
+jobs:
+  build-and-package:
+    runs-on: ubuntu-latest
+    environment: production
+
+    permissions:
+      contents: read
+      packages: write
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: src/aspire/OIO.AppHost
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Aspire CLI
+        run: |
+          curl -sSL https://aspire.dev/install.sh | bash
+          echo "$HOME/.aspire/bin" >> "$GITHUB_PATH"
+
+      - name: Show versions
+        run: |
+          dotnet --info
+          aspire --version
+          docker version
+          docker compose version
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push app images
+        env:
+          REGISTRY_ENDPOINT: ghcr.io
+          REGISTRY_REPOSITORY: ${{ github.repository }}
+          APP_VERSION: ${{ github.sha }}
+
+          # Aspire Parameters for AppHost
+          Parameters__jwt_secret_key: ${{ secrets.JWT_SECRET_KEY }}
+          Parameters__jwt_audience: ${{ vars.JWT_AUDIENCE }}
+          Parameters__jwt_issuer: ${{ vars.JWT_ISSUER }}
+          Parameters__jwt_access_token_expiration: ${{ vars.JWT_ACCESS_TOKEN_EXPIRATION }}
+          Parameters__jwt_refresh_token_expiration: ${{ vars.JWT_REFRESH_TOKEN_EXPIRATION }}
+          Parameters__jwt_refresh_token_family_sliding_expiration: ${{ vars.JWT_REFRESH_TOKEN_FAMILY_SLIDING_EXPIRATION }}
+          Parameters__jwt_refresh_token_family_absolute_expiration: ${{ vars.JWT_REFRESH_TOKEN_FAMILY_ABSOLUTE_EXPIRATION }}
+
+          Parameters__mediatr_license_key: ${{ secrets.MEDIATR_LICENSE_KEY }}
+
+          Parameters__email_host: ${{ vars.EMAIL_HOST }}
+          Parameters__email_port: ${{ vars.EMAIL_PORT }}
+          Parameters__email_username: ${{ secrets.EMAIL_USERNAME }}
+          Parameters__email_password: ${{ secrets.EMAIL_PASSWORD }}
+          Parameters__email_use_start_tls: ${{ vars.EMAIL_USE_START_TLS }}
+          Parameters__email_from_address: ${{ vars.EMAIL_FROM_ADDRESS }}
+          Parameters__email_from_name: ${{ vars.EMAIL_FROM_NAME }}
+
+          Parameters__default_account_email: ${{ secrets.DEFAULT_ACCOUNT_EMAIL }}
+          Parameters__default_account_user_name: ${{ secrets.DEFAULT_ACCOUNT_USERNAME }}
+          Parameters__default_account_password: ${{ secrets.DEFAULT_ACCOUNT_PASSWORD }}
+          Parameters__default_account_first_name: ${{ vars.DEFAULT_ACCOUNT_FIRSTNAME }}
+          Parameters__default_account_last_name: ${{ vars.DEFAULT_ACCOUNT_LASTNAME }}
+          Parameters__default_account_distplay_name: ${{ vars.DEFAULT_ACCOUNT_DISPLAYNAME }}
+        run: |
+          aspire do push
+
+      - name: Generate Docker Compose deployment assets
+        env:
+          REGISTRY_ENDPOINT: ghcr.io
+          REGISTRY_REPOSITORY: ${{ github.repository }}
+          APP_VERSION: ${{ github.sha }}
+
+          Parameters__jwt_secret_key: ${{ secrets.JWT_SECRET_KEY }}
+          Parameters__jwt_audience: ${{ vars.JWT_AUDIENCE }}
+          Parameters__jwt_issuer: ${{ vars.JWT_ISSUER }}
+          Parameters__jwt_access_token_expiration: ${{ vars.JWT_ACCESS_TOKEN_EXPIRATION }}
+          Parameters__jwt_refresh_token_expiration: ${{ vars.JWT_REFRESH_TOKEN_EXPIRATION }}
+          Parameters__jwt_refresh_token_family_sliding_expiration: ${{ vars.JWT_REFRESH_TOKEN_FAMILY_SLIDING_EXPIRATION }}
+          Parameters__jwt_refresh_token_family_absolute_expiration: ${{ vars.JWT_REFRESH_TOKEN_FAMILY_ABSOLUTE_EXPIRATION }}
+
+          Parameters__mediatr_license_key: ${{ secrets.MEDIATR_LICENSE_KEY }}
+
+          Parameters__email_host: ${{ vars.EMAIL_HOST }}
+          Parameters__email_port: ${{ vars.EMAIL_PORT }}
+          Parameters__email_username: ${{ secrets.EMAIL_USERNAME }}
+          Parameters__email_password: ${{ secrets.EMAIL_PASSWORD }}
+          Parameters__email_use_start_tls: ${{ vars.EMAIL_USE_START_TLS }}
+          Parameters__email_from_address: ${{ vars.EMAIL_FROM_ADDRESS }}
+          Parameters__email_from_name: ${{ vars.EMAIL_FROM_NAME }}
+
+          Parameters__default_account_email: ${{ secrets.DEFAULT_ACCOUNT_EMAIL }}
+          Parameters__default_account_user_name: ${{ secrets.DEFAULT_ACCOUNT_USERNAME }}
+          Parameters__default_account_password: ${{ secrets.DEFAULT_ACCOUNT_PASSWORD }}
+          Parameters__default_account_first_name: ${{ vars.DEFAULT_ACCOUNT_FIRSTNAME }}
+          Parameters__default_account_last_name: ${{ vars.DEFAULT_ACCOUNT_LASTNAME }}
+          Parameters__default_account_distplay_name: ${{ vars.DEFAULT_ACCOUNT_DISPLAYNAME }}
+          
+        run: |
+          rm -rf aspire-output deploy-bundle
+          aspire do prepare-compose --environment production
+
+          mkdir -p deploy-bundle
+
+          COMPOSE_FILE=$(find aspire-output -type f \( -name 'docker-compose.yaml' -o -name 'docker-compose.yml' \) | head -n 1)
+          ENV_FILE=$(find aspire-output -type f \( -name '.env' -o -name '.env.*' \) | head -n 1)
+
+          if [ -z "$COMPOSE_FILE" ]; then
+            echo "docker-compose file not found under aspire-output"
+            exit 1
+          fi
+
+          if [ -z "$ENV_FILE" ]; then
+            echo ".env file not found under aspire-output"
+            exit 1
+          fi
+
+          cp "$COMPOSE_FILE" deploy-bundle/docker-compose.yaml
+          cp "$ENV_FILE" deploy-bundle/.env
+
+          echo "Generated files:"
+          ls -la deploy-bundle
+          echo "Compose source: $COMPOSE_FILE"
+          echo "Env source: $ENV_FILE"
+
+      - name: Upload deployment bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: aspire-compose-bundle
+          path: src/aspire/OIO.AppHost/deploy-bundle
+
+  deploy-to-vps:
+    runs-on: ubuntu-latest
+    environment: production
+    needs: build-and-package
+
+    steps:
+      - name: Download deployment bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: aspire-compose-bundle
+          path: deploy-bundle
+
+      - name: Install SSH client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openssh-client
+
+      - name: Prepare SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf "%s" "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload compose bundle to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        run: |
+          ssh -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" "mkdir -p /opt/myapp"
+          scp -P "${VPS_PORT:-22}" deploy-bundle/docker-compose.yaml "$VPS_USER@$VPS_HOST:/opt/myapp/docker-compose.yaml"
+          scp -P "${VPS_PORT:-22}" deploy-bundle/.env "$VPS_USER@$VPS_HOST:/opt/myapp/.env"
+
+      - name: Deploy on VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+
+          # Chỉ cần nếu GHCR image là private
+          GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+        run: |
+          ssh -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" << 'EOF'
+            set -euo pipefail
+
+            cd /opt/myapp
+
+            if [ -n "${GHCR_PULL_USERNAME:-}" ] && [ -n "${GHCR_PULL_TOKEN:-}" ]; then
+              echo "$GHCR_PULL_TOKEN" | docker login ghcr.io -u "$GHCR_PULL_USERNAME" --password-stdin
+            fi
+
+            docker compose -f docker-compose.yaml --env-file .env pull
+            docker compose -f docker-compose.yaml --env-file .env up -d --remove-orphans
+
+            docker image prune -af --filter "until=168h" || true
+          EOF
