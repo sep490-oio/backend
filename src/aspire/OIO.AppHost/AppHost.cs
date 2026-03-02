@@ -21,12 +21,13 @@ var db = builder.AddPostgres("database")
 
 var api = builder.AddProject<Projects.OIO_Api>("oio-api")
     // .WithHttpHealthCheck("/health")
+    .WithEnvironment("ASPNETCORE_HTTP_PORTS", "8080")
     .WithReference(db, connectionName: "Database")
     .WaitFor(db)
     .PublishAsDockerComposeService((resource, service) =>
     {
         service.Name = "oio-api";
-
+        service.Ports.Add("8080:8080");
         // Lấy các biến môi trường đã được truyền từ GitHub Actions workflow
         var endpoint = Environment.GetEnvironmentVariable("REGISTRY_ENDPOINT") ?? "ghcr.io";
         // GHCR yêu cầu tên repo phải viết thường toàn bộ
