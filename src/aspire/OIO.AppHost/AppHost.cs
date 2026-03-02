@@ -27,6 +27,10 @@ var api = builder.AddProject<Projects.OIO_Api>("oio-api")
     .PublishAsDockerComposeService((resource, service) =>
     {
         service.Name = "oio-api";
+        service.Expose.Clear(); 
+        
+        // Ghi đè port ra ngoài
+        service.Ports.Clear();
         service.Ports.Add("8080:8080");
         // Lấy các biến môi trường đã được truyền từ GitHub Actions workflow
         var endpoint = Environment.GetEnvironmentVariable("REGISTRY_ENDPOINT") ?? "ghcr.io";
