@@ -5,7 +5,7 @@
       POSTGRES_USER: "postgres"
       POSTGRES_PASSWORD: "${DATABASE_PASSWORD}"
     ports:
-      - "5432:5432" # (Chỉ mở ra ngoài nếu bạn muốn dùng DBeaver/DataGrip truy cập vào VPS)
+      - "5432:5432" 
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -39,7 +39,7 @@
       - DefaultAccount__LastName=${DEFAULT_ACCOUNT_LASTNAME}
       - DefaultAccount__DisplayName=${DEFAULT_ACCOUNT_DISPLAYNAME}
     ports:
-      - "8080:8080" # Map cứng không cần lằng nhằng
+      - "8080:8080"
     depends_on:
       - database
     restart: unless-stopped

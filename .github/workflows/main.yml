@@ -37,7 +37,6 @@ jobs:
           context: .
           file: ./src/presentation/OIO.Api/Dockerfile 
           push: true
-          # Gắn 2 tag: 1 tag version (mã commit) để dễ trace, 1 tag latest
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
@@ -48,7 +47,6 @@ jobs:
     needs: build-and-push
 
     steps:
-      # Checkout code lại để lấy file docker-compose.yml tĩnh ở thư mục gốc
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -69,7 +67,6 @@ jobs:
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
-      # Tự động gom toàn bộ Secret/Var thành 1 file .env
       - name: Generate .env file
         run: |
           cat << EOF > .env
@@ -104,8 +101,7 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
         run: |
-          # Copy file compose tĩnh trong repo và file .env vừa tạo lên VPS
-          scp -P "${VPS_PORT:-22}" docker-compose.yml "$VPS_USER@$VPS_HOST:/opt/myapp/docker-compose.yaml"
+          scp -P "${VPS_PORT:-22}" compose.yml "$VPS_USER@$VPS_HOST:/opt/myapp/docker-compose.yaml"
           scp -P "${VPS_PORT:-22}" .env "$VPS_USER@$VPS_HOST:/opt/myapp/.env"
           sleep 3
           
