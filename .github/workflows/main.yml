@@ -136,7 +136,7 @@ jobs:
           fi
 
           cp "$COMPOSE_FILE" deploy-bundle/docker-compose.yaml
-          cp "$ENV_FILE" deploy-bundle/.env
+          cp "$ENV_FILE" deploy-bundle/.env.production
 
           echo "Generated files:"
           ls -la deploy-bundle
