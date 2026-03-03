@@ -2,8 +2,9 @@
 
 public enum AutoBidStatus
 {
-    Active = 1,     // Đang hoạt động
-    Outpaced = 2,   // Đã bị vượt qua (giá thị trường cao hơn MaxAmount)
-    Finished = 3,   // Đã kết thúc (thắng cuộc)
-    Disabled = 4    // Người dùng chủ động tắt
+    Active = 1,     
+    Paused = 2,   
+    Exhausted = 3,   
+    Won = 4,
+    Outbid = 5
 }

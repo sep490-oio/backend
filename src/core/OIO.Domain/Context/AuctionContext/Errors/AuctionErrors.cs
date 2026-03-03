@@ -6,30 +6,54 @@ public static class AuctionErrors
 {
     public static class Auction
     {
-        // NotFound nhận 2 tham số: code, description
         public static Error NotFound(Guid id) => 
-            Error.NotFound("Auction.NotFound", $"Không tìm thấy cuộc đấu giá với Id: {id}");
-
-        // Validation nhận 3 tham số: propertyName, code, description
-        public static readonly Error Deleted = Error.Validation("Auction", "Auction.Deleted", "Cuộc đấu giá này đã bị xóa.");
+            Error.NotFound("Auction.NotFound", $"Auction with Id {id} was not found.");
         
-        // Forbidden nhận 2 tham số: code, description
-        public static readonly Error SelfBid = Error.Forbidden("Auction.SelfBid", "Người bán không thể tự đặt giá cho sản phẩm của mình.");
+        public static readonly Error SelfBid = 
+            Error.Forbidden("Auction.SelfBid", "Sellers are not allowed to bid on their own items.");
+
+        public static readonly Error InvalidStatus = 
+            Error.Conflict("Auction.InvalidStatus", "The auction is not in an active state.");
+
+        public static readonly Error Expired = 
+// Property, Code, Description
+            Error.Validation("Time", "Auction.Expired", "The auction period has already ended.");
+
+        public static readonly Error InvalidBuyNow = 
+            Error.Validation("BuyNowPrice", "Auction.InvalidBuyNow", "Buy now price must be greater than starting price.");
+
+        public static readonly Error InvalidIncrement = 
+            Error.Validation("Increment", "Auction.InvalidIncrement", "Bid increment must be a positive value.");
+
+        public static readonly Error InvalidPeriod = 
+            Error.Validation("EndTime", "Auction.InvalidPeriod", "End time must be later than start time.");
+
+        public static readonly Error InvalidReserve = 
+            Error.Validation("ReservePrice", "Auction.InvalidReserve", "Reserve price must be greater than or equal to starting price.");
+            
+        public static readonly Error Deleted = 
+            Error.Validation("Auction", "Auction.Deleted", "This auction has been deleted.");
+                  
+        public static readonly Error InvalidStartingPrice = 
+            Error.Validation("StartingPrice", "Auction.InvalidStartingPrice", "Starting price must be a non-negative value.");
     }
+    
 
     public static class Bid
     {
-        // Validation nhận 3 tham số
         public static Error TooLow(decimal minAmount) => 
-            Error.Validation("Amount", "Bid.TooLow", $"Giá đặt phải tối thiểu là {minAmount}");
+            Error.Validation("Amount", "Bid.TooLow", $"The bid amount must be at least {minAmount}.");
 
-        public static readonly Error DepositRequired = Error.Forbidden("Bid.DepositRequired", "Bạn cần đặt cọc để tham gia đấu giá này.");
+        public static readonly Error DepositRequired = 
+            Error.Forbidden("Bid.DepositRequired", "A deposit is required to participate in this auction.");
     }
+
     public static class Item
     {
-        public static readonly Error MaxImagesReached = Error.Validation("Images", "Item.MaxImagesReached", "Đã đạt giới hạn 10 hình ảnh cho một sản phẩm.");
+        public static readonly Error MaxImagesReached = 
+            Error.Validation("Images", "Item.MaxImagesReached", "Maximum of 10 images reached for this item.");
         
         public static Error NotFound(Guid id) => 
-            Error.NotFound("Item.NotFound", $"Không tìm thấy sản phẩm với Id: {id}");
+            Error.NotFound("Item.NotFound", $"Item with Id {id} was not found.");
     }
 }

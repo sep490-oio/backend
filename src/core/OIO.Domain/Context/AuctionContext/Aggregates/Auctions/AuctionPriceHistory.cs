@@ -7,12 +7,9 @@ namespace OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 public sealed class AuctionPriceHistory : BaseEntity<AuctionPriceHistoryId>
 {
     public AuctionId AuctionId { get; private set; }
-    public Guid BidderId { get; private set; }
-    public Money Amount { get; private set; }
-    
-    // Thêm BidId để khớp với cột "bid_id" trong database
-    public BidId? BidId { get; private set; } 
-    public DateTime CreatedAt { get; private set; }
+    public Money Price { get; private set; } // Khớp cột "price"
+    public BidId? BidId { get; private set; } // Khớp cột "bid_id"
+    public DateTime RecordedAt { get; private set; } // Khớp cột "recorded_at"
 
     // Constructor dùng cho EF Core
     private AuctionPriceHistory() { }
@@ -20,16 +17,14 @@ public sealed class AuctionPriceHistory : BaseEntity<AuctionPriceHistoryId>
     internal AuctionPriceHistory(
         AuctionPriceHistoryId id, 
         AuctionId auctionId, 
-        Guid bidderId, 
-        Money amount, 
+        Money price, 
         DateTime now,
-        BidId? bidId = null) // Chấp nhận bidId truyền vào
+        BidId? bidId = null) 
         : base(id)
     {
         AuctionId = auctionId;
-        BidderId = bidderId;
-        Amount = amount;
-        CreatedAt = now;
+        Price = price;
+        RecordedAt = now;
         BidId = bidId;
     }
 }
