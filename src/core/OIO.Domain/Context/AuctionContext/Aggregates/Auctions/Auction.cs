@@ -3,40 +3,48 @@ using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.ValueObjects;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Events;
+using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.SeedWork.Entities;
 using OIO.Domain.SeedWork.Errors;
 using OIO.Domain.SeedWork.Shared;
+using System.Net;
 
 namespace OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 
 public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 {
     private readonly List<AuctionPriceHistory> _priceHistories = [];
+    private readonly List<AuctionDeposit> _deposits = [];
+    private readonly List<AuctionAutoBid> _autoBids = [];
+    private readonly List<AuctionWatcher> _watchers = [];
 
-    // --- Properties khớp 100% với Script DB ---
+    // Properties từ Script DB
     public ItemId ItemId { get; private set; }
-    public WinningConditions Conditions { get; private set; } // Gồm: starting_price, reserve_price, buy_now_price
-    public Money CurrentPrice { get; private set; }           // current_price
-    public BidIncrement Increment { get; private set; }      // bid_increment
-    public AuctionPeriod Period { get; private set; }        // Gồm: start_time, end_time
-    public DateTime? ActualEndTime { get; private set; }     // actual_end_time
+    public WinningConditions Conditions { get; private set; } 
+    public Money CurrentPrice { get; private set; }           
+    public BidIncrement Increment { get; private set; }      
+    public AuctionPeriod Period { get; private set; }        
+    public DateTime? ActualEndTime { get; private set; }     
     
-    public AuctionStatus Status { get; private set; }        // status
-    public Guid? CurrentWinnerId { get; private set; }       // winner_id
+    public AuctionStatus Status { get; private set; }        
+    public Guid? CurrentWinnerId { get; private set; }       
     
-    public bool AutoExtend { get; private set; }             // auto_extend
-    public int ExtensionMinutes { get; private set; }        // extension_minutes
-    public bool IsFeatured { get; private set; }             // is_featured
+    public bool AutoExtend { get; private set; }             
+    public int ExtensionMinutes { get; private set; }        
+    public bool IsFeatured { get; private set; }             
     
-    public int ViewCount { get; private set; }               // view_count
-    public int BidCount { get; private set; }                // bid_count
-    public int WatchCount { get; private set; }              // watch_count
+    public int ViewCount { get; private set; }               
+    public int BidCount { get; private set; }                
+    public int WatchCount { get; private set; }              
 
-    public DateTime CreatedAt { get; private set; }          // created_at
-    public DateTime? ModifiedAt { get; private set; }        // modified_at
+    public DateTime CreatedAt { get; private set; }          
+    public DateTime? ModifiedAt { get; private set; }        
 
-    // Navigation cho EF Core
+    // Navigations cho EF Core
     public IReadOnlyCollection<AuctionPriceHistory> PriceHistories => _priceHistories.AsReadOnly();
+    public IReadOnlyCollection<AuctionDeposit> Deposits => _deposits.AsReadOnly();
+    public IReadOnlyCollection<AuctionAutoBid> AutoBids => _autoBids.AsReadOnly();
+    public IReadOnlyCollection<AuctionWatcher> Watchers => _watchers.AsReadOnly();
 
     private Auction() { }
 
@@ -68,9 +76,6 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         CreatedAt = now;
     }
 
-    /// <summary>
-    /// Khởi tạo phiên đấu giá (Tích hợp các Checks từ DB)
-    /// </summary>
     public static Result<Auction, Error> Create(
         ItemId itemId,
         AuctionPeriod period,
@@ -80,76 +85,81 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         int extensionMinutes,
         DateTime now)
     {
-        // Check: (buy_now_price > starting_price)
-        if (conditions.BuyNowPrice != null && conditions.BuyNowPrice.Amount <= conditions.StartingPrice.Amount)
-            return Error.Validation("BuyNowPrice", "Auction.InvalidBuyNow", "Giá mua ngay phải lớn hơn giá khởi điểm.");
-
-        // Check: (bid_increment > 0)
-        if (increment.Value.Amount <= 0)
-            return Error.Validation("Increment", "Auction.InvalidIncrement", "Bước giá phải lớn hơn 0.");
-
-        // Check: (end_time > start_time)
-        if (period.EndTime <= period.StartTime)
-            return Error.Validation("EndTime", "Auction.InvalidPeriod", "Thời gian kết thúc phải sau thời gian bắt đầu.");
-
-        // Check: (reserve_price >= starting_price)
-        if (conditions.ReservePrice != null && conditions.ReservePrice.Amount < conditions.StartingPrice.Amount)
-            return Error.Validation("ReservePrice", "Auction.InvalidReserve", "Giá sàn phải lớn hơn hoặc bằng giá khởi điểm.");
-
-        var auction = new Auction(
+        // Các check chéo giữa các Value Object (nếu có)
+        return new Auction(
             AuctionId.From(Guid.CreateVersion7()), 
             itemId, period, conditions, increment, autoExtend, extensionMinutes, now);
-
-        auction.RaiseDomainEvent(new AuctionCreatedEvent(auction.Id.ToString(), itemId.ToString(), now));
-
-        return auction;
     }
 
-    /// <summary>
-    /// Xử lý đặt giá và Tự động gia hạn (Auto Extend)
-    /// </summary>
     public UnitResult<Error> PlaceBid(Guid bidderId, Money amount, BidId bidId, DateTime nowUtc)
     {
-        // Validation cơ bản
         if (Status != AuctionStatus.Active)
-            return Error.Conflict("Auction.NotActive", "Phiên đấu giá không trong trạng thái hoạt động.");
+            return AuctionErrors.Auction.InvalidStatus;
 
         if (!Period.IsActive(nowUtc))
-            return Error.Validation("Time", "Auction.Expired", "Thời gian đấu giá đã kết thúc.");
+            return AuctionErrors.Auction.Expired;
 
-        // Check: (current_price >= starting_price) được đảm bảo qua bước giá
+        // Check tiền cọc nếu cần (Ví dụ: phải có record 'held' trong list Deposits)
+        // if (!_deposits.Any(d => d.UserId == bidderId && d.Status == DepositStatus.Held))
+        //     return AuctionErrors.Bid.DepositRequired;
+
         var minRequired = CurrentPrice.Amount + Increment.Value.Amount;
         if (amount.Amount < minRequired)
-            return Error.Validation("Amount", "Auction.BidTooLow", $"Giá đặt tối thiểu là {minRequired}");
+            return AuctionErrors.Bid.TooLow(minRequired);
 
-        // Cập nhật trạng thái
         CurrentPrice = amount;
         CurrentWinnerId = bidderId;
         BidCount++;
         ModifiedAt = nowUtc;
 
-        // Logic Auto Extend: Nếu bid trong khoảng thời gian extension_minutes cuối cùng
+        // Auto Extend logic
         if (AutoExtend && Period.EndTime.Subtract(nowUtc).TotalMinutes < ExtensionMinutes)
         {
             var extendedEndTime = nowUtc.AddMinutes(ExtensionMinutes);
             Period = AuctionPeriod.Create(Period.StartTime, extendedEndTime).Value;
-            // Lưu ý: ActualEndTime thường dùng khi kết thúc thực tế, EndTime dùng để hiển thị/gia hạn
         }
 
-        // Lưu lịch sử (auction_price_history)
+        // Lưu lịch sử giá (Sử dụng constructor mới đã fix)
         _priceHistories.Add(new AuctionPriceHistory(
             AuctionPriceHistoryId.From(Guid.CreateVersion7()),
-            Id, bidderId, amount, nowUtc, bidId));
+            Id, amount, nowUtc, bidId));
 
-        // Nếu chạm giá Buy Now thì kết thúc sớm
+        // Kiểm tra Buy Now
         if (Conditions.BuyNowPrice != null && amount.Amount >= Conditions.BuyNowPrice.Amount)
         {
             EndAuction(AuctionStatus.Ended, nowUtc, bidderId);
         }
 
-        RaiseDomainEvent(new BidPlacedEvent(Id.ToString(), bidderId, amount, nowUtc));
-
         return UnitResult.Success<Error>();
+    }
+
+    public void AddDeposit(Guid userId, Money amount, Guid? transactionId, DateTime now)
+    {
+        var deposit = new AuctionDeposit(
+            AuctionDepositId.From(Guid.CreateVersion7()),
+            Id, userId, amount, transactionId, now);
+        _deposits.Add(deposit);
+    }
+
+    public void AddWatcher(Guid userId, bool notifyOnBid, bool notifyOnEnd, DateTime now)
+    {
+        if (!_watchers.Any(w => w.UserId == userId))
+        {
+            _watchers.Add(new AuctionWatcher(
+                AuctionWatcherId.From(Guid.CreateVersion7()),
+                Id, userId, notifyOnBid, notifyOnEnd, now));
+            WatchCount++;
+        }
+    }
+
+    public void SetupAutoBid(Guid userId, Money maxAmount, Money currentAmount, Money? increment, DateTime now)
+    {
+        var existing = _autoBids.FirstOrDefault(b => b.BidderId == userId);
+        if (existing != null) _autoBids.Remove(existing);
+
+        _autoBids.Add(new AuctionAutoBid(
+            AuctionAutoBidId.From(Guid.CreateVersion7()),
+            Id, userId, maxAmount, currentAmount, increment, now));
     }
 
     public void EndAuction(AuctionStatus finalStatus, DateTime now, Guid? winnerId = null)

@@ -1,4 +1,5 @@
 ﻿using CSharpFunctionalExtensions;
+using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
 using OIO.Domain.SeedWork.Shared;
@@ -25,12 +26,12 @@ public sealed class WinningConditions : ValueObject
     {
         var result = WinningConditions.Check(isInvariant: true)
             .Field(startingPrice.Amount, "StartingPrice")!
-            .NonNegative()
+            .NonNegative("Starting price must be a non-negative value.",AuctionErrors.Auction.InvalidStartingPrice) 
             .PrecisionScale(18, 2)
             .Field(reservePrice?.Amount, "ReservePrice")
-            .WhenHasValue(f => f.GreaterThanOrEqual(startingPrice.Amount, "Giá sàn không được thấp hơn giá khởi điểm"))
+            .WhenHasValue(f => f.GreaterThanOrEqual(startingPrice.Amount, "Reserve price must be greater than or equal to starting price.",AuctionErrors.Auction.InvalidReserve))
             .Field(buyNowPrice?.Amount, "BuyNowPrice")
-            .WhenHasValue(f => f.GreaterThan(startingPrice.Amount, "Giá mua ngay phải cao hơn giá khởi điểm"))
+            .WhenHasValue(f => f.GreaterThan(startingPrice.Amount, "Buy now price must be greater than starting price.",AuctionErrors.Auction.InvalidBuyNow))
             .ToResult();
 
         if (result.IsFailure) return result.Error;

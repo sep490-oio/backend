@@ -1,4 +1,5 @@
 ﻿using CSharpFunctionalExtensions;
+using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
 
@@ -19,7 +20,7 @@ public sealed class AuctionPeriod : ValueObject
     {
         var result = AuctionPeriod.Check(isInvariant: true)
             .Field(start, x => x.StartTime)!.Utc()
-            .Field(end, x => x.EndTime)!.Utc().After(start, "Thời gian kết thúc phải sau thời gian bắt đầu")
+            .Field(end, x => x.EndTime)!.Utc().After(start, "End time must be later than start time.",AuctionErrors.Auction.InvalidPeriod)
             .ToResult();
 
         if (result.IsFailure) return result.Error;

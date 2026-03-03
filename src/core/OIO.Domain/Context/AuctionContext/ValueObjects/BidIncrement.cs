@@ -1,4 +1,5 @@
 ﻿using CSharpFunctionalExtensions;
+using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
 using OIO.Domain.SeedWork.Shared;
@@ -15,7 +16,8 @@ public sealed class BidIncrement : ValueObject
     {
         var result = BidIncrement.Check(isInvariant: true)
             .Field(value.Amount, "BidIncrement")!
-            .Positive("Bước nhảy giá phải lớn hơn 0")
+            .NonZero()
+            .Positive("Bid increment must be a positive value.",AuctionErrors.Auction.InvalidIncrement)
             .PrecisionScale(18, 2)
             .ToResult();
 
