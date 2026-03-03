@@ -17,7 +17,7 @@ public sealed class Bid : AggregateRoot<BidId>
     public Guid BidderId { get; private set; }
     public Money Amount { get; private set; }
     public bool IsAutoBid { get; private set; }      // is_auto_bid
-    public Guid? AutoBidId { get; private set; }     // auto_bid_id
+    public AuctionAutoBidId? AutoBidId { get; private set; }
     public BidStatus Status { get; private set; }    // status
     public IPAddress? IpAddress { get; private set; } // ip_address
     public DateTime CreatedAt { get; private set; }  // created_at
@@ -30,7 +30,7 @@ public sealed class Bid : AggregateRoot<BidId>
         Guid bidderId, 
         Money amount, 
         bool isAutoBid, 
-        Guid? autoBidId, 
+        AuctionAutoBidId? autoBidId, 
         IPAddress? ipAddress,
         DateTime now)
     {
@@ -50,7 +50,7 @@ public sealed class Bid : AggregateRoot<BidId>
         Guid bidderId, 
         Money amount, 
         bool isAutoBid,
-        Guid? autoBidId,
+        AuctionAutoBidId? autoBidId,
         IPAddress? ipAddress,
         DateTime now) // Đã sửa từ 'CreatedAt now' thành 'DateTime now'
     {

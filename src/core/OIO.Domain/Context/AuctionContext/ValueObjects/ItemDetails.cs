@@ -8,6 +8,7 @@ public sealed class ItemDetails : ValueObject
 {
     public string Name { get; }
     public string Description { get; }
+    private ItemDetails() { }
 
     private ItemDetails(string name, string description)
     {
