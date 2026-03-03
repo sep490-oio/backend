@@ -11,6 +11,7 @@ public sealed class WinningConditions : ValueObject
     public Money StartingPrice { get; }
     public Money? ReservePrice { get; }
     public Money? BuyNowPrice { get; }
+    private WinningConditions() { }
 
     private WinningConditions(Money startingPrice, Money? reservePrice, Money? buyNowPrice)
     {

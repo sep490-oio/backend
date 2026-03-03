@@ -1,4 +1,5 @@
 ﻿using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
 
 namespace OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
@@ -6,7 +7,7 @@ namespace OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 public sealed class AuctionWatcher : BaseEntity<AuctionWatcherId>
 {
     public AuctionId AuctionId { get; private set; }
-    public Guid UserId { get; private set; }
+    public UserId UserId { get; private set; }
     
     // Bổ sung các trường notify từ script DB
     public bool NotifyOnBid { get; private set; } // notify_on_bid
@@ -19,7 +20,7 @@ public sealed class AuctionWatcher : BaseEntity<AuctionWatcherId>
     internal AuctionWatcher(
         AuctionWatcherId id, 
         AuctionId auctionId, 
-        Guid userId, 
+        UserId userId, 
         bool notifyOnBid, 
         bool notifyOnEnd, 
         DateTime now) 

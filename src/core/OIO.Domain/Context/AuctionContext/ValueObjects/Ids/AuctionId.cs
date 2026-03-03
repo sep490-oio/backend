@@ -32,3 +32,6 @@ public readonly partial struct ItemImageId : IEntityId;
 
 [ValueObject<Guid>]
 public readonly partial struct ItemQuestionId : IEntityId;
+
+[ValueObject<Guid>]
+public readonly partial struct TransactionId : IEntityId;

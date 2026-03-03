@@ -1,141 +1,404 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
+using OIO.Domain.Context.AuctionContext.Aggregates.Items;
 using OIO.Domain.Context.AuctionContext.Enums;
+using OIO.Domain.Context.AuctionContext.ValueObjects;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.UserContext.Aggregates.Users;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Shared;
+using System;
 
-namespace OIO.Infrastructure.Persistence.Configurations.Auctions;
+namespace OIO.Infrastructure.Persistence.Configurations.AuctionContext;
 
-public sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
+internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
 {
+    private static readonly Currency Vnd = Currency.FromCode("VND");
+
     public void Configure(EntityTypeBuilder<Auction> builder)
     {
         builder.ToTable("auctions");
 
-        // --- Primary Key & Basic Properties ---
-        builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id)
-            .HasConversion(id => id.Value, v => AuctionId.From(v))
+        builder.HasKey(a => a.Id);
+
+        builder.Property(a => a.Id)
+            .ValueGeneratedNever()
             .HasColumnName("id")
-            .HasDefaultValueSql("uuidv7()");
+            .HasConversion(id => id.Value, value => AuctionId.From(value));
 
-        builder.Property(x => x.ItemId)
-            .HasConversion(id => id.Value, v => ItemId.From(v))
-            .HasColumnName("item_id");
+        builder.Property(a => a.ItemId)
+            .HasColumnName("item_id")
+            .IsRequired()
+            .HasConversion(id => id.Value, value => ItemId.From(value));
 
-        builder.Property(x => x.CurrentWinnerId).HasColumnName("winner_id");
+        builder.Ignore(a => a.SellerId);
 
-        // --- Value Objects Mapping (Flattened) ---
-        builder.OwnsOne(x => x.Conditions, c =>
+        builder.Property(a => a.CurrentWinnerId)
+            .HasColumnName("winner_id")
+            .HasConversion(
+                new ValueConverter<UserId?, Guid?>(
+                    id => id == null ? (Guid?)null : (Guid?)id.Value,
+                    v => v == null ? null : UserId.From(v.Value)));
+
+        builder.OwnsOne(a => a.Conditions, cond =>
         {
-            c.Property(p => p.StartingPrice).HasConversion(m => m.Amount, v => new Money(v, Currency.VND)).HasColumnName("starting_price").HasPrecision(18, 2);
-            c.Property(p => p.ReservePrice).HasConversion(m => m != null ? (decimal?)m.Amount : null, v => v.HasValue ? new Money(v.Value, Currency.VND) : null).HasColumnName("reserve_price").HasPrecision(18, 2);
-            c.Property(p => p.BuyNowPrice).HasConversion(m => m != null ? (decimal?)m.Amount : null, v => v.HasValue ? new Money(v.Value, Currency.VND) : null).HasColumnName("buy_now_price").HasPrecision(18, 2);
+            cond.Property(c => c.StartingPrice)
+                .HasColumnName("starting_price")
+                .IsRequired()
+                .HasConversion(m => m.Amount, v => new Money(v, Vnd));
+
+            cond.Property(c => c.ReservePrice)
+                .HasColumnName("reserve_price")
+                .HasConversion(
+                    m => m == null ? (decimal?)null : m.Amount,
+                    v => v == null ? null : new Money(v.Value, Vnd));
+
+            cond.Property(c => c.BuyNowPrice)
+                .HasColumnName("buy_now_price")
+                .HasConversion(
+                    m => m == null ? (decimal?)null : m.Amount,
+                    v => v == null ? null : new Money(v.Value, Vnd));
         });
 
-        builder.OwnsOne(x => x.CurrentPrice, m =>
+        builder.Property(a => a.CurrentPrice)
+            .HasColumnName("current_price")
+            .IsRequired()
+            .HasConversion(m => m.Amount, v => new Money(v, Vnd));
+
+        builder.Property<string>("currency")
+            .HasColumnName("currency")
+            .HasDefaultValue("VND");
+
+        builder.OwnsOne(a => a.Increment, inc =>
         {
-            m.Property(p => p.Amount).HasColumnName("current_price").HasPrecision(18, 2);
-            m.Property(p => p.Currency).HasConversion(c => c.Code, v => Currency.FromCode(v)).HasColumnName("currency").HasDefaultValue("VND").HasMaxLength(3);
+            inc.Property(i => i.Value)
+                .HasColumnName("bid_increment")
+                .IsRequired()
+                .HasConversion(m => m.Amount, v => new Money(v, Vnd));
         });
 
-        builder.OwnsOne(x => x.Increment, i =>
-            i.Property(p => p.Value).HasConversion(m => m.Amount, v => new Money(v, Currency.VND)).HasColumnName("bid_increment").HasPrecision(18, 2).HasDefaultValue(1.00m));
-
-        builder.OwnsOne(x => x.Period, p =>
+        builder.OwnsOne(a => a.Period, period =>
         {
-            p.Property(p => p.StartTime).HasColumnName("start_time");
-            p.Property(p => p.EndTime).HasColumnName("end_time");
+            period.Property(p => p.StartTime)
+                .HasColumnName("start_time")
+                .IsRequired();
+
+            period.Property(p => p.EndTime)
+                .HasColumnName("end_time")
+                .IsRequired();
         });
 
-        // --- Status & Meta Data ---
-        builder.Property(x => x.Status)
-            .HasConversion(v => v.ToString().ToLower(), v => (AuctionStatus)Enum.Parse(typeof(AuctionStatus), v, true))
-            .HasColumnName("status").HasDefaultValue("draft");
+        builder.Property(a => a.Status)
+            .HasColumnName("status")
+            .HasMaxLength(20)
+            .IsRequired()
+            .HasDefaultValue(AuctionStatus.Draft)
+            .HasConversion(
+                s => s.ToString().ToLowerInvariant(),
+                s => Enum.Parse<AuctionStatus>(s, ignoreCase: true));
 
-        builder.Property(x => x.AutoExtend).HasColumnName("auto_extend").HasDefaultValue(true);
-        builder.Property(x => x.ExtensionMinutes).HasColumnName("extension_minutes").HasDefaultValue(5);
-        builder.Property(x => x.IsFeatured).HasColumnName("is_featured").HasDefaultValue(false);
-        builder.Property(x => x.ViewCount).HasColumnName("view_count").HasDefaultValue(0);
-        builder.Property(x => x.BidCount).HasColumnName("bid_count").HasDefaultValue(0);
-        builder.Property(x => x.WatchCount).HasColumnName("watch_count").HasDefaultValue(0);
-        builder.Property(x => x.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
-        builder.Property(x => x.ModifiedAt).HasColumnName("modified_at");
+        builder.Property(a => a.AutoExtend)
+            .HasColumnName("auto_extend")
+            .HasDefaultValue(true);
 
-        // --- Indexes ---
-        builder.HasIndex(x => new { x.Status, x.Period.EndTime }).HasDatabaseName("idx_auctions_active");
-        builder.HasIndex(x => x.Status).HasDatabaseName("idx_auctions_status");
+        builder.Property(a => a.ExtensionMinutes)
+            .HasColumnName("extension_minutes")
+            .HasDefaultValue(5);
 
-        // ==========================================
-        // OWNED COLLECTIONS (Navigation & Tables)
-        // ==========================================
+        builder.Property(a => a.IsFeatured)
+            .HasColumnName("is_featured")
+            .HasDefaultValue(false);
 
-        // 1. Price Histories
-        builder.OwnsMany(x => x.PriceHistories, h =>
+        builder.Property(a => a.ViewCount)
+            .HasColumnName("view_count")
+            .HasDefaultValue(0);
+
+        builder.Property(a => a.BidCount)
+            .HasColumnName("bid_count")
+            .HasDefaultValue(0);
+
+        builder.Property(a => a.WatchCount)
+            .HasColumnName("watch_count")
+            .HasDefaultValue(0);
+
+        builder.Property(a => a.ActualEndTime)
+            .HasColumnName("actual_end_time");
+
+        builder.Property(a => a.CreatedAt)
+            .HasColumnName("created_at")
+            .HasDefaultValueSql("CURRENT_TIMESTAMP")
+            .IsRequired();
+
+        builder.Property(a => a.ModifiedAt)
+            .HasColumnName("modified_at");
+
+        builder.HasIndex(a => a.Status)
+            .HasDatabaseName("idx_auctions_status");
+
+        builder.ToTable(t =>
         {
-            h.ToTable("auction_price_history");
-            h.HasKey(p => p.Id);
-            h.Property(p => p.Id).HasConversion(id => id.Value, v => AuctionPriceHistoryId.From(v)).HasColumnName("id");
-            h.WithOwner().HasForeignKey("AuctionId");
-            h.Property<AuctionId>("AuctionId").HasConversion(id => id.Value, v => AuctionId.From(v)).HasColumnName("auction_id");
-            h.OwnsOne(p => p.Price, m => m.Property(p => p.Amount).HasColumnName("price").HasPrecision(18, 2).IsRequired());
-            h.Property(p => p.BidId).HasConversion<Guid?>(id => id != null ? (Guid?)id.Value : null, v => v.HasValue ? BidId.From(v.Value) : null).HasColumnName("bid_id");
-            h.Property(p => p.RecordedAt).HasColumnName("recorded_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            t.HasCheckConstraint("chk_end_after_start", "end_time > start_time");
+            t.HasCheckConstraint("chk_current_gte_starting", "current_price >= starting_price");
+            t.HasCheckConstraint("chk_buy_now_gt_starting", "buy_now_price > starting_price");
+            t.HasCheckConstraint("chk_reserve_gte_starting", "reserve_price >= starting_price");
+            t.HasCheckConstraint("chk_positive_bid_increment", "bid_increment > 0");
+            t.HasCheckConstraint(
+                "auctions_status_check",
+                "status IN ('draft','pending','active','ended','sold','cancelled','failed')");
         });
 
-        // 2. Deposits
-        builder.OwnsMany(x => x.Deposits, d =>
-        {
-            d.ToTable("auction_deposits");
-            d.HasKey(p => p.Id);
-            d.Property(p => p.Id).HasConversion(id => id.Value, v => AuctionDepositId.From(v)).HasColumnName("id");
-            d.WithOwner().HasForeignKey("AuctionId");
-            d.Property<AuctionId>("AuctionId").HasConversion(id => id.Value, v => AuctionId.From(v)).HasColumnName("auction_id");
-            d.Property(p => p.UserId).HasColumnName("user_id");
-            d.OwnsOne(p => p.Amount, m => m.Property(p => p.Amount).HasColumnName("amount").HasPrecision(18, 2));
-            d.Property(p => p.Status).HasConversion(v => v.ToString().ToLower(), v => (DepositStatus)Enum.Parse(typeof(DepositStatus), v, true)).HasColumnName("status");
-            d.Property(p => p.TransactionId).HasColumnName("transaction_id");
-            d.Property(p => p.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
-            d.Property(p => p.ReleasedAt).HasColumnName("released_at");
-        });
+        builder.HasOne<Item>()
+            .WithMany()
+            .HasForeignKey(a => a.ItemId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("auctions_item_id_fkey");
 
-        // 3. Auto Bids
-        builder.OwnsMany(x => x.AutoBids, a =>
-        {
-            a.ToTable("auction_auto_bids");
-            a.HasKey(p => p.Id);
-            a.Property(p => p.Id).HasConversion(id => id.Value, v => AuctionAutoBidId.From(v)).HasColumnName("id");
-            a.WithOwner().HasForeignKey("AuctionId");
-            a.Property<AuctionId>("AuctionId").HasConversion(id => id.Value, v => AuctionId.From(v)).HasColumnName("auction_id");
-            a.Property(p => p.BidderId).HasColumnName("bidder_id");
-            a.Property(p => p.IsEnabled).HasColumnName("is_enabled");
-            a.OwnsOne(p => p.MaxAmount, m => m.Property(p => p.Amount).HasColumnName("max_amount").HasPrecision(18, 2));
-            a.OwnsOne(p => p.CurrentAmount, m => m.Property(p => p.Amount).HasColumnName("current_amount").HasPrecision(18, 2));
-            a.OwnsOne(p => p.IncrementAmount, m => m.Property(p => p.Amount).HasColumnName("increment_amount").HasPrecision(18, 2));
-            a.Property(p => p.Status).HasConversion(v => v.ToString().ToLower(), v => (AutoBidStatus)Enum.Parse(typeof(AutoBidStatus), v, true)).HasColumnName("status");
-            a.Property(p => p.CreatedAt).HasColumnName("created_at");
-            a.Property(p => p.ModifiedAt).HasColumnName("modified_at");
-        });
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(a => a.CurrentWinnerId)
+            .OnDelete(DeleteBehavior.SetNull)
+            .HasConstraintName("auctions_winner_id_fkey");
 
-        // 4. Watchers
-        builder.OwnsMany(x => x.Watchers, w =>
-        {
-            w.ToTable("auction_watchers");
-            w.HasKey(p => p.Id);
-            w.Property(p => p.Id).HasConversion(id => id.Value, v => AuctionWatcherId.From(v)).HasColumnName("id");
-            w.WithOwner().HasForeignKey("AuctionId");
-            w.Property<AuctionId>("AuctionId").HasConversion(id => id.Value, v => AuctionId.From(v)).HasColumnName("auction_id");
-            w.Property(p => p.UserId).HasColumnName("user_id");
-            w.Property(p => p.NotifyOnBid).HasColumnName("notify_on_bid").HasDefaultValue(true);
-            w.Property(p => p.NotifyOnEnd).HasColumnName("notify_on_end").HasDefaultValue(true);
-            w.Property(p => p.CreatedAt).HasColumnName("created_at");
-        });
+        builder.Ignore(a => a.DomainEvents);
+    }
+}
 
-        // Cấu hình Field Access cho các private List
-        builder.Navigation(x => x.PriceHistories).UsePropertyAccessMode(PropertyAccessMode.Field);
-        builder.Navigation(x => x.Deposits).UsePropertyAccessMode(PropertyAccessMode.Field);
-        builder.Navigation(x => x.AutoBids).UsePropertyAccessMode(PropertyAccessMode.Field);
-        builder.Navigation(x => x.Watchers).UsePropertyAccessMode(PropertyAccessMode.Field);
+internal sealed class AuctionPriceHistoryConfiguration : IEntityTypeConfiguration<AuctionPriceHistory>
+{
+    private static readonly Currency Vnd = Currency.FromCode("VND");
+
+    public void Configure(EntityTypeBuilder<AuctionPriceHistory> builder)
+    {
+        builder.ToTable("auction_price_history");
+
+        builder.HasKey(p => p.Id);
+        
+        builder.Property(p => p.Id)
+            .HasColumnName("id")
+            .ValueGeneratedNever()
+            .HasConversion(id => id.Value, v => AuctionPriceHistoryId.From(v)); 
+
+        builder.Property(p => p.Price)
+            .HasColumnName("price")
+            .IsRequired()
+            .HasConversion(m => m.Amount, v => new Money(v, Vnd));
+
+        builder.Property(p => p.BidId)
+            .HasColumnName("bid_id")
+            .HasConversion(
+                new ValueConverter<BidId?, Guid?>(
+                    id => id == null ? (Guid?)null : (Guid?)id.Value,
+                    v => v == null ? null : BidId.From(v.Value)));
+
+        builder.Property(p => p.RecordedAt)
+            .HasColumnName("recorded_at")
+            .HasDefaultValueSql("CURRENT_TIMESTAMP")
+            .IsRequired();
+
+        builder.HasIndex(p => p.AuctionId)
+            .HasDatabaseName("idx_auction_price_history_auction_id");
+
+        builder.HasOne<Auction>()
+               .WithMany(a => a.PriceHistories)
+               .HasForeignKey(p => p.AuctionId)
+               .HasConstraintName("auction_price_history_auction_id_fkey");
+    }
+}
+
+internal sealed class AuctionDepositConfiguration : IEntityTypeConfiguration<AuctionDeposit>
+{
+    private static readonly Currency Vnd = Currency.FromCode("VND");
+
+    public void Configure(EntityTypeBuilder<AuctionDeposit> builder)
+    {
+        builder.ToTable("auction_deposits");
+
+        builder.HasKey(d => d.Id);
+        
+        builder.Property(d => d.Id)
+            .HasColumnName("id")
+            .ValueGeneratedNever()
+            .HasConversion(id => id.Value, v => AuctionDepositId.From(v));
+
+        builder.Property(d => d.UserId)
+            .HasColumnName("user_id")
+            .IsRequired()
+            .HasConversion(id => id.Value, v => UserId.From(v));
+
+        builder.Property(d => d.Amount)
+            .HasColumnName("amount")
+            .IsRequired()
+            .HasConversion(m => m.Amount, v => new Money(v, Vnd));
+
+        builder.Property(d => d.TransactionId)
+            .HasColumnName("transaction_id")
+            .HasConversion(
+                new ValueConverter<TransactionId?, Guid?>(
+                    id => id == null ? (Guid?)null : (Guid?)id.Value,
+                    v => v == null ? null : TransactionId.From(v.Value)));
+
+        builder.Property(d => d.Status)
+            .HasColumnName("status")
+            .HasMaxLength(20)
+            .IsRequired()
+            .HasDefaultValue(DepositStatus.Held)
+            .HasConversion(
+                s => s.ToString().ToLowerInvariant(),
+                s => Enum.Parse<DepositStatus>(s, ignoreCase: true));
+
+        builder.Property(d => d.CreatedAt)
+            .HasColumnName("created_at")
+            .HasDefaultValueSql("CURRENT_TIMESTAMP")
+            .IsRequired();
+
+        builder.Property(d => d.ReleasedAt)
+            .HasColumnName("released_at");
+
+        builder.HasIndex(d => new { d.AuctionId, d.UserId })
+            .IsUnique()
+            .HasDatabaseName("auction_deposits_auction_id_user_id_key");
+
+        builder.ToTable(t => t.HasCheckConstraint(
+            "auction_deposits_status_check",
+            "status IN ('held','returned','forfeited','converted_to_payment')"));
+
+        builder.HasOne<Auction>()
+               .WithMany(a => a.Deposits)
+               .HasForeignKey(d => d.AuctionId)
+               .HasConstraintName("auction_deposits_auction_id_fkey");
+    }
+}
+
+internal sealed class AuctionAutoBidConfiguration : IEntityTypeConfiguration<AuctionAutoBid>
+{
+    private static readonly Currency Vnd = Currency.FromCode("VND");
+
+    public void Configure(EntityTypeBuilder<AuctionAutoBid> builder)
+    {
+        builder.ToTable("auction_auto_bids");
+
+        builder.HasKey(b => b.Id);
+        
+        builder.Property(b => b.Id)
+            .HasColumnName("id")
+            .ValueGeneratedNever()
+            .HasConversion(id => id.Value, v => AuctionAutoBidId.From(v));
+
+        builder.Property(b => b.BidderId)
+            .HasColumnName("bidder_id")
+            .IsRequired()
+            .HasConversion(id => id.Value, v => UserId.From(v));
+
+        builder.Property(b => b.IsEnabled)
+            .HasColumnName("is_enabled")
+            .IsRequired()
+            .HasDefaultValue(true);
+
+        builder.Property(b => b.MaxAmount)
+            .HasColumnName("max_amount")
+            .IsRequired()
+            .HasConversion(m => m.Amount, v => new Money(v, Vnd));
+
+        builder.Property(b => b.CurrentAmount)
+            .HasColumnName("current_amount")
+            .IsRequired()
+            .HasConversion(m => m.Amount, v => new Money(v, Vnd));
+
+        builder.Property(b => b.IncrementAmount)
+            .HasColumnName("increment_amount")
+            .HasConversion(
+                m => m == null ? (decimal?)null : m.Amount,
+                v => v == null ? null : new Money(v.Value, Vnd));
+
+        builder.Property(b => b.Status)
+            .HasColumnName("status")
+            .HasMaxLength(20)
+            .IsRequired()
+            .HasDefaultValue(AutoBidStatus.Active)
+            .HasConversion(
+                s => s.ToString().ToLowerInvariant(),
+                s => Enum.Parse<AutoBidStatus>(s, ignoreCase: true));
+
+        builder.Property(b => b.TotalAutoBids)
+            .HasColumnName("total_auto_bids")
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(b => b.LastAutoBidAt)
+            .HasColumnName("last_auto_bid_at");
+
+        builder.Property(b => b.CreatedAt)
+            .HasColumnName("created_at")
+            .HasDefaultValueSql("CURRENT_TIMESTAMP")
+            .IsRequired();
+
+        builder.Property(b => b.ModifiedAt)
+            .HasColumnName("modified_at");
+
+        builder.HasIndex(b => new { b.AuctionId, b.BidderId })
+            .IsUnique()
+            .HasDatabaseName("auction_auto_bids_auction_id_bidder_id_key");
+
+        builder.HasIndex(b => b.AuctionId)
+            .HasDatabaseName("idx_auction_auto_bids_auction_id");
+
+        builder.HasIndex(b => new { b.AuctionId, b.Status })
+            .HasDatabaseName("idx_auction_auto_bids_auction_id_status");
+
+        builder.HasIndex(b => b.BidderId)
+            .HasDatabaseName("idx_auction_auto_bids_bidder_id");
+
+        builder.ToTable(t => t.HasCheckConstraint(
+            "auction_auto_bids_status_check",
+            "status IN ('active','paused','exhausted','won','outbid')"));
+
+        builder.HasOne<Auction>()
+               .WithMany(a => a.AutoBids)
+               .HasForeignKey(b => b.AuctionId)
+               .HasConstraintName("auction_auto_bids_auction_id_fkey");
+    }
+}
+
+internal sealed class AuctionWatcherConfiguration : IEntityTypeConfiguration<AuctionWatcher>
+{
+    public void Configure(EntityTypeBuilder<AuctionWatcher> builder)
+    {
+        builder.ToTable("auction_watchers");
+
+        builder.HasKey(x => x.Id);
+        
+        builder.Property(x => x.Id)
+            .HasColumnName("id")
+            .ValueGeneratedNever()
+            .HasConversion(id => id.Value, v => AuctionWatcherId.From(v));
+
+        builder.Property(x => x.UserId)
+            .HasColumnName("user_id")
+            .IsRequired()
+            .HasConversion(id => id.Value, v => UserId.From(v));
+
+        builder.Property(x => x.NotifyOnBid)
+            .HasColumnName("notify_on_bid")
+            .HasDefaultValue(true);
+
+        builder.Property(x => x.NotifyOnEnd)
+            .HasColumnName("notify_on_end")
+            .HasDefaultValue(true);
+
+        builder.Property(x => x.CreatedAt)
+            .HasColumnName("created_at")
+            .HasDefaultValueSql("CURRENT_TIMESTAMP")
+            .IsRequired();
+
+        builder.HasIndex(x => new { x.AuctionId, x.UserId })
+            .IsUnique()
+            .HasDatabaseName("auction_watchers_auction_id_user_id_key");
+
+        builder.HasOne<Auction>()
+               .WithMany(a => a.Watchers)
+               .HasForeignKey(w => w.AuctionId)
+               .HasConstraintName("auction_watchers_auction_id_fkey");
     }
 }

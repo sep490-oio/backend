@@ -2,9 +2,9 @@
 
 public enum ItemStatus
 {
-    draft = 1,       
-    active = 2,      
+    Draft = 1,       
+    Active = 2,      
     InAuction = 3,     
     Sold = 4,          
-    removed = 5       
+    Removed = 5       
 }

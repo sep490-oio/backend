@@ -1,22 +1,38 @@
-﻿using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+﻿using CSharpFunctionalExtensions;
+using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
 
 namespace OIO.Domain.Context.AuctionContext.Aggregates.Items;
 
-public sealed class ItemImage : BaseEntity<ItemImageId>
+public sealed class ItemImage : Entity<ItemImageId>
 {
     public ItemId ItemId { get; private set; }
-    public string Url { get; private set; }
-    public bool IsMain { get; private set; }
+    public string ImageUrl { get; private set; }
+    public bool IsPrimary { get; private set; }
     public int SortOrder { get; private set; }
+    public DateTime CreatedAt { get; private set; }
 
-    internal ItemImage(ItemImageId id, ItemId itemId, string url, bool isMain, int sortOrder) : base(id)
+    private ItemImage() { }
+
+    public static ItemImage Create(
+        ItemId itemId,
+        string imageUrl,
+        bool isPrimary = false,
+        int sortOrder = 0,
+        DateTime? now = null)
     {
-        ItemId = itemId;
-        Url = url;
-        IsMain = isMain;
-        SortOrder = sortOrder;
+        return new ItemImage
+        {
+            Id = ItemImageId.From(Guid.CreateVersion7()),
+            ItemId = itemId,
+            ImageUrl = imageUrl,
+            IsPrimary = isPrimary,
+            SortOrder = sortOrder,
+            CreatedAt = now ?? DateTime.UtcNow
+        };
     }
 
-    internal void SetAsMain(bool isMain) => IsMain = isMain;
+    public void SetAsPrimary() => IsPrimary = true;
+    public void UnsetPrimary() => IsPrimary = false;
+    public void Reorder(int sortOrder) => SortOrder = sortOrder;
 }

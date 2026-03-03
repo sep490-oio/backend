@@ -9,7 +9,7 @@ namespace OIO.Domain.Context.AuctionContext.ValueObjects;
 public sealed class BidIncrement : ValueObject
 {
     public Money Value { get; }
-
+    private BidIncrement() { }
     private BidIncrement(Money value) => Value = value;
 
     public static Result<BidIncrement, Error> Create(Money value)

@@ -9,7 +9,7 @@ public sealed class AuctionPeriod : ValueObject
 {
     public DateTime StartTime { get; }
     public DateTime EndTime { get; }
-
+    private AuctionPeriod() { } // ← add this for EF
     private AuctionPeriod(DateTime start, DateTime end)
     {
         StartTime = start;
