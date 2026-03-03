@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.Extensions.Primitives;
 
 namespace OIO.Api.Middleware;
 

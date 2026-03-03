@@ -1,0 +1,22 @@
+# This is a generated file. Not intended for manual editing.
+services:
+  oio.api:
+    build:
+      context: "D:\\HocTrenTruong\\Ky9\\Project\\OIO"
+      dockerfile: "src/presentation/OIO.Api/Dockerfile"
+      target: "base"
+    command: []
+    entrypoint:
+    - "dotnet"
+    - "/app/bin/Debug/net10.0/OIO.Api.dll"
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_STATICWEBASSETS: "/app/bin/Debug/net10.0/OIO.Api.staticwebassets.runtime.CT.json"
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+    image: "ghcr.io/sep490-oio/backend/oio-api:dev"
+    ports: []
+    volumes:
+    - "D:\\HocTrenTruong\\Ky9\\Project\\OIO\\src\\presentation\\OIO.Api:/app:rw"
+    - "D:\\HocTrenTruong\\Ky9\\Project\\OIO:/src:rw"
+    - "C:\\Users\\night\\.nuget\\packages:/home/app/.nuget/packages"
+    working_dir: "/app"

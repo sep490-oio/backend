@@ -35,8 +35,8 @@
       - DefaultAccount__FirstName=${DEFAULT_ACCOUNT_FIRSTNAME}
       - DefaultAccount__LastName=${DEFAULT_ACCOUNT_LASTNAME}
       - DefaultAccount__DisplayName=${DEFAULT_ACCOUNT_DISPLAYNAME}
-    ports:
-      - "8080:8080"
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://seq:5341/ingest/otlp
+      - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
     depends_on:
       - database
     restart: unless-stopped
@@ -47,9 +47,27 @@
     ports:
       - "80:80"
       - "443:443"
-    command: caddy reverse-proxy --from api.newlsun.com --to oio.api:8080
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile  
+      - caddy_data:/data                  
+      - caddy_config:/config
     depends_on:
       - oio.api
+      - seq
+
+  redis:
+    image: redis:latest
+    container_name: Redis
+    restart: unless-stopped
+  
+  seq:
+    image: datalust/seq:latest
+    container_name: Seq
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_ADMINPASSWORD=${SEQ_ADMIN_PASSWORD}
 
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:

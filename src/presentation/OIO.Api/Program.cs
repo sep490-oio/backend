@@ -1,3 +1,5 @@
+using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OIO.Api;
 using OIO.Api.Extensions;
 using OIO.Application;
@@ -5,8 +7,12 @@ using OIO.Infrastructure;
 using OIO.Infrastructure.Persistence.Extensions;
 using OIO.Infrastructure.Settings;
 using Scalar.AspNetCore;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Host.UseSerilog((context, loggerConfig) =>
+    loggerConfig.ReadFrom.Configuration(context.Configuration));
+builder.AddObservability();
 
 
 builder.Services.AddApi(builder.Configuration);
@@ -43,15 +49,19 @@ if (app.Environment.IsDevelopment() || enableScalar)
     await DatabaseSeeder.SeedAsync(app.Services);
 }
 
-app.UseExceptionHandler();
 app.UseHttpsRedirection();
-
+app.UseExceptionHandler();
+app.UseRequestContextLogging();
+app.UseSerilogRequestLogging();
 app.UseCors(CorsOptions.PolicyName);
 
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapEndpoints();
-// app.MapHealthChecks("/health");
 
+app.MapHealthChecks("health", new HealthCheckOptions
+{
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+});
 
 app.Run();

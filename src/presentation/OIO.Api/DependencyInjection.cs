@@ -3,9 +3,14 @@ using System.Text.Json.Serialization;
 using CSharpFunctionalExtensions.HttpResults;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.OpenApi;
+using Npgsql;
 using OIO.Api.Extensions;
 using OIO.Api.Middleware;
 using OIO.Infrastructure.Settings;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 namespace OIO.Api;
 
@@ -134,5 +139,31 @@ public static class DependencyInjection
                 }
             );
         services.AddExceptionHandler<GlobalExceptionHandler>();
+    }
+    
+    public static WebApplicationBuilder AddObservability(this WebApplicationBuilder builder)
+    {
+        builder.Services.AddOpenTelemetry()
+            .ConfigureResource(resource => resource.AddService(builder.Environment.ApplicationName))
+            .WithTracing(tracing =>
+                tracing
+                    .AddHttpClientInstrumentation()
+                    .AddAspNetCoreInstrumentation()
+                    .AddNpgsql())
+            .WithMetrics(metrics =>
+                metrics
+                    .AddHttpClientInstrumentation()
+                    .AddAspNetCoreInstrumentation()
+                    .AddRuntimeInstrumentation()
+                    .AddNpgsqlInstrumentation())
+            .UseOtlpExporter();
+
+        builder.Logging.AddOpenTelemetry(options =>
+        {
+            options.IncludeScopes = true;
+            options.IncludeFormattedMessage = true;
+        });
+
+        return builder;
     }
 }

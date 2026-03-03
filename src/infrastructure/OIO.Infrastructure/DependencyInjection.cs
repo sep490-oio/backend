@@ -4,7 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
+using Npgsql;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.UserContext.Services;
@@ -35,7 +37,7 @@ public static class DependencyInjection
                 .AddAuthenticationServices(configuration)
                 .AddAuthorizationService()
                 .AddCachingService(configuration)
-                .AddHealthCheckService()
+                .AddHealthCheckService(configuration)
                 .AddBackgroundJobs();
 
             return services;
@@ -49,14 +51,14 @@ public static class DependencyInjection
             services.AddSingleton<SoftDeleteInterceptor>();
             services.AddSingleton<ConcurrencyInterceptor>();
             services.AddSingleton<InsertOutboxMessagesInterceptor>();
-
+            var connectionString = configuration.GetConnectionString("Database")
+                                   ?? throw new InvalidOperationException("Database connection string is not configured.");
+            services.AddNpgsqlDataSource(connectionString);
             // DbContext
             services.AddDbContext<ApplicationDbContext>((sp, options) =>
             {
-                var connectionString = configuration.GetConnectionString("Database")
-                                       ?? throw new InvalidOperationException("Database connection string is not configured.");
-
-                options.UseNpgsql(connectionString, npgsqlOptions =>
+                var dataSource = sp.GetRequiredService<NpgsqlDataSource>();
+                options.UseNpgsql(dataSource, npgsqlOptions =>
                 {
                     npgsqlOptions.MigrationsHistoryTable("__ef_migrations_history");
 
@@ -154,15 +156,15 @@ public static class DependencyInjection
 
         private IServiceCollection AddCachingService(IConfiguration configuration)
         {
-            var redisConnection = configuration.GetConnectionString("Redis");
+            var redisConnection = configuration.GetConnectionString("Cache");
 
             if (!string.IsNullOrEmpty(redisConnection))
             {
-                // services.AddStackExchangeRedisCache(options =>
-                // {
-                //     options.Configuration = redisConnection;
-                //     options.InstanceName = "oio:";
-                // });
+                services.AddStackExchangeRedisCache(options =>
+                {
+                    options.Configuration = redisConnection;
+                    options.InstanceName = "oio:cache";
+                });
             }
             else
             {
@@ -185,11 +187,19 @@ public static class DependencyInjection
             return services;
         }
 
-        private IServiceCollection AddHealthCheckService()
+        private IServiceCollection AddHealthCheckService(IConfiguration configuration)
         {
             // Health Checks
             services.AddHealthChecks()
-                .AddCheck<DatabaseHealthCheck>("database");
+                .AddRedis(
+                    configuration.GetConnectionString("Cache")!,
+                    name: "redis",
+                    failureStatus: HealthStatus.Unhealthy,
+                    tags: ["ready", "cache"])
+                .AddNpgSql(
+                    name: "database",
+                    failureStatus: HealthStatus.Unhealthy,
+                    tags: ["ready", "db"]);
 
             return services;
         }
