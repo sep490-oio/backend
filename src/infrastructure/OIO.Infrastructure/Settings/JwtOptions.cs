@@ -12,3 +12,10 @@ public class JwtOptions
     public TimeSpan RefreshTokenFamilySlidingExpiration { get; init; } = TimeSpan.FromDays(7);
     public TimeSpan RefreshTokenFamilyAbsoluteExpiration { get; init; } = TimeSpan.FromDays(180); 
 }
+
+public sealed class HashingOptions
+{
+    public const string SectionName = "Hashing";
+
+    public string HmacKeyBase64 { get; set; } = string.Empty;
+}

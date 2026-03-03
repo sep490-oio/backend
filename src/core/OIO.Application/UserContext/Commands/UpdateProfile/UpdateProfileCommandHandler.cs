@@ -71,7 +71,9 @@ internal sealed class UpdateProfileCommandHandler
         if (user is null)
             return UserErrors.User.NotFound(_currentUser.UserId);
 
-        var gender = Gender.FromId(request.Gender).GetValueOrDefault(user.Profile?.Gender!);
+        //if 'request.Gender' is null then it value when in string interpolation will be "",
+        //then FromId will return null, and GetValueOrDefault will return
+        var gender = Gender.FromId($"{request.Gender}").GetValueOrDefault();
         
         var updateProfileR = user.UpdateProfile(
             firstName: firstName,

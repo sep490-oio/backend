@@ -14,6 +14,7 @@ public static class HybridCacheExtensions
     /// </summary>
     /// <param name="cache">An instance of <see cref="HybridCache"/></param>
     /// <param name="key">The name (key) of the item to search for in the cache.</param>
+    /// <param name="cancellation">A cancellation token to observe while waiting for the task to complete.</param>
     /// <returns>True if the item exists already. False if it doesn't.</returns>
     /// <remarks>Will never add or alter the state of any items in the cache.</remarks>
     public async static Task<bool> ExistsAsync(this HybridCache cache, string key, CancellationToken cancellation = default)
@@ -28,6 +29,7 @@ public static class HybridCacheExtensions
     /// <typeparam name="T">The type of the value of the item in the cache.</typeparam>
     /// <param name="cache">An instance of <see cref="HybridCache"/></param>
     /// <param name="key">The name (key) of the item to search for in the cache.</param>
+    /// <param name="cancellationToken">A cancellation token to observe while waiting for the task to complete.</param>
     /// <returns>A tuple of <see cref="bool"/> and the object (if found) retrieved from the cache.</returns>
     /// <remarks>Will never add or alter the state of any items in the cache.</remarks>
     public async static Task<(bool Exists, T? Value)> TryGetValueAsync<T>(this HybridCache cache, string key, CancellationToken cancellationToken = default)

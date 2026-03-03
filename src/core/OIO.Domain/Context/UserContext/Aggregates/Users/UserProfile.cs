@@ -56,7 +56,7 @@ public sealed class UserProfile : BaseEntity<UserId>, IAuditableEntity
         DisplayName = displayName ?? DisplayName;
         AvatarUrl = avatarUrl ?? AvatarUrl;
         DateOfBirth = dateOfBirth ??  DateOfBirth;
-        Gender = gender ?? gender;
+        Gender = gender ?? Gender;
 
         ModifiedAt = now;
 

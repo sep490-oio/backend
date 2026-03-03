@@ -27,6 +27,11 @@ public static class UserErrors
             description: "Access token is invalid."
         );
 
+        public static readonly Error AuthTokenRevoked = Error.Unauthorized(
+            code: "Auth.Token.Revoked",
+            description: "Access token is revoked."
+        );
+
         // 401 - Token hết hạn
         public static readonly Error AuthTokenExpired = Error.Unauthorized(
             code: "Auth.Token.Expired",

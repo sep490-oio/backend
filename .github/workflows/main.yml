@@ -93,6 +93,12 @@ jobs:
           DEFAULT_ACCOUNT_FIRSTNAME=${{ vars.DEFAULT_ACCOUNT_FIRSTNAME }}
           DEFAULT_ACCOUNT_LASTNAME=${{ vars.DEFAULT_ACCOUNT_LASTNAME }}
           DEFAULT_ACCOUNT_DISPLAYNAME=${{ vars.DEFAULT_ACCOUNT_DISPLAYNAME }}
+          OTEL_EXPORTER_OTLP_ENDPOINT=http://seq:5341/ingest/otlp
+          OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+          Cors__AllowedOrigins__0=${{ vars.CORS_ALLOWED_ORIGINS_0 }}
+          Cors__AllowedOrigins__1=${{ vars.CORS_ALLOWED_ORIGINS_1 }}
+          Features__EnableScalar=${{ vars.FEATURES_ENABLE_SCALAR }}
+          Hashing__HmacKeyBase64=${{ secrets.HASHING_KEY }}
           EOF
 
       - name: Upload compose files to VPS

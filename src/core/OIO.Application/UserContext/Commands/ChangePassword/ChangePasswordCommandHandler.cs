@@ -20,6 +20,7 @@ internal sealed class ChangePasswordCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ICurrentUser _currentUser;
+    private readonly ISessionRevocationStore _revocationStore;
     private readonly IClock _clock;
 
     public ChangePasswordCommandHandler(
@@ -27,12 +28,14 @@ internal sealed class ChangePasswordCommandHandler
         IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
         ICurrentUser currentUser,
+        ISessionRevocationStore revocationStore,
         IClock clock)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _currentUser = currentUser;
+        _revocationStore = revocationStore;
         _clock = clock;
     }
 
@@ -69,6 +72,9 @@ internal sealed class ChangePasswordCommandHandler
         user.RevokeAllSession("Password changed", nowUtc);
         
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        
+        await _revocationStore.RevokeAllDevicesAsync(
+            user.Id, cancellationToken);
 
         return UnitResult.Success<Error>();
         

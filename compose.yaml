@@ -37,6 +37,10 @@
       - DefaultAccount__DisplayName=${DEFAULT_ACCOUNT_DISPLAYNAME}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://seq:5341/ingest/otlp
       - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+      - Cors__AllowedOrigins__0=${CORS_ALLOWED_ORIGINS_0}
+      - Cors__AllowedOrigins__1=${CORS_ALLOWED_ORIGINS_1}
+      - Features__EnableScalar=${FEATURES_ENABLE_SCALAR}
+      - Hashing__HmacKeyBase64=${HASHING_KEY}
     depends_on:
       - database
     restart: unless-stopped

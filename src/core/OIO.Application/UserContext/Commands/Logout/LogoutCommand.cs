@@ -6,8 +6,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.UserContext.Services;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Errors;
-
-using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.Services;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
@@ -31,17 +30,20 @@ internal sealed class LogoutCommandHandler
     private readonly IDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly ISessionRevocationStore _sessionRevocationStore;
     private readonly IClock _clock;
 
     public LogoutCommandHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
+        ISessionRevocationStore sessionRevocationStore,
         IClock clock)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _sessionRevocationStore = sessionRevocationStore;
         _clock = clock;
     }
 
@@ -50,8 +52,6 @@ internal sealed class LogoutCommandHandler
         CancellationToken cancellationToken)
     {
         var nowUtc = _clock.UtcNow;
-        
-        
 
         var user = await _dbContext.GetByIdAsync<User, UserId>(
             id: _currentUser.UserId,
@@ -59,18 +59,28 @@ internal sealed class LogoutCommandHandler
                 .Include(x => x.Sessions)
                 .ThenInclude(x => x.Tokens),
             cancellationToken: cancellationToken);
+        
         if (user is null)
             return UserErrors.User.NotFound(_currentUser.UserId);
         
-        if (request.DeviceId.HasValue)
+        if (request.DeviceId.HasValue && request.DeviceId.Value == _currentUser.DeviceId)
         {
             // Logout specific session
             user.RevokeSessionByDevice(request.DeviceId.Value, "User logout", nowUtc);
+            
+            await _sessionRevocationStore.RevokeDeviceAsync(
+                user.Id,
+                _currentUser.DeviceId,
+                cancellationToken);
         }
         else
         {
             // Logout all sessions
             user.RevokeAllSession("User logout all", nowUtc);
+            
+            await _sessionRevocationStore.RevokeAllDevicesAsync(
+                user.Id,
+                cancellationToken);
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);

@@ -123,6 +123,7 @@ public static class DependencyInjection
             services.Configure<DefaultAccountOptions>(configuration.GetSection(DefaultAccountOptions.SectionName));
             services.Configure<CorsOptions>(configuration.GetSection(CorsOptions.SectionName));
             services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+            services.Configure<HashingOptions>(configuration.GetSection(HashingOptions.SectionName));
             
             services.ConfigureOptions<JwtBearerOptionsSetup>();
             services.ConfigureOptions<JwtBearerOptionsForExpiredTokenSetup>();
@@ -134,6 +135,7 @@ public static class DependencyInjection
             // Application Services
             services.AddSingleton<ITokenExpirationSettings, TokenExpirationSettings>();
             services.AddScoped<ITokenProvider, TokenProvider>();
+            services.AddScoped<ISessionRevocationStore, SessionRevocationStore>();
             services.AddScoped<ICurrentUser, CurrentUser>();
             services.AddScoped<IEmailConfirmationService, EmailConfirmationService>();
             services.AddScoped<IPhoneVerificationService, PhoneVerificationService>();
