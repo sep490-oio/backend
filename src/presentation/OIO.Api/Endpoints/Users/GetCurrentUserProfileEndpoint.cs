@@ -16,7 +16,7 @@ public class GetCurrentUserProfileEndpoint : IEndpoint
                 
                 var result = await sender.Send(query, ct);
 
-                return result.ToNoContentHttpResult();
+                return result.ToOkHttpResult();
             })
             .RequireAuthorization(App.Permissions.Catalogs.Users.ReadMe)
             .WithName(ApiEndpoint.Names.Users.GetCurrentUserProfile)

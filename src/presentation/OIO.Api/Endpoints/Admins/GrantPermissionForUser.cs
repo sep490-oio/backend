@@ -9,7 +9,7 @@ public class GrantPermissionForUser : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapDelete(ApiEndpoint.Url.Admins.GrantPermission, async (
+        app.MapPost(ApiEndpoint.Url.Admins.GrantPermission, async (
                 Guid userId,
                 int permissionId,
                 ISender sender,
