@@ -16,6 +16,8 @@ public static class ApiEndpoint
         public static class Admins
         {
             public const string GetUser = nameof(GetUser);
+            public const string GetRoles = nameof(GetRoles);
+            public const string GetPermissions = nameof(GetPermissions);
             public const string ChangeUserStatus = nameof(ChangeUserStatus);
             public const string AssignRole = nameof(AssignRole);
             public const string RevokeRole = nameof(RevokeRole);
@@ -62,6 +64,8 @@ public static class ApiEndpoint
         public static class Admins
         {
             public const string GetUser = "api/admin/users/{userId:guid}";
+            public const string GetRoles = "api/admin/roles";
+            public const string GetPermissions = "api/admin/permissions";
             public const string AssignRole = "api/admin/users/{userId:guid}/roles/{roleId:int}";
             public const string RevokeRole = "api/admin/users/{userId:guid}/roles/{roleId:int}";
             public const string ChangeUserStatus = "api/admin/users/{userId:guid}/status";
