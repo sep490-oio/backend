@@ -2,6 +2,7 @@
 using OIO.Api.Common;
 using OIO.Api.Extensions;
 using OIO.Application.UserContext.Queries.GetUserById;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.Admins;
 
@@ -13,9 +14,9 @@ public class GetUserEndpoint : IEndpoint
             {
                 var result = await sender.Send(new GetUserByIdQuery(userId), ct);
 
-                return result.ToNoContentHttpResult();
+                return result.ToOkHttpResult();
             })
-            .AllowAnonymous()
+            .RequireAuthorization(App.Permissions.Catalogs.Users.Read)
             .WithName(ApiEndpoint.Names.Admins.GetUser)
             .WithTags(ApiEndpoint.Tags.Admins);
     }

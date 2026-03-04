@@ -9,7 +9,7 @@ public class RemoveUserEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapDelete(ApiEndpoint.Url.Admins.DeleteUser, async (
+        app.MapDelete(ApiEndpoint.Url.Admins.RemoveUser, async (
                 Guid userId,
                 ISender sender,
                 CancellationToken ct) =>
@@ -20,7 +20,7 @@ public class RemoveUserEndpoint : IEndpoint
                 return result.ToNoContentHttpResult();
             })
             .RequireAuthorization(App.Permissions.Catalogs.Users.Remove)
-            .WithName(ApiEndpoint.Names.Admins.DeleteUser)
+            .WithName(ApiEndpoint.Names.Admins.RemoveUser)
             .WithTags(ApiEndpoint.Tags.Admins);
     }
 }

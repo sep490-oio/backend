@@ -93,6 +93,13 @@ jobs:
           DEFAULT_ACCOUNT_FIRSTNAME=${{ vars.DEFAULT_ACCOUNT_FIRSTNAME }}
           DEFAULT_ACCOUNT_LASTNAME=${{ vars.DEFAULT_ACCOUNT_LASTNAME }}
           DEFAULT_ACCOUNT_DISPLAYNAME=${{ vars.DEFAULT_ACCOUNT_DISPLAYNAME }}
+          OTEL_EXPORTER_OTLP_ENDPOINT=http://seq:5341/ingest/otlp
+          OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+          CORS_ALLOWED_ORIGINS_0=${{ vars.CORS_ALLOWED_ORIGINS_0 }}
+          CORS_ALLOWED_ORIGINS_1=${{ vars.CORS_ALLOWED_ORIGINS_1 }}
+          FEATURES_ENABLE_SCALAR=${{ vars.FEATURES_ENABLE_SCALAR }}
+          HASHING_KEY=${{ secrets.HASHING_KEY }}
+          SEQ_ADMIN_PASSWORD=${{ secrets.SEQ_ADMIN_PASSWORD }}
           EOF
 
       - name: Upload compose files to VPS
@@ -103,6 +110,7 @@ jobs:
         run: |
           scp -P "${VPS_PORT:-22}" compose.yaml "$VPS_USER@$VPS_HOST:/opt/myapp/docker-compose.yaml"
           scp -P "${VPS_PORT:-22}" .env "$VPS_USER@$VPS_HOST:/opt/myapp/.env"
+          scp -P "${VPS_PORT:-22}" Caddyfile "$VPS_USER@$VPS_HOST:/opt/myapp/Caddyfile"
           sleep 3
           
       - name: Deploy on VPS

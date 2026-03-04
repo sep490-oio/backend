@@ -11,6 +11,10 @@
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
+      <PackageReference Include="AspNetCore.HealthChecks.Redis" />
+      <PackageReference Include="AspNetCore.HealthChecks.UI.Client" />
+      <PackageReference Include="AspNetCore.HealthChecks.Uris" />
       <PackageReference Include="EFCore.ComplexIndexes.PostgreSQL" />
       <PackageReference Include="EFCore.NamingConventions" />
       <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
@@ -18,7 +22,10 @@
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
+      <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
+      <PackageReference Include="Npgsql.DependencyInjection" />
       <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+      <PackageReference Include="Quartz.Extensions.Hosting" />
     </ItemGroup>
 
     <ItemGroup>

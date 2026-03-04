@@ -21,6 +21,7 @@ internal sealed class RefreshTokenCommandHandler
     private readonly ITokenProvider _tokenProvider;
     private readonly ICurrentUser _currentUser;
     private readonly ITokenExpirationSettings _expirationSettings;
+    private readonly ISessionRevocationStore _revocationStore;
     private readonly IClock _clock;
 
     public RefreshTokenCommandHandler(
@@ -30,6 +31,7 @@ internal sealed class RefreshTokenCommandHandler
         ITokenProvider tokenProvider,
         ICurrentUser currentUser,
         ITokenExpirationSettings expirationSettings,
+        ISessionRevocationStore revocationStore,
         IClock clock)
     {
         _dbContext = dbContext;
@@ -38,6 +40,7 @@ internal sealed class RefreshTokenCommandHandler
         _tokenProvider = tokenProvider;
         _currentUser = currentUser;
         _expirationSettings = expirationSettings;
+        _revocationStore = revocationStore;
         _clock = clock;
     }
 
@@ -55,7 +58,22 @@ internal sealed class RefreshTokenCommandHandler
         
         if (user is null)
             return UserErrors.RefreshToken.Invalid;
-
+        
+        var nowUtc = _clock.UtcNow;
+        
+        if (!request.DeviceId.Equals(_currentUser.DeviceId))
+        {
+            //Logout all sessions
+            user.RevokeAllSession("User refresh token device id mismatch with device id from access token", nowUtc);
+            
+            await _revocationStore.RevokeAllDevicesAsync(
+                user.Id,
+                cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            
+            return UserErrors.RefreshToken.Revoked;
+        }
+        
         var tokenHash = _tokenHasher.Hash(request.RefreshToken);
 
         UserRefreshToken? currentToken = null;
@@ -76,7 +94,6 @@ internal sealed class RefreshTokenCommandHandler
         if (currentToken is null || session is null)
             return UserErrors.RefreshToken.Invalid;
         
-        var nowUtc = _clock.UtcNow;
         
         if (session.DeviceId != request.DeviceId)
         {
@@ -117,6 +134,7 @@ internal sealed class RefreshTokenCommandHandler
             userId: user.Id,
             email: user.Email, 
             userName: user.UserName,
+            deviceId: request.DeviceId,
             roles: roles,
             now: nowUtc);
         

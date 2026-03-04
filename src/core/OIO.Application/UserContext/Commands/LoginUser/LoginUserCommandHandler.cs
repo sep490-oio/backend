@@ -24,6 +24,7 @@ internal sealed class LoginUserCommandHandler
     private readonly ITokenProvider _tokenProvider;
     private readonly ITokenHasher _tokenHasher;
     private readonly ITokenExpirationSettings _expirationSettings;
+    private readonly ISessionRevocationStore _revocationStore;
     private readonly IClock _clock;
 
     public LoginUserCommandHandler(
@@ -33,6 +34,7 @@ internal sealed class LoginUserCommandHandler
         ITokenProvider tokenProvider,
         ITokenHasher tokenHasher,
         ITokenExpirationSettings expirationSettings,
+        ISessionRevocationStore revocationStore,
         IClock clock)
     {
         _dbContext = dbContext;
@@ -41,6 +43,7 @@ internal sealed class LoginUserCommandHandler
         _tokenProvider = tokenProvider;
         _tokenHasher = tokenHasher;
         _expirationSettings = expirationSettings;
+        _revocationStore = revocationStore;
         _clock = clock;
     }
 
@@ -124,12 +127,19 @@ internal sealed class LoginUserCommandHandler
             userId: user.Id,
             email: user.Email, 
             userName: user.UserName,
+            deviceId: request.DeviceId,
             roles: roles,
             now: nowUtc);
 
         var accessTokenExpiresAt = nowUtc.Add(_expirationSettings.AccessTokenExpiration);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        
+        await _revocationStore.ClearDeviceRevocationAsync(
+            user.Id, cancellationToken);
+        
+        await _revocationStore.ClearUserRevocationAsync(
+            user.Id, cancellationToken);
 
         return new AuthTokenDto(
             AccessToken: accessToken,

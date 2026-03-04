@@ -79,6 +79,7 @@ internal sealed class RegisterUserCommandHandler
         user.UpdateProfile(nowUtc, firstName, lastName);
 
         user.AssignRole(App.Roles.Definitions.Bidder.Id, nowUtc);
+        user.AssignRole(App.Roles.Definitions.User.Id, nowUtc);
         
         _dbContext.Insert(user);
         

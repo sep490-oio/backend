@@ -1,0 +1,11 @@
+services:
+  oio.api:
+    build:
+      context: .
+      dockerfile: src/presentation/OIO.Api/Dockerfile
+    ports:
+      - "8080:8080"
+
+  seq:
+    ports:
+      - "8081:80"

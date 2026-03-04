@@ -4,10 +4,9 @@ using OIO.Application.Abstractions.Data;
 using OIO.Application.UserContext.Services;
 using OIO.Domain.Context.UserContext.Aggregates.Roles;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
-using OIO.Domain.Context.UserContext.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 
-namespace OIO.Infrastructure.Authorizations;
+namespace OIO.Infrastructure.Services;
 
 public class PermissionService : IPermissionService
 {

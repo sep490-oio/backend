@@ -1,0 +1,7 @@
+api.newlsun.com {
+    reverse_proxy oio.api:8080
+}
+
+seq.newlsun.com {
+    reverse_proxy seq:80
+}

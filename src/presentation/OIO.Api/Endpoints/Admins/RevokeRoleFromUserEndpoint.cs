@@ -1,6 +1,6 @@
 using MediatR;
 using OIO.Api.Common;
-using OIO.Application.UserContext.Commands.RemoveRole;
+using OIO.Application.UserContext.Commands.RevokeRole;
 using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.Admins;
@@ -15,7 +15,7 @@ public class RevokeRoleFromUserEndpoint : IEndpoint
                 ISender sender,
                 CancellationToken ct) =>
             {
-                var command = new RemoveRoleCommand(userId, roleId);
+                var command = new RevokeRoleCommand(userId, roleId);
                 var result = await sender.Send(command, ct);
 
                 return result.ToNoContentHttpResult();

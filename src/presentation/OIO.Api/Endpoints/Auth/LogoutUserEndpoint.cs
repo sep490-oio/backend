@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using OIO.Api.Common;
 using OIO.Application.UserContext.Commands.Logout;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.Auth;
 
@@ -22,7 +23,7 @@ public class LogoutUserEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .AllowAnonymous()
+            .RequireAuthorization(App.Policy.ExpiredTokenAllowed)
             .WithName(ApiEndpoint.Names.Auth.Logout)
             .WithTags(ApiEndpoint.Tags.Auth);
     }

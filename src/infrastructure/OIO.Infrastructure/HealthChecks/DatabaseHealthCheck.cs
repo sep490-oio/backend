@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Diagnostics.HealthChecks;
 using OIO.Infrastructure.Persistence;
+using StackExchange.Redis;
 
 namespace OIO.Infrastructure.HealthChecks;
 
