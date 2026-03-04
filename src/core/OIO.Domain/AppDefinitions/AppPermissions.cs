@@ -47,7 +47,10 @@ public static partial class App
             {
                 public const string TogglePermission = "roles:permissions:toggle";
             }
-            
+            public static class Permissions
+            {
+                public const string Read = "catalogs.permissions.read";
+            }
             public static IReadOnlyList<string> All =>
             [
                 Users.ReadMe,
