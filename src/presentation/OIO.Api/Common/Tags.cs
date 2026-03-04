@@ -15,12 +15,15 @@ public static class ApiEndpoint
     {
         public static class Admins
         {
-            public const string AssignRole = nameof(AssignRole);
-            public const string ChangeUserStatus = nameof(ChangeUserStatus);
-            public const string DeleteUser = nameof(DeleteUser);
             public const string GetUser = nameof(GetUser);
-            public const string GrantPermission = nameof(GrantPermission);
+            public const string ChangeUserStatus = nameof(ChangeUserStatus);
+            public const string AssignRole = nameof(AssignRole);
             public const string RevokeRole = nameof(RevokeRole);
+            public const string RemoveUser = nameof(RemoveUser);
+            public const string GrantPermission = nameof(GrantPermission);
+            public const string DenyPermission = nameof(DenyPermission);
+            public const string RevokePermission = nameof(RevokePermission);
+            public const string TogglePermission = nameof(TogglePermission);
             public const string UnlockUser = nameof(UnlockUser);
         }
 
@@ -58,13 +61,16 @@ public static class ApiEndpoint
     {
         public static class Admins
         {
-            public const string AssignRole = "api/admin/users/roles/{roleId:int}";
-            public const string ChangeUserStatus = "api/admin/users/{userId:guid}/status";
-            public const string DeleteUser = "api/admin/users/{userId:guid}";
             public const string GetUser = "api/admin/users/{userId:guid}";
-            public const string GrantPermission = "api/admin/users/permissions/{permissionId:int}";
-            public const string RevokeRole = "api/admin/users/roles/{roleId:int}";
+            public const string AssignRole = "api/admin/users/{userId:guid}/roles/{roleId:int}";
+            public const string RevokeRole = "api/admin/users/{userId:guid}/roles/{roleId:int}";
+            public const string ChangeUserStatus = "api/admin/users/{userId:guid}/status";
+            public const string RemoveUser = "api/admin/users/{userId:guid}";
+            public const string GrantPermission = "api/admin/users/{userId:guid}/permissions/{permissionId:int}";
+            public const string DenyPermission = "api/admin/users/{userId:guid}/permissions/{permissionId:int}";
+            public const string RevokePermission = "api/admin/users/{userId:guid}/permissions/{permissionId:int}";
             public const string UnlockUser = "api/admin/users/{userId:guid}/unlock";
+            public const string TogglePermission = "api/admin/roles/{roleId:int}/permissions/{permissionId:int}";
         }
 
         public static class Auth

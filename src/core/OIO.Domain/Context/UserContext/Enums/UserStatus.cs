@@ -8,6 +8,13 @@ public sealed class UserStatus : EnumValueObject<UserStatus>
     public static readonly UserStatus Inactive = new("inactive");
     public static readonly UserStatus Locked = new("locked");
     public static readonly UserStatus Suspended = new("suspended");
+
+    public static readonly UserStatus[] RevokedStatus =
+    [
+        Inactive,
+        Locked,
+        Suspended
+    ];
     
     private UserStatus (string id) : base(id)
     {

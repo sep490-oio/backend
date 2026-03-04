@@ -24,10 +24,10 @@ public static partial class App
 
         public static class Definitions
         {
-            public static readonly Role User = Role.Create(RoleId.From(1), Catalogs.User);
-            public static readonly Role Admin = Role.Create(RoleId.From(2), Catalogs.Admin);
-            public static readonly Role Seller = Role.Create(RoleId.From(3), Catalogs.Seller);
-            public static readonly Role Bidder = Role.Create(RoleId.From(4), Catalogs.Bidder);
+            public static readonly Role User = Role.Create(RoleId.From(1), Catalogs.User, 50);
+            public static readonly Role Admin = Role.Create(RoleId.From(2), Catalogs.Admin, 100);
+            public static readonly Role Seller = Role.Create(RoleId.From(3), Catalogs.Seller, 50);
+            public static readonly Role Bidder = Role.Create(RoleId.From(4), Catalogs.Bidder, 50);
 
             public static readonly Role[] All =
             [

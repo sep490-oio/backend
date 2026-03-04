@@ -642,6 +642,13 @@ internal sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
             .HasColumnName("role_name")
             .HasMaxLength(150)
             .IsRequired();
+        
+        builder.Property(r => r.Level)
+            .HasColumnName("level")
+            .IsRequired();
+        
+        builder.Property(u => u.ModifiedAt)
+            .HasColumnName("modified_at");
 
         builder.Property(r => r.NormalizedRoleName)
             .HasColumnName("normalized_role_name")
@@ -685,6 +692,7 @@ internal sealed class PermissionConfiguration : IEntityTypeConfiguration<Permiss
 
         builder.HasIndex(p => p.NormalizedPermissionCode)
             .IsUnique();
+        
     }
 }
 
@@ -700,6 +708,9 @@ internal sealed class RolePermissionConfiguration : IEntityTypeConfiguration<Rol
             .HasColumnName("role_id")
             .IsRequired()
             .HasConversion(x => x.Value, value => RoleId.From(value));
+        
+        builder.Property(u => u.ModifiedAt)
+            .HasColumnName("modified_at");
 
         builder.Property(rp => rp.PermissionId)
             .HasColumnName("permission_id")

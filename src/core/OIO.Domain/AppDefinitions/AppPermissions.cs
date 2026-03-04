@@ -40,6 +40,12 @@ public static partial class App
 
                 public const string GrantPermissions = "users:permissions:grant";
                 public const string RevokePermissions = "users:permissions:revoke";
+                public const string DenyPermissions = "users:permissions:deny";
+            }
+
+            public static class Roles
+            {
+                public const string TogglePermission = "roles:permissions:toggle";
             }
             
             public static IReadOnlyList<string> All =>
@@ -66,7 +72,21 @@ public static partial class App
                 Users.AssignRoles,
                 Users.RevokeRoles,
                 Users.GrantPermissions,
-                Users.RevokePermissions
+                Users.RevokePermissions,
+                Users.DenyPermissions,
+                //Roles
+                Roles.TogglePermission,
+            ];
+            
+            public static readonly HashSet<string> CriticalPermissions =
+            [
+                Users.AssignRoles,
+                Users.RevokeRoles,
+                Users.GrantPermissions,
+                Users.RevokePermissions,
+                Users.DenyPermissions,
+                Roles.TogglePermission,
+                
             ];
         }
 
@@ -104,6 +124,12 @@ public static partial class App
                 public static readonly Permission RevokePermissions = Permission.Create(22, Catalogs.Users.RevokePermissions);
                 
                 public static readonly Permission UpdateStatus = Permission.Create(23, Catalogs.Users.UpdateStatus);
+                public static readonly Permission DenyPermissions = Permission.Create(24, Catalogs.Users.DenyPermissions);
+            }
+
+            public static class Roles
+            {
+                public static readonly Permission TogglePermission = Permission.Create(25, Catalogs.Roles.TogglePermission);
             }
             
             public static IReadOnlyList<Permission> All =>
@@ -130,7 +156,10 @@ public static partial class App
                 Users.RevokeRoles,
                 Users.GrantPermissions,
                 Users.RevokePermissions,
-                Users.UpdateStatus
+                Users.UpdateStatus,
+                Users.DenyPermissions,
+                //Roles
+                Roles.TogglePermission,
             ];
         }
     }

@@ -2,15 +2,15 @@
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
 
-namespace OIO.Application.UserContext.Commands.RemoveRole;
+namespace OIO.Application.UserContext.Commands.RevokeRole;
 
-public sealed record RemoveRoleCommand(
+public sealed record RevokeRoleCommand(
     Guid UserId,
     int RoleId) : ICommand, IHasValidate
 {
     public ViolationsError Validate()
     {
-        return RemoveRoleCommand.Check()
+        return RevokeRoleCommand.Check()
             .WithOwnerName("RemoveRole")
             .Field(UserId)
             .NotEmptyGuid()

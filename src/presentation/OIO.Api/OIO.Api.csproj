@@ -26,4 +26,8 @@
         <PackageReference Include="Npgsql.OpenTelemetry" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Settings\" />
+    </ItemGroup>
+
 </Project>

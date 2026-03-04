@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using CSharpFunctionalExtensions;
+using OIO.Domain.Context.UserContext.Aggregates.Roles;
 using OIO.Domain.Context.UserContext.Aggregates.Users.Events;
 using OIO.Domain.Context.UserContext.Enums;
 using OIO.Domain.Context.UserContext.Errors;
@@ -533,8 +534,21 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         
         return unitResult;
     }
+    
+    public int GetMaxRoleLevel()
+    {
+        return _roles.Count == 0
+            ? 0
+            : _roles.Max(x => x.Role.Level);
+    }
 
-    public UnitResult<Error> RemoveRole(RoleId roleId, DateTime now)
+    public bool CanManage(User targetUser)
+    {
+        ArgumentNullException.ThrowIfNull(targetUser);
+        return GetMaxRoleLevel() > targetUser.GetMaxRoleLevel();
+    }
+    
+    public UnitResult<Error> RevokeRole(RoleId roleId, DateTime now)
     {
         var unitResult = EnsureNotDeleted();
         
@@ -566,15 +580,14 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
             return unitResult.Error;
         }
 
-
         var existing = _permissions.FirstOrDefault(p => p.PermissionId == permissionId);
         if (existing is not null)
         {
-            existing.SetAllowed(true);
+            existing.Grant();
             return unitResult;
         }
 
-        _permissions.Add(new UserPermission(Id, permissionId, isAllowed: true));
+        _permissions.Add(UserPermission.Grant(Id, permissionId));
         
         ModifiedAt = now;
         
@@ -594,18 +607,18 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         var existing = _permissions.FirstOrDefault(p => p.PermissionId == permissionId);
         if (existing is not null)
         {
-            existing.SetAllowed(false);
+            existing.Deny();
             return  unitResult;
         }
 
-        _permissions.Add(new UserPermission(Id, permissionId, isAllowed: false));
+        _permissions.Add(UserPermission.Deny(Id, permissionId));
         
         ModifiedAt = now;
         
         return unitResult;
     }
 
-    public UnitResult<Error> RemovePermission(PermissionId permissionId, DateTime now)
+    public UnitResult<Error> RevokePermission(PermissionId permissionId, DateTime now)
     {
         var unitResult = EnsureNotDeleted();
         
@@ -614,8 +627,8 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
             return unitResult.Error;
         }
 
-
         var permission = _permissions.FirstOrDefault(p => p.PermissionId == permissionId);
+        
         if (permission is null)
         {
             return unitResult;

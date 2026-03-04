@@ -37,6 +37,7 @@ if (app.Environment.IsDevelopment() || enableScalar)
         options.WithTitle("OIO API")
             .ShowOperationId()
             .ExpandAllTags()
+            .WithClassicLayout()
             .SortTagsAlphabetically()
             .SortOperationsByMethod();
        

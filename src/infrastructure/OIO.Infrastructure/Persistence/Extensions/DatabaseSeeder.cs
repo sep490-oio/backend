@@ -24,8 +24,10 @@ public static class DatabaseSeeder
         {
             logger.LogInformation("Starting database seeding...");
 
-            await SeedPermissionsAsync(dbContext, logger);
-            await SeedRolesAsync(dbContext, logger);
+            // NOTE: Permission and role seeding are temporarily disabled (e.g. for testing or when using an already-seeded database).
+            // Re-enable the following calls when initializing a new environment that requires full permission and role seeding.
+            //await SeedPermissionsAsync(dbContext, logger);
+            //await SeedRolesAsync(dbContext, logger);
             await AssignPermissionsToRolesAsync(dbContext, logger);
             await SeedAdminUserAsync(dbContext, scope.ServiceProvider, logger);
 
@@ -82,7 +84,9 @@ public static class DatabaseSeeder
             .AsNoTrackingWithIdentityResolution()
             .ToListAsync();
         
-        var newRoles = App.RolePermissions.All.Where(x => !rolePermissions.Any(y => y.PermissionId != x.PermissionId && y.RoleId != x.RoleId)).ToList();
+        var newRoles = App.RolePermissions.All
+            .Where(x => !rolePermissions.Any(y => y.PermissionId == x.PermissionId && y.RoleId == x.RoleId))
+            .ToList();
         
         if (newRoles.Count == 0)
             return;

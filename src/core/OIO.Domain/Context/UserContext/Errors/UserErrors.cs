@@ -168,6 +168,47 @@ public static class UserErrors
             code: "User.Session.Expired",
             description: $"Your session expired due to inactivity. Please login again."
         );
+
+        public static readonly Error CannotRevokeRoleYourself = Error.Forbidden(
+            code: "User.Role.Revoke.Self",
+            description: "You cannot revoke your own role."
+        );
+        
+        
+        public static readonly Error CannotChangeOwnStatus = Error.Forbidden(
+            code: "User.Status.Change.Self",
+            description: "You cannot change your own status."
+        );
+        
+        public static readonly Error CannotRemoveYourself = Error.Forbidden(
+            code: "User.Remove.Self",
+            description: "You cannot remove your own account."
+        );
+        
+        public static readonly Error CannotUnlockYourself = Error.Forbidden(
+            code: "User.Unlock.Self",
+            description: "You cannot unlock your own account."
+        );
+        
+        public static readonly Error CannotAssignRoleYourself = Error.Forbidden(
+            code: "User.Role.Assign.Self",
+            description: "You cannot assign a role to yourself."
+        );
+        
+        public static readonly Error CannotManageOwnPermissions = Error.Forbidden(
+            code: "User.Permission.Manage.Self",
+            description: "You cannot manage permission of yourself."
+        );
+        
+        
+        public static readonly Error CannotRevokeLastAdminUser = Error.Forbidden(
+            code: "User.Role.LastAdmin.Revoke",
+            description: "The last admin user cannot be revoked."
+        );
+        
+        public static readonly Error InsufficientRoleLevel = Error.Forbidden(
+            code: "User.Role.Insufficient.Level",
+            description: "You cannot manage this user because their role level is equal to or higher than yours.");
     }
     #endregion
 
@@ -194,5 +235,18 @@ public static class UserErrors
             description: "Token does not belong to this session."
         );
     } 
+    #endregion
+
+    #region Permission
+
+    public static class Permission
+    {
+        public static readonly Func<PermissionId, Error> NotFound = permissionId => Error.NotFound(
+            code: "Permission.NotFound",
+            description: $"Permission with id '{permissionId}' was not found."
+        );
+
+    }
+
     #endregion
 }

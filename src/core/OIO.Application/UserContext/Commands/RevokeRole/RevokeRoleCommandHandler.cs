@@ -7,14 +7,13 @@ using OIO.Application.UserContext.Services;
 using OIO.Domain.AppDefinitions;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Errors;
-using OIO.Domain.Context.UserContext.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
-namespace OIO.Application.UserContext.Commands.GrantPermission;
+namespace OIO.Application.UserContext.Commands.RevokeRole;
 
-internal sealed class GrantPermissionCommandHandler
-    : ICommandHandler<GrantPermissionCommand>
+internal sealed class RevokeRoleCommandHandler
+    : ICommandHandler<RevokeRoleCommand>
 {
     private readonly IDbContext _dbContext;
     private readonly ICurrentUser _currentUser;
@@ -22,7 +21,7 @@ internal sealed class GrantPermissionCommandHandler
     private readonly IPermissionService _permissionService;
     private readonly IClock _clock;
 
-    public GrantPermissionCommandHandler(
+    public RevokeRoleCommandHandler(
         IDbContext dbContext,
         ICurrentUser currentUser,
         IUnitOfWork unitOfWork,
@@ -37,17 +36,17 @@ internal sealed class GrantPermissionCommandHandler
     }
 
     public async Task<UnitResult<Error>> Handle(
-        GrantPermissionCommand request,
+        RevokeRoleCommand request,
         CancellationToken cancellationToken)
     {
         var nowUtc =  _clock.UtcNow;
         
         var actorId = _currentUser.UserId;
         var targetUserId = UserId.From(request.UserId);
-        var targetPermissionId = PermissionId.From(request.PermissionId);
+        var targetRoleId = RoleId.From(request.RoleId);
         
         if (actorId == targetUserId)
-            return UserErrors.User.CannotManageOwnPermissions;
+            return UserErrors.User.CannotRevokeRoleYourself;
         
         var actor = await _dbContext.GetByIdAsync<User, UserId>(
             actorId,
@@ -62,39 +61,45 @@ internal sealed class GrantPermissionCommandHandler
         //load target user + roles
         var targetUser = await _dbContext.GetByIdAsync<User, UserId>(
             targetUserId,
-            queryBuilder: q => q
-                .Include(x => x.Roles)
-                .ThenInclude(x => x.Role)
-                .Include(x => x.Permissions),
+            queryBuilder: q => q.Include(x => x.Roles).ThenInclude(x => x.Role),
             cancellationToken: cancellationToken);
 
         if (targetUser is null)
             return UserErrors.User.NotFound(targetUserId);
         
+        var targetRole = App.Roles.Definitions.All.FirstOrDefault(x => x.Id == targetRoleId);
+        
+        if (targetRole is null)
+            return RoleErrors.Role.NotFound(targetRoleId);
+        
         if (!actor.CanManage(targetUser))
             return UserErrors.User.InsufficientRoleLevel;
         
-        var permission = App.Permissions.Definitions.All.FirstOrDefault(x => x.Id == targetPermissionId);
+        if (actor.GetMaxRoleLevel() <= targetRole.Level)
+            return RoleErrors.Role.CannotRevokeHigherOrEqualRole;
 
-        if (permission is null)
+        if (targetRoleId == App.Roles.Definitions.Admin.Id)
         {
-            return UserErrors.Permission.NotFound(targetPermissionId);
+            var numberOfAdmin = await _dbContext.Set<User>()
+                .Where(x => x.Roles.Any(r => r.RoleId == App.Roles.Definitions.Admin.Id) && x.Id != targetUserId)
+                .CountAsync(cancellationToken);
+
+            if (numberOfAdmin == 0)
+            {
+                return UserErrors.User.CannotRevokeLastAdminUser;
+            }
         }
         
-        if(App.Permissions.Catalogs.CriticalPermissions.Contains(permission.PermissionCode) &&
-           actor.GetMaxRoleLevel() < App.Roles.Definitions.Admin.Level)
-            return UserErrors.Auth.InsufficientPermissions;
-        
-        var result = targetUser.GrantPermission(targetPermissionId, nowUtc);
+        var removeRoleResult = targetUser.RevokeRole(targetRoleId, nowUtc);
 
-        if (result.IsFailure)
+        if (removeRoleResult.IsFailure)
         {
-            return result.Error;
+            return removeRoleResult;
         }
         
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         await _permissionService.InvalidatePermissionsCacheAsync(targetUserId, cancellationToken);
-        
-        return result;
+
+        return removeRoleResult;
     }
 }
