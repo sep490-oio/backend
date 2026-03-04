@@ -84,9 +84,9 @@ public static class DatabaseSeeder
             .AsNoTrackingWithIdentityResolution()
             .ToListAsync();
         
-        var newRoles = App.RolePermissions.All
-            .Where(x => !rolePermissions.Any(y => y.PermissionId == x.PermissionId && y.RoleId == x.RoleId))
-            .ToList();
+       var newRoles = App.RolePermissions.All
+           .Where(x => !rolePermissions.Any(y => y.PermissionId != x.PermissionId && y.RoleId != x.RoleId))
+           .ToList();
         
         if (newRoles.Count == 0)
             return;
