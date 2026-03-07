@@ -16,7 +16,7 @@ public class UnlockUserEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Admin.ManageUsers)
             .WithName(ApiEndpoint.Names.Admins.UnlockUser)
             .WithTags(ApiEndpoint.Tags.Admins);
     }

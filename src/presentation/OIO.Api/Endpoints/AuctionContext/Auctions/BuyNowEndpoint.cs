@@ -22,7 +22,7 @@ public sealed class BuyNowEndpoint : IEndpoint
 
                 return result.ToCreatedHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Auctions.BuyNow)
             .WithName(ApiEndpoint.Names.Auctions.BuyNow)
             .WithTags(ApiEndpoint.Tags.Auctions)
             .Produces(StatusCodes.Status201Created)

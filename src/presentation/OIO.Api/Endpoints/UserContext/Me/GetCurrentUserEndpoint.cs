@@ -17,7 +17,7 @@ public class GetCurrentUserEndpoint : IEndpoint
 
                 return result.ToOkHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Me.Read)
             .WithName(ApiEndpoint.Names.Me.GetMe)
             .WithTags(ApiEndpoint.Tags.Me);
     }

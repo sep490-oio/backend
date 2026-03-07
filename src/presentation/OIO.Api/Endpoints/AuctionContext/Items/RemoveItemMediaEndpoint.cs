@@ -21,7 +21,7 @@ public sealed class RemoveItemMediaEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Items.ManageMedia)
             .WithName(ApiEndpoint.Names.Items.RemoveItemMedia)
             .WithTags(ApiEndpoint.Tags.Items)
             .Produces(StatusCodes.Status204NoContent)

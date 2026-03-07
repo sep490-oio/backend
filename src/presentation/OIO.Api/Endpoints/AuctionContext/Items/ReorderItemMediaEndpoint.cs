@@ -1,6 +1,7 @@
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.ReorderItemMedia;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.AuctionContext.Items;
 
@@ -23,7 +24,7 @@ public sealed class ReorderItemMediaEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Items.ManageMedia)
             .WithName(ApiEndpoint.Names.Items.ReorderItemMedia)
             .WithTags(ApiEndpoint.Tags.Items)
             .Produces(StatusCodes.Status204NoContent)

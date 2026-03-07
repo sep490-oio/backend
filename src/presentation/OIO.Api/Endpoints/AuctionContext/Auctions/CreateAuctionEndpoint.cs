@@ -46,7 +46,7 @@ public sealed class CreateAuctionEndpoint : IEndpoint
 
                 return result.ToCreatedHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Auctions.Create)
             .WithName(ApiEndpoint.Names.Auctions.CreateAuction)
             .WithTags(ApiEndpoint.Tags.Auctions)
             .Produces(StatusCodes.Status201Created)

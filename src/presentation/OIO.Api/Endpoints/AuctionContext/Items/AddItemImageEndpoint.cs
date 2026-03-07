@@ -30,7 +30,7 @@ public sealed class AddMediaToItemEndpoint : IEndpoint
 
                 return result.ToCreatedHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Items.ManageMedia)
             .WithName(ApiEndpoint.Names.Items.AddItemMedia)
             .WithTags(ApiEndpoint.Tags.Items)
             .Produces(StatusCodes.Status201Created)

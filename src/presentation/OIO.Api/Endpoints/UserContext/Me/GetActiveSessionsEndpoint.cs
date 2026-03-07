@@ -26,7 +26,7 @@ public class GetActiveSessionsEndpoint : IEndpoint
 
                     return result.ToOkHttpResult();
                 })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Me.ReadSessions)
             .WithName(ApiEndpoint.Names.Me.GetActiveSessions)
             .WithTags(ApiEndpoint.Tags.Me);
     }

@@ -19,7 +19,7 @@ public sealed class GetAllRolesEndpoint : IEndpoint
 
                 return result.ToOkHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Admin.ReadRoles)
             .WithName(ApiEndpoint.Names.Admins.GetRoles)
             .WithTags(ApiEndpoint.Tags.Admins);
     }

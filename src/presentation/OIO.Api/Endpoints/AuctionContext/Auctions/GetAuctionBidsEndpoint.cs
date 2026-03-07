@@ -24,7 +24,7 @@ public sealed class GetAuctionBidsEndpoint : IEndpoint
 
                 return result.ToOkHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Auctions.ReadAutoBid)
             .WithName(ApiEndpoint.Names.Auctions.GetAuctionBids)
             .WithTags(ApiEndpoint.Tags.Auctions)
             .Produces(StatusCodes.Status200OK)

@@ -20,7 +20,7 @@ public class DenyPermissionFromUserEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Admin.DenyPermission)
             .WithName(ApiEndpoint.Names.Admins.DenyPermission)
             .WithTags(ApiEndpoint.Tags.Admins);
     }

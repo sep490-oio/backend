@@ -23,7 +23,7 @@ public sealed class GetMyAuctionWatchlistEndpoint : IEndpoint
 
                 return result.ToOkHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Me.ReadWatchlist)
             .WithName(ApiEndpoint.Names.Me.GetMyAuctionWatchlist)
             .WithTags(ApiEndpoint.Tags.Me);
     }

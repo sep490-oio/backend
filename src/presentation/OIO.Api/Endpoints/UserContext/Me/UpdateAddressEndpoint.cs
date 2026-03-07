@@ -42,7 +42,7 @@ public class UpdateAddressEndpoint : IEndpoint
 
                     return result.ToOkHttpResult();
                 })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Me.ManageAddress)
             .WithName(ApiEndpoint.Names.Me.UpdateMyAddress)
             .WithTags(ApiEndpoint.Tags.Me);
     }

@@ -1,6 +1,7 @@
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.UpdateCategory;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.AuctionContext.Categories;
 
@@ -35,7 +36,7 @@ public sealed class UpdateCategoryEndpoint : IEndpoint
 
                 return result.ToOkHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Categories.Update)
             .WithName(ApiEndpoint.Names.Categories.UpdateCategory)
             .WithTags(ApiEndpoint.Tags.Categories)
             .Produces(StatusCodes.Status200OK)

@@ -20,7 +20,7 @@ public class SetDefaultAddressEndpoint : IEndpoint
 
                     return result.ToNoContentHttpResult();
                 })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Me.ManageAddress)
             .WithName(ApiEndpoint.Names.Me.SetDefaultAddress)
             .WithTags(ApiEndpoint.Tags.Me);
     }

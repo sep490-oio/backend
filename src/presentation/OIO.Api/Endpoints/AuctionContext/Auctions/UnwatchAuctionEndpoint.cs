@@ -20,7 +20,7 @@ public sealed class UnwatchAuctionEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Auctions.Unwatch)
             .WithName(ApiEndpoint.Names.Auctions.UnwatchAuction)
             .WithTags(ApiEndpoint.Tags.Auctions)
             .Produces(StatusCodes.Status204NoContent);

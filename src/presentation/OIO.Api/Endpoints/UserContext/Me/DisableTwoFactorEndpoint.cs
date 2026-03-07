@@ -19,7 +19,7 @@ public class DisableTwoFactorEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Me.ManageTwoFactor)
             .WithName(ApiEndpoint.Names.Me.DisableTwoFactor)
             .WithTags(ApiEndpoint.Tags.Me);
     }

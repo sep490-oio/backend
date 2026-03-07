@@ -19,7 +19,7 @@ public class RemoveUserEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Admin.ManageUsers)
             .WithName(ApiEndpoint.Names.Admins.RemoveUser)
             .WithTags(ApiEndpoint.Tags.Admins);
     }

@@ -17,7 +17,7 @@ public class GetCurrentUserProfileEndpoint : IEndpoint
 
                 return result.ToOkHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Me.ReadProfile)
             .WithName(ApiEndpoint.Names.Me.GetMyProfile)
             .WithTags(ApiEndpoint.Tags.Me);
     }

@@ -20,7 +20,7 @@ public sealed class ResumeAutoBidEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Auctions.AutoBid)
             .WithName(ApiEndpoint.Names.Auctions.ResumeAutoBid)
             .WithTags(ApiEndpoint.Tags.Auctions)
             .Produces(StatusCodes.Status204NoContent)

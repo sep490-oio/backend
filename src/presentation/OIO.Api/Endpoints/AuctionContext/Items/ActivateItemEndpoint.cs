@@ -20,7 +20,7 @@ public sealed class ActivateItemEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Items.Activate)
             .WithName(ApiEndpoint.Names.Items.ActivateItem)
             .WithTags(ApiEndpoint.Tags.Items)
             .Produces(StatusCodes.Status400BadRequest)

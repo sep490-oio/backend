@@ -17,7 +17,10 @@ public class UpdateCurrentUserProfileEndpoint : IEndpoint
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPut(ApiEndpoint.Url.Me.UpdateCurrentUserProfile, async (Request request, ISender sender, CancellationToken ct) =>
+        app.MapPut(ApiEndpoint.Url.Me.UpdateCurrentUserProfile, async (
+                Request request,
+                ISender sender,
+                CancellationToken ct) =>
             {
                 var command = new UpdateProfileCommand(
                     request.FirstName,
@@ -31,7 +34,7 @@ public class UpdateCurrentUserProfileEndpoint : IEndpoint
 
                 return result.ToOkHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Me.UpdateProfile)
             .WithName(ApiEndpoint.Names.Me.UpdateMyProfile)
             .WithTags(ApiEndpoint.Tags.Me);
     }

@@ -22,7 +22,7 @@ public class ChangeUserStatusEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Admin.ManageUsers)
             .WithName(ApiEndpoint.Names.Admins.ChangeUserStatus)
             .WithTags(ApiEndpoint.Tags.Admins);
     }

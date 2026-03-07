@@ -15,7 +15,7 @@ public class GetUserEndpoint : IEndpoint
 
                 return result.ToOkHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Admin.ReadUsers)
             .WithName(ApiEndpoint.Names.Admins.GetUserById)
             .WithTags(ApiEndpoint.Tags.Admins);
     }

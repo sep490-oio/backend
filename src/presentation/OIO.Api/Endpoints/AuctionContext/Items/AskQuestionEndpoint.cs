@@ -23,7 +23,7 @@ public sealed class AskQuestionEndpoint : IEndpoint
 
                 return result.ToCreatedHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Items.AskQuestion)
             .WithName(ApiEndpoint.Names.Items.AskItemQuestion)
             .WithTags(ApiEndpoint.Tags.Items)
             .Produces(StatusCodes.Status201Created)

@@ -47,7 +47,7 @@ public sealed class CreateItemEndpoint : IEndpoint
 
                 return result.ToCreatedHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Items.Create)
             .WithName(ApiEndpoint.Names.Items.CreateItem)
             .WithTags(ApiEndpoint.Tags.Items)
             .Produces(StatusCodes.Status201Created)

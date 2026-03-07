@@ -24,7 +24,7 @@ public class TogglePermissionFromRoleEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Admin.ManagePermissions)
             .WithName(ApiEndpoint.Names.Admins.TogglePermission)
             .WithTags(ApiEndpoint.Tags.Admins);
     }

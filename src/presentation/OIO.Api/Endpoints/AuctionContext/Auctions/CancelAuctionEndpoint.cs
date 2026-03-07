@@ -23,7 +23,7 @@ public sealed class CancelAuctionEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Auctions.Cancel)
             .WithName(ApiEndpoint.Names.Auctions.CancelAuction)
             .WithTags(ApiEndpoint.Tags.Auctions)
             .Produces(StatusCodes.Status204NoContent)

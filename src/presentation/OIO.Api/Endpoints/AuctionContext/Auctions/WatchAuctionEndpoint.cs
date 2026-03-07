@@ -28,7 +28,7 @@ public sealed class WatchAuctionEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Auctions.Watch)
             .WithName(ApiEndpoint.Names.Auctions.WatchAuction)
             .WithTags(ApiEndpoint.Tags.Auctions)
             .Produces(StatusCodes.Status204NoContent)

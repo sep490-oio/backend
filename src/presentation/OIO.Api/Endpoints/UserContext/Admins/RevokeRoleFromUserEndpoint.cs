@@ -20,7 +20,7 @@ public class RevokeRoleFromUserEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Admin.RevokeRole)
             .WithName(ApiEndpoint.Names.Admins.RevokeRole)
             .WithTags(ApiEndpoint.Tags.Admins);
     }

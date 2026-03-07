@@ -59,7 +59,7 @@ if (app.Environment.IsDevelopment() || appInfo.Features.EnableScalar)
         .ExcludeFromDescription();
     
     await app.ApplyMigrationsAsync();
-    //await DatabaseSeeder.SeedAsync(app.Services);
+    await DatabaseSeeder.SeedAsync(app.Services);
     await FakeDataSeeder.SeedAsync(app.Services);
     
 }

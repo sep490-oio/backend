@@ -20,7 +20,7 @@ public class RemoveMyAddressEndpoint : IEndpoint
 
                     return result.ToNoContentHttpResult();
                 })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Me.ManageAddress)
             .WithName(ApiEndpoint.Names.Me.RemoveMyAddress)
             .WithTags(ApiEndpoint.Tags.Me);
     }

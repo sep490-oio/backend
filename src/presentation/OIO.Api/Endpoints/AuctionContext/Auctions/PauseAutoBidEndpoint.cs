@@ -20,7 +20,7 @@ public sealed class PauseAutoBidEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Auctions.AutoBid)
             .WithName(ApiEndpoint.Names.Auctions.PauseAutoBid)
             .WithTags(ApiEndpoint.Tags.Auctions)
             .Produces(StatusCodes.Status204NoContent)

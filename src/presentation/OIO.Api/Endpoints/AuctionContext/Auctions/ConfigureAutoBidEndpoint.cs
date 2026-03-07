@@ -30,7 +30,7 @@ public sealed class ConfigureAutoBidEndpoint : IEndpoint
 
                 return result.ToOkHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Auctions.AutoBid)
             .WithName(ApiEndpoint.Names.Auctions.ConfigureAutoBid)
             .WithTags(ApiEndpoint.Tags.Auctions)
             .Produces(StatusCodes.Status200OK)

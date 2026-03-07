@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.MediaContext.Commands.ConfirmUpload;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.MediaContext.Media;
 
@@ -37,7 +38,7 @@ public sealed class ConfirmUploadEndpoint : IEndpoint
 
                 return result.ToCreatedHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Media.ConfirmUpload)
             .WithName(ApiEndpoint.Names.Media.ConfirmUpload)
             .WithTags(ApiEndpoint.Tags.Media)
             .Produces(StatusCodes.Status201Created)

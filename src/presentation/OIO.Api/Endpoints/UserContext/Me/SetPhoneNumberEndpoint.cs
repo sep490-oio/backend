@@ -28,7 +28,7 @@ public class SetPhoneNumberEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Me.ManagePhone)
             .WithName(ApiEndpoint.Names.Me.SetPhoneNumber)
             .WithTags(ApiEndpoint.Tags.Me);
     }

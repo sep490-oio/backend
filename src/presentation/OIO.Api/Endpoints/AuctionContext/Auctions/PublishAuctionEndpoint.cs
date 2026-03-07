@@ -20,7 +20,7 @@ public sealed class PublishAuctionEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Auctions.Publish)
             .WithName(ApiEndpoint.Names.Auctions.PublishAuction)
             .WithTags(ApiEndpoint.Tags.Auctions)
             .Produces(StatusCodes.Status204NoContent)

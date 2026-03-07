@@ -23,7 +23,7 @@ public sealed class GetPermissionsEndpoint : IEndpoint
 
                 return result.ToOkHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Admin.ReadPermissions)
             .WithName(ApiEndpoint.Names.Admins.GetPermissions)
             .WithTags(ApiEndpoint.Tags.Admins);
     }

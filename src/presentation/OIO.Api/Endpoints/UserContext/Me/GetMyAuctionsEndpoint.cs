@@ -23,7 +23,7 @@ public sealed class GetMyAuctionsEndpoint : IEndpoint
 
                 return result.ToOkHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Me.ReadAuctions)
             .WithName(ApiEndpoint.Names.Me.GetMyAuctions)
             .WithTags(ApiEndpoint.Tags.Me);
     }

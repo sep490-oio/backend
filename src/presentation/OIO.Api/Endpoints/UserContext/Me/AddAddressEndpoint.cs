@@ -44,7 +44,7 @@ public class AddAddressEndpoint : IEndpoint
 
                 return result.ToCreatedHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Me.ManageAddress)
             .WithName(ApiEndpoint.Names.Me.AddAddress)
             .WithTags(ApiEndpoint.Tags.Me);
     }

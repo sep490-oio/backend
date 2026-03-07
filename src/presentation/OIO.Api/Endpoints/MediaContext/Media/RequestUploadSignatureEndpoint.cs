@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.MediaContext.Commands.RequestUploadSignature;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.MediaContext.Media;
 
@@ -27,7 +28,7 @@ public sealed class RequestUploadSignatureEndpoint : IEndpoint
 
                 return result.ToOkHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Media.Upload)
             .WithName(ApiEndpoint.Names.Media.RequestUploadSignature)
             .WithTags(ApiEndpoint.Tags.Media)
             .Produces(StatusCodes.Status200OK)

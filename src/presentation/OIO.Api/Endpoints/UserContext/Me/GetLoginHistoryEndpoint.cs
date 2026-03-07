@@ -22,7 +22,7 @@ public class GetLoginHistoryEndpoint : IEndpoint
 
                     return result.ToOkHttpResult();
                 })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Me.ReadLoginHistory)
             .WithName(ApiEndpoint.Names.Me.GetMyLoginHistory)
             .WithTags(ApiEndpoint.Tags.Me);
     }

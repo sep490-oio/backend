@@ -25,7 +25,7 @@ public sealed class PlaceBidEndpoint : IEndpoint
 
                 return result.ToCreatedHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Auctions.Bid)
             .WithName(ApiEndpoint.Names.Auctions.PlaceBid)
             .WithTags(ApiEndpoint.Tags.Auctions)
             .Produces(StatusCodes.Status201Created)

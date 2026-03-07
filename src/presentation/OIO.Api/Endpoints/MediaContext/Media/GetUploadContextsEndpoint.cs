@@ -1,6 +1,7 @@
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.MediaContext.Queries.GetUploadContexts;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.MediaContext.Media;
 
@@ -16,7 +17,7 @@ public sealed class GetUploadContextsEndpoint : IEndpoint
                 var result = await sender.Send(query, ct);
                 return result.ToOkHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Media.ReadContexts)
             .WithName(ApiEndpoint.Names.Media.GetUploadContexts)
             .WithTags(ApiEndpoint.Tags.Media)
             .Produces(StatusCodes.Status200OK);

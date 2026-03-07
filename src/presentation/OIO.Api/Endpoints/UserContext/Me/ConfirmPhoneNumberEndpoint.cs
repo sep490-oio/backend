@@ -24,7 +24,7 @@ public class ConfirmPhoneNumberEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Me.ManagePhone)
             .WithName(ApiEndpoint.Names.Me.ConfirmPhoneNumber)
             .WithTags(ApiEndpoint.Tags.Me);
     }

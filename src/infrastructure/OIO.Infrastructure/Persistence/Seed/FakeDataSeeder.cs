@@ -48,8 +48,6 @@ public static partial class FakeDataSeeder
         {
             await using var tx = await dbContext.Database.BeginTransactionAsync();
 
-            //0. System settings
-            await SeedSystemSettingsAsync(services);
             // Skip if already seeded
             if (await dbContext.Set<User>().AnyAsync())
             {
@@ -58,7 +56,6 @@ public static partial class FakeDataSeeder
             }
             
             var nowUtc = clock.UtcNow;
-            await SeedRolesAsync(dbContext, logger);
             await SeedAdminUserAsync(dbContext, services, logger);
             // 1. Users
             var users = SeedUsers(passwordHasher, nowUtc);
@@ -132,6 +129,7 @@ public static partial class FakeDataSeeder
             now: clock.UtcNow);
 
         admin.AssignRole(App.Roles.Definitions.Admin.Id, clock.UtcNow);
+        admin.AssignRole(App.Roles.Definitions.User.Id, clock.UtcNow);
 
         dbContext.Set<User>().Add(admin);
 
@@ -166,6 +164,7 @@ public static partial class FakeDataSeeder
                 now: nowUtc,
                 Password.CreateFromHash(hashedPassword));
             seller.ConfirmEmail(nowUtc);
+            seller.AssignRole(App.Roles.Definitions.User.Id, nowUtc);
             seller.AssignRole(App.Roles.Definitions.Seller.Id, nowUtc);
             users.Add(seller);
         }
@@ -182,6 +181,7 @@ public static partial class FakeDataSeeder
             bidder.ConfirmEmail(nowUtc);
             
             bidder.AssignRole(App.Roles.Definitions.Bidder.Id, nowUtc);
+            bidder.AssignRole(App.Roles.Definitions.User.Id, nowUtc);
             users.Add(bidder);
         }
 
@@ -508,100 +508,6 @@ public static partial class FakeDataSeeder
         }
 
         return auctions;
-    }
-    
-     private static async Task SeedSystemSettingsAsync(IServiceProvider services)
-    {
-        using var scope = services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var options = scope.ServiceProvider.GetRequiredService<IOptions<AppInfoOptions>>().Value;
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationDbContext>>();
-        var clock = scope.ServiceProvider.GetRequiredService<IClock>();
-
-        var seeds = new Dictionary<string, (object Value, string Type, string Description)>
-        {
-            // Auction
-            [SettingKeys.AuctionMaxExtensions] = (
-                options.AuctionDefaults.MaxExtensionsPerAuction, "Int32",
-                "Maximum number of anti-sniping extensions per auction"),
-            [SettingKeys.AuctionExtensionThreshold] = (
-                options.AuctionDefaults.ExtensionThresholdMinutes, "TimeSpan",
-                "Time before end when a bid triggers extension"),
-            [SettingKeys.AuctionMaxDuration] = (
-                options.AuctionDefaults.MaxDuration, "TimeSpan",
-                "Maximum allowed auction duration"),
-            [SettingKeys.AuctionMinDuration] = (
-                options.AuctionDefaults.MinDuration, "TimeSpan",
-                "Minimum allowed auction duration"),
-
-            // Items
-            [SettingKeys.ItemMaxQuestions] = (
-                options.ItemDefaults.MaxQuestionsPerItem, "Int32",
-                "Max questions per item"),
-
-            // Media
-            [SettingKeys.MediaSignatureExpiration] = (
-                options.MediaDefaults.SignatureExpirationMinutes, "Int32",
-                "Upload signature TTL in minutes"),
-            [SettingKeys.MediaOrphanExpiration] = (
-                options.MediaDefaults.OrphanExpirationMinutes, "Int32",
-                "Orphan upload cleanup threshold in minutes"),
-            [SettingKeys.MediaLinkedRetention] = (
-                options.MediaDefaults.LinkedRecordRetentionDays, "Int32",
-                "Days to keep linked upload records"),
-            [SettingKeys.MediaCleanupInterval] = (
-                options.MediaDefaults.CleanupIntervalMinutes, "Int32",
-                "Media cleanup job interval in minutes"),
-            [SettingKeys.MediaUploadContexts] = (
-                options.MediaDefaults.UploadContexts, "List<UploadContextOption>",
-                "Upload context configurations"),
-
-            // Auth
-            [SettingKeys.AuthPasswordResetExpiration] = (
-                options.AuthDefaults.PasswordResetTokenExpirationMinutes, "Int32",
-                "Password reset token TTL in minutes"),
-            [SettingKeys.AuthResendEmailCooldown] = (
-                options.AuthDefaults.ResendEmailCooldownSeconds, "Int32",
-                "Cooldown between resend email requests in seconds"),
-            [SettingKeys.AuthMaxPasswordResetAttempts] = (
-                options.AuthDefaults.MaxPasswordResetAttemptsPerHour, "Int32",
-                "Max password reset attempts per hour"),
-        };
-
-        foreach (var (key, (value, type, description)) in seeds)
-        {
-            var settingId = SystemSettingId.From(key);
-            var exists = await dbContext.Set<SystemSetting>()
-                .AnyAsync(s => s.Id == settingId);
-
-            if (!exists)
-            {
-                var json = JsonSerializer.Serialize(value);
-                var setting = SystemSetting.Create(clock.UtcNow, key, json, type, description);
-                dbContext.Set<SystemSetting>().Add(setting);
-
-                logger.LogInformation("Seeded setting: {Key} = {Value}", key, json);
-            }
-        }
-
-        await dbContext.SaveChangesAsync();
-    }
-     
-    private static async Task SeedRolesAsync(ApplicationDbContext dbContext, ILogger logger)
-    {
-        var roles =  await dbContext.Set<Role>().AsNoTrackingWithIdentityResolution().ToListAsync();
-        var newRoles = App.Roles.Definitions.All.Except(roles).ToList();
-        if (newRoles.Count == 0)
-            return;
-
-        await dbContext.Set<Role>().AddRangeAsync(newRoles);
-        await dbContext.SaveChangesAsync();
-
-        logger.LogInformation("Seeded {Count} roles.", newRoles.Count);
-        foreach (var role in newRoles)
-        {
-            logger.LogInformation("Seeded roles {role} .", role.RoleName);
-        }
     }
 
     private class ItemSeedData

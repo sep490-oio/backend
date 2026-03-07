@@ -23,7 +23,7 @@ public sealed class GetMyBidsEndpoint : IEndpoint
 
                 return result.ToOkHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Me.ReadBids)
             .WithName(ApiEndpoint.Names.Me.GetMyBids)
             .WithTags(ApiEndpoint.Tags.Me);
     }

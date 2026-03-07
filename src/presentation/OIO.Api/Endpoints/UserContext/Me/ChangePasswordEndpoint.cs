@@ -27,7 +27,7 @@ public class ChangePasswordEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Me.ChangePassword)
             .WithName(ApiEndpoint.Names.Me.ChangePassword)
             .WithTags(ApiEndpoint.Tags.Me);
     }

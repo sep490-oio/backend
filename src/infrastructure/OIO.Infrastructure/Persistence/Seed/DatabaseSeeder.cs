@@ -33,7 +33,7 @@ public static class DatabaseSeeder
             await SeedPermissionsAsync(dbContext, logger);
             await SeedRolesAsync(dbContext, logger);
             await AssignPermissionsToRolesAsync(dbContext, logger);
-            await SeedAdminUserAsync(dbContext, scope.ServiceProvider, logger);
+            //await SeedAdminUserAsync(dbContext, scope.ServiceProvider, logger);
             await SeedSystemSettingsAsync(scope.ServiceProvider);
             logger.LogInformation("Database seeding completed successfully.");
         }
@@ -44,7 +44,23 @@ public static class DatabaseSeeder
         }
     }
 
-    // ==================== Permissions ====================
+    private static async Task SeedRolesAsync(ApplicationDbContext dbContext, ILogger logger)
+    {
+        var roles =  await dbContext.Set<Role>().AsNoTrackingWithIdentityResolution().ToListAsync();
+        var newRoles = App.Roles.Definitions.All.Except(roles).ToList();
+        if (newRoles.Count == 0)
+            return;
+
+        await dbContext.Set<Role>().AddRangeAsync(newRoles);
+        await dbContext.SaveChangesAsync();
+
+        logger.LogInformation("Seeded {Count} roles.", newRoles.Count);
+        foreach (var role in newRoles)
+        {
+            logger.LogInformation("Seeded roles {role} .", role.RoleName);
+        }
+    }
+    
     private static async Task SeedPermissionsAsync(ApplicationDbContext dbContext, ILogger logger)
     {
         var permissions =  await dbContext.Set<Permission>().AsNoTrackingWithIdentityResolution().ToListAsync();
@@ -62,95 +78,54 @@ public static class DatabaseSeeder
         }
     }
 
-    // ==================== Roles ====================
-    private static async Task SeedRolesAsync(ApplicationDbContext dbContext, ILogger logger)
-    {
-        var roles =  await dbContext.Set<Role>().AsNoTrackingWithIdentityResolution().ToListAsync();
-        var newRoles = App.Roles.Definitions.All.Except(roles).ToList();
-        if (newRoles.Count == 0)
-            return;
-
-        await dbContext.Set<Role>().AddRangeAsync(newRoles);
-        await dbContext.SaveChangesAsync();
-
-        logger.LogInformation("Seeded {Count} roles.", newRoles.Count);
-        foreach (var role in newRoles)
-        {
-            logger.LogInformation("Seeded roles {role} .", role.RoleName);
-        }
-    }
-
     // ==================== Role-Permission Mapping ====================
     private static async Task AssignPermissionsToRolesAsync(
-        ApplicationDbContext dbContext, ILogger logger)
+        ApplicationDbContext dbContext, ILogger logger, CancellationToken ct = default)
     {
-        var existing = await dbContext.Set<RolePermission>()
+        // Nếu seeding nhiều bước trong cùng DbContext, nên clear để tránh “đã tracked”
+        dbContext.ChangeTracker.Clear();
+
+        // Lấy existing theo key thật (RoleId, PermissionId) cho chuẩn và nhanh
+        var existingPairs = await dbContext.Set<RolePermission>()
             .AsNoTracking()
-            .Select(x => new Tuple<PermissionId, RoleId>(x.PermissionId, x.RoleId))
-            .ToHashSetAsync();
-        var newRoles = App.RolePermissions.All
-            .Where(x => !existing.Contains(new Tuple<PermissionId, RoleId>(x.PermissionId, x.RoleId)))
-            .ToList();
-        
-        if (newRoles.Count == 0)
-            return;
+            .Select(rp => new { rp.RoleId, rp.PermissionId })
+            .ToListAsync(ct);
 
-            
-        await dbContext.Set<RolePermission>().AddRangeAsync(newRoles);
+        var existingSet = existingPairs
+            .Select(x => (x.RoleId, x.PermissionId))
+            .ToHashSet();
 
-        await dbContext.SaveChangesAsync();
+        var toInsert = new List<RolePermission>();
+        var seenInsert = new HashSet<(RoleId RoleId, PermissionId PermissionId)>(); // chống trùng trong batch
 
-        logger.LogInformation("Assigned permissions to all roles.");
-        logger.LogInformation("Assigned {Count} permissions to all roles.", newRoles.Count);
-
-        foreach (var rolePermission in newRoles)
+        foreach (var role in App.Roles.Definitions.All)
         {
-            logger.LogInformation("Assigned {permission} to {role}.", rolePermission.Permission.PermissionCode, rolePermission.Role.RoleName);
+            var assigned = App.Roles.Definitions.RolePermissions[role]
+                .DistinctBy(p => p.Id); // hoặc DistinctBy(p => p.PermissionCode)
+
+            foreach (var p in assigned)
+            {
+                var key = (role.Id, p.Id);
+
+                // đã có trong DB hoặc đã thêm vào batch
+                if (existingSet.Contains(key) || !seenInsert.Add(key))
+                    continue;
+
+                toInsert.Add(new RolePermission(role.Id, p.Id));
+            }
         }
-        
-    }
 
-    // ==================== Admin User ====================
-    private static async Task SeedAdminUserAsync(
-        ApplicationDbContext dbContext,
-        IServiceProvider serviceProvider,
-        ILogger logger)
-    {
-        if (await dbContext.Set<User>().AnyAsync(x => x.Email == UserEmail.Create("admin@oio.com").Value))
-            return;
+        if (toInsert.Count == 0) return;
 
-        var passwordHasher = serviceProvider.GetRequiredService<IPasswordHasher>();
-        var clock = serviceProvider.GetRequiredService<IClock>();
-        var efaultAccountOptions = serviceProvider.GetRequiredService<IOptions<DefaultAccountOptions>>().Value;
+        await dbContext.AddRangeAsync(toInsert, ct);
+        await dbContext.SaveChangesAsync(ct);
 
-        var email = UserEmail.Create(efaultAccountOptions.Email);
-        var passwordHash = Password.Create(efaultAccountOptions.Password, passwordHasher);
-        var userName = UserName.Create(efaultAccountOptions.UserName);
-        var admin = User.Create(
-            userName: userName.Value,
-            email: email.Value,
-            now: clock.UtcNow,
-            password: passwordHash.Value
-        );
+        logger.LogInformation("Assigned {Count} new role-permissions.", toInsert.Count);
 
-        admin.ConfirmEmail(clock.UtcNow);
-        admin.UpdateProfile(
-            firstName: FirstName.Create(efaultAccountOptions.FirstName).Value,
-            lastName: LastName.Create(efaultAccountOptions.LastName).Value,
-            displayName: DisplayName.Create(efaultAccountOptions.DisplayName).Value,
-            now: clock.UtcNow);
-
-        admin.AssignRole(App.Roles.Definitions.Admin.Id, clock.UtcNow);
-
-        dbContext.Set<User>().Add(admin);
-
-        // Clear domain events raised during seeding (we don't want to publish them)
-        admin.ClearDomainEvents();
-
-        await dbContext.SaveChangesAsync();
-
-        logger.LogInformation(
-            "Seeded admin user: {Email} (ID: {UserId})", email.Value, admin.Id);
+        // Lưu ý: rolePermission.Permission / Role thường null vì bạn chỉ set FK
+        // => log bằng Id/Code thay vì navigation
+        foreach (var rp in toInsert)
+            logger.LogInformation("Assigned PermissionId={PermissionId} to RoleId={RoleId}.", rp.PermissionId, rp.RoleId);
     }
     
     private static async Task SeedSystemSettingsAsync(IServiceProvider services)
@@ -165,49 +140,49 @@ public static class DatabaseSeeder
         {
             // Auction
             [SettingKeys.AuctionMaxExtensions] = (
-                options.AuctionDefaults.MaxExtensionsPerAuction, "Int32",
+                options.AuctionDefaults.MaxExtensionsPerAuction, options.AuctionDefaults.MaxExtensionsPerAuction.GetType().Name,
                 "Maximum number of anti-sniping extensions per auction"),
             [SettingKeys.AuctionExtensionThreshold] = (
-                options.AuctionDefaults.ExtensionThresholdMinutes, "TimeSpan",
+                options.AuctionDefaults.ExtensionThresholdMinutes, options.AuctionDefaults.ExtensionThresholdMinutes.GetType().Name,
                 "Time before end when a bid triggers extension"),
             [SettingKeys.AuctionMaxDuration] = (
-                options.AuctionDefaults.MaxDuration, "TimeSpan",
+                options.AuctionDefaults.MaxDuration, options.AuctionDefaults.MaxDuration.GetType().Name,
                 "Maximum allowed auction duration"),
             [SettingKeys.AuctionMinDuration] = (
-                options.AuctionDefaults.MinDuration, "TimeSpan",
+                options.AuctionDefaults.MinDuration, options.AuctionDefaults.MinDuration.GetType().Name,
                 "Minimum allowed auction duration"),
 
             // Items
             [SettingKeys.ItemMaxQuestions] = (
-                options.ItemDefaults.MaxQuestionsPerItem, "Int32",
+                options.ItemDefaults.MaxQuestionsPerItem, options.ItemDefaults.MaxQuestionsPerItem.GetType().Name,
                 "Max questions per item"),
 
             // Media
             [SettingKeys.MediaSignatureExpiration] = (
-                options.MediaDefaults.SignatureExpirationMinutes, "Int32",
+                options.MediaDefaults.SignatureExpirationMinutes, options.MediaDefaults.SignatureExpirationMinutes.GetType().Name,
                 "Upload signature TTL in minutes"),
             [SettingKeys.MediaOrphanExpiration] = (
-                options.MediaDefaults.OrphanExpirationMinutes, "Int32",
+                options.MediaDefaults.OrphanExpirationMinutes, options.MediaDefaults.OrphanExpirationMinutes.GetType().Name,
                 "Orphan upload cleanup threshold in minutes"),
             [SettingKeys.MediaLinkedRetention] = (
-                options.MediaDefaults.LinkedRecordRetentionDays, "Int32",
+                options.MediaDefaults.LinkedRecordRetentionDays, options.MediaDefaults.LinkedRecordRetentionDays.GetType().Name,
                 "Days to keep linked upload records"),
             [SettingKeys.MediaCleanupInterval] = (
-                options.MediaDefaults.CleanupIntervalMinutes, "Int32",
+                options.MediaDefaults.CleanupIntervalMinutes, options.MediaDefaults.CleanupIntervalMinutes.GetType().Name,
                 "Media cleanup job interval in minutes"),
             [SettingKeys.MediaUploadContexts] = (
-                options.MediaDefaults.UploadContexts, "List<UploadContextOption>",
+                options.MediaDefaults.UploadContexts, options.MediaDefaults.UploadContexts.GetType().Name,
                 "Upload context configurations"),
 
             // Auth
             [SettingKeys.AuthPasswordResetExpiration] = (
-                options.AuthDefaults.PasswordResetTokenExpirationMinutes, "Int32",
+                options.AuthDefaults.PasswordResetTokenExpirationMinutes, options.AuthDefaults.PasswordResetTokenExpirationMinutes.GetType().Name,
                 "Password reset token TTL in minutes"),
             [SettingKeys.AuthResendEmailCooldown] = (
-                options.AuthDefaults.ResendEmailCooldownSeconds, "Int32",
+                options.AuthDefaults.ResendEmailCooldownSeconds, options.AuthDefaults.ResendEmailCooldownSeconds.GetType().Name,
                 "Cooldown between resend email requests in seconds"),
             [SettingKeys.AuthMaxPasswordResetAttempts] = (
-                options.AuthDefaults.MaxPasswordResetAttemptsPerHour, "Int32",
+                options.AuthDefaults.MaxPasswordResetAttemptsPerHour, options.AuthDefaults.MaxPasswordResetAttemptsPerHour.GetType().Name,
                 "Max password reset attempts per hour"),
         };
 

@@ -1,6 +1,7 @@
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AdminContext.Queries.GetSettingByKey;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.UserContext.Admins;
 
@@ -17,7 +18,7 @@ public sealed class GetSettingByKeyEndpoint : IEndpoint
                 var result = await sender.Send(query, ct);
                 return result.ToOkHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Admin.ReadSettings)
             .WithName(ApiEndpoint.Names.Admins.GetSettingByKey)
             .WithTags(ApiEndpoint.Tags.Admins);
     }

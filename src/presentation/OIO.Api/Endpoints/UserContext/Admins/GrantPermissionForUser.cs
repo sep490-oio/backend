@@ -20,7 +20,7 @@ public class GrantPermissionForUser : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Admin.GrantPermission)
             .WithName(ApiEndpoint.Names.Admins.GrantPermission)
             .WithTags(ApiEndpoint.Tags.Admins);
     }

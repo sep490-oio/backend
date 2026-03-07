@@ -20,7 +20,7 @@ public class GetAddressesEndpoint : IEndpoint
 
                 return result.ToOkHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Me.ReadAddress)
             .WithName(ApiEndpoint.Names.Me.GetAddresses)
             .WithTags(ApiEndpoint.Tags.Me);
     }

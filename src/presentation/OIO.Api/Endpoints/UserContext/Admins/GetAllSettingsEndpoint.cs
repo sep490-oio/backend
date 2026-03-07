@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AdminContext.Queries.GetAllSettings;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.UserContext.Admins;
 
@@ -18,7 +19,7 @@ public sealed class GetAllSettingsEndpoint : IEndpoint
                 
                 return result.ToOkHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Admin.ReadSettings)
             .WithName(ApiEndpoint.Names.Admins.GetAllSettings)
             .WithTags(ApiEndpoint.Tags.Admins);
     }

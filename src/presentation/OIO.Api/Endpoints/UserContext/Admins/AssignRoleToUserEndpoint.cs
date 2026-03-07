@@ -20,7 +20,7 @@ public class AssignRoleToUserEndpoint : IEndpoint
 
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Admin.AssignRole)
             .WithName(ApiEndpoint.Names.Admins.AssignRole)
             .WithTags(ApiEndpoint.Tags.Admins);
     }

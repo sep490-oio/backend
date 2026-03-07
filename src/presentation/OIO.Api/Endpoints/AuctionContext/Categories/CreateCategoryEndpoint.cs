@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.CreateCategory;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.AuctionContext.Categories;
 
@@ -33,7 +34,7 @@ public sealed class CreateCategoryEndpoint : IEndpoint
 
                 return result.ToCreatedHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Categories.Create)
             .WithName(ApiEndpoint.Names.Categories.CreateCategory)
             .WithTags(ApiEndpoint.Tags.Categories)
             .Produces(StatusCodes.Status201Created)

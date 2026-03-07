@@ -21,7 +21,7 @@ public sealed class RolePermission : IEntity, IModifiedAtEntity
     
     public DateTime? ModifiedAt { get; private set; }
     
-    internal RolePermission(RoleId roleId, PermissionId permissionId)
+    public RolePermission(RoleId roleId, PermissionId permissionId)
     {
         RoleId = roleId;
         PermissionId = permissionId;

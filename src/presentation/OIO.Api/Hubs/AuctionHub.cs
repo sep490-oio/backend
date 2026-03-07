@@ -48,7 +48,7 @@ public sealed class AuctionHub : Hub<IAuctionHubClient>
 
     // ==================== Bidding ====================
 
-    [HasPermission(App.Permissions.Catalogs.Auctions.PlaceBid)]
+    [HasPermission(App.Permissions.Catalogs.Auctions.Bid)]
     public async Task PlaceBid(Guid auctionId, decimal amount, string currency)
     {
         var httpContext = Context.GetHttpContext();
@@ -80,7 +80,7 @@ public sealed class AuctionHub : Hub<IAuctionHubClient>
         }
     }
 
-    [HasPermission(App.Permissions.Catalogs.Auctions.ConfigureAutoBid)]
+    [HasPermission(App.Permissions.Catalogs.Auctions.AutoBid)]
     public async Task ConfigureAutoBid(
         Guid auctionId,
         decimal maxAmount,

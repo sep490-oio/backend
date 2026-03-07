@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AdminContext.Commands.UpdateSystemSetting;
+using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.UserContext.Admins;
 
@@ -20,7 +21,7 @@ public sealed class UpdateSystemSettingEndpoint : IEndpoint
                 var result = await sender.Send(command, ct);
                 return result.ToNoContentHttpResult();
             })
-            .RequireAuthorization()
+            .RequireAuthorization(App.Permissions.Catalogs.Admin.ManageSettings)
             .WithName(ApiEndpoint.Names.Admins.UpdateSetting)
             .WithTags(ApiEndpoint.Tags.Admins);
     }
