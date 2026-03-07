@@ -1,6 +1,5 @@
 ﻿using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using OIO.Domain.Context.UserContext.ValueObjects;
 
 namespace OIO.Infrastructure.Persistence.Converters;
 

@@ -122,9 +122,10 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
     
     public UnitResult<Error> ChangePassword(
         Password newPassword,
-        DateTime now)
+        DateTime nowUtc)
     {
-        var unitResult = EnsureNotDeleted();
+        var unitResult = EnsureNotDeleted()
+            .Bind(() => EnsureNotLockedOut(nowUtc));
 
         if (unitResult.IsFailure)
         {
@@ -132,18 +133,63 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         }
         
         Password = newPassword;
-        ModifiedAt = now;
+        ModifiedAt = nowUtc;
 
-        RaiseDomainEvent(new UserPasswordChangedEvent(Id.ToString(), now));
+        RaiseDomainEvent(new UserPasswordChangedEvent(Id.ToString(), nowUtc));
         
         return unitResult;
     }
     
+    public UnitResult<Error> RequestEmailVerification(DateTime nowUtc)
+    {
+        var unitResult = EnsureNotDeleted()
+            .Bind(() => EnsureNotLockedOut(nowUtc));
+
+        if (unitResult.IsFailure)
+        {
+            return unitResult.Error;
+        }
+        
+        if (EmailConfirmedAt is not null)
+            return UserErrors.User.EmailNotConfirmed;
+
+        RaiseDomainEvent(new EmailVerificationRequestedEvent(
+            UserId:$"{Id}",
+            Email: Email.Value,
+            UserName: UserName.Value,
+            OccurredAt: nowUtc));
+
+        return UnitResult.Success<Error>();
+    }
+    
+    public UnitResult<Error> RequestPasswordReset(DateTime nowUtc)
+    {
+        var unitResult = EnsureNotDeleted()
+            .Bind(() => EnsureNotLockedOut(nowUtc));
+
+        if (unitResult.IsFailure)
+        {
+            return unitResult.Error;
+        }
+
+        if (EmailConfirmedAt is null)
+            return UserErrors.User.EmailNotConfirmed;
+
+        RaiseDomainEvent(new PasswordResetRequestedEvent(
+            UserId: $"{Id}",
+            Email: Email.Value,
+            UserName: UserName.Value,
+            OccurredAt: nowUtc));
+
+        return UnitResult.Success<Error>();
+    }
+    
     public UnitResult<Error> ChangeEmail(
         UserEmail newEmail,
-        DateTime now)
+        DateTime nowUtc)
     {
-        var unitResult = EnsureNotDeleted();
+        var unitResult = EnsureNotDeleted()
+            .Bind(() => EnsureNotLockedOut(nowUtc));
 
         if (unitResult.IsFailure)
         {
@@ -153,7 +199,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         Email = newEmail;
         EmailConfirmed = false;
         EmailConfirmedAt = null;
-        ModifiedAt = now;
+        ModifiedAt = nowUtc;
         
         return unitResult;
     }

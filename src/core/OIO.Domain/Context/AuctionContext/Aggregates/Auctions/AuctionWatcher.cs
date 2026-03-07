@@ -4,39 +4,51 @@ using OIO.Domain.SeedWork.Entities;
 
 namespace OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 
-public sealed class AuctionWatcher : BaseEntity<AuctionWatcherId>
+public sealed class AuctionWatcher : BaseEntity<AuctionWatcherId>, ICreatedAtEntity
 {
     public AuctionId AuctionId { get; private set; }
     public UserId UserId { get; private set; }
-    
-    // Bổ sung các trường notify từ script DB
-    public bool NotifyOnBid { get; private set; } // notify_on_bid
-    public bool NotifyOnEnd { get; private set; } // notify_on_end
-    
+    public bool NotifyOnBid { get; private set; }
+    public bool NotifyOnEnd { get; private set; } 
     public DateTime CreatedAt { get; private set; }
 
-    private AuctionWatcher() { } // Dành cho EF Core
+    private AuctionWatcher() { }
 
     internal AuctionWatcher(
         AuctionWatcherId id, 
         AuctionId auctionId, 
         UserId userId, 
-        bool notifyOnBid, 
-        bool notifyOnEnd, 
-        DateTime now) 
+        DateTime nowUtc, 
+        bool notifyOnBid = true, 
+        bool notifyOnEnd = true) 
         : base(id)
     {
         AuctionId = auctionId;
         UserId = userId;
         NotifyOnBid = notifyOnBid;
         NotifyOnEnd = notifyOnEnd;
-        CreatedAt = now;
+        CreatedAt = nowUtc;
+    }
+    
+    public static AuctionWatcher Create(
+        AuctionId auctionId, 
+        UserId userId, 
+        DateTime nowUtc, 
+        bool notifyOnBid = true, 
+        bool notifyOnEnd = true)
+    {
+        return new AuctionWatcher(
+            AuctionWatcherId.From(Guid.CreateVersion7()), 
+            auctionId, 
+            userId, 
+            nowUtc, 
+            notifyOnBid, 
+            notifyOnEnd);
     }
 
-    // Business methods để toggle thông báo
-    public void UpdateNotificationSettings(bool notifyOnBid, bool notifyOnEnd)
+    public void UpdateNotificationSettings(bool? notifyOnBid, bool? notifyOnEnd)
     {
-        NotifyOnBid = notifyOnBid;
-        NotifyOnEnd = notifyOnEnd;
+        NotifyOnBid = notifyOnBid ?? NotifyOnBid;
+        NotifyOnEnd = notifyOnEnd ??  NotifyOnEnd;
     }
 }

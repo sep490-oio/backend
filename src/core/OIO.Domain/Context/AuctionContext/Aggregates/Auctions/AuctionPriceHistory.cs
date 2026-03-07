@@ -1,16 +1,12 @@
 ﻿using CSharpFunctionalExtensions;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.AuctionContext.Errors;
+using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.SeedWork.Entities;
 using OIO.Domain.SeedWork.Errors;
-using OIO.Domain.SeedWork.Shared;
 
 namespace OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 
-/// <summary>
-/// Immutable record of a price change during an auction.
-/// Maintains an audit trail of all price updates.
-/// </summary>
 public sealed class AuctionPriceHistory : BaseEntity<AuctionPriceHistoryId>
 {
     public AuctionId AuctionId { get; private set; }
@@ -30,38 +26,21 @@ public sealed class AuctionPriceHistory : BaseEntity<AuctionPriceHistoryId>
     {
         AuctionId = auctionId;
         Price = price;
-        RecordedAt = recordedAt;
         BidId = bidId;
+        RecordedAt = recordedAt;
     }
-
-    /// <summary>
-    /// Creates a new price history record with validation.
-    /// </summary>
-    public static Result<AuctionPriceHistory, Error> Create(
+    
+    public static AuctionPriceHistory Create(
         AuctionId auctionId,
         Money price,
         DateTime recordedAt,
         BidId? bidId = null)
     {
-        if (auctionId.Value == Guid.Empty)
-            return AuctionErrors.PriceHistory.AuctionIdEmpty;
-
-        if (price.Amount < 0)
-            return AuctionErrors.PriceHistory.NegativePrice;
-
-        if (recordedAt == default)
-            return AuctionErrors.PriceHistory.InvalidRecordedAt;
-
-        if (recordedAt.Kind != DateTimeKind.Utc)
-            return AuctionErrors.PriceHistory.NonUtcDateTime;
-
-        var priceHistory = new AuctionPriceHistory(
+        return new AuctionPriceHistory(
             AuctionPriceHistoryId.From(Guid.CreateVersion7()),
             auctionId,
             price,
             recordedAt,
             bidId);
-
-        return Result.Success<AuctionPriceHistory, Error>(priceHistory);
     }
 }

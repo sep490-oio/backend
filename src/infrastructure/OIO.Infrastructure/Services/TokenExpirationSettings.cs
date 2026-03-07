@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Options;
-using OIO.Application.UserContext.Services;
+using OIO.Application.Context.UserContext.Services;
 using OIO.Infrastructure.Settings;
 
 namespace OIO.Infrastructure.Services;

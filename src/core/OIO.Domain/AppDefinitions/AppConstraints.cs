@@ -71,5 +71,10 @@ public static partial class App
         {
             public const int RecipientNameMaxLength = 100;
         }
+
+        public static class Item
+        {
+            public const int TitleMaxLength = 255;
+        }
     }
 }

@@ -82,6 +82,11 @@ public static class UserErrors
             code: "User.Email.NotConfirmed",
             description: "The email address has not been confirmed."
         );
+        
+        public static readonly Error EmailAlreadyConfirmed = Error.Forbidden(
+            code: "User.Email.Confirmed",
+            description: "The email address has been confirmed."
+        );
 
         public static readonly ValidationError InvalidTwoFactorProvider = Error.Validation(
             propertyName: nameof(Aggregates.Users.User.TwoFactorProvider),

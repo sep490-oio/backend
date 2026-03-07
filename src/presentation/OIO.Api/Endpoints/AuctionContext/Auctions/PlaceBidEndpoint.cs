@@ -1,0 +1,36 @@
+﻿using MediatR;
+using OIO.Api.Common;
+using OIO.Api.Extensions;
+using OIO.Application.Context.AuctionContext.Commands.PlaceBid;
+using OIO.Domain.AppDefinitions;
+
+namespace OIO.Api.Endpoints.AuctionContext.Auctions;
+
+public sealed class PlaceBidEndpoint : IEndpoint
+{
+    public sealed record Request(decimal Amount, string Currency = "VND");
+
+    public void MapEndpoint(IEndpointRouteBuilder app)
+    {
+        app.MapPost(ApiEndpoint.Url.Auctions.PlaceBid, async (
+                Guid auctionId,
+                Request request,
+                ISender sender,
+                HttpContext httpContext,
+                CancellationToken ct) =>
+            {
+                var command = new PlaceBidCommand(auctionId, request.Amount, request.Currency, httpContext.GetIpAddress());
+
+                var result = await sender.Send(command, ct);
+
+                return result.ToCreatedHttpResult();
+            })
+            .RequireAuthorization()
+            .WithName(ApiEndpoint.Names.Auctions.PlaceBid)
+            .WithTags(ApiEndpoint.Tags.Auctions)
+            .Produces(StatusCodes.Status201Created)
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+    }
+}

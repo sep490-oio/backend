@@ -203,7 +203,7 @@ public static class TextNullableCheckExtensions
             string? message = null,
             Error? error = null)
         {
-            return check.Format(message, error, isValid);
+            return check.Format(message, error, [isValid]);
         }
 
         public CheckField<TOwner, string> Format(

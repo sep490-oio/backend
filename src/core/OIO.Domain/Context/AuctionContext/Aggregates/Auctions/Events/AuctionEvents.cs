@@ -6,6 +6,14 @@ public sealed record AuctionCreatedEvent(
     string AuctionId,
     string ItemId,
     string SellerId,
+    decimal StartingPrice,
+    DateTime StartTime,
+    DateTime EndTime,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
+public sealed record AuctionStartedEvent(
+    string AuctionId,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
 
@@ -16,15 +24,27 @@ public sealed record AuctionActivatedEvent(
 
 public sealed record BidPlacedEvent(
     string AuctionId,
+    string BidId,
     string BidderId,
     decimal Amount,
-    string BidId,
+    bool IsAutoBid,
+    string? PreviousBidderId,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
 
-public sealed record AuctionAutoExtendedEvent(
+public sealed record OutbidEvent(
     string AuctionId,
+    string OutbidBidderId,
+    string NewHighBidderId,
+    decimal NewHighAmount,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
+public sealed record AuctionExtendedEvent(
+    string AuctionId,
+    DateTime OldEndTime,
     DateTime NewEndTime,
+    int ExtensionMinutes,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
 
@@ -43,8 +63,10 @@ public sealed record AuctionCancelledEvent(
 
 public sealed record AuctionEndedEvent(
     string AuctionId,
-    string Status,
     string? WinnerId,
+    decimal FinalPrice,
+    int TotalBids,
+    bool ReserveMet,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
 
@@ -77,5 +99,19 @@ public sealed record DepositAddedEvent(
 public sealed record AuctionFeatureToggledEvent(
     string AuctionId,
     bool IsFeatured,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+    
+public sealed record BuyNowExecutedEvent(
+    string AuctionId,
+    string BuyerId,
+    decimal BuyNowPrice,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+    
+public sealed record AuctionAutoBidConfiguredEvent(
+    string AuctionId,
+    string BidderId,
+    decimal MaxAmount,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);

@@ -2,10 +2,13 @@ using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OIO.Api;
 using OIO.Api.Extensions;
+using OIO.Api.Hubs;
 using OIO.Application;
 using OIO.Infrastructure;
 using OIO.Infrastructure.Persistence.Extensions;
+using OIO.Infrastructure.Persistence.Seed;
 using OIO.Infrastructure.Settings;
+using OIO.Infrastructure.Settings.Apps;
 using Scalar.AspNetCore;
 using Serilog;
 
@@ -19,13 +22,21 @@ builder.Services.AddApi(builder.Configuration);
 builder.Services.AddApplication(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
 
+builder.Host.UseOrleans(siloBuilder =>
+{
+    siloBuilder.UseLocalhostClustering();
+    siloBuilder.AddMemoryGrainStorageAsDefault();
+});
+
 var app = builder.Build();
 
 app.UseStaticFiles();
 
 // Configure the HTTP request pipeline.
-var enableScalar = builder.Configuration.GetValue<bool>("Features:EnableScalar");
-if (app.Environment.IsDevelopment() || enableScalar)
+var appInfo = new AppInfoOptions();
+builder.Configuration.Bind(AppInfoOptions.SectionName, appInfo);
+
+if (app.Environment.IsDevelopment() || appInfo.Features.EnableScalar)
 {
     app.MapSwagger("/openapi/{documentName}.json");
     app.MapScalarApiReference("/docs", options =>
@@ -47,7 +58,9 @@ if (app.Environment.IsDevelopment() || enableScalar)
         .ExcludeFromDescription();
     
     await app.ApplyMigrationsAsync();
-    await DatabaseSeeder.SeedAsync(app.Services);
+    //await DatabaseSeeder.SeedAsync(app.Services);
+    await FakeDataSeeder.SeedAsync(app.Services);
+    
 }
 
 app.UseHttpsRedirection();
@@ -59,6 +72,8 @@ app.UseCors(CorsOptions.PolicyName);
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapEndpoints();
+
+app.MapHub<AuctionHub>("/hubs/auction");
 
 app.MapHealthChecks("health", new HealthCheckOptions
 {

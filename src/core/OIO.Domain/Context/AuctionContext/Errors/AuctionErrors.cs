@@ -1,4 +1,7 @@
-﻿using OIO.Domain.SeedWork.Errors;
+﻿using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.Shared.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Domain.Context.AuctionContext.Errors;
 
@@ -6,7 +9,7 @@ public static class AuctionErrors
 {
     public static class Auction
     {
-        public static Error NotFound(Guid id) => 
+        public static Error NotFound(AuctionId id) => 
             Error.NotFound("Auction.NotFound", $"Auction with Id '{id}' was not found.");
         
         public static readonly Error SelfBid = 
@@ -14,6 +17,11 @@ public static class AuctionErrors
 
         public static readonly Error InvalidStatus = 
             Error.Conflict("Auction.InvalidStatus", "The auction is not in an active state.");
+        
+        public static Error InvalidState(string currentState, string attemptedAction) => 
+            Error.Conflict(
+                "Auction.InvalidState", 
+                $"Cannot perform '{attemptedAction}' when auction status is '{currentState}'.");
 
         public static readonly Error Expired = 
             Error.Validation("Period", "Auction.Expired", "The auction period has already ended.");
@@ -37,6 +45,11 @@ public static class AuctionErrors
         public static readonly Error InvalidStartingPrice = 
             Error.Validation("StartingPrice", "Auction.InvalidStartingPrice", 
                 "Starting price must be a non-negative value.");
+
+        public static readonly Error NotSupportBuyNow = Error.Conflict(
+            "Auction.NotSupportBuyNow",
+            "This auction does not support buy now option."
+            );
             
         public static readonly Error Deleted = 
             Error.Conflict("Auction.Deleted", "This auction has been deleted and cannot be modified.");
@@ -55,19 +68,37 @@ public static class AuctionErrors
         public static readonly Error AlreadyActive = 
             Error.Conflict("Auction.AlreadyActive", 
                 "Auction is already active and cannot be activated again.");
+        
+        public static readonly Error ItemAlreadyInAuction = 
+            Error.Conflict("Auction.ItemAlreadyInAuction", 
+                "This item is already in an active auction and cannot be used for another auction.");
+        
+        public static readonly Error OnlyOwnerOfItem = 
+            Error.Forbidden("Auction.OnlyOwnerOfItem", 
+                "Only the owner of the item can create an auction for it.");
+        
+        public static readonly Error OnlyOwnerCanCancel = 
+            Error.Forbidden("Auction.OnlyOwnerCanCancel", 
+                "Only the auction owner can cancel.");
+        
+        public static readonly Error OnlyOwnerCanPublish = 
+            Error.Forbidden("Auction.OnlyOwnerCanCancel", 
+                "Only the auction owner can publish.");
     }
 
     public static class Bid
     {
-        public static Error TooLow(decimal minAmount) => 
-            Error.Validation("Amount", "Bid.TooLow", 
-                $"The bid amount must be at least {minAmount}.");
+        public static Error TooLow(Money bidAmount, Money minimumRequired) => 
+            Error.Validation(
+                "Amount",
+                "Bid.TooLow", 
+                $"Bid amount {bidAmount} is below minimum required {minimumRequired}.");
 
         public static readonly Error DepositRequired = 
             Error.Forbidden("Bid.DepositRequired", 
                 "A deposit is required to participate in this auction.");
 
-        public static Error NotFound(Guid id) => 
+        public static Error NotFound(BidId id) => 
             Error.NotFound("Bid.NotFound", $"Bid with Id '{id}' was not found.");
 
         public static readonly Error BidAlreadyOutbid = 
@@ -76,8 +107,11 @@ public static class AuctionErrors
 
     public static class AutoBid
     {
-        public static Error NotFound(Guid id) => 
+        public static Error NotFound(AutoBidId id) => 
             Error.NotFound("AutoBid.NotFound", $"Auto bid with Id '{id}' was not found.");
+        
+        public static Error NotFoundForBidder(UserId bidderId) => 
+            Error.NotFound("AutoBid.NotFound", $"No auto-bid found for bidder '{bidderId}'.");
 
         public static Error ExceedsMaxAmount(decimal maxAmount) => 
             Error.Validation("CurrentAmount", "AutoBid.ExceedsMaxAmount", 
@@ -98,7 +132,10 @@ public static class AuctionErrors
         public static readonly Error CannotModifyFinalStatus = 
             Error.Conflict("AutoBid.CannotModifyFinalStatus", 
                 "Cannot modify auto bid after it has been won or outbid.");
-
+        
+        public static Error NewMaxLessThanCurrent(decimal currentAmount) =>
+            Error.Conflict("AutoBid.NewMaxLessThanCurrent", 
+                $"New maximum amount cannot be less than current amount of {currentAmount}.");
         public static Error InvalidInput(string details) => 
             Error.Validation("Input", "AutoBid.InvalidInput", 
                 $"Invalid auto bid configuration: {details}");
@@ -110,10 +147,18 @@ public static class AuctionErrors
         public static readonly Error InvalidMaxAmount = 
             Error.Validation("MaxAmount", "AutoBid.InvalidMaxAmount", 
                 "Maximum amount must be greater than zero.");
+        
+        public static Error MaxAmountMustGreaterAuctionCurrenPrice(Money maxAmount, Money auctionCurrentPrice) => 
+            Error.Validation("MaxAmount", "AutoBid.InvalidMaxAmount", 
+                $"Max amount ({maxAmount}) must be greater than current price ({auctionCurrentPrice}).");
 
         public static readonly Error InvalidCurrentAmount = 
             Error.Validation("CurrentAmount", "AutoBid.InvalidCurrentAmount", 
                 "Current amount must not exceed maximum amount.");
+        
+        public static readonly Error CannotBid = 
+            Error.Conflict("AutoBid.CannotBid", 
+                "This auto bid cannot place a bid at this time, likely due to insufficient max amount or being disabled.");
     }
 
     public static class Deposit
@@ -121,7 +166,7 @@ public static class AuctionErrors
         public static Error InvalidInput(string details) => 
             Error.Validation("Input", "Deposit.InvalidInput", $"Invalid Deposit input: {details}");
 
-        public static Error NotFound(Guid id) => 
+        public static Error NotFound(AuctionDepositId id) => 
             Error.NotFound("Deposit.NotFound", $"Deposit with Id '{id}' was not found.");
 
         public static readonly Error InsufficientFunds = 
@@ -155,7 +200,7 @@ public static class AuctionErrors
 
     public static class Watcher
     {
-        public static Error NotFound(Guid auctionId, Guid userId) => 
+        public static Error NotFound(AuctionId auctionId, UserId userId) => 
             Error.NotFound("Watcher.NotFound", 
                 $"No watcher record found for auction '{auctionId}' and user '{userId}'.");
 
@@ -170,8 +215,25 @@ public static class AuctionErrors
 
     public static class Item
     {
-        public static Error NotFound(Guid id) => 
+        public static Error NotFound(ItemId id) => 
             Error.NotFound("Item.NotFound", $"Item with Id '{id}' was not found.");
+        
+        public static Error MediaNotFound(ItemMediaId id) => Error.NotFound(
+            "Item.MediaNotFound", 
+            $"Item media with Id '{id}' was not found.");
+        public static Error QuestionNotFound(ItemQuestionId questionId) => 
+            Error.NotFound(
+                "Item.Question.NotFound", 
+                $"Question with Id '{questionId}' was not found for this item.");
+        public static Error AskOwnItem(ItemId itemId) => 
+            Error.Forbidden(
+                "Item.AskOwnItem", 
+                $"Sellers cannot ask questions on their own item '{itemId}'.");
+        
+        public static readonly Error QuestionAnswered = 
+            Error.Conflict(
+                "Item.Question.Answered", 
+                "Question has already been answered.");
 
         public static readonly Error MaxImagesReached = 
             Error.Validation("Images", "Item.MaxImagesReached", 
@@ -180,35 +242,44 @@ public static class AuctionErrors
         public static readonly Error InvalidCondition = 
             Error.Validation("Condition", "Item.InvalidCondition", 
                 "Item condition must be one of the allowed values.");
+        
+        public static Error InvalidState(string currentState, string attemptedAction) => 
+            Error.Conflict(
+                "Item.InvalidState", 
+                $"Cannot perform '{attemptedAction}' when item status is '{currentState}'.");
 
-        public static readonly Error CannotAuction = 
-            Error.Conflict("Item.CannotAuction", 
-                "This item is not in a state where it can be auctioned.");
+        public static Error CannotActivate(string reason) => 
+            Error.Conflict(
+                "Item.CannotActivate", 
+                "Item cannot be activated: " + reason);
+
+        public static Error CannotAuction(ItemId itemId, string currentStatus) => 
+            Error.Conflict(
+                "Item.NotAvailable", 
+                $"Item '{itemId}' is not available for auction. Current status: '{currentStatus}'.");
+        
+        public static Error NotOwnedByUser(ItemId itemId, UserId userId) => 
+            Error.Forbidden(
+                "Item.NotOwnedByUser", 
+                $"User '{userId}' does not own item '{itemId}'.");
+        
+        public static Error QuestionLimitReached(ItemId itemId, int maxQuestion) => 
+            Error.Conflict(
+                "Item.QuestionLimitReached", 
+                $"Item '{itemId}' has reached the maximum number of questions ({maxQuestion}).");
     }
-
-    public static class PriceHistory
+    
+    public static class Category
     {
-        public static Error NotFound(Guid id) => 
-            Error.NotFound("PriceHistory.NotFound", 
-                $"Price history record with Id '{id}' was not found.");
-
-        public static readonly Error AuctionIdEmpty = 
-            Error.Validation("AuctionId", "PriceHistory.AuctionIdEmpty", 
-                "AuctionId cannot be empty.");
-
-        public static readonly Error NegativePrice = 
-            Error.Validation("Price", "PriceHistory.NegativePrice", 
-                "Price cannot be negative.");
-
-        public static readonly Error InvalidRecordedAt = 
-            Error.Validation("RecordedAt", "PriceHistory.InvalidRecordedAt", 
-                "RecordedAt cannot be default.");
-
-        public static readonly Error NonUtcDateTime = 
-            Error.Validation("RecordedAt", "PriceHistory.NonUtcDateTime", 
-                "RecordedAt must be UTC.");
-
-        public static Error InvalidInput(string details) =>
-            Error.Validation("Input", "PriceHistory.InvalidInput", $"Invalid price history: {details}");
+        public static Error NotFound(CategoryId id) => 
+            Error.NotFound("Category.NotFound", $"Category with Id '{id}' was not found.");
+        
+        public static Error NotFoundWithSlug(string slug) => 
+            Error.NotFound("Category.NotFound", $"Category with slug '{slug}' was not found.");
+        
+        public static Error SlugAlreadyExists(string slug) => 
+            Error.Conflict("Category.SlugAlreadyExists", 
+                $"A category with slug '{slug}' already exists.");
     }
+
 }

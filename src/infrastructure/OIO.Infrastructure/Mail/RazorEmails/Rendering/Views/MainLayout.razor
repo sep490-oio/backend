@@ -1,0 +1,23 @@
+@inherits OIO.Infrastructure.Mail.RazorEmails.Rendering.ViewModels.MainLayoutBase
+
+<div style="min-height:100vh; margin:0; background:#f6f7fb; font-family:Arial,Helvetica,sans-serif; color:#111827; padding:24px 16px; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+    <div style="width:600px; max-width:92%; background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; overflow:hidden; box-shadow:0 6px 24px rgba(17,24,39,.04);">
+        <header style="padding:20px 24px; background:#111827; color:#ffffff;">
+            <div style="font-size:16px; font-weight:700; letter-spacing:.2px;">AppName</div>
+        </header>
+
+        <main style="padding:28px 24px;">
+            @Body
+        </main>
+
+        <footer style="padding:16px 24px; background:#f9fafb; border-top:1px solid #e5e7eb;">
+            <p style="margin:0; font-size:12px; line-height:1.6; color:#6b7280;">
+                © @CurrentYear @AppName. All rights reserved.
+            </p>
+        </footer>
+    </div>
+
+    <div style="margin-top:18px; max-width:600px; text-align:center; font-size:11px; line-height:1.5; color:#9ca3af;">
+        This is an automated message, please do not reply.
+    </div>
+</div>

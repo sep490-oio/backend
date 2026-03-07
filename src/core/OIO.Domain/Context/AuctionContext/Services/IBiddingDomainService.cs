@@ -1,7 +1,7 @@
 ﻿using CSharpFunctionalExtensions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
+using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.SeedWork.Errors;
-using OIO.Domain.SeedWork.Shared;
 
 namespace OIO.Domain.Context.AuctionContext.Services;
 

@@ -13,11 +13,12 @@
       <PackageReference Include="FormatWith" />
       <PackageReference Include="libphonenumber-csharp" />
       <PackageReference Include="MediatR.Contracts" />
+      <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+      <PackageReference Include="Microsoft.Orleans.Server" />
       <PackageReference Include="Vogen" />
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Context\AuctionContext\" />
       <Folder Include="Context\DisputeContext\" />
       <Folder Include="Context\NotificationContext\" />
       <Folder Include="Context\PaymentContext\" />

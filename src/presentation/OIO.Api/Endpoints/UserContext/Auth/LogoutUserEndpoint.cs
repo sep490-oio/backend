@@ -1,0 +1,30 @@
+﻿using MediatR;
+using OIO.Api.Common;
+using OIO.Application.Context.UserContext.Commands.Logout;
+using OIO.Domain.AppDefinitions;
+
+namespace OIO.Api.Endpoints.UserContext.Auth;
+
+public class LogoutUserEndpoint : IEndpoint
+{
+    public sealed record Request(
+        Guid? DeviceId = null);
+    
+    public void MapEndpoint(IEndpointRouteBuilder app)
+    {
+        app.MapPost(ApiEndpoint.Url.Auth.Logout, async (
+                Request request,
+                ISender sender, 
+                CancellationToken ct) =>
+            {
+                var command = new LogoutCommand(request.DeviceId);
+                
+                var result = await sender.Send(command, ct);
+
+                return result.ToNoContentHttpResult();
+            })
+            .RequireAuthorization(App.Policy.ExpiredTokenAllowed)
+            .WithName(ApiEndpoint.Names.Auth.Logout)
+            .WithTags(ApiEndpoint.Tags.Auth);
+    }
+}
