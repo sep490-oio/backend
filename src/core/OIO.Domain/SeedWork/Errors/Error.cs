@@ -3,10 +3,14 @@ using OIO.Domain.SeedWork.Utils;
 
 namespace OIO.Domain.SeedWork.Errors;
 
+[GenerateSerializer]
 public record Error
 {
+    [Id(0)]
     public string Code { get; protected init; } = string.Empty;
+    [Id(1)]
     public string Message { get; protected init; } = string.Empty;
+    [Id(2)]
     public string Kind { get; protected init; } = string.Empty;
     
     protected Error(string code, string message, string kind)

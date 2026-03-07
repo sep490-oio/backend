@@ -5,7 +5,7 @@ using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 
 namespace OIO.Domain.Context.AuctionContext.Aggregates.Items;
 
-public sealed class ItemQuestion : Entity<ItemQuestionId>
+public sealed class ItemQuestion : BaseEntity<ItemQuestionId>, ICreatedAtEntity
 {
     public ItemId ItemId { get; private set; }
     public UserId AskerId { get; private set; }
@@ -21,8 +21,8 @@ public sealed class ItemQuestion : Entity<ItemQuestionId>
         ItemId itemId,
         UserId askerId,
         string question,
-        bool isPublic = true,
-        DateTime? now = null)
+        DateTime nowUtc,
+        bool isPublic = true)
     {
         return new ItemQuestion
         {
@@ -31,7 +31,7 @@ public sealed class ItemQuestion : Entity<ItemQuestionId>
             AskerId = askerId,
             Question = question,
             IsPublic = isPublic,
-            CreatedAt = now ?? DateTime.UtcNow
+            CreatedAt = nowUtc
         };
     }
 
@@ -40,6 +40,8 @@ public sealed class ItemQuestion : Entity<ItemQuestionId>
         Answer = answer;
         AnsweredAt = now;
     }
+    
+    public bool IsAnswered => Answer is not null;
 
     public void Hide() => IsPublic = false;
     public void Show() => IsPublic = true;

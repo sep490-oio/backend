@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using MediatR;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -8,18 +9,30 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
 using OIO.Application.Abstractions.Clock;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
-using OIO.Application.UserContext.Services;
+using OIO.Application.Abstractions.Mail;
+using OIO.Application.Abstractions.Media;
+using OIO.Application.Abstractions.Security;
+using OIO.Application.Abstractions.Settings;
+using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.UserContext.Services;
 using OIO.Infrastructure.Authorizations;
-using OIO.Infrastructure.BackgroundJobs.CleanUpJobs;
 using OIO.Infrastructure.Clock;
-using OIO.Infrastructure.HealthChecks;
 using OIO.Infrastructure.Persistence;
 using OIO.Infrastructure.Persistence.Interceptors;
 using OIO.Infrastructure.Services;
 using OIO.Infrastructure.Settings;
 using OIO.Domain.AppDefinitions;
+using OIO.Infrastructure.BackgroundJobs;
+using OIO.Infrastructure.Mail;
+using OIO.Infrastructure.Mail.RazorEmails.Rendering;
+using OIO.Infrastructure.Media;
+using OIO.Infrastructure.Outbox;
+using OIO.Infrastructure.Security;
+using OIO.Infrastructure.Settings.Apps;
+using Quartz;
+using StackExchange.Redis;
 
 namespace OIO.Infrastructure;
 
@@ -32,13 +45,21 @@ public static class DependencyInjection
         {
             services.AddSingleton(TimeProvider.System);
             services.AddSingleton<IClock, DatetimeProvider>();
+            services.Configure<AppInfoOptions>(configuration.GetSection(AppInfoOptions.SectionName));
+            services.AddScoped<IAppConfigs, AppConfig>();
+            services.AddScoped<ISystemSettingsService, SystemSettingsService>();
+            
             services
                 .AddPersistence(configuration)
                 .AddAuthenticationServices(configuration)
                 .AddAuthorizationService()
                 .AddCachingService(configuration)
                 .AddHealthCheckService(configuration)
-                .AddBackgroundJobs();
+                .AddEmail(configuration)
+                .AddBackgroundJobs()
+                .AddOutbox(configuration)
+                .AddMedia(configuration)
+                .AddSecurityServices();
 
             return services;
         }
@@ -122,7 +143,6 @@ public static class DependencyInjection
                 configuration.GetSection(JwtOptions.SectionName));
             services.Configure<DefaultAccountOptions>(configuration.GetSection(DefaultAccountOptions.SectionName));
             services.Configure<CorsOptions>(configuration.GetSection(CorsOptions.SectionName));
-            services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
             services.Configure<HashingOptions>(configuration.GetSection(HashingOptions.SectionName));
             
             services.ConfigureOptions<JwtBearerOptionsSetup>();
@@ -134,11 +154,9 @@ public static class DependencyInjection
 
             // Application Services
             services.AddSingleton<ITokenExpirationSettings, TokenExpirationSettings>();
-            services.AddScoped<ITokenProvider, TokenProvider>();
+            services.AddScoped<IJwtTokenProvider, JwtTokenProvider>();
             services.AddScoped<ISessionRevocationStore, SessionRevocationStore>();
             services.AddScoped<ICurrentUser, CurrentUser>();
-            services.AddScoped<IEmailConfirmationService, EmailConfirmationService>();
-            services.AddScoped<IPhoneVerificationService, PhoneVerificationService>();
 
             // HttpContextAccessor
             services.AddHttpContextAccessor();
@@ -162,8 +180,11 @@ public static class DependencyInjection
 
             if (!string.IsNullOrEmpty(redisConnection))
             {
+                IConnectionMultiplexer multiplexer = ConnectionMultiplexer.Connect(redisConnection);
+                services.AddSingleton(multiplexer);
                 services.AddStackExchangeRedisCache(options =>
                 {
+                    options.ConnectionMultiplexerFactory = () => Task.FromResult(multiplexer);
                     options.Configuration = redisConnection;
                     options.InstanceName = "oio:cache";
                 });
@@ -188,6 +209,34 @@ public static class DependencyInjection
 
             return services;
         }
+        
+        private IServiceCollection AddSecurityServices()
+        {
+            services.AddSingleton<ISecureTokenGenerator, SecureTokenGenerator>();
+            services.AddScoped<ISecureTokenStore, SecureTokenStore>();
+
+            return services;
+        }
+        
+        private IServiceCollection AddEmail(IConfiguration configuration)
+        {
+            services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+            services.AddTransient<IMailSender, MailSender>();
+            services.AddSingleton<RazorViewRenderer>();
+            services.AddScoped<IUserMailNotifier, UserMailNotifier>();
+
+            return services;
+        }
+
+        public IServiceCollection AddMedia(IConfiguration configuration)
+        {
+            services.Configure<CloudinaryOptions>(configuration.GetSection(CloudinaryOptions.SectionName));
+            services.AddScoped<UploadContextRegistry>();
+            services.AddScoped<IMediaSignatureService, CloudinarySignatureService>();
+            
+            return services;
+        }
+        
 
         private IServiceCollection AddHealthCheckService(IConfiguration configuration)
         {
@@ -209,6 +258,41 @@ public static class DependencyInjection
         private IServiceCollection AddBackgroundJobs()
         {
             services.AddHostedService<ExpiredSessionCleanupJob>();
+            services.AddHostedService<AuctionLifecycleJob>();
+            services.AddHostedService<PendingUploadCleanupJob>();
+            return services;
+        }
+        
+        public IServiceCollection AddOutbox(IConfiguration configuration)
+        {
+            services.AddOptions<OutboxSettings>()
+                .Bind(configuration.GetSection(OutboxSettings.SectionName))
+                .ValidateDataAnnotations()
+                .Validate(
+                    validation: outboxSettings =>
+                        outboxSettings.Interval > TimeSpan.Zero &&
+                        outboxSettings.CleanupRetention > TimeSpan.Zero,
+                    failureMessage: "Outbox Interval and CleanupRetention must be greater than zero.")
+                .ValidateOnStart();
+        
+            services.AddTransient<IOutboxMessageResolver, OutboxMessageResolver>();
+            services.AddQuartz(options =>
+            {
+                var scheduler = Guid.NewGuid();
+                options.SchedulerId = $"default-id-{scheduler}";
+                options.SchedulerName = $"default-name-{scheduler}";
+            });
+            // ASP.NET Core hosting
+            services.AddQuartzHostedService(options =>
+            {
+                // When shutting down we want jobs to complete gracefully
+                options.WaitForJobsToComplete = true;
+            });
+            services.ConfigureOptions<OutboxMessagesProcessorJobSetup>();
+            services.AddScoped<OutboxProcessor>();
+            //For idempotent notification
+            services.Decorate(typeof(INotificationHandler<>), typeof(IdempotentDomainEventHandler<>));
+
             return services;
         }
     }

@@ -52,9 +52,13 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<decimal>("CurrentPrice")
-                        .HasColumnType("numeric")
-                        .HasColumnName("current_price");
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasDefaultValue("VND")
+                        .HasColumnName("currency");
 
                     b.Property<Guid?>("CurrentWinnerId")
                         .HasColumnType("uuid")
@@ -80,6 +84,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("modified_at");
 
+                    b.Property<Guid>("SellerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("seller_id");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -100,28 +108,76 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("watch_count");
 
-                    b.Property<string>("currency")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text")
-                        .HasDefaultValue("VND")
-                        .HasColumnName("currency");
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "BidIncrement", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction.BidIncrement#Money", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<decimal>("Amount")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("numeric(18,2)")
+                                .HasDefaultValue(1.00m)
+                                .HasColumnName("bid_increment");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "BuyNowPrice", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction.BuyNowPrice#Money", b1 =>
+                        {
+                            b1.Property<decimal>("Amount")
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("buy_now_price");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "CurrentPrice", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction.CurrentPrice#Money", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<decimal>("Amount")
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("current_price");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Duration", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction.Duration#AuctionDuration", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<DateTime>("EndTime")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("end_time")
+                                .HasAnnotation("CustomIndex:IsIndexed", true)
+                                .HasAnnotation("CustomIndex:IsUnique", false)
+                                .HasAnnotation("CustomIndex:Name", "idx_auctions_end_time");
+
+                            b1.Property<DateTime>("StartTime")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("start_time")
+                                .HasAnnotation("CustomIndex:IsIndexed", true)
+                                .HasAnnotation("CustomIndex:IsUnique", false)
+                                .HasAnnotation("CustomIndex:Name", "idx_auctions_start_time");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "ReservePrice", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction.ReservePrice#Money", b1 =>
+                        {
+                            b1.Property<decimal>("Amount")
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("reserve_price");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "StartingPrice", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction.StartingPrice#Money", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<decimal>("Amount")
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("starting_price");
+                        });
 
                     b.HasKey("Id")
                         .HasName("pk_auctions");
-
-                    b.HasIndex("CurrentWinnerId")
-                        .HasDatabaseName("ix_auctions_winner_id");
-
-                    b.HasIndex("ItemId")
-                        .HasDatabaseName("ix_auctions_item_id");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("idx_auctions_status");
 
                     b.ToTable("auctions", null, t =>
                         {
-                            t.HasCheckConstraint("auctions_status_check", "status IN ('draft','pending','active','ended','sold','cancelled','failed')");
-
                             t.HasCheckConstraint("chk_buy_now_gt_starting", "buy_now_price > starting_price");
 
                             t.HasCheckConstraint("chk_current_gte_starting", "current_price >= starting_price");
@@ -131,141 +187,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("chk_positive_bid_increment", "bid_increment > 0");
 
                             t.HasCheckConstraint("chk_reserve_gte_starting", "reserve_price >= starting_price");
-                        });
-                });
-
-            modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AuctionAutoBid", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("AuctionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("auction_id");
-
-                    b.Property<Guid>("BidderId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("bidder_id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<decimal>("CurrentAmount")
-                        .HasColumnType("numeric")
-                        .HasColumnName("current_amount");
-
-                    b.Property<decimal?>("IncrementAmount")
-                        .HasColumnType("numeric")
-                        .HasColumnName("increment_amount");
-
-                    b.Property<bool>("IsEnabled")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true)
-                        .HasColumnName("is_enabled");
-
-                    b.Property<DateTime?>("LastAutoBidAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_auto_bid_at");
-
-                    b.Property<decimal>("MaxAmount")
-                        .HasColumnType("numeric")
-                        .HasColumnName("max_amount");
-
-                    b.Property<DateTime?>("ModifiedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("modified_at");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasDefaultValue("active")
-                        .HasColumnName("status");
-
-                    b.Property<int>("TotalAutoBids")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("total_auto_bids");
-
-                    b.HasKey("Id")
-                        .HasName("pk_auction_auto_bids");
-
-                    b.HasIndex("AuctionId")
-                        .HasDatabaseName("idx_auction_auto_bids_auction_id");
-
-                    b.HasIndex("BidderId")
-                        .HasDatabaseName("idx_auction_auto_bids_bidder_id");
-
-                    b.HasIndex("AuctionId", "BidderId")
-                        .IsUnique()
-                        .HasDatabaseName("auction_auto_bids_auction_id_bidder_id_key");
-
-                    b.HasIndex("AuctionId", "Status")
-                        .HasDatabaseName("idx_auction_auto_bids_auction_id_status");
-
-                    b.ToTable("auction_auto_bids", null, t =>
-                        {
-                            t.HasCheckConstraint("auction_auto_bids_status_check", "status IN ('active','paused','exhausted','won','outbid')");
-                        });
-                });
-
-            modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AuctionDeposit", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("numeric")
-                        .HasColumnName("amount");
-
-                    b.Property<Guid>("AuctionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("auction_id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<DateTime?>("ReleasedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("released_at");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasDefaultValue("held")
-                        .HasColumnName("status");
-
-                    b.Property<Guid?>("TransactionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("transaction_id");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_auction_deposits");
-
-                    b.HasIndex("AuctionId", "UserId")
-                        .IsUnique()
-                        .HasDatabaseName("auction_deposits_auction_id_user_id_key");
-
-                    b.ToTable("auction_deposits", null, t =>
-                        {
-                            t.HasCheckConstraint("auction_deposits_status_check", "status IN ('held','returned','forfeited','converted_to_payment')");
                         });
                 });
 
@@ -283,21 +204,26 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("bid_id");
 
-                    b.Property<decimal>("Price")
-                        .HasColumnType("numeric")
-                        .HasColumnName("price");
-
                     b.Property<DateTime>("RecordedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("recorded_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Price", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AuctionPriceHistory.Price#Money", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<decimal>("Amount")
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("price");
+                        });
+
                     b.HasKey("Id")
                         .HasName("pk_auction_price_history");
 
                     b.HasIndex("AuctionId")
-                        .HasDatabaseName("idx_auction_price_history_auction_id");
+                        .HasDatabaseName("ix_auction_price_history_auction_id");
 
                     b.ToTable("auction_price_history", (string)null);
                 });
@@ -339,20 +265,109 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("AuctionId", "UserId")
                         .IsUnique()
-                        .HasDatabaseName("auction_watchers_auction_id_user_id_key");
+                        .HasDatabaseName("ix_auction_watchers_auction_id_user_id");
 
                     b.ToTable("auction_watchers", (string)null);
                 });
 
-            modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Bids.Bid", b =>
+            modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AutoBid", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("numeric(18,2)")
-                        .HasColumnName("amount");
+                    b.Property<Guid>("AuctionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("auction_id");
+
+                    b.Property<Guid>("BidderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("bidder_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<bool>("IsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_enabled");
+
+                    b.Property<DateTime?>("LastAutoBidAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_auto_bid_at");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("active")
+                        .HasColumnName("status");
+
+                    b.Property<int>("TotalAutoBids")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("total_auto_bids");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "CurrentAmount", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AutoBid.CurrentAmount#Money", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<decimal>("Amount")
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("current_amount");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "IncrementAmount", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AutoBid.IncrementAmount#Money", b1 =>
+                        {
+                            b1.Property<decimal>("Amount")
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("increment_amount");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "MaxAmount", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AutoBid.MaxAmount#Money", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<decimal>("Amount")
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("max_amount");
+                        });
+
+                    b.HasKey("Id")
+                        .HasName("pk_auction_auto_bids");
+
+                    b.HasIndex("AuctionId")
+                        .HasDatabaseName("idx_auction_auto_bids_auction_id");
+
+                    b.HasIndex("BidderId")
+                        .HasDatabaseName("idx_auction_auto_bids_bidder_id");
+
+                    b.HasIndex("AuctionId", "BidderId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_auction_auto_bids_auction_id_bidder_id");
+
+                    b.HasIndex("AuctionId", "Status")
+                        .HasDatabaseName("idx_auction_auto_bids_auction_id_status")
+                        .HasFilter("status = 'active'");
+
+                    b.ToTable("auction_auto_bids", (string)null);
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Bid", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<Guid>("AuctionId")
                         .HasColumnType("uuid")
@@ -368,7 +383,7 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
@@ -377,15 +392,27 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnName("ip_address");
 
                     b.Property<bool>("IsAutoBid")
+                        .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("boolean")
-                        .HasColumnName("is_auto_bid");
+                        .HasColumnName("is_auto_bid")
+                        .HasComputedColumnSql("(auto_bid_id IS NOT NULL)", true);
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasDefaultValue("active")
                         .HasColumnName("status");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Amount", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Bid.Amount#Money", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<decimal>("Amount")
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("amount");
+                        });
 
                     b.HasKey("Id")
                         .HasName("pk_bids");
@@ -393,16 +420,13 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.HasIndex("AuctionId")
                         .HasDatabaseName("idx_bids_auction");
 
+                    b.HasIndex("AutoBidId")
+                        .HasDatabaseName("ix_bids_auto_bid_id");
+
                     b.HasIndex("BidderId")
                         .HasDatabaseName("idx_bids_bidder");
 
-                    b.HasIndex("AuctionId", "Amount")
-                        .HasDatabaseName("idx_bids_amount");
-
-                    b.ToTable("bids", null, t =>
-                        {
-                            t.HasCheckConstraint("bids_status_check", "status IN ('active','outbid','winning','won','cancelled')");
-                        });
+                    b.ToTable("bids", (string)null);
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Categories.Category", b =>
@@ -413,15 +437,17 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("Description")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("description");
 
                     b.Property<string>("IconUrl")
+                        .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("icon_url");
 
@@ -431,8 +457,13 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
 
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
+
                     b.Property<string>("Name")
                         .IsRequired()
+                        .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
@@ -441,11 +472,13 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnName("parent_id");
 
                     b.Property<string>("Path")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("path");
 
                     b.Property<string>("Slug")
                         .IsRequired()
+                        .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("slug");
 
@@ -463,7 +496,7 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Slug")
                         .IsUnique()
-                        .HasDatabaseName("categories_slug_key");
+                        .HasDatabaseName("ix_categories_slug");
 
                     b.ToTable("categories", (string)null);
                 });
@@ -484,12 +517,13 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Condition")
                         .IsRequired()
+                        .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("condition");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
@@ -498,7 +532,7 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnName("description");
 
                     b.Property<DateTime?>("ModifiedAt")
-                        .HasColumnType("timestamp")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("modified_at");
 
                     b.Property<int>("Quantity")
@@ -514,12 +548,14 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasDefaultValue("draft")
                         .HasColumnName("status");
 
                     b.Property<string>("Title")
                         .IsRequired()
+                        .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("title");
 
@@ -532,12 +568,302 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.HasIndex("SellerId")
                         .HasDatabaseName("idx_items_seller");
 
-                    b.ToTable("items", null, t =>
-                        {
-                            t.HasCheckConstraint("items_condition_check", "condition IN ('new','like_new','very_good','good','acceptable')");
+                    b.ToTable("items", (string)null);
+                });
 
-                            t.HasCheckConstraint("items_status_check", "status IN ('draft','active','in_auction','sold','removed')");
-                        });
+            modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Items.ItemMedia", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long?>("Bytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("bytes");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<double?>("DurationSeconds")
+                        .HasColumnType("double precision")
+                        .HasColumnName("duration_seconds");
+
+                    b.Property<string>("FileName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("file_name");
+
+                    b.Property<string>("Format")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("format");
+
+                    b.Property<int?>("Height")
+                        .HasColumnType("integer")
+                        .HasColumnName("height");
+
+                    b.Property<bool>("IsPrimary")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_primary");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("item_id");
+
+                    b.Property<string>("PublicId")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("public_id");
+
+                    b.Property<string>("ResourceType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("resource_type");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sort_order");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("url");
+
+                    b.Property<int?>("Width")
+                        .HasColumnType("integer")
+                        .HasColumnName("width");
+
+                    b.HasKey("Id")
+                        .HasName("pk_item_media");
+
+                    b.HasIndex("PublicId")
+                        .HasDatabaseName("idx_item_media_public_id");
+
+                    b.HasIndex("ItemId", "ResourceType")
+                        .HasDatabaseName("idx_item_media_item_type");
+
+                    b.ToTable("item_media", (string)null);
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Items.ItemQuestion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Answer")
+                        .HasColumnType("text")
+                        .HasColumnName("answer");
+
+                    b.Property<DateTime?>("AnsweredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("answered_at");
+
+                    b.Property<Guid>("AskerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("asker_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<bool>("IsPublic")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_public");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("item_id");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("question");
+
+                    b.HasKey("Id")
+                        .HasName("pk_item_questions");
+
+                    b.HasIndex("ItemId")
+                        .HasDatabaseName("ix_item_questions_item_id");
+
+                    b.ToTable("item_questions", (string)null);
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.Shared.Entities.MediaUpload", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long?>("Bytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("bytes");
+
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmed_at");
+
+                    b.Property<string>("Context")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("context");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<double?>("DurationSeconds")
+                        .HasColumnType("double precision")
+                        .HasColumnName("duration_seconds");
+
+                    b.Property<Guid?>("EntityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entity_id");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("FileName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("file_name");
+
+                    b.Property<string>("Folder")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("folder");
+
+                    b.Property<string>("Format")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("format");
+
+                    b.Property<int?>("Height")
+                        .HasColumnType("integer")
+                        .HasColumnName("height");
+
+                    b.Property<bool>("IsConfirmed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_confirmed");
+
+                    b.Property<bool>("IsLinked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_linked");
+
+                    b.Property<DateTime?>("LinkedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("linked_at");
+
+                    b.Property<string>("PublicId")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("public_id");
+
+                    b.Property<string>("ResourceType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("resource_type");
+
+                    b.Property<string>("SecureUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("secure_url");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<int?>("Width")
+                        .HasColumnType("integer")
+                        .HasColumnName("width");
+
+                    b.HasKey("Id")
+                        .HasName("pk_media_uploads");
+
+                    b.HasIndex("PublicId")
+                        .HasDatabaseName("idx_media_uploads_public_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("idx_media_uploads_user_id");
+
+                    b.HasIndex("IsConfirmed", "ExpiresAt")
+                        .HasDatabaseName("idx_media_uploads_expired")
+                        .HasFilter("is_confirmed = false");
+
+                    b.HasIndex("IsConfirmed", "IsLinked", "ConfirmedAt")
+                        .HasDatabaseName("idx_media_uploads_orphan")
+                        .HasFilter("is_confirmed = true AND is_linked = false");
+
+                    b.ToTable("media_uploads", (string)null);
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.Shared.Entities.SystemSetting", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("Id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("modified_by");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("value");
+
+                    b.Property<string>("ValueType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("value_type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_system_settings");
+
+                    b.ToTable("system_settings", (string)null);
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.UserContext.Aggregates.Roles.Permission", b =>
@@ -1250,7 +1576,7 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnName("type");
 
                     b.HasKey("Id")
-                        .HasName("pk_outbox_message");
+                        .HasName("pk_outbox_messages");
 
                     b.HasIndex("OccurredAt")
                         .HasDatabaseName("idx_outbox_messages_unprocessed")
@@ -1260,121 +1586,24 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("idx_outbox_cleanup")
                         .HasFilter("processed_at IS NOT NULL AND error IS NULL");
 
-                    b.ToTable("outbox_message", (string)null);
+                    b.ToTable("outbox_messages", (string)null);
                 });
 
-            modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction", b =>
+            modelBuilder.Entity("OIO.Infrastructure.Outbox.OutboxMessageConsumer", b =>
                 {
-                    b.HasOne("OIO.Domain.Context.UserContext.Aggregates.Users.User", null)
-                        .WithMany()
-                        .HasForeignKey("CurrentWinnerId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("auctions_winner_id_fkey");
+                    b.Property<Guid>("OutboxMessageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("outbox_message_id");
 
-                    b.HasOne("OIO.Domain.Context.AuctionContext.Aggregates.Items.Item", null)
-                        .WithMany()
-                        .HasForeignKey("ItemId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("auctions_item_id_fkey");
+                    b.Property<string>("Name")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("name");
 
-                    b.OwnsOne("OIO.Domain.Context.AuctionContext.ValueObjects.AuctionPeriod", "Period", b1 =>
-                        {
-                            b1.Property<Guid>("AuctionId")
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
+                    b.HasKey("OutboxMessageId", "Name")
+                        .HasName("pk_outbox_message_consumers");
 
-                            b1.Property<DateTime>("EndTime")
-                                .HasColumnType("timestamp with time zone")
-                                .HasColumnName("end_time");
-
-                            b1.Property<DateTime>("StartTime")
-                                .HasColumnType("timestamp with time zone")
-                                .HasColumnName("start_time");
-
-                            b1.HasKey("AuctionId");
-
-                            b1.ToTable("auctions");
-
-                            b1.WithOwner()
-                                .HasForeignKey("AuctionId")
-                                .HasConstraintName("fk_auctions_auctions_id");
-                        });
-
-                    b.OwnsOne("OIO.Domain.Context.AuctionContext.ValueObjects.BidIncrement", "Increment", b1 =>
-                        {
-                            b1.Property<Guid>("AuctionId")
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
-
-                            b1.Property<decimal>("Value")
-                                .HasColumnType("numeric")
-                                .HasColumnName("bid_increment");
-
-                            b1.HasKey("AuctionId");
-
-                            b1.ToTable("auctions");
-
-                            b1.WithOwner()
-                                .HasForeignKey("AuctionId")
-                                .HasConstraintName("fk_auctions_auctions_id");
-                        });
-
-                    b.OwnsOne("OIO.Domain.Context.AuctionContext.ValueObjects.WinningConditions", "Conditions", b1 =>
-                        {
-                            b1.Property<Guid>("AuctionId")
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
-
-                            b1.Property<decimal?>("BuyNowPrice")
-                                .HasColumnType("numeric")
-                                .HasColumnName("buy_now_price");
-
-                            b1.Property<decimal?>("ReservePrice")
-                                .HasColumnType("numeric")
-                                .HasColumnName("reserve_price");
-
-                            b1.Property<decimal>("StartingPrice")
-                                .HasColumnType("numeric")
-                                .HasColumnName("starting_price");
-
-                            b1.HasKey("AuctionId");
-
-                            b1.ToTable("auctions");
-
-                            b1.WithOwner()
-                                .HasForeignKey("AuctionId")
-                                .HasConstraintName("fk_auctions_auctions_id");
-                        });
-
-                    b.Navigation("Conditions")
-                        .IsRequired();
-
-                    b.Navigation("Increment")
-                        .IsRequired();
-
-                    b.Navigation("Period")
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AuctionAutoBid", b =>
-                {
-                    b.HasOne("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction", null)
-                        .WithMany("AutoBids")
-                        .HasForeignKey("AuctionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("auction_auto_bids_auction_id_fkey");
-                });
-
-            modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AuctionDeposit", b =>
-                {
-                    b.HasOne("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction", null)
-                        .WithMany("Deposits")
-                        .HasForeignKey("AuctionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("auction_deposits_auction_id_fkey");
+                    b.ToTable("outbox_message_consumers", (string)null);
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AuctionPriceHistory", b =>
@@ -1384,7 +1613,7 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasForeignKey("AuctionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("auction_price_history_auction_id_fkey");
+                        .HasConstraintName("fk_auction_price_history_auctions_auction_id");
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AuctionWatcher", b =>
@@ -1394,17 +1623,33 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasForeignKey("AuctionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("auction_watchers_auction_id_fkey");
+                        .HasConstraintName("fk_auction_watchers_auctions_auction_id");
                 });
 
-            modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Bids.Bid", b =>
+            modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AutoBid", b =>
                 {
                     b.HasOne("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction", null)
-                        .WithMany()
+                        .WithMany("AutoBids")
                         .HasForeignKey("AuctionId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("bids_auction_id_fkey");
+                        .HasConstraintName("fk_auction_auto_bids_auctions_auction_id");
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Bid", b =>
+                {
+                    b.HasOne("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction", null)
+                        .WithMany("Bids")
+                        .HasForeignKey("AuctionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_bids_auctions_auction_id");
+
+                    b.HasOne("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AutoBid", null)
+                        .WithMany()
+                        .HasForeignKey("AutoBidId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_bids_auction_auto_bids_auto_bid_id");
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Categories.Category", b =>
@@ -1413,125 +1658,27 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("ParentId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("categories_parent_id_fkey");
+                        .HasConstraintName("fk_categories_categories_parent_id");
                 });
 
-            modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Items.Item", b =>
+            modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Items.ItemMedia", b =>
                 {
-                    b.HasOne("OIO.Domain.Context.AuctionContext.Aggregates.Categories.Category", null)
-                        .WithMany()
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("items_category_id_fkey");
-
-                    b.HasOne("OIO.Domain.Context.UserContext.Aggregates.Users.User", null)
-                        .WithMany()
-                        .HasForeignKey("SellerId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                    b.HasOne("OIO.Domain.Context.AuctionContext.Aggregates.Items.Item", null)
+                        .WithMany("Media")
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("items_seller_id_fkey");
+                        .HasConstraintName("fk_item_media_items_item_id");
+                });
 
-                    b.OwnsMany("OIO.Domain.Context.AuctionContext.Aggregates.Items.ItemImage", "Images", b1 =>
-                        {
-                            b1.Property<Guid>("Id")
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
-
-                            b1.Property<DateTime>("CreatedAt")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("timestamp")
-                                .HasColumnName("created_at")
-                                .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                            b1.Property<string>("ImageUrl")
-                                .IsRequired()
-                                .HasColumnType("character varying(500)")
-                                .HasColumnName("image_url");
-
-                            b1.Property<bool>("IsPrimary")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("boolean")
-                                .HasDefaultValue(false)
-                                .HasColumnName("is_primary");
-
-                            b1.Property<Guid>("ItemId")
-                                .HasColumnType("uuid")
-                                .HasColumnName("item_id");
-
-                            b1.Property<int>("SortOrder")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("integer")
-                                .HasDefaultValue(0)
-                                .HasColumnName("sort_order");
-
-                            b1.HasKey("Id")
-                                .HasName("pk_item_images");
-
-                            b1.HasIndex("ItemId")
-                                .HasDatabaseName("ix_item_images_item_id");
-
-                            b1.ToTable("item_images", (string)null);
-
-                            b1.WithOwner()
-                                .HasForeignKey("ItemId")
-                                .HasConstraintName("fk_item_images_items_item_id");
-                        });
-
-                    b.OwnsMany("OIO.Domain.Context.AuctionContext.Aggregates.Items.ItemQuestion", "Questions", b1 =>
-                        {
-                            b1.Property<Guid>("Id")
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
-
-                            b1.Property<string>("Answer")
-                                .HasColumnType("text")
-                                .HasColumnName("answer");
-
-                            b1.Property<DateTime?>("AnsweredAt")
-                                .HasColumnType("timestamp")
-                                .HasColumnName("answered_at");
-
-                            b1.Property<Guid>("AskerId")
-                                .HasColumnType("uuid")
-                                .HasColumnName("asker_id");
-
-                            b1.Property<DateTime>("CreatedAt")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("timestamp")
-                                .HasColumnName("created_at")
-                                .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                            b1.Property<bool>("IsPublic")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("boolean")
-                                .HasDefaultValue(true)
-                                .HasColumnName("is_public");
-
-                            b1.Property<Guid>("ItemId")
-                                .HasColumnType("uuid")
-                                .HasColumnName("item_id");
-
-                            b1.Property<string>("Question")
-                                .IsRequired()
-                                .HasColumnType("text")
-                                .HasColumnName("question");
-
-                            b1.HasKey("Id")
-                                .HasName("pk_item_questions");
-
-                            b1.HasIndex("ItemId")
-                                .HasDatabaseName("ix_item_questions_item_id");
-
-                            b1.ToTable("item_questions", (string)null);
-
-                            b1.WithOwner()
-                                .HasForeignKey("ItemId")
-                                .HasConstraintName("fk_item_questions_items_item_id");
-                        });
-
-                    b.Navigation("Images");
-
-                    b.Navigation("Questions");
+            modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Items.ItemQuestion", b =>
+                {
+                    b.HasOne("OIO.Domain.Context.AuctionContext.Aggregates.Items.Item", null)
+                        .WithMany("Questions")
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_item_questions_items_item_id");
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.UserContext.Aggregates.Roles.RolePermission", b =>
@@ -1655,11 +1802,18 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 {
                     b.Navigation("AutoBids");
 
-                    b.Navigation("Deposits");
+                    b.Navigation("Bids");
 
                     b.Navigation("PriceHistories");
 
                     b.Navigation("Watchers");
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Items.Item", b =>
+                {
+                    b.Navigation("Media");
+
+                    b.Navigation("Questions");
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.UserContext.Aggregates.Roles.Permission", b =>

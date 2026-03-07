@@ -1,9 +1,13 @@
-﻿namespace OIO.Domain.Context.AuctionContext.Enums;
+﻿using CSharpFunctionalExtensions;
 
-public enum DepositStatus
+namespace OIO.Domain.Context.AuctionContext.Enums;
+
+public sealed class DepositStatus : EnumValueObject<DepositStatus>
 {
-    Held = 1,   
-    Returned = 2, 
-    Forfeited = 3,   
-    ConvertedToPayment = 4,  
+    public static readonly DepositStatus Held = new("held");
+    public static readonly DepositStatus Returned = new("returned");
+    public static readonly DepositStatus Forfeited = new("forfeited");
+    public static readonly DepositStatus ConvertedToPayment = new("converted_to_payment");
+
+    public DepositStatus(string value) : base(value) { }
 }

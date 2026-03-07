@@ -1,8 +1,8 @@
 ﻿using CSharpFunctionalExtensions;
 using OIO.Domain.Context.AuctionContext.Errors;
+using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
-using OIO.Domain.SeedWork.Shared;
 
 namespace OIO.Domain.Context.AuctionContext.ValueObjects;
 

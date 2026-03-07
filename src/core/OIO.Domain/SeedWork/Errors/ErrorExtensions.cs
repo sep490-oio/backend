@@ -2,7 +2,10 @@
 using System.Linq.Expressions;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using CSharpFunctionalExtensions.HttpResults;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using OIO.Domain.SeedWork.Checks;
 using OIO.Domain.SeedWork.Errors.ErrorCatalogs;
 using OIO.Domain.SeedWork.Utils;
@@ -11,8 +14,40 @@ namespace OIO.Domain.SeedWork.Errors;
 
 public static class ErrorExtensions
 {
-    extension(Error)
+    extension(Error error)
     {
+        #region To problem details
+
+        public ProblemHttpResult ToProblemDetails()
+        {
+            var status = error.GetStatus();
+            var (title, type) = ProblemDetailsMappingProvider.FindMapping(status);
+            var problemDetails = new ProblemDetails()
+            {
+                Status = status,
+                Title = title,
+                Type = type,
+                Detail = error.Message,
+                Extensions = new Dictionary<string, object?>()
+                {
+                    ["code"] = error.Code
+                }
+            };
+
+            if (error is not ViolationsError violationsError) 
+                return TypedResults.Problem(problemDetails);
+        
+            var errorsDict = violationsError.Violations.GroupBy(e => ((ICheckError)e).PropertyName)
+                .ToDictionary(g => g.Key, 
+                    g => 
+                        g.Select(e => e.Message).ToArray());
+        
+            problemDetails.Extensions["errors"] = errorsDict;
+
+            return TypedResults.Problem(problemDetails);  
+        }
+
+        #endregion
         #region Required
 
         public static Error NotNull<TProperty>(

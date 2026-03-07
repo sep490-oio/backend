@@ -6,37 +6,120 @@ public static partial class App
 {
     public static class RolePermissions
     {
+        // ==================== USER ====================
+        // Base role — profile management, view public data
+        private static readonly IReadOnlyList<Permission> UserPermissions =
+        [
+            // Profile
+            Permissions.Definitions.Users.ReadMe,
+            Permissions.Definitions.Users.UpdateMe,
+            Permissions.Definitions.Users.ReadProfile,
+            Permissions.Definitions.Users.UpdateProfile,
+
+            // Addresses
+            Permissions.Definitions.Users.ReadAddresses,
+            Permissions.Definitions.Users.AddAddresses,
+            Permissions.Definitions.Users.UpdateAddresses,
+            Permissions.Definitions.Users.RemoveAddresses,
+            Permissions.Definitions.Users.SetDefaultAddresses,
+
+            // Security
+            Permissions.Definitions.Users.ChangePassword,
+            Permissions.Definitions.Users.EnableTwoFactor,
+            Permissions.Definitions.Users.DisableTwoFactor,
+            Permissions.Definitions.Users.SetPhone,
+            Permissions.Definitions.Users.ConfirmPhone,
+
+            // Sessions
+            Permissions.Definitions.Users.ReadSessions,
+            Permissions.Definitions.Users.ReadLoginHistory,
+            Permissions.Definitions.Users.Logout,
+
+            // Public read
+            Permissions.Definitions.Categories.ReadAll,
+            Permissions.Definitions.Categories.ReadChildren,
+            Permissions.Definitions.Items.ReadQuestions,
+            Permissions.Definitions.Auctions.ReadBids,
+        ];
+        
+        // ==================== BIDDER ====================
+        // Inherits User + bidding capabilities
+        private static readonly IReadOnlyList<Permission> BidderPermissions =
+        [
+            // All User permissions
+            ..UserPermissions,
+
+            // Bidding
+            Permissions.Definitions.Auctions.PlaceBid,
+            Permissions.Definitions.Auctions.BuyNow,
+            Permissions.Definitions.Auctions.ConfigureAutoBid,
+            Permissions.Definitions.Auctions.PauseAutoBid,
+            Permissions.Definitions.Auctions.ResumeAutoBid,
+
+            // Watch
+            Permissions.Definitions.Auctions.Watch,
+            Permissions.Definitions.Auctions.Unwatch,
+
+            // Ask questions about items
+            Permissions.Definitions.Items.AskQuestion,
+        ];
+
+        // ==================== SELLER ====================
+        // Inherits User + selling capabilities
+        private static readonly IReadOnlyList<Permission> SellerPermissions =
+        [
+            // All User permissions
+            ..UserPermissions,
+
+            // Items
+            Permissions.Definitions.Items.Create,
+            Permissions.Definitions.Items.ReadMy,
+            Permissions.Definitions.Items.Activate,
+            Permissions.Definitions.Items.AddMedia,
+            Permissions.Definitions.Items.RemoveMedia,
+            Permissions.Definitions.Items.AnswerQuestion,
+
+            // Auctions
+            Permissions.Definitions.Auctions.Create,
+            Permissions.Definitions.Auctions.Publish,
+            Permissions.Definitions.Auctions.Cancel,
+
+            // Watch (seller can watch other auctions too)
+            Permissions.Definitions.Auctions.Watch,
+            Permissions.Definitions.Auctions.Unwatch,
+        ];
+
+        // ==================== ADMIN ====================
+        // ALL permissions
+        private static readonly IReadOnlyList<Permission> AdminPermissions =
+        [
+            ..Permissions.Definitions.All,
+        ];
+        
         public static readonly Func<RolePermission[]> User = () =>
         {
-            return
-                [
-                    Create(Permissions.Definitions.Users.ReadMe),
-                    Create(Permissions.Definitions.Users.UpdateMe),
-                    Create(Permissions.Definitions.Users.ReadAddresses),
-                    Create(Permissions.Definitions.Users.AddAddresses),
-                    Create(Permissions.Definitions.Users.UpdateAddresses),
-                    Create(Permissions.Definitions.Users.RemoveAddresses),
-                    Create(Permissions.Definitions.Users.SetDefaultAddresses),
-                    Create(Permissions.Definitions.Users.ChangePassword),
-                    Create(Permissions.Definitions.Users.EnableTwoFactor),
-                    Create(Permissions.Definitions.Users.DisableTwoFactor),
-                    Create(Permissions.Definitions.Users.SetPhone),
-                    Create(Permissions.Definitions.Users.ConfirmPhone),
-                    Create(Permissions.Definitions.Users.ReadSessions),
-                    Create(Permissions.Definitions.Users.ReadLoginHistory),
-                ];
-
-            RolePermission Create(Permission permission)
-            {
-                return new RolePermission(Roles.Definitions.User, permission);
-            }
+            return UserPermissions.Select(x => new RolePermission(Roles.Definitions.User, x))
+                .ToArray();
         };
-
-
+        
         public static readonly Func<RolePermission[]> Admin = () =>
         {
-            return Permissions.Definitions.All
+            return AdminPermissions
                 .Select(permission => new RolePermission(Roles.Definitions.Admin, permission))
+                .ToArray();
+        };
+
+        public static readonly Func<RolePermission[]> Bidder = () =>
+        {
+            return AdminPermissions
+                .Select(permission => new RolePermission(Roles.Definitions.Bidder, permission))
+                .ToArray();
+        };
+
+        public static readonly Func<RolePermission[]> Seller = () =>
+        {
+            return AdminPermissions
+                .Select(permission => new RolePermission(Roles.Definitions.Seller, permission))
                 .ToArray();
         };
 
@@ -44,79 +127,8 @@ public static partial class App
         [
             ..User(),
             ..Admin(),
+            ..Bidder(),
+            ..Seller(),
         ];
-        // // ----- Moderator -----
-        // var moderator = FindRole("Moderator");
-        // Assign(moderator,
-        //     "users.read",
-        //     "users.change_status",
-        //     "users.unlock",
-        //     "sellers.read",
-        //     "sellers.verify",
-        //     "sellers.reject",
-        //     "sellers.kyc_review",
-        //     "auctions.read",
-        //     "auctions.cancel",
-        //     "auctions.feature",
-        //     "items.read",
-        //     "orders.read",
-        //     "disputes.read",
-        //     "disputes.manage",
-        //     "disputes.resolve",
-        //     "disputes.escalate",
-        //     "reviews.read",
-        //     "reviews.moderate",
-        //     "reviews.delete",
-        //     "admin.dashboard",
-        //     "admin.reports");
-        //
-        // // ----- Support -----
-        // var support = FindRole("Support");
-        // Assign(support,
-        //     "users.read",
-        //     "users.unlock",
-        //     "sellers.read",
-        //     "auctions.read",
-        //     "items.read",
-        //     "orders.read",
-        //     "disputes.read",
-        //     "disputes.manage",
-        //     "disputes.resolve",
-        //     "reviews.read",
-        //     "reviews.moderate",
-        //     "notifications.send");
-        //
-        // // ----- Seller -----
-        // var seller = FindRole("Seller");
-        // Assign(seller,
-        //     "items.create",
-        //     "items.read",
-        //     "items.update",
-        //     "items.delete",
-        //     "auctions.create",
-        //     "auctions.read",
-        //     "auctions.update",
-        //     "orders.read_own",
-        //     "orders.update",
-        //     "disputes.read_own",
-        //     "disputes.create",
-        //     "reviews.read",
-        //     "notifications.read",
-        //     "wallets.read");
-        //
-        // // ----- Buyer -----
-        // var buyer = FindRole("Buyer");
-        // Assign(buyer,
-        //     "auctions.read",
-        //     "auctions.bid",
-        //     "items.read",
-        //     "orders.read_own",
-        //     "orders.cancel",
-        //     "disputes.create",
-        //     "disputes.read_own",
-        //     "reviews.create",
-        //     "reviews.read",
-        //     "notifications.read",
-        //     "wallets.read");
     }
 }

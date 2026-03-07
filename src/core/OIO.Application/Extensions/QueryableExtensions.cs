@@ -16,16 +16,16 @@ public static class QueryableExtensions
         }
 
         public IQueryable<T> ApplySort(
-            IOrderByParameter orderByParameter,
+            ISortByParameter orderByParameter,
             SortMapping[] mappings,
             string defaultOrderBy = "Id")
         {
-            if (string.IsNullOrWhiteSpace(orderByParameter.OrderBy))
+            if (string.IsNullOrWhiteSpace(orderByParameter.SortBy))
             {
                 return query.OrderBy(defaultOrderBy);
             }
 
-            var sortFields = orderByParameter.OrderBy.Split(',')
+            var sortFields = orderByParameter.SortBy.Split(',')
                 .Select(s => s.Trim())
                 .Where(s => !string.IsNullOrWhiteSpace(s))
                 .ToArray();

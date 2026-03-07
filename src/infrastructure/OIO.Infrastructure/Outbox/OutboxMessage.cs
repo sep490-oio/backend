@@ -36,3 +36,10 @@ internal sealed class OutboxMessage
     /// </summary>
     public int AttemptCount { get; init; }
 }
+
+public sealed class OutboxMessageConsumer(Guid outboxMessageId, string name)
+{
+    public Guid OutboxMessageId { get; init; } = outboxMessageId;
+
+    public string Name { get; init; } = name;
+}

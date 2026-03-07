@@ -5,8 +5,10 @@ using OIO.Domain.SeedWork.Errors.ErrorCatalogs;
 
 namespace OIO.Domain.SeedWork.Errors;
 
+[GenerateSerializer]
 public record ViolationsError : Error
 {
+    [Id(0)]
     private readonly List<Error> _violation = [];
     
     public IReadOnlyList<Error> Violations => _violation;

@@ -6,6 +6,8 @@ using Microsoft.OpenApi;
 using Npgsql;
 using OIO.Api.Extensions;
 using OIO.Api.Middleware;
+using OIO.Api.Services;
+using OIO.Application.Context.AuctionContext.Services;
 using OIO.Infrastructure.Settings;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
@@ -79,6 +81,8 @@ public static class DependencyInjection
         services.AddErrorHandling();
         services.AddEndpoints(typeof(Program).Assembly);
         services.AddCorsPolicy(configuration);
+        services.AddScoped<IAuctionNotificationService, AuctionNotificationService>();
+        services.AddSignalR();
     }
 
     private static void AddCorsPolicy(this IServiceCollection services, IConfiguration configuration)
@@ -131,7 +135,6 @@ public static class DependencyInjection
                     if (ctx.ProblemDetails.Status == StatusCodes.Status400BadRequest)
                     {
                         var (title, type) = ProblemDetailsMappingProvider.FindMapping(StatusCodes.Status400BadRequest);
-                        ctx.ProblemDetails.Detail = ctx.ProblemDetails.Title;
                         ctx.ProblemDetails.Type = type;
                         ctx.ProblemDetails.Title = title;
                         ctx.ProblemDetails.Extensions["code"] = "General.Validations";

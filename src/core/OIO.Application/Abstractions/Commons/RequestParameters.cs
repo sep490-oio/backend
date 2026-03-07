@@ -8,9 +8,9 @@ public interface IPagedParameter
     int PageSize { get; }
 }
 
-public interface IOrderByParameter
+public interface ISortByParameter
 {
-    string? OrderBy { get; }
+    string? SortBy { get; }
 }
 
 public interface IDataShapingParameter

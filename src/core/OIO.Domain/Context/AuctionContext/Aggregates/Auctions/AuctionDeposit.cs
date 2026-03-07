@@ -2,10 +2,10 @@
 using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.AuctionContext.Errors;
+using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
 using OIO.Domain.SeedWork.Errors;
-using OIO.Domain.SeedWork.Shared;
 
 namespace OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 

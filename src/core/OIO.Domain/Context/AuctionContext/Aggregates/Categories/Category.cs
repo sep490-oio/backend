@@ -1,4 +1,5 @@
-﻿using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+﻿using OIO.Domain.Context.AuctionContext.ValueObjects;
+using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
 
 namespace OIO.Domain.Context.AuctionContext.Aggregates.Categories;
@@ -12,7 +13,7 @@ public sealed class Category : AggregateRoot<CategoryId>, IAuditableEntity
     public string? IconUrl { get; private set; }
     public bool IsActive { get; private set; }
     public int SortOrder { get; private set; }
-    public string? Path { get; private set; }
+    public CategoryPath Path { get; private set; }
 
     // Audit
     public DateTime CreatedAt { get; private set; }
@@ -22,51 +23,63 @@ public sealed class Category : AggregateRoot<CategoryId>, IAuditableEntity
 
     public static Category Create(
         string name,
-        string description,
         string slug,
+        DateTime nowUtc,
+        CategoryPath? parentPath = null,
         CategoryId? parentId = null,
+        string? description = null,
         string? iconUrl = null,
         int sortOrder = 0)
     {
         return new Category
         {
             Id = CategoryId.From(Guid.CreateVersion7()),
-            Name = name,
-            Description = description,
-            Slug = slug,
+            Name = name.Trim(),
+            Slug = slug.Trim().ToLowerInvariant(),
+            Description = description ?? string.Empty,
             ParentId = parentId,
             IconUrl = iconUrl,
             SortOrder = sortOrder,
+            Path = CategoryPath.FromParent(parentPath, slug).Value,
             IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = nowUtc
         };
     }
-
-    public void Update(string name, string description, string? iconUrl = null, int? sortOrder = null)
+    
+    public void Update(
+        DateTime nowUtc,
+        string? name,
+        string? slug,
+        string? description, 
+        string? iconUrl = null,
+        bool? isActive = null,
+        int? sortOrder = null)
     {
-        Name = name;
-        Description = description;
+        Name = name ?? Name;
+        Slug = slug ?? Slug;
+        Description = description ?? Description;
         IconUrl = iconUrl ?? IconUrl;
         SortOrder = sortOrder ?? SortOrder;
-        ModifiedAt = DateTime.UtcNow;
+        IsActive = isActive ?? IsActive;
+        ModifiedAt = nowUtc;
     }
 
-    public void SetParent(CategoryId? parentId, string? path)
+    public void SetParent(CategoryId? parentId, CategoryPath path, DateTime nowUtc)
     {
         ParentId = parentId;
         Path = path;
-        ModifiedAt = DateTime.UtcNow;
+        ModifiedAt = nowUtc;
     }
 
-    public void Deactivate()
+    public void Deactivate(DateTime nowUtc)
     {
         IsActive = false;
-        ModifiedAt = DateTime.UtcNow;
+        ModifiedAt = nowUtc;
     }
 
-    public void Activate()
+    public void Activate(DateTime nowUtc)
     {
         IsActive = true;
-        ModifiedAt = DateTime.UtcNow;
+        ModifiedAt = nowUtc;
     }
 }

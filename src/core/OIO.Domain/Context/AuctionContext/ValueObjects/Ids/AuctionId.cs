@@ -16,7 +16,7 @@ public readonly partial struct BidId : IEntityId;
 public readonly partial struct CategoryId : IEntityId;
 
 [ValueObject<Guid>]
-public readonly partial struct AuctionAutoBidId : IEntityId;
+public readonly partial struct AutoBidId : IEntityId;
 
 [ValueObject<Guid>]
 public readonly partial struct AuctionDepositId : IEntityId;
@@ -28,7 +28,7 @@ public readonly partial struct AuctionWatcherId : IEntityId;
 public readonly partial struct AuctionPriceHistoryId : IEntityId;
 
 [ValueObject<Guid>]
-public readonly partial struct ItemImageId : IEntityId;
+public readonly partial struct ItemMediaId : IEntityId;
 
 [ValueObject<Guid>]
 public readonly partial struct ItemQuestionId : IEntityId;

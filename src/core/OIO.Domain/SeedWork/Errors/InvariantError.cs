@@ -3,4 +3,6 @@ using OIO.Domain.SeedWork.Errors.ErrorCatalogs;
 
 namespace OIO.Domain.SeedWork.Errors;
 
+[GenerateSerializer]
+[Alias("OIO.Domain.SeedWork.Errors.InvariantError")]
 public sealed record InvariantError(string PropertyName ,string Code , string Message) : Error(Code, Message, ErrorCatalog.Kind.Invariant), ICheckError;

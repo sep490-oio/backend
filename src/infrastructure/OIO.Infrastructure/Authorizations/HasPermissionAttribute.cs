@@ -2,12 +2,10 @@
 
 namespace OIO.Infrastructure.Authorizations;
 
-internal sealed class PermissionRequirement : IAuthorizationRequirement
+public class HasPermissionAttribute : AuthorizeAttribute
 {
-    public PermissionRequirement(string permission)
+    public HasPermissionAttribute(string permission) : base(permission)
     {
-        Permission = permission;
+        Policy = permission; 
     }
-
-    public string Permission { get; }
 }

@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using OIO.Application.UserContext.Services;
+using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.AppDefinitions;
 
 namespace OIO.Infrastructure.Authorizations;
