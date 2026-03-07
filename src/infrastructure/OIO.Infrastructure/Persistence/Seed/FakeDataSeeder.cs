@@ -20,6 +20,7 @@ using OIO.Domain.Context.UserContext.Aggregates.Roles;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Services;
 using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Infrastructure.Settings;
 using OIO.Infrastructure.Settings.Apps;
 
 namespace OIO.Infrastructure.Persistence.Seed;
@@ -58,6 +59,7 @@ public static partial class FakeDataSeeder
             
             var nowUtc = clock.UtcNow;
             await SeedRolesAsync(dbContext, logger);
+            await SeedAdminUserAsync(dbContext, services, logger);
             // 1. Users
             var users = SeedUsers(passwordHasher, nowUtc);
             dbContext.Set<User>().AddRange(users);
@@ -99,21 +101,53 @@ public static partial class FakeDataSeeder
     }
 
     // ==================== Users ====================
+    
+    private static async Task SeedAdminUserAsync(
+        ApplicationDbContext dbContext,
+        IServiceProvider serviceProvider,
+        ILogger logger)
+    {
+        if (await dbContext.Set<User>().AnyAsync(x => x.Email == UserEmail.Create("admin@oio.com").Value))
+            return;
+
+        var passwordHasher = serviceProvider.GetRequiredService<IPasswordHasher>();
+        var clock = serviceProvider.GetRequiredService<IClock>();
+        var efaultAccountOptions = serviceProvider.GetRequiredService<IOptions<DefaultAccountOptions>>().Value;
+
+        var email = UserEmail.Create(efaultAccountOptions.Email);
+        var passwordHash = Password.Create(efaultAccountOptions.Password, passwordHasher);
+        var userName = UserName.Create(efaultAccountOptions.UserName);
+        var admin = User.Create(
+            userName: userName.Value,
+            email: email.Value,
+            now: clock.UtcNow,
+            password: passwordHash.Value
+        );
+
+        admin.ConfirmEmail(clock.UtcNow);
+        admin.UpdateProfile(
+            firstName: FirstName.Create(efaultAccountOptions.FirstName).Value,
+            lastName: LastName.Create(efaultAccountOptions.LastName).Value,
+            displayName: DisplayName.Create(efaultAccountOptions.DisplayName).Value,
+            now: clock.UtcNow);
+
+        admin.AssignRole(App.Roles.Definitions.Admin.Id, clock.UtcNow);
+
+        dbContext.Set<User>().Add(admin);
+
+        // Clear domain events raised during seeding (we don't want to publish them)
+        admin.ClearDomainEvents();
+
+        await dbContext.SaveChangesAsync();
+
+        logger.LogInformation(
+            "Seeded admin user: {Email} (ID: {UserId})", email.Value, admin.Id);
+    }
 
     private static List<User> SeedUsers(IPasswordHasher passwordHasher, DateTime nowUtc)
     {
         var hashedPassword = passwordHasher.Hash(DefaultPassword);
         var users = new List<User>();
-
-        // Admin user
-        var admin = User.Create(
-            userName: UserName.Create("admin").Value,
-            email: UserEmail.Create("admin@oio.test").Value,
-            nowUtc,
-            Password.CreateFromHash(hashedPassword));
-        admin.ConfirmEmail(nowUtc);
-        admin.AssignRole(App.Roles.Definitions.Admin.Id, nowUtc);
-        users.Add(admin);
         
         // Sellers
         var sellerFaker = new Faker<UserSeedData>("vi")

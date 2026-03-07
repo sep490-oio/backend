@@ -100,6 +100,10 @@ jobs:
           FEATURES_ENABLE_SCALAR=${{ vars.FEATURES_ENABLE_SCALAR }}
           HASHING_KEY=${{ secrets.HASHING_KEY }}
           SEQ_ADMIN_PASSWORD=${{ secrets.SEQ_ADMIN_PASSWORD }}
+          CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
+          CLOUDINARY_BASE_URL=${{ vars.CLOUDINARY_BASE_URL }}
           EOF
 
       - name: Upload compose files to VPS

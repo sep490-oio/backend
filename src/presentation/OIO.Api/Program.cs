@@ -4,6 +4,7 @@ using OIO.Api;
 using OIO.Api.Extensions;
 using OIO.Api.Hubs;
 using OIO.Application;
+using OIO.Application.Abstractions.Commons;
 using OIO.Infrastructure;
 using OIO.Infrastructure.Persistence.Extensions;
 using OIO.Infrastructure.Persistence.Seed;
@@ -79,5 +80,7 @@ app.MapHealthChecks("health", new HealthCheckOptions
 {
     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
 });
+
+app.MapGet("test", (IAppConfigs appInfos) => appInfos.BeUrl);
 
 app.Run();

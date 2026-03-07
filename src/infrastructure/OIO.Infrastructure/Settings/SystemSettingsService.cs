@@ -21,7 +21,6 @@ internal sealed class SystemSettingsService : ISystemSettingsService
 
     private const string CachePrefix = "settings:";
     private const string CacheTag = "system_settings";
-    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(30);
 
     public SystemSettingsService(
         IDbContext dbContext,
