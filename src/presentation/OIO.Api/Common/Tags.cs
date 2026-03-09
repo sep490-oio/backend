@@ -13,6 +13,8 @@ public static class ApiEndpoint
         public const string Categories = nameof(Categories);
         public const string Media = nameof(Media);
         public const string Me = nameof(Me);
+        public const string Warehouse = nameof(Warehouse);
+        public const string Webhooks  = nameof(Webhooks);
     }
 
     public static class Names
@@ -121,6 +123,26 @@ public static class ApiEndpoint
             public const string GetCategoryBySlug = nameof(GetCategoryBySlug);
             public const string GetCategoryChildren = nameof(GetCategoryChildren);
             public const string UpdateCategory = nameof(UpdateCategory);
+        }
+        public static class Warehouse
+        {
+            public const string BookInboundShipment  = nameof(BookInboundShipment);
+            public const string BookOutboundShipment = nameof(BookOutboundShipment);
+            public const string GhnWebhook           = nameof(GhnWebhook);
+            public const string InspectWarehouseItem = nameof(InspectWarehouseItem);
+            public const string StoreWarehouseItem   = nameof(StoreWarehouseItem);
+            public const string CreateStorageLocation = nameof(CreateStorageLocation);
+            public const string GetStorageLocations   = nameof(GetStorageLocations);
+            public const string GetInboundShipments      = nameof(GetInboundShipments);
+            public const string GetInboundShipmentById   = nameof(GetInboundShipmentById);
+            public const string GetOutboundShipments     = nameof(GetOutboundShipments);
+            public const string GetOutboundShipmentById  = nameof(GetOutboundShipmentById);
+            public const string GetWarehouseItems = nameof(GetWarehouseItems);
+            public const string CancelInboundShipment          = nameof(CancelInboundShipment);
+            public const string CancelOutboundShipment         = nameof(CancelOutboundShipment);
+            public const string DeleteStorageLocation          = nameof(DeleteStorageLocation);
+            public const string UpdateStorageLocation          = nameof(UpdateStorageLocation);
+            public const string UpdateShippingProviderConfig   = nameof(UpdateShippingProviderConfig);
         }
     }
 
@@ -233,7 +255,24 @@ public static class ApiEndpoint
             public const string GetChildren = $"{Base}/{{categoryId:guid}}/children";
             public const string Update = $"{Base}/{{categoryId:guid}}";
         }
-        
+        public static class Warehouse
+        {
+            private const string Base = "api/warehouse";
+            
+            public const string InspectWarehouseItem = $"{Base}/inbound-shipments/{{shipmentId}}/inspect";
+            public const string BookInbound  = $"{Base}/inbound-shipments";
+            public const string BookOutbound = $"{Base}/outbound-shipments";
+            public const string StoreItem   = $"{Base}/warehouse-items/{{warehouseItemId}}/store";
+            public const string GhnWebhook   = "webhooks/ghn";
+            public const string StorageLocations = $"{Base}/storage-locations";
+            public const string InboundShipmentById  = $"{Base}/inbound-shipments/{{shipmentId:guid}}";
+            public const string OutboundShipmentById = $"{Base}/outbound-shipments/{{shipmentId:guid}}";
+            public const string WarehouseItems = $"{Base}/warehouse-items";
+            public const string CancelInbound              = $"{Base}/inbound-shipments/{{shipmentId:guid}}/cancel";
+            public const string CancelOutbound             = $"{Base}/outbound-shipments/{{shipmentId:guid}}/cancel";
+            public const string StorageLocationById        = $"{Base}/storage-locations/{{locationId:guid}}";
+            public const string ShippingProviderConfigById = $"{Base}/shipping-provider-configs/{{configId:guid}}";
+        }
         public static class Me
         {
             private const string Base = "api/me";

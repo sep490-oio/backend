@@ -15,6 +15,7 @@ using OIO.Application.Abstractions.Mail;
 using OIO.Application.Abstractions.Media;
 using OIO.Application.Abstractions.Security;
 using OIO.Application.Abstractions.Settings;
+using OIO.Application.Abstractions.Shipping;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.UserContext.Services;
 using OIO.Infrastructure.Authorizations;
@@ -33,6 +34,8 @@ using OIO.Infrastructure.Security;
 using OIO.Infrastructure.Settings.Apps;
 using Quartz;
 using StackExchange.Redis;
+using OIO.Infrastructure.Shipping;
+using OIO.Infrastructure.Shipping.Ghn;
 
 namespace OIO.Infrastructure;
 
@@ -59,7 +62,8 @@ public static class DependencyInjection
                 .AddBackgroundJobs()
                 .AddOutbox(configuration)
                 .AddMedia(configuration)
-                .AddSecurityServices();
+                .AddSecurityServices()
+                .AddShipping();
 
             return services;
         }
@@ -293,6 +297,14 @@ public static class DependencyInjection
             //For idempotent notification
             services.Decorate(typeof(INotificationHandler<>), typeof(IdempotentDomainEventHandler<>));
 
+            return services;
+        }
+        private IServiceCollection AddShipping()
+        {
+            services.AddHttpClient("GhnClient");
+            services.AddTransient<IShippingProvider, GhnShippingProvider>();
+            services.AddTransient<IShippingProviderSelector, ShippingProviderSelector>();
+            services.AddScoped<IShippingService, ShippingService>();
             return services;
         }
     }

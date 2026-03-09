@@ -23,6 +23,9 @@
       <Folder Include="Context\NotificationContext\" />
       <Folder Include="Context\PaymentContext\" />
       <Folder Include="Context\ReviewContext\" />
+      <Folder Include="Context\WarehouseContext\Aggregates\ShippingProviders\Events\" />
+      <Folder Include="Context\WarehouseContext\Aggregates\WarehouseStorage\Events\" />
+      <Folder Include="Context\WarehouseContext\Services\" />
     </ItemGroup>
 
 </Project>

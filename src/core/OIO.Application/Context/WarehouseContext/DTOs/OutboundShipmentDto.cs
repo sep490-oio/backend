@@ -1,0 +1,26 @@
+﻿namespace OIO.Application.Context.WarehouseContext.DTOs;
+
+public sealed record OutboundShipmentDto(
+    Guid    Id,
+    Guid    OrderId,
+    Guid    WarehouseItemId,
+    string  ProviderCode,
+    string  ClientOrderCode,
+    string? CarrierTrackingNumber,
+    string? ShippingLabelUrl,
+    string? ShippingMethod,
+    int     WeightGrams,
+    int?    LengthCm,
+    int?    WidthCm,
+    int?    HeightCm,
+    decimal ShippingFee,
+    decimal InsuranceValue,
+    decimal CodAmount,
+    string  Status,
+    DateTime? EstimatedDeliveryAt,
+    DateTime? PackedAt,
+    DateTime? DispatchedAt,
+    DateTime? DeliveredAt,
+    DateTime  CreatedAt,
+    DateTime? ModifiedAt,
+    IReadOnlyList<ShipmentTrackingEventDto> TrackingEvents);

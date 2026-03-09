@@ -61,7 +61,16 @@ public static partial class App
                 public const string Watch = "auctions:watch";
                 public const string Unwatch = "auctions:unwatch";
             }
+            public static class Warehouse
+            {
+                public const string BookInbound  = "warehouse:inbound:book";
+                public const string BookOutbound = "warehouse:outbound:book";
+                public const string Inspect = "warehouse:item:inspect";
+                public const string Store   = "warehouse:item:store";
+                public const string ManageLocations = "warehouse:locations:manage";
+                public const string ReadShipments    = "warehouse:shipments:read";
 
+            }
             // ==================== Media ====================
             public static class Media
             {
@@ -145,7 +154,13 @@ public static partial class App
                 Auctions.ReadAutoBid,
                 Auctions.Watch,
                 Auctions.Unwatch,
-
+                //Warehouse
+                Warehouse.BookInbound,
+                Warehouse.BookOutbound,
+                Warehouse.Inspect,
+                Warehouse.Store,
+                Warehouse.ManageLocations,
+                Warehouse.ReadShipments,
                 // Categories
                 Categories.Create,
                 Categories.Update,
@@ -254,7 +269,16 @@ public static partial class App
                 public static readonly Permission Watch = Permission.Create(4101, Catalogs.Auctions.Watch);
                 public static readonly Permission Unwatch = Permission.Create(4102, Catalogs.Auctions.Unwatch);
             }
-
+            public static class Warehouse
+            {
+                // ==================== Warehouse (7001-8000) ====================
+                public static readonly Permission BookInbound  = Permission.Create(7001, Catalogs.Warehouse.BookInbound);
+                public static readonly Permission BookOutbound = Permission.Create(7002, Catalogs.Warehouse.BookOutbound);
+                public static readonly Permission Store   = Permission.Create(7004, Catalogs.Warehouse.Store);
+                public static readonly Permission Inspect = Permission.Create(7003, Catalogs.Warehouse.Inspect);
+                public static readonly Permission ManageLocations = Permission.Create(7005, Catalogs.Warehouse.ManageLocations);
+                public static readonly Permission ReadShipments = Permission.Create(7006, Catalogs.Warehouse.ReadShipments);
+            }
             public static class Categories
             {
                 // ==================== Categories (5001-6000) ====================
@@ -307,7 +331,13 @@ public static partial class App
                 Auctions.ReadAutoBid,
                 Auctions.Watch,
                 Auctions.Unwatch,
-
+                //Warehouse
+                Warehouse.BookInbound,
+                Warehouse.BookOutbound,
+                Warehouse.Inspect,
+                Warehouse.Store,
+                Warehouse.ManageLocations,
+                Warehouse.ReadShipments,
                 // Media
                 Media.ReadContexts,
                 Media.Upload,
