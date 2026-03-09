@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -16,6 +16,7 @@ public sealed class CustomJwtBearerEvents : JwtBearerEvents
     private readonly IProblemDetailsService _problemDetailsService;
     private readonly ISessionRevocationStore _sessionRevocationStore;
     private readonly ILogger<CustomJwtBearerEvents> _logger;
+    private readonly string _authErrorItemKey = "auth_error";
 
     public CustomJwtBearerEvents(
         IProblemDetailsService problemDetailsService,
@@ -26,42 +27,38 @@ public sealed class CustomJwtBearerEvents : JwtBearerEvents
         _sessionRevocationStore = sessionRevocationStore;
         _logger = logger;
     }
-
+    
     public override async Task TokenValidated(TokenValidatedContext context)
     {
         await base.TokenValidated(context);
 
         var userIdClaim = context.Principal?.FindFirst(JwtRegisteredClaimNames.Sub);
-        
-        var deviceId = context.Principal?.FindFirst(CustomClaimType.DeviceId);
-    
-        if (userIdClaim == null || deviceId == null || 
-            !Guid.TryParse(userIdClaim.Value, out var parsedUserId)|| 
-            !Guid.TryParse(deviceId.Value, out var parsedDeviceId))
+        var deviceIdClaim = context.Principal?.FindFirst(CustomClaimType.DeviceId);
+
+        if (userIdClaim == null ||
+            deviceIdClaim == null ||
+            !Guid.TryParse(userIdClaim.Value, out var parsedUserId) ||
+            !Guid.TryParse(deviceIdClaim.Value, out var parsedDeviceId))
         {
+            context.HttpContext.Items[_authErrorItemKey] = nameof(UserErrors.Auth.AuthTokenInvalid);
             context.Fail(nameof(UserErrors.Auth.AuthTokenInvalid));
             return;
         }
 
         var userId = UserId.From(parsedUserId);
-        var isUserRevokedAsync = await _sessionRevocationStore.IsUserRevokedAsync(userId, context.HttpContext.RequestAborted);
 
-        if (isUserRevokedAsync)
+        if (await _sessionRevocationStore.IsUserRevokedAsync(userId, context.HttpContext.RequestAborted))
         {
+            context.HttpContext.Items[_authErrorItemKey] = nameof(UserErrors.Auth.AuthTokenRevoked);
             context.Fail(nameof(UserErrors.Auth.AuthTokenRevoked));
             return;
         }
-        
-        var isTokenExistInBlackList = await _sessionRevocationStore.IsDeviceRevokedAsync(
-            UserId.From(parsedUserId), 
-            parsedDeviceId, 
-            context.HttpContext.RequestAborted);
 
-        if (isTokenExistInBlackList)
+        if (await _sessionRevocationStore.IsDeviceRevokedAsync(userId, parsedDeviceId, context.HttpContext.RequestAborted))
         {
+            context.HttpContext.Items[_authErrorItemKey] = nameof(UserErrors.Auth.AuthTokenRevoked);
             context.Fail(nameof(UserErrors.Auth.AuthTokenRevoked));
         }
-        
     }
 
     public override Task AuthenticationFailed(AuthenticationFailedContext context)
@@ -69,33 +66,58 @@ public sealed class CustomJwtBearerEvents : JwtBearerEvents
         _logger.LogError(context.Exception, "JWT auth failed");
         return Task.CompletedTask;
     }
+    
+    public override Task MessageReceived(MessageReceivedContext context)
+    {
+        var path = context.HttpContext.Request.Path;
+
+        if (string.IsNullOrEmpty(context.Token) &&
+            path.StartsWithSegments("/hubs"))
+        {
+            var token = context.Request.Query["access_token"].ToString();
+
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                context.Token = token;
+            }
+        }
+
+        return Task.CompletedTask;
+    }
 
     public override async Task Challenge(JwtBearerChallengeContext context)
     {
         context.HandleResponse();
+
         var http = context.HttpContext;
         var authHeader = http.Request.Headers.Authorization.ToString();
+        var queryToken = http.Request.Query["access_token"].ToString();
+        var path = http.Request.Path;
 
-        Error error;
-        var isMissingHeader = string.IsNullOrWhiteSpace(authHeader);
         var isBearerWithoutToken =
             authHeader.Equals("Bearer", StringComparison.OrdinalIgnoreCase) ||
             authHeader.Equals("Bearer ", StringComparison.OrdinalIgnoreCase);
 
-        if (isMissingHeader || isBearerWithoutToken)
+        var hasHeaderToken =
+            !string.IsNullOrWhiteSpace(authHeader) && !isBearerWithoutToken;
+
+        var hasQueryToken =
+            path.StartsWithSegments("/hubs") &&
+            !string.IsNullOrWhiteSpace(queryToken);
+
+        var hasAnyToken = hasHeaderToken || hasQueryToken;
+        var isMissingToken = !hasAnyToken;
+
+        var customError = http.Items[_authErrorItemKey] as string;
+
+        var error = customError switch
         {
-            error = UserErrors.Auth.AuthTokenMissing;
-        }
-        else
-        {
-            error = context.AuthenticateFailure switch
-            {
-                SecurityTokenExpiredException => UserErrors.Auth.AuthTokenExpired,
-                { Message: nameof(UserErrors.Auth.AuthTokenRevoked) } => 
-                    UserErrors.Auth.AuthTokenRevoked,
-                _ => UserErrors.Auth.AuthTokenInvalid
-            };
-        }
+            nameof(UserErrors.Auth.AuthTokenRevoked) => UserErrors.Auth.AuthTokenRevoked,
+            nameof(UserErrors.Auth.AuthTokenInvalid) => UserErrors.Auth.AuthTokenInvalid,
+            _ when isMissingToken => UserErrors.Auth.AuthTokenMissing,
+            _ when context.AuthenticateFailure is SecurityTokenExpiredException => UserErrors.Auth.AuthTokenExpired,
+            _ => UserErrors.Auth.AuthTokenInvalid
+        };
 
         await WriteErrorAsync(http, StatusCodes.Status401Unauthorized, error);
     }
@@ -125,6 +147,5 @@ public sealed class CustomJwtBearerEvents : JwtBearerEvents
             HttpContext = httpContext,
             ProblemDetails = problemDetails
         });
-        
     }
 }
