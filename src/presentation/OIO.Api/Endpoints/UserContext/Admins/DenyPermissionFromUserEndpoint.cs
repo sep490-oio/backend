@@ -11,11 +11,11 @@ public class DenyPermissionFromUserEndpoint : IEndpoint
     {
         app.MapPut(ApiEndpoint.Url.Admins.DenyPermission, async (
                 Guid userId,
-                int permissionId,
+                string permission,
                 ISender sender,
                 CancellationToken ct) =>
             {
-                var command = new DenyPermissionCommand(userId, permissionId);
+                var command = new DenyPermissionCommand(userId, permission);
                 var result = await sender.Send(command, ct);
 
                 return result.ToNoContentHttpResult();

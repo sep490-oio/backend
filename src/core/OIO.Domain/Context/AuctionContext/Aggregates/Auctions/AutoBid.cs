@@ -15,8 +15,8 @@ public sealed class AutoBid : BaseEntity<AutoBidId>, IAuditableEntity
     public UserId BidderId { get; private set; }
     public Money MaxAmount { get; private set; }
     public Money CurrentAmount { get; private set; }
-    public bool IsEnabled { get; private set; }
     public Money? IncrementAmount { get; private set; }
+    public bool IsEnabled { get; private set; }
     public AutoBidStatus Status { get; private set; }
     public int TotalAutoBids { get; private set; }
     public DateTime? LastAutoBidAt { get; private set; }

@@ -1,0 +1,37 @@
+﻿@using OIO.Infrastructure.Mail.RazorEmails.Rendering.ViewModels
+
+<LayoutView Layout="@typeof(MainLayout)">
+    <h2 style="margin:0 0 16px; font-size:24px; line-height:1.3; font-weight:700; color:#111827;">
+        An auction you're following has ended
+    </h2>
+
+    <p style="margin:0 0 12px; font-size:15px; line-height:1.7; color:#111827;">
+        Hello <strong>@Model.UserName</strong>,
+    </p>
+
+    <p style="margin:0 0 16px; font-size:15px; line-height:1.7; color:#374151;">
+        The auction <strong>@Model.AuctionTitle</strong> has ended.
+    </p>
+
+    @if (Model.HasWinner)
+    {
+        <p style="margin:0; font-size:15px; line-height:1.7; color:#374151;">
+            The item was sold for
+            <strong style="color:#111827; font-weight:700;">
+                @Model.FinalPrice.ToString("N0") @Model.Currency
+            </strong>.
+        </p>
+    }
+    else
+    {
+        <p style="margin:0; font-size:15px; line-height:1.7; color:#6b7280;">
+            The auction ended without a winner.
+        </p>
+    }
+</LayoutView>
+
+
+@code {
+    [Parameter]
+    public AuctionEndedWatcherMailViewModel Model { get; set; }
+}

@@ -86,14 +86,16 @@ internal sealed class CreateAuctionCommandHandler
         CancellationToken cancellationToken)
     {
         var nowUtc = _clock.UtcNow;
-        var (_, isFailure, startingPrice, error) = Money.Create(request.StartingPrice, request.Currency);
+        
+        var currency = Currency.FromId(request.Currency).Value;
+        var (_, isFailure, startingPrice, error) = Money.Create(request.StartingPrice, currency);
         
         if (isFailure)
         {
             return error;
         }
         
-        (_, isFailure, var bidIncrement, error) = Money.Create(request.BidIncrement, request.Currency);
+        (_, isFailure, var bidIncrement, error) = Money.Create(request.BidIncrement, currency);
         
         if (isFailure)
         {
@@ -115,7 +117,7 @@ internal sealed class CreateAuctionCommandHandler
         Money? reservePrice = null;
         if (request.ReservePrice.HasValue)
         {
-            (_, isFailure, reservePrice, error) = Money.Create(request.ReservePrice.Value, request.Currency);
+            (_, isFailure, reservePrice, error) = Money.Create(request.ReservePrice.Value, currency);
             
             if (isFailure)
             {
@@ -126,7 +128,7 @@ internal sealed class CreateAuctionCommandHandler
         Money? buyNowPrice = null;
         if (request.BuyNowPrice.HasValue)
         {
-            (_, isFailure, buyNowPrice, error) = Money.Create(request.BuyNowPrice.Value, request.Currency);
+            (_, isFailure, buyNowPrice, error) = Money.Create(request.BuyNowPrice.Value, currency);
             
             if (isFailure)
             {

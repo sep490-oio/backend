@@ -24,6 +24,461 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzBlobTrigger", b =>
+                {
+                    b.Property<string>("SchedulerName")
+                        .HasColumnType("text")
+                        .HasColumnName("sched_name");
+
+                    b.Property<string>("TriggerName")
+                        .HasColumnType("text")
+                        .HasColumnName("trigger_name");
+
+                    b.Property<string>("TriggerGroup")
+                        .HasColumnType("text")
+                        .HasColumnName("trigger_group");
+
+                    b.Property<byte[]>("BlobData")
+                        .HasColumnType("bytea")
+                        .HasColumnName("blob_data");
+
+                    b.HasKey("SchedulerName", "TriggerName", "TriggerGroup")
+                        .HasName("pk_qrtz_blob_triggers");
+
+                    b.ToTable("qrtz_blob_triggers", "quartz");
+                });
+
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzCalendar", b =>
+                {
+                    b.Property<string>("SchedulerName")
+                        .HasColumnType("text")
+                        .HasColumnName("sched_name");
+
+                    b.Property<string>("CalendarName")
+                        .HasColumnType("text")
+                        .HasColumnName("calendar_name");
+
+                    b.Property<byte[]>("Calendar")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("calendar");
+
+                    b.HasKey("SchedulerName", "CalendarName")
+                        .HasName("pk_qrtz_calendars");
+
+                    b.ToTable("qrtz_calendars", "quartz");
+                });
+
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzCronTrigger", b =>
+                {
+                    b.Property<string>("SchedulerName")
+                        .HasColumnType("text")
+                        .HasColumnName("sched_name");
+
+                    b.Property<string>("TriggerName")
+                        .HasColumnType("text")
+                        .HasColumnName("trigger_name");
+
+                    b.Property<string>("TriggerGroup")
+                        .HasColumnType("text")
+                        .HasColumnName("trigger_group");
+
+                    b.Property<string>("CronExpression")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("cron_expression");
+
+                    b.Property<string>("TimeZoneId")
+                        .HasColumnType("text")
+                        .HasColumnName("time_zone_id");
+
+                    b.HasKey("SchedulerName", "TriggerName", "TriggerGroup")
+                        .HasName("pk_qrtz_cron_triggers");
+
+                    b.ToTable("qrtz_cron_triggers", "quartz");
+                });
+
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzFiredTrigger", b =>
+                {
+                    b.Property<string>("SchedulerName")
+                        .HasColumnType("text")
+                        .HasColumnName("sched_name");
+
+                    b.Property<string>("EntryId")
+                        .HasColumnType("text")
+                        .HasColumnName("entry_id");
+
+                    b.Property<long>("FiredTime")
+                        .HasColumnType("bigint")
+                        .HasColumnName("fired_time");
+
+                    b.Property<string>("InstanceName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("instance_name");
+
+                    b.Property<bool>("IsNonConcurrent")
+                        .HasColumnType("bool")
+                        .HasColumnName("is_nonconcurrent");
+
+                    b.Property<string>("JobGroup")
+                        .HasColumnType("text")
+                        .HasColumnName("job_group");
+
+                    b.Property<string>("JobName")
+                        .HasColumnType("text")
+                        .HasColumnName("job_name");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer")
+                        .HasColumnName("priority");
+
+                    b.Property<bool?>("RequestsRecovery")
+                        .HasColumnType("bool")
+                        .HasColumnName("requests_recovery");
+
+                    b.Property<long>("ScheduledTime")
+                        .HasColumnType("bigint")
+                        .HasColumnName("sched_time");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("state");
+
+                    b.Property<string>("TriggerGroup")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("trigger_group");
+
+                    b.Property<string>("TriggerName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("trigger_name");
+
+                    b.HasKey("SchedulerName", "EntryId")
+                        .HasName("pk_qrtz_fired_triggers");
+
+                    b.HasIndex("InstanceName")
+                        .HasDatabaseName("idx_qrtz_ft_trig_inst_name");
+
+                    b.HasIndex("JobGroup")
+                        .HasDatabaseName("idx_qrtz_ft_job_group");
+
+                    b.HasIndex("JobName")
+                        .HasDatabaseName("idx_qrtz_ft_job_name");
+
+                    b.HasIndex("RequestsRecovery")
+                        .HasDatabaseName("idx_qrtz_ft_job_req_recovery");
+
+                    b.HasIndex("TriggerGroup")
+                        .HasDatabaseName("idx_qrtz_ft_trig_group");
+
+                    b.HasIndex("TriggerName")
+                        .HasDatabaseName("idx_qrtz_ft_trig_name");
+
+                    b.HasIndex("SchedulerName", "TriggerName", "TriggerGroup")
+                        .HasDatabaseName("idx_qrtz_ft_trig_nm_gp");
+
+                    b.ToTable("qrtz_fired_triggers", "quartz");
+                });
+
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzJobDetail", b =>
+                {
+                    b.Property<string>("SchedulerName")
+                        .HasColumnType("text")
+                        .HasColumnName("sched_name");
+
+                    b.Property<string>("JobName")
+                        .HasColumnType("text")
+                        .HasColumnName("job_name");
+
+                    b.Property<string>("JobGroup")
+                        .HasColumnType("text")
+                        .HasColumnName("job_group");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsDurable")
+                        .HasColumnType("bool")
+                        .HasColumnName("is_durable");
+
+                    b.Property<bool>("IsNonConcurrent")
+                        .HasColumnType("bool")
+                        .HasColumnName("is_nonconcurrent");
+
+                    b.Property<bool>("IsUpdateData")
+                        .HasColumnType("bool")
+                        .HasColumnName("is_update_data");
+
+                    b.Property<string>("JobClassName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("job_class_name");
+
+                    b.Property<byte[]>("JobData")
+                        .HasColumnType("bytea")
+                        .HasColumnName("job_data");
+
+                    b.Property<bool>("RequestsRecovery")
+                        .HasColumnType("bool")
+                        .HasColumnName("requests_recovery");
+
+                    b.HasKey("SchedulerName", "JobName", "JobGroup")
+                        .HasName("pk_qrtz_job_details");
+
+                    b.HasIndex("RequestsRecovery")
+                        .HasDatabaseName("idx_qrtz_j_req_recovery");
+
+                    b.ToTable("qrtz_job_details", "quartz");
+                });
+
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzLock", b =>
+                {
+                    b.Property<string>("SchedulerName")
+                        .HasColumnType("text")
+                        .HasColumnName("sched_name");
+
+                    b.Property<string>("LockName")
+                        .HasColumnType("text")
+                        .HasColumnName("lock_name");
+
+                    b.HasKey("SchedulerName", "LockName")
+                        .HasName("pk_qrtz_locks");
+
+                    b.ToTable("qrtz_locks", "quartz");
+                });
+
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzPausedTriggerGroup", b =>
+                {
+                    b.Property<string>("SchedulerName")
+                        .HasColumnType("text")
+                        .HasColumnName("sched_name");
+
+                    b.Property<string>("TriggerGroup")
+                        .HasColumnType("text")
+                        .HasColumnName("trigger_group");
+
+                    b.HasKey("SchedulerName", "TriggerGroup")
+                        .HasName("pk_qrtz_paused_trigger_grps");
+
+                    b.ToTable("qrtz_paused_trigger_grps", "quartz");
+                });
+
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzSchedulerState", b =>
+                {
+                    b.Property<string>("SchedulerName")
+                        .HasColumnType("text")
+                        .HasColumnName("sched_name");
+
+                    b.Property<string>("InstanceName")
+                        .HasColumnType("text")
+                        .HasColumnName("instance_name");
+
+                    b.Property<long>("CheckInInterval")
+                        .HasColumnType("bigint")
+                        .HasColumnName("checkin_interval");
+
+                    b.Property<long>("LastCheckInTime")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_checkin_time");
+
+                    b.HasKey("SchedulerName", "InstanceName")
+                        .HasName("pk_qrtz_scheduler_state");
+
+                    b.ToTable("qrtz_scheduler_state", "quartz");
+                });
+
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzSimplePropertyTrigger", b =>
+                {
+                    b.Property<string>("SchedulerName")
+                        .HasColumnType("text")
+                        .HasColumnName("sched_name");
+
+                    b.Property<string>("TriggerName")
+                        .HasColumnType("text")
+                        .HasColumnName("trigger_name");
+
+                    b.Property<string>("TriggerGroup")
+                        .HasColumnType("text")
+                        .HasColumnName("trigger_group");
+
+                    b.Property<bool?>("BooleanProperty1")
+                        .HasColumnType("bool")
+                        .HasColumnName("bool_prop_1");
+
+                    b.Property<bool?>("BooleanProperty2")
+                        .HasColumnType("bool")
+                        .HasColumnName("bool_prop_2");
+
+                    b.Property<decimal?>("DecimalProperty1")
+                        .HasColumnType("numeric")
+                        .HasColumnName("dec_prop_1");
+
+                    b.Property<decimal?>("DecimalProperty2")
+                        .HasColumnType("numeric")
+                        .HasColumnName("dec_prop_2");
+
+                    b.Property<int?>("IntegerProperty1")
+                        .HasColumnType("integer")
+                        .HasColumnName("int_prop_1");
+
+                    b.Property<int?>("IntegerProperty2")
+                        .HasColumnType("integer")
+                        .HasColumnName("int_prop_2");
+
+                    b.Property<long?>("LongProperty1")
+                        .HasColumnType("bigint")
+                        .HasColumnName("long_prop_1");
+
+                    b.Property<long?>("LongProperty2")
+                        .HasColumnType("bigint")
+                        .HasColumnName("long_prop_2");
+
+                    b.Property<string>("StringProperty1")
+                        .HasColumnType("text")
+                        .HasColumnName("str_prop_1");
+
+                    b.Property<string>("StringProperty2")
+                        .HasColumnType("text")
+                        .HasColumnName("str_prop_2");
+
+                    b.Property<string>("StringProperty3")
+                        .HasColumnType("text")
+                        .HasColumnName("str_prop_3");
+
+                    b.Property<string>("TimeZoneId")
+                        .HasColumnType("text")
+                        .HasColumnName("time_zone_id");
+
+                    b.HasKey("SchedulerName", "TriggerName", "TriggerGroup")
+                        .HasName("pk_qrtz_simprop_triggers");
+
+                    b.ToTable("qrtz_simprop_triggers", "quartz");
+                });
+
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzSimpleTrigger", b =>
+                {
+                    b.Property<string>("SchedulerName")
+                        .HasColumnType("text")
+                        .HasColumnName("sched_name");
+
+                    b.Property<string>("TriggerName")
+                        .HasColumnType("text")
+                        .HasColumnName("trigger_name");
+
+                    b.Property<string>("TriggerGroup")
+                        .HasColumnType("text")
+                        .HasColumnName("trigger_group");
+
+                    b.Property<long>("RepeatCount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("repeat_count");
+
+                    b.Property<long>("RepeatInterval")
+                        .HasColumnType("bigint")
+                        .HasColumnName("repeat_interval");
+
+                    b.Property<long>("TimesTriggered")
+                        .HasColumnType("bigint")
+                        .HasColumnName("times_triggered");
+
+                    b.HasKey("SchedulerName", "TriggerName", "TriggerGroup")
+                        .HasName("pk_qrtz_simple_triggers");
+
+                    b.ToTable("qrtz_simple_triggers", "quartz");
+                });
+
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzTrigger", b =>
+                {
+                    b.Property<string>("SchedulerName")
+                        .HasColumnType("text")
+                        .HasColumnName("sched_name");
+
+                    b.Property<string>("TriggerName")
+                        .HasColumnType("text")
+                        .HasColumnName("trigger_name");
+
+                    b.Property<string>("TriggerGroup")
+                        .HasColumnType("text")
+                        .HasColumnName("trigger_group");
+
+                    b.Property<string>("CalendarName")
+                        .HasColumnType("text")
+                        .HasColumnName("calendar_name");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<long?>("EndTime")
+                        .HasColumnType("bigint")
+                        .HasColumnName("end_time");
+
+                    b.Property<byte[]>("JobData")
+                        .HasColumnType("bytea")
+                        .HasColumnName("job_data");
+
+                    b.Property<string>("JobGroup")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("job_group");
+
+                    b.Property<string>("JobName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("job_name");
+
+                    b.Property<short?>("MisfireInstruction")
+                        .HasColumnType("smallint")
+                        .HasColumnName("misfire_instr");
+
+                    b.Property<long?>("NextFireTime")
+                        .HasColumnType("bigint")
+                        .HasColumnName("next_fire_time");
+
+                    b.Property<long?>("PreviousFireTime")
+                        .HasColumnType("bigint")
+                        .HasColumnName("prev_fire_time");
+
+                    b.Property<int?>("Priority")
+                        .HasColumnType("integer")
+                        .HasColumnName("priority");
+
+                    b.Property<long>("StartTime")
+                        .HasColumnType("bigint")
+                        .HasColumnName("start_time");
+
+                    b.Property<string>("TriggerState")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("trigger_state");
+
+                    b.Property<string>("TriggerType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("trigger_type");
+
+                    b.HasKey("SchedulerName", "TriggerName", "TriggerGroup")
+                        .HasName("pk_qrtz_triggers");
+
+                    b.HasIndex("NextFireTime")
+                        .HasDatabaseName("idx_qrtz_t_next_fire_time");
+
+                    b.HasIndex("TriggerState")
+                        .HasDatabaseName("idx_qrtz_t_state");
+
+                    b.HasIndex("NextFireTime", "TriggerState")
+                        .HasDatabaseName("idx_qrtz_t_nft_st");
+
+                    b.HasIndex("SchedulerName", "JobName", "JobGroup")
+                        .HasDatabaseName("ix_qrtz_triggers_sched_name_job_name_job_group");
+
+                    b.ToTable("qrtz_triggers", "quartz");
+                });
+
             modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction", b =>
                 {
                     b.Property<Guid>("Id")
@@ -52,17 +507,13 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<string>("Currency")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(3)
-                        .HasColumnType("character varying(3)")
-                        .HasDefaultValue("VND")
-                        .HasColumnName("currency");
-
                     b.Property<Guid?>("CurrentWinnerId")
                         .HasColumnType("uuid")
                         .HasColumnName("winner_id");
+
+                    b.Property<int>("ExtensionCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("extension_count");
 
                     b.Property<int>("ExtensionMinutes")
                         .ValueGeneratedOnAdd()
@@ -88,14 +539,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("seller_id");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasDefaultValue("draft")
-                        .HasColumnName("status");
-
                     b.Property<int>("ViewCount")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -117,6 +560,19 @@ namespace OIO.Infrastructure.Persistence.Migrations
                                 .HasColumnType("numeric(18,2)")
                                 .HasDefaultValue(1.00m)
                                 .HasColumnName("bid_increment");
+
+                            b1.ComplexProperty(typeof(Dictionary<string, object>), "Currency", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction.BidIncrement#Money.Currency#Currency", b2 =>
+                                {
+                                    b2.IsRequired();
+
+                                    b2.Property<string>("Id")
+                                        .IsRequired()
+                                        .ValueGeneratedOnAdd()
+                                        .HasMaxLength(3)
+                                        .HasColumnType("character varying(3)")
+                                        .HasDefaultValue("VND")
+                                        .HasColumnName("bid_increment_currency");
+                                });
                         });
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "BuyNowPrice", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction.BuyNowPrice#Money", b1 =>
@@ -124,6 +580,16 @@ namespace OIO.Infrastructure.Persistence.Migrations
                             b1.Property<decimal>("Amount")
                                 .HasColumnType("numeric(18,2)")
                                 .HasColumnName("buy_now_price");
+
+                            b1.ComplexProperty(typeof(Dictionary<string, object>), "Currency", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction.BuyNowPrice#Money.Currency#Currency", b2 =>
+                                {
+                                    b2.IsRequired();
+
+                                    b2.Property<string>("Id")
+                                        .HasMaxLength(3)
+                                        .HasColumnType("character varying(3)")
+                                        .HasColumnName("buy_now_price_currency");
+                                });
                         });
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "CurrentPrice", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction.CurrentPrice#Money", b1 =>
@@ -133,6 +599,19 @@ namespace OIO.Infrastructure.Persistence.Migrations
                             b1.Property<decimal>("Amount")
                                 .HasColumnType("numeric(18,2)")
                                 .HasColumnName("current_price");
+
+                            b1.ComplexProperty(typeof(Dictionary<string, object>), "Currency", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction.CurrentPrice#Money.Currency#Currency", b2 =>
+                                {
+                                    b2.IsRequired();
+
+                                    b2.Property<string>("Id")
+                                        .IsRequired()
+                                        .ValueGeneratedOnAdd()
+                                        .HasMaxLength(3)
+                                        .HasColumnType("character varying(3)")
+                                        .HasDefaultValue("VND")
+                                        .HasColumnName("current_price_currency");
+                                });
                         });
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Duration", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction.Duration#AuctionDuration", b1 =>
@@ -159,6 +638,16 @@ namespace OIO.Infrastructure.Persistence.Migrations
                             b1.Property<decimal>("Amount")
                                 .HasColumnType("numeric(18,2)")
                                 .HasColumnName("reserve_price");
+
+                            b1.ComplexProperty(typeof(Dictionary<string, object>), "Currency", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction.ReservePrice#Money.Currency#Currency", b2 =>
+                                {
+                                    b2.IsRequired();
+
+                                    b2.Property<string>("Id")
+                                        .HasMaxLength(3)
+                                        .HasColumnType("character varying(3)")
+                                        .HasColumnName("reserve_price_currency");
+                                });
                         });
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "StartingPrice", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction.StartingPrice#Money", b1 =>
@@ -168,13 +657,42 @@ namespace OIO.Infrastructure.Persistence.Migrations
                             b1.Property<decimal>("Amount")
                                 .HasColumnType("numeric(18,2)")
                                 .HasColumnName("starting_price");
+
+                            b1.ComplexProperty(typeof(Dictionary<string, object>), "Currency", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction.StartingPrice#Money.Currency#Currency", b2 =>
+                                {
+                                    b2.IsRequired();
+
+                                    b2.Property<string>("Id")
+                                        .IsRequired()
+                                        .ValueGeneratedOnAdd()
+                                        .HasMaxLength(3)
+                                        .HasColumnType("character varying(3)")
+                                        .HasDefaultValue("VND")
+                                        .HasColumnName("starting_price_currency");
+                                });
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Status", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction.Status#AuctionStatus", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<string>("Id")
+                                .IsRequired()
+                                .ValueGeneratedOnAdd()
+                                .HasMaxLength(20)
+                                .HasColumnType("character varying(20)")
+                                .HasDefaultValue("draft")
+                                .HasColumnName("status")
+                                .HasAnnotation("CustomIndex:IsIndexed", true)
+                                .HasAnnotation("CustomIndex:IsUnique", false)
+                                .HasAnnotation("CustomIndex:Name", "idx_auctions_status");
                         });
 
                     b.HasKey("Id")
                         .HasName("pk_auctions");
 
-                    b.HasIndex("Status")
-                        .HasDatabaseName("idx_auctions_status");
+                    b.HasIndex("ItemId")
+                        .HasDatabaseName("ix_auctions_item_id");
 
                     b.ToTable("auctions", null, t =>
                         {
@@ -217,6 +735,17 @@ namespace OIO.Infrastructure.Persistence.Migrations
                             b1.Property<decimal>("Amount")
                                 .HasColumnType("numeric(18,2)")
                                 .HasColumnName("price");
+
+                            b1.ComplexProperty(typeof(Dictionary<string, object>), "Currency", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AuctionPriceHistory.Price#Money.Currency#Currency", b2 =>
+                                {
+                                    b2.IsRequired();
+
+                                    b2.Property<string>("Id")
+                                        .IsRequired()
+                                        .HasMaxLength(3)
+                                        .HasColumnType("character varying(3)")
+                                        .HasColumnName("currency");
+                                });
                         });
 
                     b.HasKey("Id")
@@ -304,14 +833,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("modified_at");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasDefaultValue("active")
-                        .HasColumnName("status");
-
                     b.Property<int>("TotalAutoBids")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -325,6 +846,18 @@ namespace OIO.Infrastructure.Persistence.Migrations
                             b1.Property<decimal>("Amount")
                                 .HasColumnType("numeric(18,2)")
                                 .HasColumnName("current_amount");
+
+                            b1.ComplexProperty(typeof(Dictionary<string, object>), "Currency", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AutoBid.CurrentAmount#Money.Currency#Currency", b2 =>
+                                {
+                                    b2.IsRequired();
+
+                                    b2.Property<string>("Id")
+                                        .IsRequired()
+                                        .ValueGeneratedOnUpdateSometimes()
+                                        .HasMaxLength(3)
+                                        .HasColumnType("character varying(3)")
+                                        .HasColumnName("current_amount_currency");
+                                });
                         });
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "IncrementAmount", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AutoBid.IncrementAmount#Money", b1 =>
@@ -332,6 +865,17 @@ namespace OIO.Infrastructure.Persistence.Migrations
                             b1.Property<decimal>("Amount")
                                 .HasColumnType("numeric(18,2)")
                                 .HasColumnName("increment_amount");
+
+                            b1.ComplexProperty(typeof(Dictionary<string, object>), "Currency", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AutoBid.IncrementAmount#Money.Currency#Currency", b2 =>
+                                {
+                                    b2.IsRequired();
+
+                                    b2.Property<string>("Id")
+                                        .ValueGeneratedOnUpdateSometimes()
+                                        .HasMaxLength(3)
+                                        .HasColumnType("character varying(3)")
+                                        .HasColumnName("current_amount_currency");
+                                });
                         });
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "MaxAmount", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AutoBid.MaxAmount#Money", b1 =>
@@ -341,6 +885,30 @@ namespace OIO.Infrastructure.Persistence.Migrations
                             b1.Property<decimal>("Amount")
                                 .HasColumnType("numeric(18,2)")
                                 .HasColumnName("max_amount");
+
+                            b1.ComplexProperty(typeof(Dictionary<string, object>), "Currency", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AutoBid.MaxAmount#Money.Currency#Currency", b2 =>
+                                {
+                                    b2.IsRequired();
+
+                                    b2.Property<string>("Id")
+                                        .IsRequired()
+                                        .HasMaxLength(3)
+                                        .HasColumnType("character varying(3)")
+                                        .HasColumnName("max_amount_currency");
+                                });
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Status", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AutoBid.Status#AutoBidStatus", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<string>("Id")
+                                .IsRequired()
+                                .ValueGeneratedOnAdd()
+                                .HasMaxLength(20)
+                                .HasColumnType("character varying(20)")
+                                .HasDefaultValue("active")
+                                .HasColumnName("status");
                         });
 
                     b.HasKey("Id")
@@ -356,11 +924,9 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_auction_auto_bids_auction_id_bidder_id");
 
-                    b.HasIndex("AuctionId", "Status")
-                        .HasDatabaseName("idx_auction_auto_bids_auction_id_status")
-                        .HasFilter("status = 'active'");
-
                     b.ToTable("auction_auto_bids", (string)null);
+
+                    b.HasAnnotation("CustomIndex:CompositeIndexes", "[{\"paths\":[\"AuctionId\",\"Status.Id\"],\"unique\":false,\"filter\":\"status = \\u0027active\\u0027\",\"name\":\"idx_auction_auto_bids_auction_id_status\"}]");
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Bid", b =>
@@ -412,6 +978,17 @@ namespace OIO.Infrastructure.Persistence.Migrations
                             b1.Property<decimal>("Amount")
                                 .HasColumnType("numeric(18,2)")
                                 .HasColumnName("amount");
+
+                            b1.ComplexProperty(typeof(Dictionary<string, object>), "Currency", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Bid.Amount#Money.Currency#Currency", b2 =>
+                                {
+                                    b2.IsRequired();
+
+                                    b2.Property<string>("Id")
+                                        .IsRequired()
+                                        .HasMaxLength(3)
+                                        .HasColumnType("character varying(3)")
+                                        .HasColumnName("currency");
+                                });
                         });
 
                     b.HasKey("Id")
@@ -426,7 +1003,12 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.HasIndex("BidderId")
                         .HasDatabaseName("idx_bids_bidder");
 
+                    b.HasIndex("AuctionId", "CreatedAt")
+                        .HasDatabaseName("idx_bids_auction_created_at");
+
                     b.ToTable("bids", (string)null);
+
+                    b.HasAnnotation("CustomIndex:CompositeIndexes", "[{\"paths\":[\"AuctionId\",\"Amount.Amount\"],\"unique\":false}]");
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Categories.Category", b =>
@@ -868,38 +1450,21 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("OIO.Domain.Context.UserContext.Aggregates.Roles.Permission", b =>
                 {
-                    b.Property<int>("Id")
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
+                    b.Property<string>("Code")
+                        .HasColumnType("text")
+                        .HasColumnName("code");
 
-                    b.Property<string>("NormalizedPermissionCode")
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasMaxLength(150)
-                        .HasColumnType("character varying(150)")
-                        .HasColumnName("normalized_permission_code")
-                        .HasComputedColumnSql("UPPER(permission_code)", true);
-
-                    b.Property<string>("PermissionCode")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("character varying(150)")
-                        .HasColumnName("permission_code");
-
-                    b.HasKey("Id")
+                    b.HasKey("Code")
                         .HasName("pk_permissions");
-
-                    b.HasIndex("NormalizedPermissionCode")
-                        .IsUnique()
-                        .HasDatabaseName("ix_permissions_normalized_permission_code");
 
                     b.ToTable("permissions", (string)null);
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.UserContext.Aggregates.Roles.Role", b =>
                 {
-                    b.Property<int>("Id")
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
+                    b.Property<string>("Name")
+                        .HasColumnType("text")
+                        .HasColumnName("name");
 
                     b.Property<int>("Level")
                         .HasColumnType("integer")
@@ -909,39 +1474,21 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("modified_at");
 
-                    b.Property<string>("NormalizedRoleName")
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasMaxLength(150)
-                        .HasColumnType("character varying(150)")
-                        .HasColumnName("normalized_role_name")
-                        .HasComputedColumnSql("UPPER(role_name)", true);
-
-                    b.Property<string>("RoleName")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("character varying(150)")
-                        .HasColumnName("role_name");
-
-                    b.HasKey("Id")
+                    b.HasKey("Name")
                         .HasName("pk_roles");
-
-                    b.HasIndex("NormalizedRoleName")
-                        .IsUnique()
-                        .HasDatabaseName("ix_roles_normalized_role_name");
 
                     b.ToTable("roles", (string)null);
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.UserContext.Aggregates.Roles.RolePermission", b =>
                 {
-                    b.Property<int>("RoleId")
-                        .HasColumnType("integer")
-                        .HasColumnName("role_id");
+                    b.Property<string>("RoleName")
+                        .HasColumnType("text")
+                        .HasColumnName("role_name");
 
-                    b.Property<int>("PermissionId")
-                        .HasColumnType("integer")
-                        .HasColumnName("permission_id");
+                    b.Property<string>("PermissionCode")
+                        .HasColumnType("text")
+                        .HasColumnName("permission_code");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
@@ -953,11 +1500,11 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("modified_at");
 
-                    b.HasKey("RoleId", "PermissionId")
+                    b.HasKey("RoleName", "PermissionCode")
                         .HasName("pk_role_permissions");
 
-                    b.HasIndex("PermissionId")
-                        .HasDatabaseName("ix_role_permissions_permission_id");
+                    b.HasIndex("PermissionCode")
+                        .HasDatabaseName("ix_role_permissions_permission_code");
 
                     b.ToTable("role_permissions", (string)null);
                 });
@@ -1026,27 +1573,11 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("phone_number_confirmed_at");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasDefaultValue("inactive")
-                        .HasColumnName("status");
-
                     b.Property<bool>("TwoFactorEnabled")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("two_factor_enabled");
-
-                    b.Property<string>("TwoFactorProvider")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasDefaultValue("none")
-                        .HasColumnName("two_factor_provider");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
@@ -1091,6 +1622,32 @@ namespace OIO.Infrastructure.Persistence.Migrations
                                 .HasMaxLength(20)
                                 .HasColumnType("character varying(20)")
                                 .HasColumnName("phone_number");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Status", "OIO.Domain.Context.UserContext.Aggregates.Users.User.Status#UserStatus", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<string>("Id")
+                                .IsRequired()
+                                .ValueGeneratedOnAdd()
+                                .HasMaxLength(30)
+                                .HasColumnType("character varying(30)")
+                                .HasDefaultValue("inactive")
+                                .HasColumnName("status");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "TwoFactorProvider", "OIO.Domain.Context.UserContext.Aggregates.Users.User.TwoFactorProvider#TwoFactorProvider", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<string>("Id")
+                                .IsRequired()
+                                .ValueGeneratedOnAdd()
+                                .HasMaxLength(30)
+                                .HasColumnType("character varying(30)")
+                                .HasDefaultValue("none")
+                                .HasColumnName("two_factor_provider");
                         });
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "UserName", "OIO.Domain.Context.UserContext.Aggregates.Users.User.UserName#UserName", b1 =>
@@ -1242,12 +1799,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("login_at");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("status");
-
                     b.Property<string>("UserAgent")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1256,6 +1807,17 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Status", "OIO.Domain.Context.UserContext.Aggregates.Users.UserLoginHistory.Status#LoginStatus", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<string>("Id")
+                                .IsRequired()
+                                .HasMaxLength(30)
+                                .HasColumnType("character varying(30)")
+                                .HasColumnName("status");
+                        });
 
                     b.HasKey("Id")
                         .HasName("pk_user_login_history");
@@ -1272,9 +1834,9 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
-                    b.Property<int>("PermissionId")
-                        .HasColumnType("integer")
-                        .HasColumnName("permission_id");
+                    b.Property<string>("PermissionCode")
+                        .HasColumnType("text")
+                        .HasColumnName("permission_code");
 
                     b.Property<bool>("IsAllowed")
                         .ValueGeneratedOnAdd()
@@ -1282,11 +1844,11 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("is_allowed");
 
-                    b.HasKey("UserId", "PermissionId")
+                    b.HasKey("UserId", "PermissionCode")
                         .HasName("pk_user_permissions");
 
-                    b.HasIndex("PermissionId")
-                        .HasDatabaseName("ix_user_permissions_permission_id");
+                    b.HasIndex("PermissionCode")
+                        .HasDatabaseName("ix_user_permissions_permission_code");
 
                     b.ToTable("user_permissions", (string)null);
                 });
@@ -1296,10 +1858,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
-
-                    b.Property<string>("AvatarUrl")
-                        .HasColumnType("text")
-                        .HasColumnName("avatar_url");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -1311,29 +1869,52 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("date_of_birth");
 
-                    b.Property<string>("DisplayName")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("display_name");
-
-                    b.Property<string>("FirstName")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("first_name");
-
-                    b.Property<string>("Gender")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasColumnName("gender");
-
-                    b.Property<string>("LastName")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("last_name");
-
                     b.Property<DateTime?>("ModifiedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("modified_at");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "AvatarUrl", "OIO.Domain.Context.UserContext.Aggregates.Users.UserProfile.AvatarUrl#AvatarUrl", b1 =>
+                        {
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasColumnType("text")
+                                .HasColumnName("avatar_url");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "DisplayName", "OIO.Domain.Context.UserContext.Aggregates.Users.UserProfile.DisplayName#DisplayName", b1 =>
+                        {
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("display_name");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "FirstName", "OIO.Domain.Context.UserContext.Aggregates.Users.UserProfile.FirstName#FirstName", b1 =>
+                        {
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)")
+                                .HasColumnName("first_name");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Gender", "OIO.Domain.Context.UserContext.Aggregates.Users.UserProfile.Gender#Gender", b1 =>
+                        {
+                            b1.Property<string>("Id")
+                                .IsRequired()
+                                .HasColumnType("text")
+                                .HasColumnName("gender");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "LastName", "OIO.Domain.Context.UserContext.Aggregates.Users.UserProfile.LastName#LastName", b1 =>
+                        {
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)")
+                                .HasColumnName("last_name");
+                        });
 
                     b.HasKey("Id")
                         .HasName("pk_user_profiles");
@@ -1445,8 +2026,8 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
-                    b.Property<int>("RoleId")
-                        .HasColumnType("integer")
+                    b.Property<string>("RoleName")
+                        .HasColumnType("text")
                         .HasColumnName("role_id");
 
                     b.Property<DateTime>("AssignedAt")
@@ -1455,10 +2036,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnName("assigned_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.HasKey("UserId", "RoleId")
+                    b.HasKey("UserId", "RoleName")
                         .HasName("pk_user_roles");
 
-                    b.HasIndex("RoleId")
+                    b.HasIndex("RoleName")
                         .HasDatabaseName("ix_user_roles_role_id");
 
                     b.ToTable("user_roles", (string)null);
@@ -1606,6 +2187,78 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.ToTable("outbox_message_consumers", (string)null);
                 });
 
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzBlobTrigger", b =>
+                {
+                    b.HasOne("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzTrigger", "Trigger")
+                        .WithMany("BlobTriggers")
+                        .HasForeignKey("SchedulerName", "TriggerName", "TriggerGroup")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_qrtz_blob_triggers_qrtz_triggers_sched_name_trigger_name_tr");
+
+                    b.Navigation("Trigger");
+                });
+
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzCronTrigger", b =>
+                {
+                    b.HasOne("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzTrigger", "Trigger")
+                        .WithMany("CronTriggers")
+                        .HasForeignKey("SchedulerName", "TriggerName", "TriggerGroup")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_qrtz_cron_triggers_qrtz_triggers_sched_name_trigger_name_tr");
+
+                    b.Navigation("Trigger");
+                });
+
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzSimplePropertyTrigger", b =>
+                {
+                    b.HasOne("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzTrigger", "Trigger")
+                        .WithMany("SimplePropertyTriggers")
+                        .HasForeignKey("SchedulerName", "TriggerName", "TriggerGroup")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_qrtz_simprop_triggers_qrtz_triggers_sched_name_trigger_name");
+
+                    b.Navigation("Trigger");
+                });
+
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzSimpleTrigger", b =>
+                {
+                    b.HasOne("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzTrigger", "Trigger")
+                        .WithMany("SimpleTriggers")
+                        .HasForeignKey("SchedulerName", "TriggerName", "TriggerGroup")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_qrtz_simple_triggers_qrtz_triggers_sched_name_trigger_name_");
+
+                    b.Navigation("Trigger");
+                });
+
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzTrigger", b =>
+                {
+                    b.HasOne("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzJobDetail", "JobDetail")
+                        .WithMany("Triggers")
+                        .HasForeignKey("SchedulerName", "JobName", "JobGroup")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_qrtz_triggers_qrtz_job_details_sched_name_job_name_job_group");
+
+                    b.Navigation("JobDetail");
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction", b =>
+                {
+                    b.HasOne("OIO.Domain.Context.AuctionContext.Aggregates.Items.Item", "Item")
+                        .WithMany("Auctions")
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_auctions_items_item_id");
+
+                    b.Navigation("Item");
+                });
+
             modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AuctionPriceHistory", b =>
                 {
                     b.HasOne("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction", null)
@@ -1618,12 +2271,14 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AuctionWatcher", b =>
                 {
-                    b.HasOne("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction", null)
+                    b.HasOne("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction", "Auction")
                         .WithMany("Watchers")
                         .HasForeignKey("AuctionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_auction_watchers_auctions_auction_id");
+
+                    b.Navigation("Auction");
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AutoBid", b =>
@@ -1638,7 +2293,7 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Bid", b =>
                 {
-                    b.HasOne("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction", null)
+                    b.HasOne("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction", "Auction")
                         .WithMany("Bids")
                         .HasForeignKey("AuctionId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1650,6 +2305,8 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasForeignKey("AutoBidId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_bids_auction_auto_bids_auto_bid_id");
+
+                    b.Navigation("Auction");
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Categories.Category", b =>
@@ -1685,17 +2342,17 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("OIO.Domain.Context.UserContext.Aggregates.Roles.Permission", "Permission")
                         .WithMany("RolePermissions")
-                        .HasForeignKey("PermissionId")
+                        .HasForeignKey("PermissionCode")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_role_permissions_permissions_permission_id");
+                        .HasConstraintName("fk_role_permissions_permissions_permission_code");
 
                     b.HasOne("OIO.Domain.Context.UserContext.Aggregates.Roles.Role", "Role")
                         .WithMany("RolePermissions")
-                        .HasForeignKey("RoleId")
+                        .HasForeignKey("RoleName")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_role_permissions_roles_role_id");
+                        .HasConstraintName("fk_role_permissions_roles_role_name");
 
                     b.Navigation("Permission");
 
@@ -1726,10 +2383,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("OIO.Domain.Context.UserContext.Aggregates.Roles.Permission", "Permission")
                         .WithMany()
-                        .HasForeignKey("PermissionId")
+                        .HasForeignKey("PermissionCode")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_user_permissions_permissions_permission_id");
+                        .HasConstraintName("fk_user_permissions_permissions_permission_code");
 
                     b.HasOne("OIO.Domain.Context.UserContext.Aggregates.Users.User", null)
                         .WithMany("Permissions")
@@ -1773,10 +2430,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("OIO.Domain.Context.UserContext.Aggregates.Roles.Role", "Role")
                         .WithMany()
-                        .HasForeignKey("RoleId")
+                        .HasForeignKey("RoleName")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_user_roles_roles_role_id");
+                        .HasConstraintName("fk_user_roles_roles_role_name");
 
                     b.HasOne("OIO.Domain.Context.UserContext.Aggregates.Users.User", null)
                         .WithMany("Roles")
@@ -1798,6 +2455,22 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_user_sessions_users_user_id");
                 });
 
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzJobDetail", b =>
+                {
+                    b.Navigation("Triggers");
+                });
+
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzTrigger", b =>
+                {
+                    b.Navigation("BlobTriggers");
+
+                    b.Navigation("CronTriggers");
+
+                    b.Navigation("SimplePropertyTriggers");
+
+                    b.Navigation("SimpleTriggers");
+                });
+
             modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction", b =>
                 {
                     b.Navigation("AutoBids");
@@ -1811,6 +2484,8 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("OIO.Domain.Context.AuctionContext.Aggregates.Items.Item", b =>
                 {
+                    b.Navigation("Auctions");
+
                     b.Navigation("Media");
 
                     b.Navigation("Questions");

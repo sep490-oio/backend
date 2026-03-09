@@ -3,6 +3,7 @@ using CSharpFunctionalExtensions;
 using Microsoft.AspNetCore.Http;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.AuctionContext.DTOs;
+using OIO.Application.Context.AuctionContext.Mappings;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.AuctionContext.Grains;
 using OIO.Domain.SeedWork.Checks.Extensions;
@@ -57,7 +58,7 @@ internal sealed class BuyNowCommandHandler
             Id: bid.Id,
             AuctionId: bid.AuctionId,
             BidderId: bid.BidderId,
-            Amount: bid.Amount.Amount,
+            Amount: bid.Amount.ToDto(),
             IsAutoBid: bid.IsAutoBid,
             Status: bid.Status,
             CreatedAt: bid.CreatedAt);

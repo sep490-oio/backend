@@ -10,5 +10,5 @@ public sealed class AutoBidStatus : EnumValueObject<AutoBidStatus>
     public static readonly AutoBidStatus Won = new("won");
     public static readonly AutoBidStatus Outbid = new("outbid");
 
-    public AutoBidStatus(string value) : base(value) { }
+    public AutoBidStatus(string id) : base(id) { }
 }

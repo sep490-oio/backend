@@ -95,20 +95,24 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasColumnName("two_factor_enabled")
             .HasDefaultValue(false)
             .IsRequired();
-
-        builder.Property(u => u.TwoFactorProvider)
-            .HasColumnName("two_factor_provider")
-            .HasMaxLength(30)
-            .HasDefaultValue(TwoFactorProvider.None)
-            .IsRequired()
-            .HasConversion(provider => provider.Id, value => TwoFactorProvider.FromId(value).GetValueOrThrow());
-
-        builder.Property(u => u.Status)
-            .HasColumnName("status")
-            .HasMaxLength(30)
-            .HasDefaultValue(UserStatus.Inactive)
-            .IsRequired()
-            .HasConversion(staus => staus.Id, value => UserStatus.FromId(value).GetValueOrThrow());
+       
+        builder.ComplexProperty(u => u.TwoFactorProvider, twoFactorProviderBuilder =>
+        {
+            twoFactorProviderBuilder.Property(s => s.Id)
+                .HasColumnName("two_factor_provider")
+                .HasMaxLength(30)
+                .HasDefaultValue(TwoFactorProvider.None.Id)
+                .IsRequired();
+        });
+        
+        builder.ComplexProperty(u => u.Status, statusBuilder =>
+        {
+            statusBuilder.Property(s => s.Id)
+                .HasColumnName("status")
+                .HasMaxLength(30)
+                .HasDefaultValue(UserStatus.Inactive.Id)
+                .IsRequired();
+        });
 
         builder.Property(u => u.LockoutEnabled)
             .HasColumnName("lockout_enabled")

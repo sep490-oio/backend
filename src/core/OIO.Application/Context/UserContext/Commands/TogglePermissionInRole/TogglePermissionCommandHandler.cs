@@ -40,8 +40,6 @@ internal sealed class TogglePermissionCommandHandler : ICommandHandler<TogglePer
         var nowUtc =  _clock.UtcNow;
         
         var actorId = _currentUser.UserId;
-        var targetRoleId = RoleId.From(request.RoleId);
-        var targetPermissionId = PermissionId.From(request.PermissionId);
         
         var actor = await _dbContext.GetByIdAsync<User, UserId>(
             actorId,
@@ -53,39 +51,38 @@ internal sealed class TogglePermissionCommandHandler : ICommandHandler<TogglePer
         if (actor is null)
             return UserErrors.User.NotFound(actorId);
         
-        var targetRole = App.Roles.Definitions.All.FirstOrDefault(x => x.Id == targetRoleId);
+        App.Roles.Definitions.All.TryGetValue(request.Role, out var targetRole);
         
         if (targetRole is null)
-            return RoleErrors.Role.NotFound(targetRoleId);
+            return RoleErrors.Role.NotFound(request.Role);
         
-        var targetPermission = App.Permissions.Definitions.All.FirstOrDefault(x => x.Id == targetPermissionId);
+        App.Permissions.Definitions.All.TryGetValue(request.Permission, out var targetPermission);
         
         if (targetPermission is null)
-            return UserErrors.Permission.NotFound(targetPermissionId);
+            return UserErrors.Permission.NotFound(request.Permission);
 
-        if (actor.GetMaxRoleLevel() <= targetRole.Level || targetRole.Id == App.Roles.Definitions.Admin.Id)
+        if (actor.GetMaxRoleLevel() <= targetRole.Level || targetRole.Name == App.Roles.Definitions.Admin.Name)
         {
             return UserErrors.User.InsufficientRoleLevel;
         }
         
-        if(App.Permissions.Catalogs.CriticalPermissions.Contains(targetPermission.PermissionCode) &&
+        if(App.Permissions.Catalogs.CriticalPermissions.Contains(targetPermission.Code) &&
            actor.GetMaxRoleLevel() < App.Roles.Definitions.Admin.Level)
             return UserErrors.Auth.InsufficientPermissions;
         
-        var roleInDb = await _dbContext.GetByIdAsync<Role, RoleId>(
-            targetRoleId,
-            queryBuilder: q => q.Include(x => x.RolePermissions),
-            cancellationToken: cancellationToken);
+        var roleInDb = await _dbContext.Set<Role>()
+            .Include(x => x.RolePermissions)
+            .FirstOrDefaultAsync(r => r.Name == targetRole.Name, cancellationToken);
         
         if (roleInDb is null)            
-            return RoleErrors.Role.NotFound(targetRoleId);
+            return RoleErrors.Role.NotFound(request.Role);
         
-        roleInDb.TogglePermission(targetPermissionId, request.IsActive, nowUtc);
+        roleInDb.TogglePermission(request.Permission, request.IsActive, nowUtc);
         
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         var affectedUserIds = await _dbContext.Set<User>()
             .AsNoTracking()
-            .Where(u => u.Roles.Any(r => r.RoleId == targetRoleId))
+            .Where(u => u.Roles.Any(r => r.RoleName == request.Role))
             .Select(u => u.Id)
             .ToListAsync(cancellationToken);
 

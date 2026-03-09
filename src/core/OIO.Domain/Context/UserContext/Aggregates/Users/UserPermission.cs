@@ -12,33 +12,33 @@ public sealed class UserPermission : IEntity
 
     public UserId UserId { get; private set; }
 
-    public PermissionId PermissionId { get; private set; }
+    public string PermissionCode { get; private set; }
     public bool IsAllowed { get; private set; }
 
     public Permission Permission { get; private set; } = null!;
 
     private UserPermission(
         UserId userId,
-        PermissionId permissionId,
+        string permissionCode,
         bool isAllowed = true)
     {
         UserId = userId;
-        PermissionId = permissionId;
+        PermissionCode = permissionCode;
         IsAllowed = isAllowed;
     }
 
     public static UserPermission Grant(
         UserId userId,
-        PermissionId permissionId)
+        string permissionCode)
     {
-        return new UserPermission(userId, permissionId);
+        return new UserPermission(userId, permissionCode);
     }
 
     public static UserPermission Deny(
         UserId userId,
-        PermissionId permissionId)
+        string permissionCode)
     {
-        return new UserPermission(userId, permissionId, false);
+        return new UserPermission(userId, permissionCode, false);
     }
 
     internal void Grant()

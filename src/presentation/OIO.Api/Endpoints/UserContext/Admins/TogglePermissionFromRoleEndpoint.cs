@@ -12,13 +12,13 @@ public class TogglePermissionFromRoleEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPut(ApiEndpoint.Url.Admins.TogglePermission, async (
-                int roleId,
-                int permissionId,
+                string role,
+                string permission,
                 Request request,
                 ISender sender,
                 CancellationToken ct) =>
             {
-                var command = new TogglePermissionCommand(roleId, permissionId, request.IsActive);
+                var command = new TogglePermissionCommand(role, permission, request.IsActive);
                 
                 var result = await sender.Send(command, ct);
 

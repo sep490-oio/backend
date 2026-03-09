@@ -11,20 +11,18 @@ internal sealed class RolePermissionConfiguration : IEntityTypeConfiguration<Rol
     {
         builder.ToTable("role_permissions");
 
-        builder.HasKey(rp => new { rp.RoleId, rp.PermissionId });
+        builder.HasKey(rp => new { rp.RoleName, rp.PermissionCode });
 
-        builder.Property(rp => rp.RoleId)
-            .HasColumnName("role_id")
-            .IsRequired()
-            .HasConversion(x => x.Value, value => RoleId.From(value));
+        builder.Property(rp => rp.RoleName)
+            .HasColumnName("role_name")
+            .IsRequired();
         
         builder.Property(u => u.ModifiedAt)
             .HasColumnName("modified_at");
 
-        builder.Property(rp => rp.PermissionId)
-            .HasColumnName("permission_id")
-            .IsRequired()
-            .HasConversion(x => x.Value, value => PermissionId.From(value));
+        builder.Property(rp => rp.PermissionCode)
+            .HasColumnName("permission_code")
+            .IsRequired();
 
         builder.Property(rp => rp.IsActive)
             .HasColumnName("is_active")
@@ -33,7 +31,7 @@ internal sealed class RolePermissionConfiguration : IEntityTypeConfiguration<Rol
 
         builder.HasOne(x => x.Permission)
             .WithMany(p => p.RolePermissions)
-            .HasForeignKey(rp => rp.PermissionId)
+            .HasForeignKey(rp => rp.PermissionCode)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

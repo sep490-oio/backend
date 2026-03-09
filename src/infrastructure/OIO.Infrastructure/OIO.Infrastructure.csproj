@@ -2,10 +2,10 @@
 
     <ItemGroup>
       <Folder Include="Hubs\" />
-      <Folder Include="Persistence\Migrations\" />
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="AppAny.Quartz.EntityFrameworkCore.Migrations.PostgreSQL" />
       <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
       <PackageReference Include="AspNetCore.HealthChecks.Redis" />
       <PackageReference Include="AspNetCore.HealthChecks.UI.Client" />
@@ -25,7 +25,10 @@
       <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
       <PackageReference Include="Npgsql.DependencyInjection" />
       <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+      <PackageReference Include="Quartz.Extensions.DependencyInjection" />
       <PackageReference Include="Quartz.Extensions.Hosting" />
+      <PackageReference Include="Quartz.Serialization.Json" />
+      <PackageReference Include="Quartz.Serialization.SystemTextJson" />
       <PackageReference Include="Scrutor" />
     </ItemGroup>
 

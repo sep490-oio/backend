@@ -128,8 +128,8 @@ public static partial class FakeDataSeeder
             displayName: DisplayName.Create(efaultAccountOptions.DisplayName).Value,
             now: clock.UtcNow);
 
-        admin.AssignRole(App.Roles.Definitions.Admin.Id, clock.UtcNow);
-        admin.AssignRole(App.Roles.Definitions.User.Id, clock.UtcNow);
+        admin.AssignRole(App.Roles.Definitions.Admin.Name, clock.UtcNow);
+        admin.AssignRole(App.Roles.Definitions.User.Name, clock.UtcNow);
 
         dbContext.Set<User>().Add(admin);
 
@@ -164,8 +164,8 @@ public static partial class FakeDataSeeder
                 now: nowUtc,
                 Password.CreateFromHash(hashedPassword));
             seller.ConfirmEmail(nowUtc);
-            seller.AssignRole(App.Roles.Definitions.User.Id, nowUtc);
-            seller.AssignRole(App.Roles.Definitions.Seller.Id, nowUtc);
+            seller.AssignRole(App.Roles.Definitions.User.Name, nowUtc);
+            seller.AssignRole(App.Roles.Definitions.Seller.Name, nowUtc);
             users.Add(seller);
         }
 
@@ -180,8 +180,8 @@ public static partial class FakeDataSeeder
                 Password.CreateFromHash(hashedPassword));
             bidder.ConfirmEmail(nowUtc);
             
-            bidder.AssignRole(App.Roles.Definitions.Bidder.Id, nowUtc);
-            bidder.AssignRole(App.Roles.Definitions.User.Id, nowUtc);
+            bidder.AssignRole(App.Roles.Definitions.Bidder.Name, nowUtc);
+            bidder.AssignRole(App.Roles.Definitions.User.Name, nowUtc);
             users.Add(bidder);
         }
 

@@ -1,4 +1,7 @@
-﻿namespace OIO.Domain.SeedWork.Checks.Extensions;
+﻿using CSharpFunctionalExtensions;
+using OIO.Domain.SeedWork.Errors;
+
+namespace OIO.Domain.SeedWork.Checks.Extensions;
 
 public static class CheckConditionalExtensions
 {
@@ -17,6 +20,21 @@ public static class CheckConditionalExtensions
 
         public CheckField<TOwner, TProp> IfFailed(Func<CheckField<TOwner, TProp>, CheckField<TOwner, TProp>> then)
             => check.IsFailure ? then(check) : check;
+        
+        public CheckField<TOwner, TProp> Must<TResult>(
+             Func<TProp, TResult> must,
+             string? message = null,
+             Error? error = null) where TResult : IUnitResult<Error>   
+        {
+            var result = must(check.Property);
+            
+            if (!check.ShouldContinue || result.IsSuccess)
+                return check;
+
+            var err = error ?? result.Error;
+
+            return check.Fail(err);
+        }
     }
 
     extension<TOwner, TProp>(CheckField<TOwner, TProp?> check) where TProp : struct

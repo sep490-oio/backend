@@ -1,6 +1,5 @@
 ﻿using MediatR;
 using OIO.Api.Common;
-using OIO.Application.Context.AuctionContext.Queries.Filters;
 using OIO.Application.Context.AuctionContext.Queries.GetMyAuctions;
 using OIO.Domain.AppDefinitions;
 
@@ -8,7 +7,7 @@ namespace OIO.Api.Endpoints.UserContext.Me;
 
 public sealed class GetMyAuctionsEndpoint : IEndpoint
 {
-    public sealed record Parameters : MyAuctionFilterParameters;
+    public sealed record Parameters : GetMyAuctionsFilterParameters;
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

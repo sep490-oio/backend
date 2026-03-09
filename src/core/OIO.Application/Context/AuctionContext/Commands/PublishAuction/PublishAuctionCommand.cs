@@ -2,6 +2,7 @@
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
+using OIO.Application.Abstractions.Scheduling;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Errors;
@@ -28,17 +29,20 @@ internal sealed class PublishAuctionCommandHandler
     private readonly IDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuctionScheduler _scheduler;
     private readonly IClock _clock;
 
     public PublishAuctionCommandHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
+        IAuctionScheduler scheduler,
         IClock clock)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _scheduler = scheduler;
         _clock = clock;
     }
 
@@ -66,6 +70,11 @@ internal sealed class PublishAuctionCommandHandler
             return result.Error;
         
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        
+        await _scheduler.ScheduleStartAsync(
+            auction.Id.Value,
+            auction.Duration.StartTime,
+            cancellationToken);
 
         return UnitResult.Success<Error>();
         

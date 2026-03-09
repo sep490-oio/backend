@@ -37,10 +37,12 @@ internal sealed class UserLoginHistoryConfiguration : IEntityTypeConfiguration<U
             .HasColumnName("login_at")
             .IsRequired();
 
-        builder.Property(h => h.Status)
-            .HasColumnName("status")
-            .HasMaxLength(30)
-            .IsRequired()
-            .HasConversion(x => x.Id, value => LoginStatus.FromId(value).Value);
+        builder.ComplexProperty(x => x.Status, statusBuilder =>
+        {
+            statusBuilder.Property(h => h.Id)
+                .HasColumnName("status")
+                .HasMaxLength(30)
+                .IsRequired();
+        });
     }
 }

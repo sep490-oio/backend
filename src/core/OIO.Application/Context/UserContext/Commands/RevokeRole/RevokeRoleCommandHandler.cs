@@ -43,7 +43,6 @@ internal sealed class RevokeRoleCommandHandler
         
         var actorId = _currentUser.UserId;
         var targetUserId = UserId.From(request.UserId);
-        var targetRoleId = RoleId.From(request.RoleId);
         
         if (actorId == targetUserId)
             return UserErrors.User.CannotRevokeRoleYourself;
@@ -67,10 +66,10 @@ internal sealed class RevokeRoleCommandHandler
         if (targetUser is null)
             return UserErrors.User.NotFound(targetUserId);
         
-        var targetRole = App.Roles.Definitions.All.FirstOrDefault(x => x.Id == targetRoleId);
+        App.Roles.Definitions.All.TryGetValue(request.Role, out var targetRole);
         
         if (targetRole is null)
-            return RoleErrors.Role.NotFound(targetRoleId);
+            return RoleErrors.Role.NotFound(request.Role);
         
         if (!actor.CanManage(targetUser))
             return UserErrors.User.InsufficientRoleLevel;
@@ -78,10 +77,10 @@ internal sealed class RevokeRoleCommandHandler
         if (actor.GetMaxRoleLevel() <= targetRole.Level)
             return RoleErrors.Role.CannotRevokeHigherOrEqualRole;
 
-        if (targetRoleId == App.Roles.Definitions.Admin.Id)
+        if (targetRole.Name == App.Roles.Definitions.Admin.Name)
         {
             var numberOfAdmin = await _dbContext.Set<User>()
-                .Where(x => x.Roles.Any(r => r.RoleId == App.Roles.Definitions.Admin.Id) && x.Id != targetUserId)
+                .Where(x => x.Roles.Any(r => r.RoleName == App.Roles.Definitions.Admin.Name) && x.Id != targetUserId)
                 .CountAsync(cancellationToken);
 
             if (numberOfAdmin == 0)
@@ -90,7 +89,7 @@ internal sealed class RevokeRoleCommandHandler
             }
         }
         
-        var removeRoleResult = targetUser.RevokeRole(targetRoleId, nowUtc);
+        var removeRoleResult = targetUser.RevokeRole(targetRole.Name, nowUtc);
 
         if (removeRoleResult.IsFailure)
         {

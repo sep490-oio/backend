@@ -75,6 +75,8 @@ public static class DependencyInjection
                         new OpenApiSecuritySchemeReference("Bearer", document)
                     ] = []
                 });
+            
+            options.AddSignalRSwaggerGen(); 
         });
 
         services.AddControllerConfigure();
@@ -152,6 +154,7 @@ public static class DependencyInjection
                 tracing
                     .AddHttpClientInstrumentation()
                     .AddAspNetCoreInstrumentation()
+                    .AddQuartzInstrumentation()
                     .AddNpgsql())
             .WithMetrics(metrics =>
                 metrics

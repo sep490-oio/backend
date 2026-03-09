@@ -50,24 +50,6 @@ public static class AuctionErrors
             "Auction.NotSupportBuyNow",
             "This auction does not support buy now option."
             );
-            
-        public static readonly Error Deleted = 
-            Error.Conflict("Auction.Deleted", "This auction has been deleted and cannot be modified.");
-
-        public static Error InvalidInput(string details) => 
-            Error.Validation("Input", "Auction.InvalidInput", $"Invalid auction input: {details}");
-
-        public static readonly Error CannotCancelActive = 
-            Error.Conflict("Auction.CannotCancelActive", 
-                "Cannot cancel an auction that has already ended or been sold.");
-
-        public static readonly Error NotDraft = 
-            Error.Conflict("Auction.NotDraft", 
-                "Only draft auctions can be activated.");
-
-        public static readonly Error AlreadyActive = 
-            Error.Conflict("Auction.AlreadyActive", 
-                "Auction is already active and cannot be activated again.");
         
         public static readonly Error ItemAlreadyInAuction = 
             Error.Conflict("Auction.ItemAlreadyInAuction", 
@@ -84,6 +66,14 @@ public static class AuctionErrors
         public static readonly Error OnlyOwnerCanPublish = 
             Error.Forbidden("Auction.OnlyOwnerCanCancel", 
                 "Only the auction owner can publish.");
+        
+        public static readonly Error NoRunnerUp =
+            Error.NotFound("Auction.NoRunnerUp",
+                "No eligible runner-up bidder found.");
+
+        public static readonly Error AlreadyResolved =
+            Error.Conflict("Auction.AlreadyResolved",
+                "Auction has already been resolved.");
     }
 
     public static class Bid

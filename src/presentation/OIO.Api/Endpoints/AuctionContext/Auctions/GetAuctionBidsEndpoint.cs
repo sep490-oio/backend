@@ -8,7 +8,7 @@ namespace OIO.Api.Endpoints.AuctionContext.Auctions;
 
 public sealed class GetAuctionBidsEndpoint : IEndpoint
 {
-    public sealed record Parameters : PagedParameters;
+    public sealed record Parameters : GetAuctionBidsFilterParameters;
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet(ApiEndpoint.Url.Auctions.GetBids, async (

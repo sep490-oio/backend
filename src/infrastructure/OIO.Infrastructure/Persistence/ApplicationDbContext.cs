@@ -1,4 +1,6 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using AppAny.Quartz.EntityFrameworkCore.Migrations;
+using AppAny.Quartz.EntityFrameworkCore.Migrations.PostgreSQL;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using OIO.Application.Abstractions.Data;
@@ -15,6 +17,7 @@ public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+        modelBuilder.AddQuartz(builder => builder.UsePostgreSql());
     }
 
     public new DbSet<TEntity> Set<TEntity>() where TEntity : class, IEntity

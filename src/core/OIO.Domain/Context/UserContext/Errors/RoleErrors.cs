@@ -17,7 +17,7 @@ public static class RoleErrors
             "Cannot active permission of higher or equal role."
         );
         
-        public static readonly Func<RoleId, Error> NotFound = id => Error.NotFound(
+        public static readonly Func<string, Error> NotFound = id => Error.NotFound(
             "Role.NotFound",
             $"Role with {id} not found."
         );

@@ -3,22 +3,19 @@ using OIO.Domain.SeedWork.Entities;
 
 namespace OIO.Domain.Context.UserContext.Aggregates.Roles;
 
-public sealed class Permission : BaseEntity<PermissionId>
+public sealed class Permission : IEntity
 {
     private readonly List<RolePermission> _rolePermissions = [];
     
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
     private Permission() {}
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+
+    public string Code { get; private set; }
     
-    public string PermissionCode { get; private set; }
-
-    public string? NormalizedPermissionCode { get; private set; }
-
-    private Permission(string permissionCode)
+    private Permission(string code) 
     {
-        PermissionCode = permissionCode;
-        NormalizedPermissionCode = permissionCode.ToUpperInvariant();
+        Code = code;
     }
     
     public IReadOnlyList<RolePermission> RolePermissions => _rolePermissions; 
@@ -28,26 +25,5 @@ public sealed class Permission : BaseEntity<PermissionId>
     )
     {
         return new Permission(permissionCode);
-    }
-    
-    public static Permission Create(
-        PermissionId permissionId,
-        string permissionCode
-    )
-    {
-        return new Permission(permissionCode)
-        {
-            Id = permissionId
-        };
-    }
-    internal static Permission Create(
-        int id,
-        string permissionCode
-    )
-    {
-        return new Permission(permissionCode)
-        {
-            Id = PermissionId.From(id)
-        };
     }
 }

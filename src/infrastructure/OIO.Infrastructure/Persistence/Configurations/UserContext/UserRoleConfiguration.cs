@@ -12,17 +12,16 @@ internal sealed class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
         builder.ToTable("user_roles");
 
         // Composite primary key
-        builder.HasKey(ur => new { ur.UserId, ur.RoleId });
+        builder.HasKey(ur => new { ur.UserId, RoleId = ur.RoleName });
 
         builder.Property(ur => ur.UserId)
             .HasColumnName("user_id")
             .IsRequired()
             .HasConversion(x => x.Value, value => UserId.From(value));
 
-        builder.Property(ur => ur.RoleId)
+        builder.Property(ur => ur.RoleName)
             .HasColumnName("role_id")
-            .IsRequired()
-            .HasConversion(x => x.Value, value => RoleId.From(value));
+            .IsRequired();
 
         builder.Property(ur => ur.AssignedAt)
             .HasColumnName("assigned_at")
@@ -31,11 +30,11 @@ internal sealed class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
 
         builder.HasOne(ur => ur.Role)
             .WithMany()
-            .HasForeignKey(ur => ur.RoleId)
+            .HasForeignKey(ur => ur.RoleName)
             .OnDelete(DeleteBehavior.Cascade);
         
         // ==================== Indexes ====================
-        builder.HasIndex(ur => ur.RoleId)
+        builder.HasIndex(ur => ur.RoleName)
             .HasDatabaseName("ix_user_roles_role_id");
     }
 }

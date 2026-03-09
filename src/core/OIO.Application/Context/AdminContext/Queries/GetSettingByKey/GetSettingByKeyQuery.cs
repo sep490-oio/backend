@@ -4,6 +4,7 @@ using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.AdminContext.DTOs;
 using OIO.Domain.Context.Shared.Entities;
+using OIO.Domain.Context.Shared.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.AdminContext.Queries.GetSettingByKey;
@@ -24,9 +25,10 @@ internal sealed class GetSettingByKeyQueryHandler
         GetSettingByKeyQuery request,
         CancellationToken cancellationToken)
     {
+        var key = SystemSettingId.From(request.Key);
         var setting = await _dbContext.Set<SystemSetting>()
             .AsNoTracking()
-            .Where(s => s.Id == request.Key)
+            .Where(s => s.Id == key)
             .Select(s => new SystemSettingDto(
                 s.Id.Value,
                 s.Value,

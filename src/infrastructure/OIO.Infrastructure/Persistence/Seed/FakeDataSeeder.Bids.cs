@@ -53,7 +53,7 @@ public static partial class FakeDataSeeder
 
                 try
                 {
-                    auction.PlaceBid(bidder.Id, Money.Create(bidAmount, "VND").Value,nowUtc, TimeSpan.FromMinutes(5), 10, TimeSpan.FromMinutes(180) );
+                    auction.PlaceBid(bidder.Id, Money.Create(bidAmount, "VND").Value, nowUtc, TimeSpan.FromMinutes(5), 10, TimeSpan.FromMinutes(180) );
                     currentPrice = bidAmount;
                 }
                 catch

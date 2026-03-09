@@ -14,93 +14,146 @@ public static partial class App
             public const string Seller = "seller";
             public const string Bidder = "bidder";
 
-            public static readonly string[] All =
-            [
-                Admin,
-                Seller,
-                Bidder
-            ];
-        }
-
-        public static class Definitions
-        {
-            public static readonly Role User = Role.Create(RoleId.From(1), Catalogs.User, 50);
-            public static readonly Role Admin = Role.Create(RoleId.From(2), Catalogs.Admin, 100);
-            public static readonly Role Seller = Role.Create(RoleId.From(3), Catalogs.Seller, 50);
-            public static readonly Role Bidder = Role.Create(RoleId.From(4), Catalogs.Bidder, 50);
-
-            public static readonly Role[] All =
+            public static readonly HashSet<string> All =
             [
                 User,
                 Admin,
                 Seller,
                 Bidder
             ];
-
-            public static readonly IReadOnlyList<Permission> UserPermissions =
-            [
-                // Profile
-                Permissions.Definitions.Me.Read,
-                Permissions.Definitions.Me.ReadProfile,
-                Permissions.Definitions.Me.UpdateProfile,
-                Permissions.Definitions.Me.ChangePassword,
-                Permissions.Definitions.Me.ReadSessions,
-                Permissions.Definitions.Me.ReadLoginHistory,
-                Permissions.Definitions.Me.ManageTwoFactor,
-                Permissions.Definitions.Me.ManagePhone,
-                Permissions.Definitions.Me.ReadAddress,
-                Permissions.Definitions.Me.ManageAddress,
-
-                // Items (read + ask question)
-                Permissions.Definitions.Items.AskQuestion,
-
-                // Auctions (watch only)
-                Permissions.Definitions.Auctions.Watch,
-                Permissions.Definitions.Auctions.Unwatch,
-
-                // Media (upload for avatar, etc.)
-                Permissions.Definitions.Media.ReadContexts,
-                Permissions.Definitions.Media.Upload,
-                Permissions.Definitions.Media.ConfirmUpload,
-
-                // Me
-                Permissions.Definitions.Me.ReadWatchlist,
-            ];
             
-            public static IReadOnlyDictionary<Role, IReadOnlyList<Permission>> RolePermissions => new Dictionary<Role, IReadOnlyList<Permission>>
+            public static IReadOnlyDictionary<string, HashSet<string>> RolePermissions => new Dictionary<string, HashSet<string>>
             {
-                [User] = UserPermissions,
+                [User] = 
+                [
+                    // Profile
+                    Permissions.Catalogs.Me.Read,
+                    Permissions.Catalogs.Me.ReadProfile,
+                    Permissions.Catalogs.Me.UpdateProfile,
+                    Permissions.Catalogs.Me.ChangePassword,
+                    Permissions.Catalogs.Me.ReadSessions,
+                    Permissions.Catalogs.Me.ReadLoginHistory,
+                    Permissions.Catalogs.Me.ManageTwoFactor,
+                    Permissions.Catalogs.Me.ManagePhone,
+                    Permissions.Catalogs.Me.ReadAddress,
+                    Permissions.Catalogs.Me.ManageAddress,
 
-                [Bidder] = UserPermissions.Concat([
-                    // Bidding
-                    Permissions.Definitions.Auctions.Bid,
-                    Permissions.Definitions.Auctions.BuyNow,
-                    Permissions.Definitions.Auctions.AutoBid,
-                    Permissions.Definitions.Auctions.ReadAutoBid,
+                    // Items (read + ask question)
+                    Permissions.Catalogs.Items.AskQuestion,
+
+                    // Auctions (watch only)
+                    Permissions.Catalogs.Auctions.Watch,
+                    Permissions.Catalogs.Auctions.Unwatch,
+
+                    // Media (upload for avatar, etc.)
+                    Permissions.Catalogs.Media.ReadContexts,
+                    Permissions.Catalogs.Media.Upload,
+                    Permissions.Catalogs.Media.ConfirmUpload,
 
                     // Me
-                    Permissions.Definitions.Me.ReadBids,
-                ]).ToList(),
+                    Permissions.Catalogs.Me.ReadWatchlist,
+                ],
 
-                [Seller] = UserPermissions.Concat([
+                [Bidder] =
+                [
+                    // Profile
+                    Permissions.Catalogs.Me.Read,
+                    Permissions.Catalogs.Me.ReadProfile,
+                    Permissions.Catalogs.Me.UpdateProfile,
+                    Permissions.Catalogs.Me.ChangePassword,
+                    Permissions.Catalogs.Me.ReadSessions,
+                    Permissions.Catalogs.Me.ReadLoginHistory,
+                    Permissions.Catalogs.Me.ManageTwoFactor,
+                    Permissions.Catalogs.Me.ManagePhone,
+                    Permissions.Catalogs.Me.ReadAddress,
+                    Permissions.Catalogs.Me.ManageAddress,
+
+                    // Items (read + ask question)
+                    Permissions.Catalogs.Items.AskQuestion,
+
+                    // Auctions (watch only)
+                    Permissions.Catalogs.Auctions.Watch,
+                    Permissions.Catalogs.Auctions.Unwatch,
+
+                    // Media (upload for avatar, etc.)
+                    Permissions.Catalogs.Media.ReadContexts,
+                    Permissions.Catalogs.Media.Upload,
+                    Permissions.Catalogs.Media.ConfirmUpload,
+
+                    // Me
+                    Permissions.Catalogs.Me.ReadWatchlist,
+                    // Bidding
+                    Permissions.Catalogs.Auctions.Bid,
+                    Permissions.Catalogs.Auctions.BuyNow,
+                    Permissions.Catalogs.Auctions.AutoBid,
+                    Permissions.Catalogs.Auctions.ReadAutoBid,
+
+                    // Me
+                    Permissions.Catalogs.Me.ReadBids,
+                ],
+
+                [Seller] = 
+                [
+                    // Profile
+                    Permissions.Catalogs.Me.Read,
+                    Permissions.Catalogs.Me.ReadProfile,
+                    Permissions.Catalogs.Me.UpdateProfile,
+                    Permissions.Catalogs.Me.ChangePassword,
+                    Permissions.Catalogs.Me.ReadSessions,
+                    Permissions.Catalogs.Me.ReadLoginHistory,
+                    Permissions.Catalogs.Me.ManageTwoFactor,
+                    Permissions.Catalogs.Me.ManagePhone,
+                    Permissions.Catalogs.Me.ReadAddress,
+                    Permissions.Catalogs.Me.ManageAddress,
+
+                    // Items (read + ask question)
+                    Permissions.Catalogs.Items.AskQuestion,
+
+                    // Auctions (watch only)
+                    Permissions.Catalogs.Auctions.Watch,
+                    Permissions.Catalogs.Auctions.Unwatch,
+
+                    // Media (upload for avatar, etc.)
+                    Permissions.Catalogs.Media.ReadContexts,
+                    Permissions.Catalogs.Media.Upload,
+                    Permissions.Catalogs.Media.ConfirmUpload,
+
+                    // Me
+                    Permissions.Catalogs.Me.ReadWatchlist,
                     // Items
-                    Permissions.Definitions.Items.Create,
-                    Permissions.Definitions.Items.Activate,
-                    Permissions.Definitions.Items.ReadMy,
-                    Permissions.Definitions.Items.ManageMedia,
-                    Permissions.Definitions.Items.AnswerQuestion,
+                    Permissions.Catalogs.Items.Create,
+                    Permissions.Catalogs.Items.Activate,
+                    Permissions.Catalogs.Items.ReadMy,
+                    Permissions.Catalogs.Items.ManageMedia,
+                    Permissions.Catalogs.Items.AnswerQuestion,
 
                     // Auctions
-                    Permissions.Definitions.Auctions.Create,
-                    Permissions.Definitions.Auctions.Publish,
-                    Permissions.Definitions.Auctions.Cancel,
+                    Permissions.Catalogs.Auctions.Create,
+                    Permissions.Catalogs.Auctions.Publish,
+                    Permissions.Catalogs.Auctions.Cancel,
 
                     // Me
-                    Permissions.Definitions.Me.ReadAuctions,
-                ]).ToList(),
+                    Permissions.Catalogs.Me.ReadAuctions,
+                ],
 
-                [Admin] = Permissions.Definitions.All
+                [Admin] = Permissions.Catalogs.All
                 
+            };
+        }
+
+        public static class Definitions
+        {
+            public static readonly Role User = Role.Create(Catalogs.User, 50);
+            public static readonly Role Admin = Role.Create(Catalogs.Admin, 100);
+            public static readonly Role Seller = Role.Create(Catalogs.Seller, 50);
+            public static readonly Role Bidder = Role.Create(Catalogs.Bidder, 50);
+
+            public static readonly IReadOnlyDictionary<string, Role> All = new Dictionary<string, Role>
+            {
+                [Catalogs.User] = User,
+                [Catalogs.Admin] = Admin,
+                [Catalogs.Seller] = Seller,
+                [Catalogs.Bidder] = Bidder
             };
         }
     }

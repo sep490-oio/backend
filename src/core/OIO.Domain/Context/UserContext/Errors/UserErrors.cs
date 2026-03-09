@@ -246,7 +246,7 @@ public static class UserErrors
 
     public static class Permission
     {
-        public static readonly Func<PermissionId, Error> NotFound = permissionId => Error.NotFound(
+        public static readonly Func<string, Error> NotFound = permissionId => Error.NotFound(
             code: "Permission.NotFound",
             description: $"Permission with id '{permissionId}' was not found."
         );

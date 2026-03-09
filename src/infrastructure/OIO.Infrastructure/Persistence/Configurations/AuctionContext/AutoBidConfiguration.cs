@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using EFCore.ComplexIndexes;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Enums;
@@ -43,7 +44,13 @@ internal sealed class AutoBidConfiguration : IEntityTypeConfiguration<AutoBid>
                 .HasColumnType("numeric(18,2)")
                 .IsRequired();
 
-            money.Ignore(m => m.Currency);
+            money.ComplexProperty(m => m.Currency, currencyBuilder =>
+            {
+                currencyBuilder.Property(x => x.Id)
+                    .HasColumnName("max_amount_currency")
+                    .HasMaxLength(3)
+                    .IsRequired();
+            });
         });
 
         builder.ComplexProperty(ab => ab.CurrentAmount, money =>
@@ -53,7 +60,13 @@ internal sealed class AutoBidConfiguration : IEntityTypeConfiguration<AutoBid>
                 .HasColumnType("numeric(18,2)")
                 .IsRequired();
 
-            money.Ignore(m => m.Currency);
+            money.ComplexProperty(m => m.Currency, currencyBuilder =>
+            {
+                currencyBuilder.Property(x => x.Id)
+                    .HasColumnName("current_amount_currency")
+                    .HasMaxLength(3)
+                    .IsRequired();
+            });
         });
 
         builder.ComplexProperty(ab => ab.IncrementAmount, money =>
@@ -62,15 +75,24 @@ internal sealed class AutoBidConfiguration : IEntityTypeConfiguration<AutoBid>
                 .HasColumnName("increment_amount")
                 .HasColumnType("numeric(18,2)");
 
-            money.Ignore(m => m.Currency);
+            money.ComplexProperty(m => m.Currency, currencyBuilder =>
+            {
+                currencyBuilder.Property(x => x.Id)
+                    .HasColumnName("current_amount_currency")
+                    .HasMaxLength(3)
+                    .IsRequired(false);
+            });
         });
+        
+        builder.ComplexProperty(x => x.Status, statusBuilder =>
+        {
+            statusBuilder.Property(a => a.Id)
+                .HasColumnName("status")
+                .HasMaxLength(20)
+                .HasDefaultValue(AutoBidStatus.Active.Id)
+                .IsRequired();
+        }).HasComplexCompositeIndex(ab => new { ab.AuctionId, ab.Status.Id }, indexName: "idx_auction_auto_bids_auction_id_status", filter: "status = 'active'");
 
-        builder.Property(ab => ab.Status)
-            .HasColumnName("status")
-            .HasMaxLength(20)
-            .HasDefaultValue(AutoBidStatus.Active)
-            .IsRequired()
-            .HasConversion(x => x.Id, x => AutoBidStatus.FromId(x).GetValueOrThrow());
 
         builder.Property(ab => ab.TotalAutoBids)
             .HasColumnName("total_auto_bids")
@@ -98,9 +120,5 @@ internal sealed class AutoBidConfiguration : IEntityTypeConfiguration<AutoBid>
 
         builder.HasIndex(ab => ab.BidderId)
             .HasDatabaseName("idx_auction_auto_bids_bidder_id");
-
-        builder.HasIndex(ab => new { ab.AuctionId, ab.Status })
-            .HasDatabaseName("idx_auction_auto_bids_auction_id_status")
-            .HasFilter("status = 'active'");
     }
 }

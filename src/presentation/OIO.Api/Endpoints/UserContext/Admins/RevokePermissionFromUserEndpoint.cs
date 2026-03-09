@@ -11,11 +11,11 @@ public class RevokePermissionFromUserEndpoint : IEndpoint
     {
         app.MapDelete(ApiEndpoint.Url.Admins.RevokePermission, async (
                 Guid userId,
-                int permissionId,
+                string permission,
                 ISender sender,
                 CancellationToken ct) =>
             {
-                var command = new RevokePermissionCommand(userId, permissionId);
+                var command = new RevokePermissionCommand(userId, permission);
                 var result = await sender.Send(command, ct);
 
                 return result.ToNoContentHttpResult();

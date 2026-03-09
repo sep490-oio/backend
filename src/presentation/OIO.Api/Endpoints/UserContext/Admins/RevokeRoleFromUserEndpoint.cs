@@ -11,11 +11,11 @@ public class RevokeRoleFromUserEndpoint : IEndpoint
     {
         app.MapDelete(ApiEndpoint.Url.Admins.RevokeRole, async (
                 Guid userId,
-                int roleId,
+                string role,
                 ISender sender,
                 CancellationToken ct) =>
             {
-                var command = new RevokeRoleCommand(userId, roleId);
+                var command = new RevokeRoleCommand(userId, role);
                 var result = await sender.Send(command, ct);
 
                 return result.ToNoContentHttpResult();

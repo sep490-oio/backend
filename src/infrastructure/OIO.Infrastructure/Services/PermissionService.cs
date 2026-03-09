@@ -33,7 +33,7 @@ public class PermissionService : IPermissionService
     {
         return await _cache.GetOrCreateAsync(
             BuildCacheKey(userId),
-            async token => await GetPermissionsByAccountIdAsync(userId, token),
+            async token => await GetPermissionsByUserIdAsync(userId, token),
             HybridCacheEntryOptions,
             cancellationToken: cancellationToken
         );
@@ -42,48 +42,89 @@ public class PermissionService : IPermissionService
     public async Task InvalidatePermissionsCacheAsync(UserId userId, CancellationToken cancellationToken = default) =>
         await _cache.RemoveAsync(BuildCacheKey(userId), cancellationToken);
     
-    private async Task<HashSet<string>> GetPermissionsByAccountIdAsync(UserId userId, CancellationToken cancellationToken = default)
+    // private async Task<HashSet<string>> GetPermissionsByAccountIdAsync(UserId userId, CancellationToken cancellationToken = default)
+    // {
+    //     //Get permissions from the Roles that the Account owns.
+    //     var rolePermissions = _dbContext.Set<User>()
+    //         .AsNoTrackingWithIdentityResolution()
+    //         .Where(user => user.Id == userId) //get user with specific id
+    //         .SelectMany(user => user.Roles) //flat list user role of the user find above
+    //         .SelectMany(userRole => _dbContext.Set<RolePermission>()
+    //             .AsNoTrackingWithIdentityResolution()
+    //             .Where(rolePermission => rolePermission.RoleId == userRole.RoleId && rolePermission.IsActive) // find each Role Permission with every roleId in the UserRole
+    //             .SelectMany(rolePermission => _dbContext.Set<Permission>()
+    //                 .AsNoTrackingWithIdentityResolution()
+    //                 .Where(permission => permission.Id == rolePermission.PermissionId) //find each Permission with the permission in the permission in RolePermission
+    //                 .Select(permission => permission.Id.Value)))
+    //         .Distinct();
+    //
+    //     //Get direct permissions for the Account (Based on the AccountPermission table with IsAllowed added).
+    //     var directPermissions = _dbContext.Set<UserPermission>()
+    //         .AsNoTrackingWithIdentityResolution()
+    //         .Where(userPermission => userPermission.UserId == userId && userPermission.IsAllowed)
+    //         .SelectMany(userPermission => _dbContext.Set<Permission>()
+    //             .AsNoTrackingWithIdentityResolution()
+    //             .Where(permission => permission.Id == userPermission.PermissionId)
+    //             .Select(permission => permission.Id.Value)
+    //         );
+    //
+    //     //Merge both lists (UNION automatically removes duplicates).
+    //     var allPermissions = await rolePermissions
+    //         .Union(directPermissions)
+    //         .ToListAsync(cancellationToken);
+    //     
+    //    
+    //
+    //     //Deny handler (IsAllowed = false to deny permission)
+    //     var deniedPermissions = await _dbContext.Set<UserPermission>().AsNoTrackingWithIdentityResolution()
+    //         .Where(userPermission => userPermission.UserId == userId && !userPermission.IsAllowed)
+    //         .SelectMany(userPermission => _dbContext.Set<Permission>()
+    //             .AsNoTrackingWithIdentityResolution()
+    //             .Where(permission => permission.Id == userPermission.PermissionId)
+    //             .Select(permission => permission.Id.Value))
+    //         .ToListAsync(cancellationToken);
+    //     
+    //     return allPermissions
+    //         .Except(deniedPermissions)
+    //         .ToHashSet();
+    // }
+
+    private async Task<HashSet<string>> GetPermissionsByUserIdAsync(
+        UserId userId,
+        CancellationToken cancellationToken = default)
     {
-        //Get permissions from the Roles that the Account owns.
-        var rolePermissions = _dbContext.Set<User>()
+        var permissionIdsOfRole  = _dbContext.Set<User>()
             .AsNoTrackingWithIdentityResolution()
-            .Where(user => user.Id == userId) //get user with specific id
-            .SelectMany(user => user.Roles) //flat list user role of the user find above
-            .SelectMany(userRole => _dbContext.Set<RolePermission>()
-                .AsNoTrackingWithIdentityResolution()
-                .Where(rolePermission => rolePermission.RoleId == userRole.RoleId && rolePermission.IsActive) // find each Role Permission with every roleId in the UserRole
-                .SelectMany(rolePermission => _dbContext.Set<Permission>()
-                    .AsNoTrackingWithIdentityResolution()
-                    .Where(permission => permission.Id == rolePermission.PermissionId) //find each Permission with the permission in the permission in RolePermission
-                    .Select(permission => permission.PermissionCode)))
+            .Where(user => user.Id == userId)
+            .SelectMany(user => user.Roles)
+            .Select(userRole => userRole.Role)
+            .SelectMany(role => role.RolePermissions)
+            .Where(rolePermission => rolePermission.IsActive)
+            .Select(rolePermission => rolePermission.PermissionCode)
             .Distinct();
-
-        //Get direct permissions for the Account (Based on the AccountPermission table with IsAllowed added).
-        var directPermissions = _dbContext.Set<UserPermission>()
+        
+        var directPermissionIds = _dbContext.Set<User>()
             .AsNoTrackingWithIdentityResolution()
-            .Where(userPermission => userPermission.UserId == userId && userPermission.IsAllowed)
-            .SelectMany(userPermission => _dbContext.Set<Permission>()
-                .AsNoTrackingWithIdentityResolution()
-                .Where(permission => permission.Id == userPermission.PermissionId)
-                .Select(permission => permission.PermissionCode)
-            );
-
-        //Merge both lists (UNION automatically removes duplicates).
-        var allPermissions = await rolePermissions
-            .Union(directPermissions)
-            .ToListAsync(cancellationToken);
-
-        //Deny handler (IsAllowed = false to deny permission)
-        var deniedPermissions = await _dbContext.Set<UserPermission>().AsNoTrackingWithIdentityResolution()
-            .Where(userPermission => userPermission.UserId == userId && !userPermission.IsAllowed)
-            .SelectMany(userPermission => _dbContext.Set<Permission>()
-                .AsNoTrackingWithIdentityResolution()
-                .Where(permission => permission.Id == userPermission.PermissionId)
-                .Select(permission => permission.PermissionCode))
+            .Where(user => user.Id == userId)
+            .SelectMany(user => user.Permissions)
+            .Where(userPermission => userPermission.IsAllowed)
+            .Select(userPermission => userPermission.PermissionCode);
+        
+        
+        var deniedPermissionIds = await _dbContext.Set<User>()
+            .AsNoTrackingWithIdentityResolution()
+            .Where(user => user.Id == userId)
+            .SelectMany(user => user.Permissions)
+            .Where(userPermission => !userPermission.IsAllowed)
+            .Select(userPermission => userPermission.PermissionCode)
             .ToListAsync(cancellationToken);
         
-        return allPermissions
-            .Except(deniedPermissions)
+        var effectivePermissionIds = await permissionIdsOfRole
+            .Union(directPermissionIds)
+            .Except(deniedPermissionIds)
+            .ToListAsync(cancellationToken);
+
+        return effectivePermissionIds
             .ToHashSet();
     }
 }

@@ -128,7 +128,7 @@ internal sealed class RefreshTokenCommandHandler
         }
 
         // Generate new access token
-        var roles = user.Roles.Select(x => x.Role.NormalizedRoleName).ToList();
+        var roles = user.Roles.Select(x => x.Role.Name).ToList();
         
         var accessToken = _tokenProvider.GenerateJwt(
             userId: user.Id,

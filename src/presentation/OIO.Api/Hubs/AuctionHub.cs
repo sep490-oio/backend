@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.IdentityModel.JsonWebTokens;
+using OIO.Api.Common;
 using OIO.Api.Extensions;
 using OIO.Application.Context.AuctionContext.Commands.BuyNow;
 using OIO.Application.Context.AuctionContext.Commands.ConfigureAutoBid;
@@ -13,9 +14,11 @@ using OIO.Domain.AppDefinitions;
 using OIO.Domain.SeedWork.Checks;
 using OIO.Domain.SeedWork.Errors;
 using OIO.Infrastructure.Authorizations;
+using SignalRSwaggerGen.Attributes;
 
 namespace OIO.Api.Hubs;
 
+[SignalRHub("/hubs/auction", tag: ApiEndpoint.Tags.Hub)]
 [Authorize]
 public sealed class AuctionHub : Hub<IAuctionHubClient>
 {

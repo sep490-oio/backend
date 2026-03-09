@@ -13,6 +13,7 @@ using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Mail;
 using OIO.Application.Abstractions.Media;
+using OIO.Application.Abstractions.Scheduling;
 using OIO.Application.Abstractions.Security;
 using OIO.Application.Abstractions.Settings;
 using OIO.Application.Context.UserContext.Services;
@@ -24,11 +25,13 @@ using OIO.Infrastructure.Persistence.Interceptors;
 using OIO.Infrastructure.Services;
 using OIO.Infrastructure.Settings;
 using OIO.Domain.AppDefinitions;
-using OIO.Infrastructure.BackgroundJobs;
 using OIO.Infrastructure.Mail;
 using OIO.Infrastructure.Mail.RazorEmails.Rendering;
 using OIO.Infrastructure.Media;
 using OIO.Infrastructure.Outbox;
+using OIO.Infrastructure.Scheduling;
+using OIO.Infrastructure.Scheduling.Jobs;
+using OIO.Infrastructure.Scheduling.JobSetup;
 using OIO.Infrastructure.Security;
 using OIO.Infrastructure.Settings.Apps;
 using Quartz;
@@ -43,37 +46,41 @@ public static class DependencyInjection
         public IServiceCollection AddInfrastructure(
             IConfiguration configuration)
         {
+            var connectionString = configuration.GetConnectionString("Database")
+                                   ?? throw new InvalidOperationException(
+                                       "Database connection string is not configured.");
+            
             services.AddSingleton(TimeProvider.System);
             services.AddSingleton<IClock, DatetimeProvider>();
             services.Configure<AppInfoOptions>(configuration.GetSection(AppInfoOptions.SectionName));
             services.AddScoped<IAppConfigs, AppConfig>();
             services.AddScoped<ISystemSettingsService, SystemSettingsService>();
-            
+
             services
-                .AddPersistence(configuration)
+                .AddPersistence(configuration, connectionString)
                 .AddAuthenticationServices(configuration)
                 .AddAuthorizationService()
                 .AddCachingService(configuration)
                 .AddHealthCheckService(configuration)
                 .AddEmail(configuration)
                 .AddBackgroundJobs()
+                .AddSchedulingServices(configuration, connectionString)
                 .AddOutbox(configuration)
                 .AddMedia(configuration)
                 .AddSecurityServices();
 
             return services;
         }
-        
+
         private IServiceCollection AddPersistence(
-            IConfiguration configuration)
+            IConfiguration configuration, string connectionString)
         {
             // Interceptors
             services.AddSingleton<AuditableEntityInterceptor>();
             services.AddSingleton<SoftDeleteInterceptor>();
             services.AddSingleton<ConcurrencyInterceptor>();
             services.AddSingleton<InsertOutboxMessagesInterceptor>();
-            var connectionString = configuration.GetConnectionString("Database")
-                                   ?? throw new InvalidOperationException("Database connection string is not configured.");
+            
             services.AddNpgsqlDataSource(connectionString);
             // DbContext
             services.AddDbContext<ApplicationDbContext>((sp, options) =>
@@ -106,45 +113,42 @@ public static class DependencyInjection
 
 
             // Unit of Work
-            services.AddScoped<IDbContext>(serviceProvider => serviceProvider.GetRequiredService<ApplicationDbContext>());
+            services.AddScoped<IDbContext>(serviceProvider =>
+                serviceProvider.GetRequiredService<ApplicationDbContext>());
 
-            services.AddScoped<IUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<ApplicationDbContext>());
+            services.AddScoped<IUnitOfWork>(serviceProvider =>
+                serviceProvider.GetRequiredService<ApplicationDbContext>());
 
             return services;
         }
-        
+
         private IServiceCollection AddAuthenticationServices(IConfiguration configuration)
         {
             services.AddScoped<CustomJwtBearerEvents>();
-            
+
             services.AddAuthentication(options =>
                 {
                     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
                 })
-                .AddJwtBearer(options =>
-                {
-                    options.EventsType =  typeof(CustomJwtBearerEvents);
-                })
-                .AddJwtBearer(App.Policy.ExpiredTokenAllowed,options =>
-                {
-                    options.EventsType = typeof(CustomJwtBearerEvents);
-                });
-            
+                .AddJwtBearer(options => { options.EventsType = typeof(CustomJwtBearerEvents); })
+                .AddJwtBearer(App.Policy.ExpiredTokenAllowed,
+                    options => { options.EventsType = typeof(CustomJwtBearerEvents); });
+
             services.AddAuthorizationBuilder()
                 .AddPolicy(App.Policy.ExpiredTokenAllowed, policy =>
                 {
                     policy.AddAuthenticationSchemes(App.Policy.ExpiredTokenAllowed);
                     policy.RequireAuthenticatedUser();
                 });
-            
+
             // Settings
             services.Configure<JwtOptions>(
                 configuration.GetSection(JwtOptions.SectionName));
             services.Configure<DefaultAccountOptions>(configuration.GetSection(DefaultAccountOptions.SectionName));
             services.Configure<CorsOptions>(configuration.GetSection(CorsOptions.SectionName));
             services.Configure<HashingOptions>(configuration.GetSection(HashingOptions.SectionName));
-            
+
             services.ConfigureOptions<JwtBearerOptionsSetup>();
             services.ConfigureOptions<JwtBearerOptionsForExpiredTokenSetup>();
 
@@ -170,7 +174,7 @@ public static class DependencyInjection
             services.AddScoped<IPermissionService, PermissionService>();
             services.AddTransient<IAuthorizationHandler, PermissionAuthorizationHandler>();
             services.AddSingleton<IAuthorizationPolicyProvider, PermissionAuthorizationPolicyProvider>();
-        
+
             return services;
         }
 
@@ -178,7 +182,7 @@ public static class DependencyInjection
         {
             var redisConnection = configuration.GetConnectionString("Cache");
 
-            if (!string.IsNullOrEmpty(redisConnection))
+            if (!string.IsNullOrWhiteSpace(redisConnection))
             {
                 IConnectionMultiplexer multiplexer = ConnectionMultiplexer.Connect(redisConnection);
                 services.AddSingleton(multiplexer);
@@ -193,6 +197,7 @@ public static class DependencyInjection
             {
                 services.AddDistributedMemoryCache();
             }
+
             services.AddHybridCache(options =>
             {
                 // Maximum size of cached items
@@ -209,7 +214,7 @@ public static class DependencyInjection
 
             return services;
         }
-        
+
         private IServiceCollection AddSecurityServices()
         {
             services.AddSingleton<ISecureTokenGenerator, SecureTokenGenerator>();
@@ -217,7 +222,7 @@ public static class DependencyInjection
 
             return services;
         }
-        
+
         private IServiceCollection AddEmail(IConfiguration configuration)
         {
             services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
@@ -233,10 +238,10 @@ public static class DependencyInjection
             services.Configure<CloudinaryOptions>(configuration.GetSection(CloudinaryOptions.SectionName));
             services.AddScoped<UploadContextRegistry>();
             services.AddScoped<IMediaSignatureService, CloudinarySignatureService>();
-            
+
             return services;
         }
-        
+
 
         private IServiceCollection AddHealthCheckService(IConfiguration configuration)
         {
@@ -254,15 +259,52 @@ public static class DependencyInjection
 
             return services;
         }
-        
+
         private IServiceCollection AddBackgroundJobs()
         {
             services.AddHostedService<ExpiredSessionCleanupJob>();
-            services.AddHostedService<AuctionLifecycleJob>();
-            services.AddHostedService<PendingUploadCleanupJob>();
+            
             return services;
         }
-        
+
+        private IServiceCollection AddSchedulingServices(
+            IConfiguration configuration,
+            string connectionString)
+        {
+            services.AddQuartz(options =>
+            {
+                // Use DB persistence (survives restart)
+                options.UsePersistentStore(store =>
+                {
+                    store.UsePostgres(pg =>
+                    {
+                        pg.ConnectionString = connectionString;
+                        pg.TablePrefix = "quartz.qrtz_";
+                    });
+                    store.UseSystemTextJsonSerializer();
+                });
+
+                var scheduler = Guid.NewGuid();
+                options.SchedulerId = $"default-id-{scheduler}";
+                options.SchedulerName = $"default-name-{scheduler}";
+            });
+
+            services.AddQuartzHostedService(options =>
+            {
+                // Graceful shutdown: wait for running jobs to complete
+                options.WaitForJobsToComplete = true;
+            });
+
+            services.AddScoped<IAuctionScheduler, QuartzAuctionScheduler>();
+
+            // Job Setups
+            services.ConfigureOptions<OutboxMessagesProcessorJobSetup>();
+            services.ConfigureOptions<MediaUploadCleanupJobSetup>();
+            services.ConfigureOptions<AuctionJobSetup>();
+
+            return services;
+        }
+
         public IServiceCollection AddOutbox(IConfiguration configuration)
         {
             services.AddOptions<OutboxSettings>()
@@ -274,20 +316,7 @@ public static class DependencyInjection
                         outboxSettings.CleanupRetention > TimeSpan.Zero,
                     failureMessage: "Outbox Interval and CleanupRetention must be greater than zero.")
                 .ValidateOnStart();
-        
             services.AddTransient<IOutboxMessageResolver, OutboxMessageResolver>();
-            services.AddQuartz(options =>
-            {
-                var scheduler = Guid.NewGuid();
-                options.SchedulerId = $"default-id-{scheduler}";
-                options.SchedulerName = $"default-name-{scheduler}";
-            });
-            // ASP.NET Core hosting
-            services.AddQuartzHostedService(options =>
-            {
-                // When shutting down we want jobs to complete gracefully
-                options.WaitForJobsToComplete = true;
-            });
             services.ConfigureOptions<OutboxMessagesProcessorJobSetup>();
             services.AddScoped<OutboxProcessor>();
             //For idempotent notification
@@ -295,5 +324,6 @@ public static class DependencyInjection
 
             return services;
         }
+
     }
 }

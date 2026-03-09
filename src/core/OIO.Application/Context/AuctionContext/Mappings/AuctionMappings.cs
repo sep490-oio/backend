@@ -12,12 +12,12 @@ internal static class AuctionMappings
             Id: auction.Id.Value,
             ItemId: auction.ItemId.Value,
             SellerId: auction.SellerId.Value,
-            StartingPrice: auction.StartingPrice.Amount,
-            ReservePrice: auction.ReservePrice?.Amount,
-            BuyNowPrice: auction.BuyNowPrice?.Amount,
-            CurrentPrice: auction.CurrentPrice.Amount,
-            BidIncrement: auction.BidIncrement.Amount,
-            Currency: auction.Currency,
+            StartingPrice: auction.StartingPrice.ToDto(),
+            ReservePrice: auction.ReservePrice?.ToDto(),
+            BuyNowPrice: auction.BuyNowPrice?.ToDto(),
+            CurrentPrice: auction.CurrentPrice.ToDto(),
+            BidIncrement: auction.BidIncrement.ToDto(),
+            Currency: auction.StartingPrice.Currency.Id,
             StartTime: auction.Duration.StartTime,
             EndTime: auction.Duration.EndTime,
             ActualEndTime: auction.ActualEndTime,
@@ -29,32 +29,27 @@ internal static class AuctionMappings
             ViewCount: auction.ViewCount,
             BidCount: auction.BidCount,
             WatchCount: auction.WatchCount,
-            MinimumBidAmount: auction.GetMinimumBidAmount().Amount,
+            MinimumBidAmount: auction.GetMinimumBidAmount().ToDto(),
             IsReserveMet: auction.IsReserveMet,
             HasBuyNow: auction.HasBuyNow,
             RemainingTime: auction.RemainingTime(nowUtc),
             IsEndingSoon: auction.IsEndingSoon(nowUtc, extensionThresholdMinutes),
             CreatedAt: auction.CreatedAt);
     }
-    
-    public static readonly SortMappingDefinition<AuctionListItemDto, Auction> SortMapping = new()
-    {
-        Mappings =
-        [
-            new SortMapping(nameof(AuctionListItemDto.CurrentPrice), nameof(Auction.CurrentPrice)),
-            new SortMapping(nameof(AuctionListItemDto.StartingPrice), nameof(Auction.StartingPrice)),
-            new SortMapping(nameof(AuctionListItemDto.BuyNowPrice), nameof(Auction.BuyNowPrice)),
-            new SortMapping(nameof(AuctionListItemDto.Status), nameof(Auction.Status)),
-            new SortMapping(nameof(AuctionListItemDto.Currency), nameof(Auction.Currency)),
-            new SortMapping(nameof(AuctionListItemDto.BidCount), nameof(Auction.BidCount)),
-            new SortMapping(nameof(AuctionListItemDto.WatchCount), nameof(Auction.WatchCount)),
-            new SortMapping(nameof(AuctionListItemDto.StartTime), nameof(Auction.Duration.StartTime)),
-            new SortMapping(nameof(AuctionListItemDto.EndTime), nameof(Auction.Duration.EndTime)),
-            new SortMapping(nameof(AuctionListItemDto.IsFeatured), nameof(Auction.IsFeatured)),
-            new SortMapping(nameof(AuctionListItemDto.SellerId), nameof(Auction.SellerId)),
-            new SortMapping(nameof(AuctionListItemDto.Id), nameof(Auction.Id)),
-            // new SortMapping(nameof(AuctionListItemDto.RemainingTime), nameof(Auction.RemainingTime)),
-            // new SortMapping(nameof(AuctionListItemDto.IsEndingSoon), nameof(Auction.IsEndingSoon)),
-        ]
-    };
+
+    public static readonly SortMappingDefinition AuctionListItemDtoSortMapping =
+        SortMappingBuilder<AuctionListItemDto, Auction>.Create()
+            .Map(x => x.Id, x => x.Id)
+            .Map(x => x.ItemTitle, x => x.Item.Id)
+            .Map(x => x.CurrentPrice, x => x.CurrentPrice.Amount)
+            .Map(x => x.StartingPrice, x => x.StartingPrice.Amount)
+            .Map(x => x.BuyNowPrice, x => x.BuyNowPrice!.Amount)
+            .Map(x => x.Status, x => x.Status.Id)
+            .Map(x => x.BidCount, x => x.BidCount)
+            .Map(x => x.WatchCount, x => x.WatchCount)
+            .Map(x => x.StartTime, x => x.Duration.StartTime)
+            .Map(x => x.EndTime, x => x.Duration.EndTime)
+            .Map(x => x.IsFeatured, x => x.IsFeatured)
+            .Map(x => x.SellerId, x => x.SellerId)
+            .Build();
 }

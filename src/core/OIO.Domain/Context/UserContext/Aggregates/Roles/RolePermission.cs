@@ -9,9 +9,9 @@ public sealed class RolePermission : IEntity, IModifiedAtEntity
     private RolePermission() {}
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
     
-    public RoleId RoleId { get; private set; }
+    public string RoleName { get; private set; }
 
-    public PermissionId PermissionId { get; private set; }
+    public string PermissionCode { get; private set; }
 
     public bool IsActive { get; private set; }
 
@@ -21,17 +21,17 @@ public sealed class RolePermission : IEntity, IModifiedAtEntity
     
     public DateTime? ModifiedAt { get; private set; }
     
-    public RolePermission(RoleId roleId, PermissionId permissionId)
+    public RolePermission(string roleName, string permissionCode)
     {
-        RoleId = roleId;
-        PermissionId = permissionId;
+        RoleName = roleName;
+        PermissionCode = permissionCode;
         IsActive = true;
     }
     
     internal RolePermission(Role role, Permission permission)
     {
-        RoleId = role.Id;
-        PermissionId = permission.Id;
+        RoleName = role.Name;
+        PermissionCode = permission.Code;
         Role = role;
         Permission = permission;
         IsActive = true;

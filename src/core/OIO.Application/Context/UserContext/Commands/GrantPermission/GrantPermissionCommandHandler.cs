@@ -43,7 +43,6 @@ internal sealed class GrantPermissionCommandHandler
         
         var actorId = _currentUser.UserId;
         var targetUserId = UserId.From(request.UserId);
-        var targetPermissionId = PermissionId.From(request.PermissionId);
         
         if (actorId == targetUserId)
             return UserErrors.User.CannotManageOwnPermissions;
@@ -73,18 +72,18 @@ internal sealed class GrantPermissionCommandHandler
         if (!actor.CanManage(targetUser))
             return UserErrors.User.InsufficientRoleLevel;
         
-        var permission = App.Permissions.Definitions.All.FirstOrDefault(x => x.Id == targetPermissionId);
+        App.Permissions.Definitions.All.TryGetValue(request.Permission, out var permission);
 
         if (permission is null)
         {
-            return UserErrors.Permission.NotFound(targetPermissionId);
+            return UserErrors.Permission.NotFound(request.Permission);
         }
         
-        if(App.Permissions.Catalogs.CriticalPermissions.Contains(permission.PermissionCode) &&
+        if(App.Permissions.Catalogs.CriticalPermissions.Contains(permission.Code) &&
            actor.GetMaxRoleLevel() < App.Roles.Definitions.Admin.Level)
             return UserErrors.Auth.InsufficientPermissions;
         
-        var result = targetUser.GrantPermission(targetPermissionId, nowUtc);
+        var result = targetUser.GrantPermission(permission.Code, nowUtc);
 
         if (result.IsFailure)
         {

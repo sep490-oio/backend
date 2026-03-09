@@ -1,4 +1,5 @@
 ﻿using System.Linq.Dynamic.Core;
+using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Sorting;
 
@@ -14,16 +15,29 @@ public static class QueryableExtensions
                 .Skip((pagedParameter.PageNumber - 1) * pagedParameter.PageSize)
                 .Take(pagedParameter.PageSize);
         }
+        
+        public async Task<PagedList<T>> ToPagedListAsync(
+            int totalCount,
+            IPagedParameter pagedParameter,
+            CancellationToken cancellation = default)
+        {
+            var items = await query
+                .Page(pagedParameter)
+                .ToListAsync(cancellation);
+            return items.ToPagedList(totalCount, pagedParameter);
+        }
 
         public IQueryable<T> ApplySort(
             ISortByParameter orderByParameter,
-            SortMapping[] mappings,
+            ISortMappingDefinition mappingsDefinition,
             string defaultOrderBy = "Id")
         {
             if (string.IsNullOrWhiteSpace(orderByParameter.SortBy))
             {
                 return query.OrderBy(defaultOrderBy);
             }
+
+            var mappings = mappingsDefinition.Mappings;
 
             var sortFields = orderByParameter.SortBy.Split(',')
                 .Select(s => s.Trim())

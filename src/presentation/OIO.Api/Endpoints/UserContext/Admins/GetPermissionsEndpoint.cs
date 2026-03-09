@@ -1,6 +1,5 @@
 ﻿using MediatR;
 using OIO.Api.Common;
-using OIO.Application.Context.UserContext.Queries.Filters;
 using OIO.Application.Context.UserContext.Queries.GetPermissions;
 using OIO.Domain.AppDefinitions;
 

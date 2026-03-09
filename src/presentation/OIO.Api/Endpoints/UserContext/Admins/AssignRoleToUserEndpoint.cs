@@ -11,11 +11,11 @@ public class AssignRoleToUserEndpoint : IEndpoint
     {
         app.MapPost(ApiEndpoint.Url.Admins.AssignRole, async (
                 Guid userId,
-                int roleId,
+                string role,
                 ISender sender,
                 CancellationToken ct) =>
             {
-                var command = new AssignRoleCommand(userId, roleId);
+                var command = new AssignRoleCommand(userId, role);
                 var result = await sender.Send(command, ct);
 
                 return result.ToNoContentHttpResult();

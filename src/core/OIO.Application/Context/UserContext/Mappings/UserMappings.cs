@@ -22,19 +22,16 @@ internal static class UserMappings
             CreatedAt: user.CreatedAt,
             Profile: user.Profile?.ToDto());
     }
-    
-    public static readonly SortMappingDefinition<UserListItemDto, User> SortMapping = new()
-    {
-        Mappings =
-        [
-            new SortMapping(nameof(UserListItemDto.EmailConfirmed), nameof(User.EmailConfirmed)),
-            new SortMapping(nameof(UserListItemDto.Status), nameof(User.Status)),
-            new SortMapping(nameof(UserListItemDto.LastName), nameof(User.Profile.LastName)),
-            new SortMapping(nameof(UserListItemDto.FirstName), nameof(User.Profile.FirstName)),
-            new SortMapping(nameof(UserListItemDto.Email), nameof(User.Email)),
-            new SortMapping(nameof(UserListItemDto.UserName), nameof(User.UserName)),
-            new SortMapping(nameof(UserListItemDto.Id), nameof(User.Id)),
-          ]
-    };
+
+    public static readonly SortMappingDefinition UserListItemDtoSortMapping = SortMappingBuilder<UserListItemDto, User>
+        .Create()
+        .Map(x => x.EmailConfirmed, u => u.EmailConfirmed)
+        .Map(x => x.Status, u => u.Status.Id)
+        .Map(x => x.LastName, u => u.Profile.LastName.Value)
+        .Map(x => x.FirstName, u => u.Profile.FirstName.Value)
+        .Map(x => x.Email, u => u.Email.Value)
+        .Map(x => x.UserName, u => u.UserName.Value)
+        .Map(x => x.Id, u => u.Id.Value)
+        .Build();
     
 }

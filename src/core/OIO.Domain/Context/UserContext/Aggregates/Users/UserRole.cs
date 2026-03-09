@@ -11,17 +11,16 @@ public sealed class UserRole
     
     public UserId UserId { get; private set; }
 
-    public RoleId RoleId { get; private set; }
+    public string RoleName { get; private set; }
 
     public DateTime AssignedAt { get; private set; }
     
-    public Role Role { get; private set; }
+    public Role Role { get; private set; } = null!;
     
-    internal UserRole(UserId userId, RoleId roleId, DateTime assignedAt)
+    internal UserRole(UserId userId, string roleName, DateTime assignedAt)
     {
-        
         UserId = userId;
-        RoleId = roleId;
+        RoleName = roleName;
         AssignedAt = assignedAt;
     }
 }

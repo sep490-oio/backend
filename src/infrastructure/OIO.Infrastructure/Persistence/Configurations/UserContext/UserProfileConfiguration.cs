@@ -21,32 +21,48 @@ internal sealed class UserProfileConfiguration : IEntityTypeConfiguration<UserPr
             .HasColumnName("id")
             .HasConversion(x => x.Value, value => UserId.From(value));
 
-        builder.Property(p => p.FirstName)
-            .HasColumnName("first_name")
-            .HasMaxLength(App.Constraint.FirstName.MaxLength)
-            .HasConversion(x => x!.Value, value => FirstName.Create(value).GetValueOrDefault());
+        builder.ComplexProperty(x => x.FirstName, firstNameBuilder =>
+        {
+            firstNameBuilder.Property(p => p.Value)
+                .HasColumnName("first_name")
+                .HasMaxLength(App.Constraint.FirstName.MaxLength)
+                .IsRequired();
+        });
 
-        builder.Property(p => p.LastName)
-            .HasColumnName("last_name")
-            .HasMaxLength(App.Constraint.LastName.MaxLength)
-            .HasConversion(x => x!.Value, value => LastName.Create(value).GetValueOrDefault());
+        builder.ComplexProperty(x => x.LastName, lastNameBuilder =>
+        {
+            lastNameBuilder.Property(p => p.Value)
+                .HasColumnName("last_name")
+                .HasMaxLength(App.Constraint.LastName.MaxLength)
+                .IsRequired();
+        });
+        
+        builder.ComplexProperty(x => x.DisplayName, displayNameBuilder =>
+        {
+            displayNameBuilder.Property(p => p.Value)
+                .HasColumnName("display_name")
+                .HasMaxLength(App.Constraint.DisplayName.MaxLength)
+                .IsRequired();
+        });
+        
+        builder.ComplexProperty(x => x.AvatarUrl, avatarUrlBuilder =>
+        {
+            avatarUrlBuilder.Property(p => p.Value)
+                .HasColumnName("avatar_url")
+                .IsRequired();
+        });
 
-        builder.Property(p => p.DisplayName)
-            .HasColumnName("display_name")
-            .HasMaxLength(App.Constraint.DisplayName.MaxLength)
-            .HasConversion(x => x!.Value, value => DisplayName.Create(value).GetValueOrDefault());
-
-        builder.Property(p => p.AvatarUrl)
-            .HasColumnName("avatar_url")
-            .HasConversion(x => x!.Value, value => AvatarUrl.Create(value).GetValueOrDefault());
 
         builder.Property(p => p.DateOfBirth)
             .HasColumnName("date_of_birth");
 
-        builder.Property(p => p.Gender)
-            .HasColumnName("gender")
-            .HasMaxLength(10)
-            .HasConversion(x => x!.Id, value => Gender.FromId(value).GetValueOrThrow());
+        
+        builder.ComplexProperty(x => x.Gender, genderBuilder =>
+        {
+            genderBuilder.Property(p => p.Id)
+                .HasColumnName("gender")
+                .IsRequired();
+        });
 
         builder.Property(p => p.CreatedAt)
             .HasColumnName("created_at")

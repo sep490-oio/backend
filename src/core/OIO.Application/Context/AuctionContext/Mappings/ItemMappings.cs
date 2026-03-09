@@ -1,4 +1,5 @@
-﻿using OIO.Application.Context.AuctionContext.DTOs;
+﻿using OIO.Application.Abstractions.Sorting;
+using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Domain.Context.AuctionContext.Aggregates.Items;
 
 namespace OIO.Application.Context.AuctionContext.Mappings;
@@ -19,4 +20,16 @@ public static class ItemMappings {
             Images: item.Media.Select(i => i.ToDto()).ToList(),
             CreatedAt: item.CreatedAt);
     }
+    
+    public static readonly SortMappingDefinition ItemDtoSortMapping = SortMappingBuilder<ItemDto, Item>
+        .Create()
+        .Map(x => x.Id, i => i.Id)
+        .Map(x => x.SellerId, i => i.SellerId)
+        .Map(x => x.CategoryId, i => i.CategoryId)
+        .Map(x => x.Title, i => i.Title)
+        .Map(x => x.Condition, i => i.Condition.Id)
+        .Map(x => x.Status, i => i.Status.Id)
+        .Map(x => x.Quantity, i => i.Quantity)
+        .Map(x => x.CreatedAt, i => i.CreatedAt)
+        .Build();
 }

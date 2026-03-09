@@ -6,14 +6,16 @@ namespace OIO.Api.Endpoints.AuctionContext.Categories;
 
 public sealed class GetCategoryChildrenEndpoint : IEndpoint
 {
+    public sealed record Parameters : GetCategoryChildrenFilterParameters;
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet(ApiEndpoint.Url.Categories.GetChildren, async (
                 Guid categoryId,
+                [AsParameters] Parameters parameters,
                 ISender sender,
                 CancellationToken ct) =>
             {
-                var query = new GetCategoryChildrenQuery(categoryId);
+                var query = new GetCategoryChildrenQuery(categoryId, parameters);
 
                 var result = await sender.Send(query, ct);
 

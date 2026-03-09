@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
+using OIO.Application.Abstractions.Scheduling;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.AppDefinitions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
@@ -35,17 +36,20 @@ internal sealed class CancelAuctionCommandHandler
     private readonly IDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuctionScheduler _scheduler;
     private readonly IClock _clock;
     
     public CancelAuctionCommandHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
+        IAuctionScheduler scheduler,
         IClock clock)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _scheduler = scheduler;
         _clock = clock;
     }
 
@@ -58,9 +62,10 @@ internal sealed class CancelAuctionCommandHandler
         var auction = await _dbContext.GetByIdAsync<Auction, AuctionId>(
             id: auctionId,
             queryBuilder: query => query
-                .Include(a => a.Bids.OrderByDescending(b => b.CreatedAt))
+                .Include(a => a.Bids)
                 .Include(a => a.AutoBids)
-                .Include(a => a.PriceHistories.OrderByDescending(ph => ph.RecordedAt))
+                .Include(a => a.PriceHistories)
+                .Include(a => a.Watchers)
                 .AsSplitQuery(),
             cancellationToken: cancellationToken
             );
@@ -93,6 +98,7 @@ internal sealed class CancelAuctionCommandHandler
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _scheduler.CancelAsync(auction.Id.Value, cancellationToken);
 
         return result;
     }

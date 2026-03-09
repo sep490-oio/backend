@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 
 namespace OIO.Infrastructure.Persistence.Configurations.AuctionContext;
@@ -38,8 +39,15 @@ internal sealed class BidConfiguration : IEntityTypeConfiguration<Bid>
                 .HasColumnType("numeric(18,2)")
                 .IsRequired();
 
-            money.Ignore(m => m.Currency);
-        });
+            money.ComplexProperty(m => m.Currency, currencyBuilder =>
+            {
+                currencyBuilder.Property(x => x.Id)
+                    .HasColumnName("currency")
+                    .HasMaxLength(3)
+                    .IsRequired();
+            });
+
+        }).HasComplexCompositeIndex(x => new { x.AuctionId, x.Amount.Amount });
 
         // is_auto_bid is GENERATED ALWAYS in DB — mark as computed
         builder.Property(b => b.IsAutoBid)
@@ -74,17 +82,11 @@ internal sealed class BidConfiguration : IEntityTypeConfiguration<Bid>
         // Indexes
         builder.HasIndex(b => b.AuctionId)
             .HasDatabaseName("idx_bids_auction");
+        
+        builder.HasIndex(b => new { b.AuctionId, b.CreatedAt})
+            .HasDatabaseName("idx_bids_auction_created_at");
 
         builder.HasIndex(b => b.BidderId)
             .HasDatabaseName("idx_bids_bidder");
-        
-        //TODO: consider adding an index on (auction_id, created_at) for efficient retrieval of bid history per auction
-        // Complex index on (auction_id, amount) for efficient retrieval of highest bid per auction
-        //this index config in migration by add this into the end of up
-        //migrationBuilder.CreateIndex(
-        // name: "idx_bids_amount",
-        // table: "bids",
-        // columns: new[] { "auction_id", "amount" },
-        // descending: new[] { false, true });
     }
 }

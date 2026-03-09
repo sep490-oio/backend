@@ -38,9 +38,11 @@ internal sealed class EmailVerificationRequestedEventHandler
             UserId.Parse(notification.UserId),
             cancellationToken);
 
+            
+        var totalExpiration = await _appConfigs.Auth.GetEmailVerificationTokenExpirationMinutesAsync(cancellationToken);
+        
         if (ttl.HasValue)
         {
-            var totalExpiration = TimeSpan.FromHours(24);
             var elapsed = totalExpiration - ttl.Value;
             var cooldown = await _appConfigs.Auth.GetResendEmailCooldownSecondsAsync(cancellationToken);
 
@@ -57,7 +59,7 @@ internal sealed class EmailVerificationRequestedEventHandler
         var plainToken = await _secureTokenStore.CreateTokenAsync(
             TokenType.EmailVerification,
             UserId.Parse(notification.UserId),
-            TimeSpan.FromHours(24),
+            totalExpiration,
             cancellationToken);
 
         // Send email with userId + token
@@ -104,9 +106,10 @@ internal sealed class PasswordResetRequestedEventHandler : INotificationHandler<
             UserId.Parse(notification.UserId),
             cancellationToken);
 
+        var totalExpiration = await _appConfigs.Auth.GetPasswordResetTokenExpirationMinutesAsync(cancellationToken);
+        
         if (ttl.HasValue)
         {
-            var totalExpiration = TimeSpan.FromHours(24);
             var elapsed = totalExpiration - ttl.Value;
             var cooldown = await _appConfigs.Auth.GetResendEmailCooldownSecondsAsync(cancellationToken);
 
@@ -122,6 +125,7 @@ internal sealed class PasswordResetRequestedEventHandler : INotificationHandler<
         var plainToken = await _secureTokenStore.CreateTokenAsync(
             TokenType.PasswordReset,
             UserId.Parse(notification.UserId),
+            totalExpiration,
             cancellationToken: cancellationToken);
         
         await _mailNotifier.SendPasswordResetAsync(

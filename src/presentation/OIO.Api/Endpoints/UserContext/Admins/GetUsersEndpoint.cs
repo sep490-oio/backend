@@ -1,6 +1,5 @@
 ﻿using MediatR;
 using OIO.Api.Common;
-using OIO.Application.Context.UserContext.Queries.Filters;
 using OIO.Application.Context.UserContext.Queries.GetUsers;
 using OIO.Domain.AppDefinitions;
 
@@ -8,7 +7,7 @@ namespace OIO.Api.Endpoints.UserContext.Admins;
 
 public sealed class GetUsersEndpoint : IEndpoint
 {
-    public sealed record Parameters : UserFilterParameters;
+    public sealed record Parameters : GetUsersFilterParameters;
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

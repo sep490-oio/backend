@@ -1,6 +1,5 @@
 ﻿using MediatR;
 using OIO.Api.Common;
-using OIO.Application.Context.AuctionContext.Queries.Filters;
 using OIO.Application.Context.AuctionContext.Queries.GetMyWatchlist;
 using OIO.Domain.AppDefinitions;
 
@@ -8,7 +7,7 @@ namespace OIO.Api.Endpoints.UserContext.Me;
 
 public sealed class GetMyAuctionWatchlistEndpoint : IEndpoint
 {
-    public sealed record Parameters : MyWatchlistFilterParameters;
+    public sealed record Parameters : GetMyWatchlistFilterParameters;
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

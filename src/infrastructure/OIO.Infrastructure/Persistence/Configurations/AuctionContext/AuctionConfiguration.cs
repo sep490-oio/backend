@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 
 namespace OIO.Infrastructure.Persistence.Configurations.AuctionContext;
@@ -44,7 +45,15 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
                 .HasColumnName("starting_price")
                 .HasColumnType("numeric(18,2)")
                 .IsRequired();
-            money.Ignore(m => m.Currency);
+            
+            money.ComplexProperty(m => m.Currency, currencyBuilder =>
+            {
+                currencyBuilder.Property(x => x.Id)
+                    .HasColumnName("starting_price_currency")
+                    .HasMaxLength(3)
+                    .HasDefaultValue(Currency.Vnd.Id)
+                    .IsRequired();
+            });
         });
 
         builder.ComplexProperty(a => a.ReservePrice, money =>
@@ -52,7 +61,13 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
             money.Property(m => m.Amount)
                 .HasColumnName("reserve_price")
                 .HasColumnType("numeric(18,2)");
-            money.Ignore(m => m.Currency);
+            
+            money.ComplexProperty(m => m.Currency, currencyBuilder =>
+            {
+                currencyBuilder.Property(x => x.Id)
+                    .HasColumnName("reserve_price_currency")
+                    .HasMaxLength(3);
+            });
         });
 
         builder.ComplexProperty(a => a.BuyNowPrice, money =>
@@ -60,7 +75,13 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
             money.Property(m => m.Amount)
                 .HasColumnName("buy_now_price")
                 .HasColumnType("numeric(18,2)");
-            money.Ignore(m => m.Currency);
+            
+            money.ComplexProperty(m => m.Currency, currencyBuilder =>
+            {
+                currencyBuilder.Property(x => x.Id)
+                    .HasColumnName("buy_now_price_currency")
+                    .HasMaxLength(3);
+            });
         });
 
         builder.ComplexProperty(a => a.CurrentPrice, money =>
@@ -69,7 +90,15 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
                 .HasColumnName("current_price")
                 .HasColumnType("numeric(18,2)")
                 .IsRequired();
-            money.Ignore(m => m.Currency);
+            
+            money.ComplexProperty(m => m.Currency, currencyBuilder =>
+            {
+                currencyBuilder.Property(x => x.Id)
+                    .HasColumnName("current_price_currency")
+                    .HasMaxLength(3)
+                    .HasDefaultValue(Currency.Vnd.Id)
+                    .IsRequired();
+            });
         });
 
         builder.ComplexProperty(a => a.BidIncrement, money =>
@@ -79,13 +108,17 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
                 .HasColumnType("numeric(18,2)")
                 .HasDefaultValue(1.00m)
                 .IsRequired();
-            money.Ignore(m => m.Currency);
+          
+            money.ComplexProperty(m => m.Currency, currencyBuilder =>
+            {
+                currencyBuilder.Property(x => x.Id)
+                    .HasColumnName("bid_increment_currency")
+                    .HasMaxLength(3)
+                    .HasDefaultValue(Currency.Vnd.Id)
+                    .IsRequired();
+            });
         });
-
-        builder.Property(a => a.Currency)
-            .HasColumnName("currency")
-            .HasMaxLength(3)
-            .HasDefaultValue("VND");
+           
 
         // ==================== Duration Value Object ====================
         builder.ComplexProperty(a => a.Duration, duration =>
@@ -105,12 +138,15 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
             .HasColumnName("actual_end_time");
 
         // ==================== Status ====================
-        builder.Property(a => a.Status)
-            .HasColumnName("status")
-            .HasMaxLength(20)
-            .HasDefaultValue(AuctionStatus.Draft)
-            .IsRequired()
-            .HasConversion(x => x.Id, x => AuctionStatus.FromId(x).GetValueOrThrow());
+        builder.ComplexProperty(x => x.Status, statusBuilder =>
+        {
+            statusBuilder.Property(a => a.Id)
+                .HasColumnName("status")
+                .HasMaxLength(20)
+                .HasDefaultValue(AuctionStatus.Draft.Id)
+                .IsRequired()
+                .HasComplexIndex(indexName: "idx_auctions_status");
+        });
 
         builder.Property(a => a.CurrentWinnerId)
             .HasColumnName("winner_id")
@@ -153,7 +189,7 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
 
         // ==================== Relationships ====================
         builder.HasMany(a => a.Bids)
-            .WithOne()
+            .WithOne(b => b.Auction)
             .HasForeignKey(b => b.AuctionId)
             .OnDelete(DeleteBehavior.Cascade);
 
@@ -163,7 +199,7 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasMany(a => a.Watchers)
-            .WithOne()
+            .WithOne(a => a.Auction)
             .HasForeignKey(w => w.AuctionId)
             .OnDelete(DeleteBehavior.Cascade);
 
@@ -171,10 +207,13 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
             .WithOne()
             .HasForeignKey(ph => ph.AuctionId)
             .OnDelete(DeleteBehavior.Cascade);
+        
+        builder.HasOne(a => a.Item)
+            .WithMany(x => x.Auctions)
+            .HasForeignKey(a => a.ItemId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // ==================== Indexes ====================
-        builder.HasIndex(a => a.Status)
-            .HasDatabaseName("idx_auctions_status");
 
         // ==================== Ignore ====================
         builder.Ignore(a => a.DomainEvents);

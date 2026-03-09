@@ -28,6 +28,7 @@ public static class DependencyInjection
             cfg.RegisterServicesFromAssembly(assembly);
             cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
             cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+            cfg.AddOpenBehavior(typeof(ConcurrencyRetryBehavior<,>));
         });
 
         services.AddSorting();
@@ -37,10 +38,7 @@ public static class DependencyInjection
 
     public static IServiceCollection AddSorting(this IServiceCollection services)
     {
-        services.AddTransient<SortMappingProvider>();
-        services.AddSingleton<ISortMappingDefinition, SortMappingDefinition<AuctionListItemDto, Auction>>(_ => AuctionMappings.SortMapping);
-        services.AddSingleton<ISortMappingDefinition, SortMappingDefinition<MyBidDto, Bid>>(_ => BidMappings.SortMapping);
-        services.AddSingleton<ISortMappingDefinition, SortMappingDefinition<UserListItemDto, User>>(_ => UserMappings.SortMapping);
+        
         
         return services;
     }

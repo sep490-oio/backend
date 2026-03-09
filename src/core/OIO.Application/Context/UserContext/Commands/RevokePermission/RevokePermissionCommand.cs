@@ -4,7 +4,7 @@ using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.UserContext.Commands.RevokePermission;
 
-public record RevokePermissionCommand(Guid UserId, int PermissionId) : ICommand, IHasValidate
+public record RevokePermissionCommand(Guid UserId, string Permission) : ICommand, IHasValidate
 {
     public ViolationsError Validate()
     {
@@ -12,7 +12,7 @@ public record RevokePermissionCommand(Guid UserId, int PermissionId) : ICommand,
             .WithOwnerName("RemovePermission")
             .Field(UserId)
             .NotEmptyGuid()
-            .Field(PermissionId)
-            .NotDefault();
+            .Field(Permission)
+            .NotWhiteSpace();
     }
 }

@@ -120,7 +120,7 @@ internal sealed class LoginUserCommandHandler
             return error;
 
         // access token
-        var roles = user.Roles.Select(ur => ur.Role.NormalizedRoleName).ToList();
+        var roles = user.Roles.Select(ur => ur.Role.Name).ToList();
         
         var accessToken = _tokenProvider.GenerateJwt(
             userId: user.Id,

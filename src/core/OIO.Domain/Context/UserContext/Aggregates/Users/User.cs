@@ -562,7 +562,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         return unitResult;
     }
     
-    public UnitResult<Error> AssignRole(RoleId roleId, DateTime now)
+    public UnitResult<Error> AssignRole(string roleId, DateTime now)
     {
         var unitResult = EnsureNotDeleted();
         
@@ -571,7 +571,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
             return unitResult.Error;
         }
 
-        if (_roles.Any(r => r.RoleId == roleId))
+        if (_roles.Any(r => r.RoleName == roleId))
             return unitResult;
 
         _roles.Add(new UserRole(Id, roleId, now));
@@ -594,7 +594,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         return GetMaxRoleLevel() > targetUser.GetMaxRoleLevel();
     }
     
-    public UnitResult<Error> RevokeRole(RoleId roleId, DateTime now)
+    public UnitResult<Error> RevokeRole(string roleName, DateTime now)
     {
         var unitResult = EnsureNotDeleted();
         
@@ -603,7 +603,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
             return unitResult.Error;
         }
 
-        var role = _roles.FirstOrDefault(r => r.RoleId == roleId);
+        var role = _roles.FirstOrDefault(r => r.RoleName == roleName);
 
         if (role is null) 
             return  unitResult;
@@ -615,9 +615,9 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         return unitResult;
     }
     
-    public bool HasRole(RoleId roleId) => _roles.Any(r => r.RoleId == roleId);
+    public bool HasRole(string roleName) => _roles.Any(r => r.RoleName.Equals(roleName, StringComparison.CurrentCultureIgnoreCase));
     
-    public UnitResult<Error> GrantPermission(PermissionId permissionId, DateTime now)
+    public UnitResult<Error> GrantPermission(string permissionCode, DateTime now)
     {
         var unitResult = EnsureNotDeleted();
         
@@ -626,21 +626,21 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
             return unitResult.Error;
         }
 
-        var existing = _permissions.FirstOrDefault(p => p.PermissionId == permissionId);
+        var existing = _permissions.FirstOrDefault(p => p.PermissionCode == permissionCode);
         if (existing is not null)
         {
             existing.Grant();
             return unitResult;
         }
 
-        _permissions.Add(UserPermission.Grant(Id, permissionId));
+        _permissions.Add(UserPermission.Grant(Id, permissionCode));
         
         ModifiedAt = now;
         
         return unitResult;
     }
 
-    public UnitResult<Error> DenyPermission(PermissionId permissionId, DateTime now)
+    public UnitResult<Error> DenyPermission(string permissionCode, DateTime now)
     {
         var unitResult = EnsureNotDeleted();
         
@@ -650,21 +650,21 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         }
 
 
-        var existing = _permissions.FirstOrDefault(p => p.PermissionId == permissionId);
+        var existing = _permissions.FirstOrDefault(p => p.PermissionCode == permissionCode);
         if (existing is not null)
         {
             existing.Deny();
             return  unitResult;
         }
 
-        _permissions.Add(UserPermission.Deny(Id, permissionId));
+        _permissions.Add(UserPermission.Deny(Id, permissionCode));
         
         ModifiedAt = now;
         
         return unitResult;
     }
 
-    public UnitResult<Error> RevokePermission(PermissionId permissionId, DateTime now)
+    public UnitResult<Error> RevokePermission(string permissionCode, DateTime now)
     {
         var unitResult = EnsureNotDeleted();
         
@@ -673,7 +673,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
             return unitResult.Error;
         }
 
-        var permission = _permissions.FirstOrDefault(p => p.PermissionId == permissionId);
+        var permission = _permissions.FirstOrDefault(p => p.PermissionCode == permissionCode);
         
         if (permission is null)
         {

@@ -1,6 +1,6 @@
 namespace OIO.Application.Context.AuctionContext.DTOs;
 
 public sealed record PriceHistoryDto(
-    decimal Price,
+    MoneyDto Price,
     Guid? BidId,
     DateTime RecordedAt);

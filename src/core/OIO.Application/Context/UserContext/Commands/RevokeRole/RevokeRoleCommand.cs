@@ -6,7 +6,7 @@ namespace OIO.Application.Context.UserContext.Commands.RevokeRole;
 
 public sealed record RevokeRoleCommand(
     Guid UserId,
-    int RoleId) : ICommand, IHasValidate
+    string Role) : ICommand, IHasValidate
 {
     public ViolationsError Validate()
     {
@@ -14,7 +14,7 @@ public sealed record RevokeRoleCommand(
             .WithOwnerName("RemoveRole")
             .Field(UserId)
             .NotEmptyGuid()
-            .Field(RoleId)
-            .NotDefault();
+            .Field(Role)
+            .NotWhiteSpace();
     }
 }

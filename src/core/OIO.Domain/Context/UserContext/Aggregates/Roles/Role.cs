@@ -1,12 +1,8 @@
-﻿using CSharpFunctionalExtensions;
-using OIO.Domain.Context.UserContext.Errors;
-using OIO.Domain.Context.UserContext.ValueObjects.Ids;
-using OIO.Domain.SeedWork.Entities;
-using OIO.Domain.SeedWork.Errors;
+﻿using OIO.Domain.SeedWork.Entities;
 
 namespace OIO.Domain.Context.UserContext.Aggregates.Roles;
 
-public sealed class Role : AggregateRoot<RoleId>, IModifiedAtEntity
+public sealed class Role : IEntity, IModifiedAtEntity
 {
     private readonly List<RolePermission> _rolePermissions = [];
 
@@ -14,10 +10,8 @@ public sealed class Role : AggregateRoot<RoleId>, IModifiedAtEntity
     private Role() {}
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
-    public string RoleName { get; private set; }
-
-    public string NormalizedRoleName { get; private set; }
-
+    public string Name { get; private set; }
+    
     public int Level { get; private set; }
     
     public DateTime? ModifiedAt { get; private set;  }
@@ -25,53 +19,42 @@ public sealed class Role : AggregateRoot<RoleId>, IModifiedAtEntity
     public IReadOnlyList<RolePermission> RolePermissions => _rolePermissions;
 
     private Role(
-        string roleName,
+        string name,
         int level = 0)
     {
         if (level < 0)
             throw new ArgumentOutOfRangeException(nameof(level), "Role level must be greater than or equal to 0.");
 
-        RoleName = roleName.Trim();
-        NormalizedRoleName = roleName.Trim().ToUpperInvariant();
+        Name = name;
         Level = level;
     }
 
     public static Role Create(
-        string roleName,
+        string name,
         int level = 0)
     {
-        return new Role(roleName, level);
-    }
-
-    public static Role Create(
-        RoleId roleId,
-        string roleName,
-        int level = 0)
-    {
-        return new Role(roleName, level)
-        {
-            Id = roleId,
-        };
+        return new Role(name, level);
     }
 
     public void TogglePermission(
-        PermissionId permissionId,
+        string permissionCode,
         bool isActive,
         DateTime nowUtc)
     {
         
-        var rp = _rolePermissions.FirstOrDefault(x => x.PermissionId == permissionId);
+        var rp = _rolePermissions.FirstOrDefault(x => x.PermissionCode == permissionCode);
         
         if (rp is null)
         {
             if (isActive)
             {
-                _rolePermissions.Add(new RolePermission(Id, permissionId));
+                _rolePermissions.Add(new RolePermission(Name, permissionCode));
             }
             return;
         }
 
         ModifiedAt = nowUtc;
+        
         if (isActive)
         {
             rp.Activate(nowUtc);
@@ -79,9 +62,5 @@ public sealed class Role : AggregateRoot<RoleId>, IModifiedAtEntity
         }
 
         rp.Deactivate(nowUtc);
-        
-        
     }
-
-   
 }

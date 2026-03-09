@@ -11,11 +11,11 @@ public class GrantPermissionForUser : IEndpoint
     {
         app.MapPost(ApiEndpoint.Url.Admins.GrantPermission, async (
                 Guid userId,
-                int permissionId,
+                string permission,
                 ISender sender,
                 CancellationToken ct) =>
             {
-                var command = new GrantPermissionCommand(userId, permissionId);
+                var command = new GrantPermissionCommand(userId, permission);
                 var result = await sender.Send(command, ct);
 
                 return result.ToNoContentHttpResult();

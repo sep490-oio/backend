@@ -1,13 +1,12 @@
 ﻿using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Queries.GetAuctions;
-using OIO.Application.Context.AuctionContext.Queries.Filters;
 
 namespace OIO.Api.Endpoints.AuctionContext.Auctions;
 
 public sealed class GetAuctionsEndpoint : IEndpoint
 {
-    public sealed record Parameters : AuctionFilterParameters;
+    public sealed record Parameters : GetAuctionsFilterParameters;
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

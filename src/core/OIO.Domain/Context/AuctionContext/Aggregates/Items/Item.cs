@@ -1,5 +1,6 @@
 ﻿using CSharpFunctionalExtensions;
 using OIO.Domain.AppDefinitions;
+using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Items.Events;
 using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.Errors;
@@ -16,6 +17,7 @@ public sealed class Item : AggregateRoot<ItemId>, IAuditableEntity
 {
     private readonly List<ItemMedia> _media = [];
     private readonly List<ItemQuestion> _questions = [];
+    private readonly List<Auction> _auctions = [];
 
     public UserId SellerId { get; private set; }
     public CategoryId? CategoryId { get; private set; }
@@ -29,8 +31,10 @@ public sealed class Item : AggregateRoot<ItemId>, IAuditableEntity
     public DateTime CreatedAt { get; private set; }
     public DateTime? ModifiedAt { get; private set; }
 
+    
     public IReadOnlyCollection<ItemMedia> Media => _media.AsReadOnly();
     public IReadOnlyCollection<ItemQuestion> Questions => _questions.AsReadOnly();
+    public IReadOnlyCollection<Auction> Auctions => _auctions.AsReadOnly();
     
 
     private Item() { }

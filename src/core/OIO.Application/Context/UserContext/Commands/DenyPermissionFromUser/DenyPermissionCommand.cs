@@ -4,7 +4,7 @@ using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.UserContext.Commands.DenyPermissionFromUser;
 
-public record DenyPermissionCommand(Guid UserId, int PermissionId) : ICommand, IHasValidate
+public record DenyPermissionCommand(Guid UserId, string Permission) : ICommand, IHasValidate
 {
     public ViolationsError Validate()
     {
@@ -12,7 +12,7 @@ public record DenyPermissionCommand(Guid UserId, int PermissionId) : ICommand, I
             .Check("DenyPermission")
             .Field(UserId)
             .NotEmptyGuid()
-            .Field(PermissionId)
-            .NotDefault();
+            .Field(Permission)
+            .NotWhiteSpace();
     }
 }

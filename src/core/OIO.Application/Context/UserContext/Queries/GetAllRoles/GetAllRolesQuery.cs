@@ -28,13 +28,12 @@ internal sealed class GetAllRolesQueryHandler
             .AsNoTracking()
             .Include(r => r.RolePermissions)
             .ThenInclude(rp => rp.Permission)
-            .OrderBy(r => r.Id)
+            .OrderBy(r => r.Name)
             .Select(r => new RoleDto(
-                r.Id.Value,
-                r.RoleName,
+                r.Name,
                 r.RolePermissions
                     .Where(rp => rp.IsActive)
-                    .Select(rp => rp.Permission.PermissionCode)
+                    .Select(rp => rp.Permission.Code)
                     .ToList()))
             .ToListAsync(cancellationToken);
 

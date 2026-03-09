@@ -10,5 +10,5 @@ public sealed class BidStatus : EnumValueObject<BidStatus>
     public static readonly BidStatus Won = new("won");
     public static readonly BidStatus Cancelled = new("cancelled");
 
-    public BidStatus(string value) : base(value) { }
+    public BidStatus(string id) : base(id) { }
 }

@@ -12,7 +12,7 @@ public sealed class AuctionStatus : EnumValueObject<AuctionStatus>
     public static readonly AuctionStatus Cancelled = new("cancelled");
     public static readonly AuctionStatus Failed = new("failed");
 
-    public AuctionStatus(string value) : base(value) { }
+    public AuctionStatus(string id) : base(id) { }
 
     public bool CanTransitionTo(AuctionStatus target)
     {

@@ -17,18 +17,16 @@ public sealed record AuctionStartedEvent(
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
 
-public sealed record AuctionActivatedEvent(
-    string AuctionId,
-    DateTime OccurredAt)
-    : DomainEvent(OccurredAt);
-
 public sealed record BidPlacedEvent(
     string AuctionId,
     string BidId,
     string BidderId,
     decimal Amount,
+    decimal PreviousHighestBid,
     bool IsAutoBid,
     string? PreviousBidderId,
+    int BidCount,
+    DateTime BidTime,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
 
@@ -36,22 +34,18 @@ public sealed record OutbidEvent(
     string AuctionId,
     string OutbidBidderId,
     string NewHighBidderId,
-    decimal NewHighAmount,
+    decimal NewHighestBid,
+    decimal OutbidAmount,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
 
 public sealed record AuctionExtendedEvent(
     string AuctionId,
-    DateTime OldEndTime,
+    string TriggerByBidId,
+    DateTime PreviousEndTime,
     DateTime NewEndTime,
     int ExtensionMinutes,
-    DateTime OccurredAt)
-    : DomainEvent(OccurredAt);
-
-public sealed record AuctionBoughtOutEvent(
-    string AuctionId,
-    string BuyerId,
-    decimal Amount,
+    int ExtensionCount,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
 
@@ -76,26 +70,6 @@ public sealed record AuctionWatcherAddedEvent(
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
 
-public sealed record AutoBidSetupEvent(
-    string AuctionId,
-    string BidderId,
-    decimal MaxAmount,
-    DateTime OccurredAt)
-    : DomainEvent(OccurredAt);
-
-public sealed record AutoBidReplacedEvent(
-    string AuctionId,
-    string BidderId,
-    DateTime OccurredAt)
-    : DomainEvent(OccurredAt);
-
-public sealed record DepositAddedEvent(
-    string AuctionId,
-    string UserId,
-    decimal Amount,
-    DateTime OccurredAt)
-    : DomainEvent(OccurredAt);
-
 public sealed record AuctionFeatureToggledEvent(
     string AuctionId,
     bool IsFeatured,
@@ -113,5 +87,25 @@ public sealed record AuctionAutoBidConfiguredEvent(
     string AuctionId,
     string BidderId,
     decimal MaxAmount,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+    
+public sealed record AuctionSoldEvent(
+    string AuctionId,
+    string WinnerId,
+    string SellerId,
+    decimal FinalPrice,
+    string Currency,
+    int TotalBids,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+    
+public sealed record AuctionFailedEvent(
+    string AuctionId,
+    string SellerId,
+    string Reason,
+    decimal FinalPrice,
+    string Currency,
+    int TotalBids,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);

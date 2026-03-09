@@ -1,14 +1,14 @@
 namespace OIO.Application.Context.AuctionContext.DTOs;
 
 public sealed record MyBidDto(
-    Guid BidId,
+    Guid Id,
     Guid AuctionId,
     string ItemTitle,
     string? PrimaryImageUrl,
-    decimal BidAmount,
-    decimal CurrentPrice,
-    string BidStatus,
+    MoneyDto Amount,
+    MoneyDto CurrentPrice,
+    string Status,
     string AuctionStatus,
     bool IsHighestBid,
     DateTime BidPlacedAt,
-    DateTime AuctionEndTime);
+    DateTime? AuctionEndTime);

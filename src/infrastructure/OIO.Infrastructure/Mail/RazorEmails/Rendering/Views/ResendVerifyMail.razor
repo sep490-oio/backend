@@ -1,0 +1,25 @@
+﻿@using OIO.Infrastructure.Mail.RazorEmails.Rendering.ViewModels
+
+<LayoutView Layout="@typeof(MainLayout)">
+    <h2>Verify your email</h2>
+
+    <p>Hi <strong>@Model.UserName</strong>,</p>
+
+    <p>You have requested a resend of the verification email link. Please click the button below to verify:</p>
+
+    <a href="@Model.VerifyUrl"
+       style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">
+        Verify Email
+    </a>
+
+    <p style="margin-top:16px;color:#6b7280;font-size:14px;">
+        The link will expire after <strong>@Model.ExpirationHours hours</strong>.
+        If you are not submitting this request, please disregard this email.
+    </p>
+</LayoutView>
+
+@code {
+    [Parameter]
+    public ResendVerifyMailViewModel Model { get; set; } = null!;
+    
+}

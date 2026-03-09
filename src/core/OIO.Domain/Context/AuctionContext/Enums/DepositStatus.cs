@@ -9,5 +9,5 @@ public sealed class DepositStatus : EnumValueObject<DepositStatus>
     public static readonly DepositStatus Forfeited = new("forfeited");
     public static readonly DepositStatus ConvertedToPayment = new("converted_to_payment");
 
-    public DepositStatus(string value) : base(value) { }
+    public DepositStatus(string id) : base(id) { }
 }

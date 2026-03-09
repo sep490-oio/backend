@@ -1,6 +1,7 @@
 ﻿using CSharpFunctionalExtensions;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.AuctionContext.DTOs;
+using OIO.Application.Context.AuctionContext.Mappings;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.AuctionContext.Grains;
 using OIO.Domain.Context.AuctionContext.Grains.GrainValueObjects;
@@ -89,9 +90,9 @@ internal sealed class ConfigureAutoBidCommandHandler
             AuctionId: autoBid.AuctionId,
             BidderId: autoBid.BidderId,
             IsEnabled: autoBid.IsEnabled,
-            MaxAmount: autoBid.MaxAmount.Amount,
-            CurrentAmount: autoBid.CurrentAmount.Amount,
-            IncrementAmount: autoBid.IncrementAmount?.Amount,
+            MaxAmount: autoBid.MaxAmount.ToDto(),
+            CurrentAmount: autoBid.CurrentAmount.ToDto(),
+            IncrementAmount: autoBid.IncrementAmount?.ToDto(),
             Status: autoBid.Status,
             TotalAutoBids: autoBid.TotalAutoBids,
             LastAutoBidAt: autoBid.LastAutoBidAt,

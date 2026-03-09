@@ -5,6 +5,7 @@ using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.AppDefinitions;
+using OIO.Domain.Context.UserContext.Aggregates.Roles;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Errors;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
@@ -43,7 +44,6 @@ internal sealed class AssignRoleCommandHandler
         
         var actorId = _currentUser.UserId;
         var targetUserId = UserId.From(request.UserId);
-        var targetRoleId = RoleId.From(request.RoleId);
         
         if (actorId == targetUserId)
             return UserErrors.User.CannotAssignRoleYourself;
@@ -69,10 +69,10 @@ internal sealed class AssignRoleCommandHandler
             return UserErrors.User.NotFound(targetUserId);
         
         //load role cần assign
-        var targetRole = App.Roles.Definitions.All.FirstOrDefault(x => x.Id == targetRoleId);
+        App.Roles.Definitions.All.TryGetValue(request.Role, out var targetRole);
         
         if (targetRole is null)
-            return RoleErrors.Role.NotFound(targetRoleId);
+            return RoleErrors.Role.NotFound(request.Role);
         
         // actor phải cao hơn target user
         if (!actor.CanManage(targetUser))
@@ -82,7 +82,7 @@ internal sealed class AssignRoleCommandHandler
         if (actor.GetMaxRoleLevel() <= targetRole.Level)
             return RoleErrors.Role.CannotAssignHigherOrEqualRole;
         
-        var result = targetUser.AssignRole(targetRole.Id, nowUtc);
+        var result = targetUser.AssignRole(targetRole.Name, nowUtc);
 
         if (result.IsFailure)
         {

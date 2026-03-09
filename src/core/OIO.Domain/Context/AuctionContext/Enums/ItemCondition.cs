@@ -10,5 +10,5 @@ public sealed class ItemCondition : EnumValueObject<ItemCondition>
     public static readonly ItemCondition Good = new("good");
     public static readonly ItemCondition Acceptable = new("acceptable");
 
-    public ItemCondition(string value) : base(value) { }
+    public ItemCondition(string id) : base(id) { }
 }

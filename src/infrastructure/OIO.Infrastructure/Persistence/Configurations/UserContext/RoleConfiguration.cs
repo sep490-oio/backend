@@ -11,17 +11,11 @@ internal sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
     {
         builder.ToTable("roles");
 
-        builder.HasKey(r => r.Id);
+        builder.HasKey(r => r.Name);
 
-        builder.Property(r => r.Id)
+        builder.Property(r => r.Name)
             .ValueGeneratedNever()
-            .HasColumnName("id")
-            .HasConversion(x => x.Value, value => RoleId.From(value));
-
-        builder.Property(r => r.RoleName)
-            .HasColumnName("role_name")
-            .HasMaxLength(150)
-            .IsRequired();
+            .HasColumnName("name");
         
         builder.Property(r => r.Level)
             .HasColumnName("level")
@@ -30,19 +24,9 @@ internal sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
         builder.Property(u => u.ModifiedAt)
             .HasColumnName("modified_at");
 
-        builder.Property(r => r.NormalizedRoleName)
-            .HasColumnName("normalized_role_name")
-            .HasMaxLength(150)
-            .HasComputedColumnSql("UPPER(role_name)", stored: true);
-
-        builder.HasIndex(r => r.NormalizedRoleName)
-            .IsUnique();
-
         builder.HasMany(r => r.RolePermissions)
             .WithOne(rp => rp.Role)
-            .HasForeignKey(rp => rp.RoleId)
+            .HasForeignKey(rp => rp.RoleName)
             .OnDelete(DeleteBehavior.Cascade);
-        
-        builder.Ignore(r => r.DomainEvents);
     }
 }

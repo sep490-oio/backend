@@ -30,7 +30,13 @@ internal sealed class AuctionPriceHistoryConfiguration : IEntityTypeConfiguratio
                 .HasColumnType("numeric(18,2)")
                 .IsRequired();
             
-            money.Ignore(m => m.Currency);
+            money.ComplexProperty(m => m.Currency, currencyBuilder =>
+            {
+                currencyBuilder.Property(x => x.Id)
+                    .HasColumnName("currency")
+                    .HasMaxLength(3)
+                    .IsRequired();
+            });
         });
 
         builder.Property(ph => ph.BidId)

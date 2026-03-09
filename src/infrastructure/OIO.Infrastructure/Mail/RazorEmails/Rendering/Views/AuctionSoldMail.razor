@@ -1,0 +1,52 @@
+﻿@using OIO.Infrastructure.Mail.RazorEmails.Rendering.ViewModels
+
+<LayoutView Layout="@typeof(MainLayout)">
+    <h2 style="margin:0 0 16px; font-size:24px; line-height:1.3; font-weight:700; color:#111827;">
+        Your item has been sold!
+    </h2>
+
+    <p style="margin:0 0 12px; font-size:15px; line-height:1.7; color:#111827;">
+        Hello <strong>@Model.UserName</strong>,
+    </p>
+
+    <p style="margin:0 0 20px; font-size:15px; line-height:1.7; color:#374151;">
+        The auction has ended successfully:
+    </p>
+
+    <table style="width:100%; border-collapse:separate; border-spacing:0; margin:16px 0 24px; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; background:#f9fafb;">
+        <tr>
+            <td style="padding:12px 16px; color:#6b7280; font-size:14px; border-bottom:1px solid #e5e7eb; width:40%;">
+                Auction ID
+            </td>
+            <td style="padding:12px 16px; font-weight:600; color:#111827; font-size:14px; border-bottom:1px solid #e5e7eb;">
+                @Model.AuctionId
+            </td>
+        </tr>
+        <tr>
+            <td style="padding:12px 16px; color:#6b7280; font-size:14px; border-bottom:1px solid #e5e7eb; width:40%;">
+                Winner
+            </td>
+            <td style="padding:12px 16px; font-weight:600; color:#111827; font-size:14px; border-bottom:1px solid #e5e7eb;">
+                @Model.WinnerName
+            </td>
+        </tr>
+        <tr>
+            <td style="padding:12px 16px; color:#6b7280; font-size:14px; width:40%;">
+                Sale Price
+            </td>
+            <td style="padding:12px 16px; font-weight:700; color:#111827; font-size:14px;">
+                @Model.FinalPrice.ToString("N0") @Model.Currency
+            </td>
+        </tr>
+    </table>
+
+    <p style="margin:0; font-size:15px; line-height:1.7; color:#374151;">
+        The payment will be securely held by the system until the buyer confirms receipt of the item.
+        You will be notified once the buyer completes the payment.
+    </p>
+</LayoutView>
+
+@code {
+    [Parameter]
+    public AuctionSoldMailViewModel Model { get; set; }
+}

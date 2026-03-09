@@ -23,3 +23,14 @@ public class PagedList<T>
         return new PagedList<T>(source, count, pagedParameter.PageNumber, pagedParameter.PageSize);
     }
 }
+
+public static class PagedListExtensions 
+{
+    extension<T>(IReadOnlyCollection<T> source)
+    {
+        public PagedList<T> ToPagedList(int count, IPagedParameter pagedParameter)
+        {
+            return new PagedList<T>(source, count, pagedParameter.PageNumber, pagedParameter.PageSize);
+        }
+    }
+}

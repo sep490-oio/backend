@@ -8,7 +8,7 @@ public static class AuctionPriceHistoryMappings
     public static PriceHistoryDto ToDto(this AuctionPriceHistory ph)
     {
         return new PriceHistoryDto(
-            Price: ph.Price.Amount,
+            Price: ph.Price.ToDto(),
             BidId: ph.BidId?.Value,
             RecordedAt: ph.RecordedAt);
     }

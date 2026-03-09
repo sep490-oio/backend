@@ -1,3 +1,11 @@
-﻿namespace OIO.Application.Abstractions.Sorting;
+﻿using CSharpFunctionalExtensions;
+using OIO.Domain.SeedWork.Errors;
 
-public interface ISortMappingDefinition;
+namespace OIO.Application.Abstractions.Sorting;
+
+public interface ISortMappingDefinition
+{
+    SortMapping[] Mappings { get; }
+
+    UnitResult<Error> ValidateMappings(string? sort);
+}

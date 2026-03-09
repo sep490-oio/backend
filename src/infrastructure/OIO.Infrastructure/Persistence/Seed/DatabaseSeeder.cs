@@ -46,8 +46,18 @@ public static class DatabaseSeeder
 
     private static async Task SeedRolesAsync(ApplicationDbContext dbContext, ILogger logger)
     {
-        var roles =  await dbContext.Set<Role>().AsNoTrackingWithIdentityResolution().ToListAsync();
-        var newRoles = App.Roles.Definitions.All.Except(roles).ToList();
+        var roleInDbs =  await dbContext.Set<Role>().AsNoTrackingWithIdentityResolution().ToListAsync();
+        
+        var newRoles = new List<Role>();
+        
+        foreach (var role in App.Roles.Definitions.All)
+        {
+            if (roleInDbs.Any(r => r.Name == role.Key))
+                continue;
+
+            newRoles.Add(role.Value);
+        }
+        
         if (newRoles.Count == 0)
             return;
 
@@ -57,14 +67,24 @@ public static class DatabaseSeeder
         logger.LogInformation("Seeded {Count} roles.", newRoles.Count);
         foreach (var role in newRoles)
         {
-            logger.LogInformation("Seeded roles {role} .", role.RoleName);
+            logger.LogInformation("Seeded roles {role} .", role.Name);
         }
     }
     
     private static async Task SeedPermissionsAsync(ApplicationDbContext dbContext, ILogger logger)
     {
-        var permissions =  await dbContext.Set<Permission>().AsNoTrackingWithIdentityResolution().ToListAsync();
-        var newPermissions = App.Permissions.Definitions.All.Except(permissions).ToList();
+        var permissionInDbs =  await dbContext.Set<Permission>().AsNoTrackingWithIdentityResolution().ToListAsync();
+        
+        var newPermissions = new List<Permission>();
+        
+        foreach (var permission in App.Permissions.Definitions.All)
+        {
+            if (permissionInDbs.Any(p => p.Code == permission.Key))
+                continue;
+
+            newPermissions.Add(permission.Value);
+        }
+        
         if (newPermissions.Count == 0)
             return;
 
@@ -74,7 +94,7 @@ public static class DatabaseSeeder
         logger.LogInformation("Seeded {Count} permissions.", newPermissions.Count);
         foreach (var permission in newPermissions)
         {
-            logger.LogInformation("Seeded permissions {permission}.", permission.PermissionCode);
+            logger.LogInformation("Seeded permissions {permission}.", permission.Code);
         }
     }
 
@@ -88,30 +108,29 @@ public static class DatabaseSeeder
         // Lấy existing theo key thật (RoleId, PermissionId) cho chuẩn và nhanh
         var existingPairs = await dbContext.Set<RolePermission>()
             .AsNoTracking()
-            .Select(rp => new { rp.RoleId, rp.PermissionId })
+            .Select(rp => new { Role = rp.RoleName, Permission = rp.PermissionCode })
             .ToListAsync(ct);
 
         var existingSet = existingPairs
-            .Select(x => (x.RoleId, x.PermissionId))
+            .Select(x => (x.Role, x.Permission))
             .ToHashSet();
 
         var toInsert = new List<RolePermission>();
-        var seenInsert = new HashSet<(RoleId RoleId, PermissionId PermissionId)>(); // chống trùng trong batch
+        var seenInsert = new HashSet<(string RoleId, string PermissionId)>(); // chống trùng trong batch
 
-        foreach (var role in App.Roles.Definitions.All)
+        foreach (var role in App.Roles.Catalogs.All)
         {
-            var assigned = App.Roles.Definitions.RolePermissions[role]
-                .DistinctBy(p => p.Id); // hoặc DistinctBy(p => p.PermissionCode)
+            var assigned = App.Roles.Catalogs.RolePermissions[role];
 
-            foreach (var p in assigned)
+            foreach (var permission in assigned)
             {
-                var key = (role.Id, p.Id);
+                var key = (role, permission);
 
                 // đã có trong DB hoặc đã thêm vào batch
                 if (existingSet.Contains(key) || !seenInsert.Add(key))
                     continue;
 
-                toInsert.Add(new RolePermission(role.Id, p.Id));
+                toInsert.Add(new RolePermission(role,permission));
             }
         }
 
@@ -125,7 +144,7 @@ public static class DatabaseSeeder
         // Lưu ý: rolePermission.Permission / Role thường null vì bạn chỉ set FK
         // => log bằng Id/Code thay vì navigation
         foreach (var rp in toInsert)
-            logger.LogInformation("Assigned PermissionId={PermissionId} to RoleId={RoleId}.", rp.PermissionId, rp.RoleId);
+            logger.LogInformation("Assigned PermissionId={PermissionId} to RoleId={RoleId}.", rp.PermissionCode, rp.RoleName);
     }
     
     private static async Task SeedSystemSettingsAsync(IServiceProvider services)

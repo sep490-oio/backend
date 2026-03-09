@@ -33,6 +33,22 @@ public class Money : ValueObject, IComparable<Money>
         
         return new Money(Math.Round(amount, 2), Currency.FromId(currency).GetValueOrThrow());
     }
+    
+    public static Result<Money, Error> Create(decimal amount, Currency currency)
+    {
+        var result = Money.Check(isInvariant: true)
+            .Field(amount)
+            .NonNegative()
+            .Field(currency)
+            .ToUnitResult();
+
+        if (result.IsFailure)
+        {
+            return result.Error;
+        }
+        
+        return new Money(Math.Round(amount, 2), currency);
+    }
 
     public static Money Zero(Currency currency) => new(0, currency);
 

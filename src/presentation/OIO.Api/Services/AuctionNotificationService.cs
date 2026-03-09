@@ -16,7 +16,9 @@ internal sealed class AuctionNotificationService : IAuctionNotificationService
     }
 
     public async Task NotifyBidPlacedAsync(
-        Guid auctionId, BidNotification notification, CancellationToken ct)
+        Guid auctionId, 
+        BidNotification notification,
+        CancellationToken cancellationToken = default)
     {
         await _hubContext
             .Clients
@@ -25,7 +27,9 @@ internal sealed class AuctionNotificationService : IAuctionNotificationService
     }
 
     public async Task NotifyOutbidAsync(
-        Guid outbidUserId, OutbidNotification notification, CancellationToken ct)
+        Guid outbidUserId, 
+        OutbidNotification notification,
+        CancellationToken cancellationToken = default)
     {
         await _hubContext
             .Clients
@@ -34,7 +38,9 @@ internal sealed class AuctionNotificationService : IAuctionNotificationService
     }
 
     public async Task NotifyBuyNowExecutedAsync(
-        Guid auctionId, BuyNowNotification notification, CancellationToken ct)
+        Guid auctionId, 
+        BuyNowNotification notification, 
+        CancellationToken cancellationToken = default)
     {
         await _hubContext
             .Clients
@@ -43,7 +49,9 @@ internal sealed class AuctionNotificationService : IAuctionNotificationService
     }
 
     public async Task NotifyAuctionStartedAsync(
-        Guid auctionId, AuctionStartedNotification notification, CancellationToken ct)
+        Guid auctionId,
+        AuctionStartedNotification notification,
+        CancellationToken cancellationToken = default)
     {
         await _hubContext
             .Clients
@@ -52,7 +60,9 @@ internal sealed class AuctionNotificationService : IAuctionNotificationService
     }
 
     public async Task NotifyAuctionEndedAsync(
-        Guid auctionId, AuctionEndedNotification notification, CancellationToken ct)
+        Guid auctionId, 
+        AuctionEndedNotification notification,
+        CancellationToken cancellationToken = default)
     {
         // Broadcast to auction group
         await _hubContext
@@ -71,7 +81,9 @@ internal sealed class AuctionNotificationService : IAuctionNotificationService
     }
 
     public async Task NotifyAuctionExtendedAsync(
-        Guid auctionId, AuctionExtendedNotification notification, CancellationToken ct)
+        Guid auctionId,
+        AuctionExtendedNotification notification,
+        CancellationToken cancellationToken = default)
     {
         await _hubContext
             .Clients
@@ -80,7 +92,9 @@ internal sealed class AuctionNotificationService : IAuctionNotificationService
     }
 
     public async Task NotifyAuctionCancelledAsync(
-        Guid auctionId, AuctionCancelledNotification notification, CancellationToken ct)
+        Guid auctionId, 
+        AuctionCancelledNotification notification,
+        CancellationToken cancellationToken = default)
     {
         await _hubContext
             .Clients

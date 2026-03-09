@@ -13,41 +13,55 @@ public interface IAuctionNotificationService
     /// Broadcast bid placed to everyone watching the auction.
     /// </summary>
     Task NotifyBidPlacedAsync(
-        Guid auctionId, BidNotification notification, CancellationToken ct = default);
+        Guid auctionId,
+        BidNotification notification,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Notify a specific user that they've been outbid.
     /// </summary>
     Task NotifyOutbidAsync(
-        Guid outbidUserId, OutbidNotification notification, CancellationToken ct = default);
+        Guid outbidUserId,
+        OutbidNotification notification,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Broadcast buy now executed to auction group.
     /// </summary>
     Task NotifyBuyNowExecutedAsync(
-        Guid auctionId, BuyNowNotification notification, CancellationToken ct = default);
+        Guid auctionId,
+        BuyNowNotification notification,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Broadcast auction started to auction group.
     /// </summary>
     Task NotifyAuctionStartedAsync(
-        Guid auctionId, AuctionStartedNotification notification, CancellationToken ct = default);
+        Guid auctionId,
+        AuctionStartedNotification notification,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Broadcast auction ended to auction group + notify winner directly.
     /// </summary>
     Task NotifyAuctionEndedAsync(
-        Guid auctionId, AuctionEndedNotification notification, CancellationToken ct = default);
+        Guid auctionId,
+        AuctionEndedNotification notification,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Broadcast auction time extended.
     /// </summary>
     Task NotifyAuctionExtendedAsync(
-        Guid auctionId, AuctionExtendedNotification notification, CancellationToken ct = default);
+        Guid auctionId,
+        AuctionExtendedNotification notification,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Broadcast auction cancelled.
     /// </summary>
     Task NotifyAuctionCancelledAsync(
-        Guid auctionId, AuctionCancelledNotification notification, CancellationToken ct = default);
+        Guid auctionId,
+        AuctionCancelledNotification notification,
+        CancellationToken cancellationToken = default);
 }

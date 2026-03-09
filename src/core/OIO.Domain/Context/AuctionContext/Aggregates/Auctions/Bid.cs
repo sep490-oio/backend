@@ -17,6 +17,8 @@ public sealed class Bid : BaseEntity<BidId>, ICreatedAtEntity
     public BidStatus Status { get; private set; }    // status
     public IPAddress? IpAddress { get; private set; } // ip_address
     public DateTime CreatedAt { get; private set; }  // created_at
+    
+    public Auction Auction { get; private set; }
 
     private Bid() { }
 

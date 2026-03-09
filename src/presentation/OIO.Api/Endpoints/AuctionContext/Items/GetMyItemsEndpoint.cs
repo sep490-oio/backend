@@ -7,13 +7,15 @@ namespace OIO.Api.Endpoints.AuctionContext.Items;
 
 public sealed class GetMyItemsEndpoint : IEndpoint
 {
+    public sealed record Parameters : GetMyItemsFilterParameters;
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet(ApiEndpoint.Url.Items.GetBySeller, async (
                 ISender sender,
+                [AsParameters] Parameters parameters,
                 CancellationToken ct) =>
             {
-                var query = new GetMyItemsQuery();
+                var query = new GetMyItemsQuery(parameters);
 
                 var result = await sender.Send(query, ct);
 

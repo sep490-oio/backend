@@ -11,6 +11,8 @@ public sealed class AuctionWatcher : BaseEntity<AuctionWatcherId>, ICreatedAtEnt
     public bool NotifyOnBid { get; private set; }
     public bool NotifyOnEnd { get; private set; } 
     public DateTime CreatedAt { get; private set; }
+    
+    public Auction Auction { get; private set; } = null!;
 
     private AuctionWatcher() { }
 

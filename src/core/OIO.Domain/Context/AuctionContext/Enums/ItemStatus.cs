@@ -10,7 +10,7 @@ public sealed class ItemStatus : EnumValueObject<ItemStatus>
     public static readonly ItemStatus Sold = new("sold");
     public static readonly ItemStatus Removed = new("removed");
 
-    public ItemStatus(string value) : base(value) { }
+    public ItemStatus(string id) : base(id) { }
 
     public bool CanTransitionTo(ItemStatus target)
     {

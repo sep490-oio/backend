@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Options;
+using OIO.Infrastructure.Scheduling;
 using OIO.Infrastructure.Settings;
 using Quartz;
 
@@ -7,32 +8,38 @@ namespace OIO.Infrastructure.Outbox;
 internal sealed class OutboxMessagesProcessorJobSetup(
     IOptions<OutboxSettings> outboxSettingsOptions) : IConfigureOptions<QuartzOptions>
 {
-    private const string CleanupJobTriggerIdentity = "Outbox.Cleanup.Trigger";
-    private static readonly JobKey CleanupJobKey = new(nameof(OutboxCleanupJob));
+    private const string CleanupJobTriggerIdentity = "outbox-cleanup-trigger";
+    private static readonly JobKey CleanupJobKey = new("outbox-cleanup", JobConstants.SystemGroup);
 
-    private const string ProcessJobTriggerIdentity = "Outbox.Process.Trigger";
-    private static readonly JobKey ProcessJobKey = new(nameof(OutboxMessagesProcessorJob));
+    private const string ProcessJobTriggerIdentity = "outbox-process-trigger";
+    private static readonly JobKey ProcessJobKey = new("outbox-process", JobConstants.SystemGroup);
 
     public void Configure(QuartzOptions options)
     {
         var outboxSettings = outboxSettingsOptions.Value;
 
-        options.AddJob<OutboxMessagesProcessorJob>(jobBuilder => jobBuilder.WithIdentity(ProcessJobKey))
+        options.AddJob<OutboxMessagesProcessorJob>(jobBuilder => 
+                jobBuilder
+                    .WithIdentity(ProcessJobKey)
+                    .StoreDurably())
             .AddTrigger(trigger =>
                 trigger
-                    .WithIdentity(ProcessJobTriggerIdentity)
                     .ForJob(ProcessJobKey)
+                    .WithIdentity(ProcessJobTriggerIdentity, ProcessJobKey.Group)
                     .WithSimpleSchedule(scheduleBuilder =>
                         scheduleBuilder
                             .WithInterval(outboxSettings.Interval)
                             .RepeatForever()));
 
         // Cleanup job - daily at 03:00 (can be overridden later if needed)
-        options.AddJob<OutboxCleanupJob>(jobBuilder => jobBuilder.WithIdentity(CleanupJobKey))
+        options.AddJob<OutboxCleanupJob>(jobBuilder => 
+                jobBuilder
+                    .WithIdentity(CleanupJobKey)
+                    .StoreDurably())
             .AddTrigger(trigger =>
                 trigger
-                    .WithIdentity(CleanupJobTriggerIdentity)
                     .ForJob(CleanupJobKey)
+                    .WithIdentity(CleanupJobTriggerIdentity, CleanupJobKey.Group)
                     .WithCronSchedule("0 0 3 * * ?"));
 
         // 0 0 3 * * ? (Quartz cron) triggers at 03:00:00 every day. Breakdown of the fields:
