@@ -4,11 +4,11 @@ using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.Services;
-using OIO.Domain.Context.AuctionContext.Aggregates.Items;
 using OIO.Domain.Context.AuctionContext.Errors;
-using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
+using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
 
 namespace OIO.Application.Context.AuctionContext.Commands.ActivateItem;
 
@@ -51,6 +51,8 @@ internal sealed class ActivateItemCommandHandler
         
         var item = await _dbContext.GetByIdAsync<Item ,ItemId>(
             id: itemId,
+            queryBuilder: query => query
+                .Include(x => x.Media),
             cancellationToken: cancellationToken);
 
         if (item is null)
