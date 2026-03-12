@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OIO - Test Verification Upload Flow</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 2rem; }
+        h1 { font-size: 1.5rem; font-weight: 700; color: #38bdf8; margin-bottom: 1.5rem; }
+        h2 { font-size: 1.1rem; font-weight: 600; color: #94a3b8; margin-bottom: .75rem; border-bottom: 1px solid #1e293b; padding-bottom: .5rem; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .card { background: #1e293b; border-radius: .75rem; padding: 1.25rem; margin-bottom: 1rem; border: 1px solid #334155; }
+        .row { display: flex; gap: .75rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: .75rem; }
+        .field { display: flex; flex-direction: column; gap: .25rem; flex: 1; min-width: 180px; }
+        label { font-size: .75rem; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
+        input, select { background: #0f172a; border: 1px solid #334155; border-radius: .5rem; padding: .5rem .75rem; color: #e2e8f0; font-size: .875rem; outline: none; transition: border-color .2s; }
+        input:focus, select:focus { border-color: #38bdf8; }
+        input[type="file"] { padding: .35rem .5rem; }
+        button { background: #2563eb; color: #fff; border: none; border-radius: .5rem; padding: .55rem 1.25rem; font-size: .875rem; font-weight: 600; cursor: pointer; transition: background .2s; white-space: nowrap; }
+        button:hover { background: #1d4ed8; }
+        button:disabled { background: #475569; cursor: not-allowed; }
+        button.secondary { background: #475569; }
+        button.secondary:hover { background: #64748b; }
+        button.success { background: #059669; }
+        button.success:hover { background: #047857; }
+        button.danger { background: #dc2626; }
+        button.danger:hover { background: #b91c1c; }
+        .log-box { background: #020617; border: 1px solid #1e293b; border-radius: .5rem; padding: .75rem; margin-top: .5rem; max-height: 300px; overflow-y: auto; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: .8rem; line-height: 1.6; }
+        .log-box:empty::before { content: 'Chưa có log...'; color: #475569; }
+        .log-entry { padding: .15rem 0; border-bottom: 1px solid #0f172a; }
+        .log-entry.info { color: #38bdf8; }
+        .log-entry.success { color: #34d399; }
+        .log-entry.error { color: #f87171; }
+        .log-entry.warn { color: #fbbf24; }
+        .log-entry .time { color: #475569; margin-right: .5rem; }
+        .step-indicator { display: flex; gap: .5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .step { padding: .4rem .75rem; border-radius: .5rem; background: #334155; font-size: .75rem; font-weight: 600; color: #94a3b8; transition: all .2s; }
+        .step.active { background: #1e40af; color: #93c5fd; }
+        .step.done { background: #065f46; color: #6ee7b7; }
+        .preview-grid { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: .75rem; }
+        .preview-item { position: relative; width: 120px; height: 120px; border-radius: .5rem; overflow: hidden; border: 2px solid #334155; }
+        .preview-item img { width: 100%; height: 100%; object-fit: cover; }
+        .preview-item .label { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,.7); padding: .2rem .4rem; font-size: .65rem; text-align: center; color: #94a3b8; }
+        #status-bar { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: transparent; z-index: 999; }
+        #status-bar.loading { background: linear-gradient(90deg, #2563eb, #38bdf8, #2563eb); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    </style>
+</head>
+<body>
+    <div id="status-bar"></div>
+    <div class="container">
+        <h1>OIO - Test Verification Upload Flow</h1>
+
+        <div class="step-indicator">
+            <div class="step" id="s1">1. Login</div>
+            <div class="step" id="s2">2. Create Verification</div>
+            <div class="step" id="s3">3. Upload Documents</div>
+            <div class="step" id="s4">4. Submit</div>
+            <div class="step" id="s5">5. Check Result</div>
+        </div>
+
+        <!-- Step 1: Auth -->
+        <div class="card">
+            <h2>1. Đăng nhập</h2>
+            <div class="row">
+                <div class="field">
+                    <label>API Base URL</label>
+                    <input id="baseUrl" value="http://localhost:5010" />
+                </div>
+            </div>
+            <div class="row">
+                <div class="field">
+                    <label>Email</label>
+                    <input id="email" type="email" placeholder="user@example.com" />
+                </div>
+                <div class="field">
+                    <label>Password</label>
+                    <input id="password" type="password" placeholder="••••••••" />
+                </div>
+                <button onclick="login()">Đăng nhập</button>
+            </div>
+            <div class="row" style="margin-bottom:0">
+                <div class="field">
+                    <label>Hoặc dán JWT Token trực tiếp</label>
+                    <input id="token" placeholder="eyJhbGciOi..." />
+                </div>
+                <button class="secondary" onclick="setToken()">Dùng Token</button>
+            </div>
+        </div>
+
+        <!-- Step 2: Create Verification -->
+        <div class="card">
+            <h2>2. Tạo hồ sơ xác minh (Draft)</h2>
+            <div class="row">
+                <div class="field">
+                    <label>Verification Type</label>
+                    <select id="verificationType">
+                        <option value="government_id">government_id (CCCD/CMND)</option>
+                        <option value="passport">passport</option>
+                        <option value="business_owner">business_owner</option>
+                        <option value="manual">manual</option>
+                    </select>
+                </div>
+                <button onclick="createVerification()">Tạo Verification</button>
+            </div>
+            <div class="row" style="margin-bottom:0">
+                <div class="field">
+                    <label>Verification ID (tự động hoặc nhập)</label>
+                    <input id="verificationId" placeholder="Sẽ tự điền sau khi tạo..." />
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Upload Documents -->
+        <div class="card">
+            <h2>3. Upload giấy tờ lên Cloudinary</h2>
+            <p style="font-size:.8rem;color:#64748b;margin-bottom:.75rem;">
+                Flow: Chọn file → Request Signature → Upload Cloudinary → Confirm → Gắn vào Verification
+            </p>
+
+            <!-- ID Front -->
+            <div style="background:#0f172a;border-radius:.5rem;padding:.75rem;margin-bottom:.5rem;">
+                <div class="row">
+                    <div class="field" style="min-width:100px;max-width:150px;">
+                        <label>Loại</label>
+                        <select id="docType1"><option value="id_front" selected>CCCD Mặt trước</option></select>
+                    </div>
+                    <div class="field">
+                        <label>Chọn ảnh CCCD mặt trước</label>
+                        <input type="file" id="file1" accept="image/jpeg,image/png,image/webp" />
+                    </div>
+                    <button onclick="uploadDocument('file1','docType1')">Upload</button>
+                </div>
+            </div>
+
+            <!-- ID Back -->
+            <div style="background:#0f172a;border-radius:.5rem;padding:.75rem;margin-bottom:.5rem;">
+                <div class="row">
+                    <div class="field" style="min-width:100px;max-width:150px;">
+                        <label>Loại</label>
+                        <select id="docType2"><option value="id_back" selected>CCCD Mặt sau</option></select>
+                    </div>
+                    <div class="field">
+                        <label>Chọn ảnh CCCD mặt sau</label>
+                        <input type="file" id="file2" accept="image/jpeg,image/png,image/webp" />
+                    </div>
+                    <button onclick="uploadDocument('file2','docType2')">Upload</button>
+                </div>
+            </div>
+
+            <!-- Selfie -->
+            <div style="background:#0f172a;border-radius:.5rem;padding:.75rem;margin-bottom:.5rem;">
+                <div class="row">
+                    <div class="field" style="min-width:100px;max-width:150px;">
+                        <label>Loại</label>
+                        <select id="docType3"><option value="selfie" selected>Ảnh chân dung</option></select>
+                    </div>
+                    <div class="field">
+                        <label>Chọn ảnh selfie</label>
+                        <input type="file" id="file3" accept="image/jpeg,image/png,image/webp" />
+                    </div>
+                    <button onclick="uploadDocument('file3','docType3')">Upload</button>
+                </div>
+            </div>
+
+            <!-- Business License (optional) -->
+            <div style="background:#0f172a;border-radius:.5rem;padding:.75rem;">
+                <div class="row" style="margin-bottom:0">
+                    <div class="field" style="min-width:100px;max-width:150px;">
+                        <label>Loại</label>
+                        <select id="docType4"><option value="business_license" selected>Giấy phép KD</option></select>
+                    </div>
+                    <div class="field">
+                        <label>Chọn ảnh giấy phép (tùy chọn)</label>
+                        <input type="file" id="file4" accept="image/jpeg,image/png,image/webp" />
+                    </div>
+                    <button onclick="uploadDocument('file4','docType4')">Upload</button>
+                </div>
+            </div>
+
+            <div class="preview-grid" id="previews"></div>
+        </div>
+
+        <!-- Step 4: Submit -->
+        <div class="card">
+            <h2>4. Submit xác minh</h2>
+            <p style="font-size:.8rem;color:#64748b;margin-bottom:.75rem;">
+                Sau khi upload đủ giấy tờ, nhấn Submit để gửi hồ sơ cho hệ thống xử lý eKYC.
+            </p>
+            <button class="success" onclick="submitVerification()">Submit Verification</button>
+        </div>
+
+        <!-- Step 5: Check -->
+        <div class="card">
+            <h2>5. Kiểm tra kết quả</h2>
+            <div class="row" style="margin-bottom:0">
+                <button class="secondary" onclick="getVerification()">Xem Verification</button>
+                <button class="secondary" onclick="getMyVerifications()">Xem tất cả Verifications</button>
+            </div>
+        </div>
+
+        <!-- Log -->
+        <div class="card">
+            <h2>Log <button class="danger" style="font-size:.7rem;padding:.25rem .5rem;float:right;" onclick="clearLog()">Clear</button></h2>
+            <div class="log-box" id="logBox"></div>
+        </div>
+    </div>
+
+    <script>
+        let jwt = '';
+
+        function api() { return document.getElementById('baseUrl').value.replace(/\/+$/, ''); }
+
+        function log(msg, type = 'info') {
+            const box = document.getElementById('logBox');
+            const t = new Date().toLocaleTimeString('vi-VN');
+            box.innerHTML += `<div class="log-entry ${type}"><span class="time">[${t}]</span>${msg}</div>`;
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function clearLog() { document.getElementById('logBox').innerHTML = ''; }
+
+        function setStep(n) {
+            for (let i = 1; i <= 5; i++) {
+                const el = document.getElementById('s' + i);
+                el.className = 'step' + (i < n ? ' done' : i === n ? ' active' : '');
+            }
+        }
+
+        function loading(on) { document.getElementById('status-bar').className = on ? 'loading' : ''; }
+
+        async function request(method, path, body = null) {
+            loading(true);
+            const opts = {
+                method,
+                headers: { 'Content-Type': 'application/json' }
+            };
+            if (jwt) opts.headers['Authorization'] = `Bearer ${jwt}`;
+            if (body) opts.body = JSON.stringify(body);
+
+            try {
+                const res = await fetch(api() + path, opts);
+                const text = await res.text();
+                let data;
+                try { data = JSON.parse(text); } catch { data = text; }
+
+                if (!res.ok) {
+                    log(`<b>${method} ${path}</b> → <b>${res.status}</b><br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'error');
+                    return null;
+                }
+
+                log(`<b>${method} ${path}</b> → <b>${res.status}</b>`, 'success');
+                return data;
+            } catch (e) {
+                log(`<b>${method} ${path}</b> → ${e.message}`, 'error');
+                return null;
+            } finally {
+                loading(false);
+            }
+        }
+
+        // Step 1: Login
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            if (!email || !password) { log('Nhập email và password', 'warn'); return; }
+
+            log('Đang đăng nhập...');
+            const data = await request('POST', '/api/auth/login', { account: email, password });
+            if (data) {
+                jwt = data.accessToken || data.token || data.access_token || '';
+                if (jwt) {
+                    log(`Đăng nhập thành công! Token: ${jwt.substring(0, 30)}...`, 'success');
+                    setStep(2);
+                } else {
+                    log(`Response không chứa token. Data: ${JSON.stringify(data)}`, 'warn');
+                }
+            }
+        }
+
+        function setToken() {
+            const t = document.getElementById('token').value.trim();
+            if (!t) { log('Nhập token', 'warn'); return; }
+            jwt = t;
+            log(`Token đã được set: ${jwt.substring(0, 30)}...`, 'success');
+            setStep(2);
+        }
+
+        // Step 2: Create Verification
+        async function createVerification() {
+            if (!jwt) { log('Chưa đăng nhập', 'warn'); return; }
+
+            const type = document.getElementById('verificationType').value;
+            log(`Tạo verification (type=${type})...`);
+
+            const data = await request('POST', '/api/me/verifications', { verificationType: type });
+            if (data) {
+                const id = data.id || data.Id;
+                document.getElementById('verificationId').value = id;
+                log(`Verification đã tạo: <b>${id}</b> (status: ${data.status || data.Status})`, 'success');
+                log(`<pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+                setStep(3);
+            }
+        }
+
+        // Step 3: Upload Document (full 4-step flow)
+        async function uploadDocument(fileInputId, docTypeId) {
+            if (!jwt) { log('Chưa đăng nhập', 'warn'); return; }
+
+            const verificationId = document.getElementById('verificationId').value;
+            if (!verificationId) { log('Chưa tạo verification', 'warn'); return; }
+
+            const fileInput = document.getElementById(fileInputId);
+            const file = fileInput.files[0];
+            if (!file) { log('Chưa chọn file', 'warn'); return; }
+
+            const docType = document.getElementById(docTypeId).value;
+            log(`--- Bắt đầu upload ${docType}: ${file.name} (${(file.size / 1024).toFixed(1)} KB) ---`);
+
+            // 3a. Request Upload Signature
+            log('Step 3a: Request upload signature...');
+            const sigData = await request('POST', '/api/media/upload-signature', {
+                context: 'verification_document',
+                fileName: file.name,
+                entityId: verificationId
+            });
+            if (!sigData) return;
+
+            const sig = normalize(sigData);
+            log(`Signature nhận được: mediaUploadId=<b>${sig.mediaUploadId}</b>, publicId=${sig.publicId}`, 'success');
+
+            // 3b. Upload to Cloudinary
+            log('Step 3b: Upload file lên Cloudinary...');
+            loading(true);
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('api_key', sig.apiKey);
+            formData.append('timestamp', sig.timestamp);
+            formData.append('signature', sig.signature);
+            formData.append('public_id', sig.publicId);
+            formData.append('folder', sig.folder);
+            if (sig.eager) formData.append('eager', sig.eager);
+            if (sig.allowedFormats && sig.allowedFormats.length > 0) {
+                formData.append('allowed_formats', sig.allowedFormats.join(','));
+            }
+
+            let cloudRes;
+            try {
+                const cUrl = sig.uploadUrl;
+                const resp = await fetch(cUrl, { method: 'POST', body: formData });
+                cloudRes = await resp.json();
+                if (cloudRes.error) {
+                    log(`Cloudinary error: ${JSON.stringify(cloudRes.error)}`, 'error');
+                    loading(false);
+                    return;
+                }
+                log(`Cloudinary upload OK: secure_url=${cloudRes.secure_url}`, 'success');
+            } catch (e) {
+                log(`Cloudinary upload failed: ${e.message}`, 'error');
+                loading(false);
+                return;
+            }
+            loading(false);
+
+            // 3c. Confirm Upload
+            log(`Step 3c: Confirm upload... (public_id=${cloudRes.public_id})`);
+            const confirmData = await request('POST', '/api/media/confirm', {
+                mediaUploadId: sig.mediaUploadId,
+                publicId: cloudRes.public_id,
+                secureUrl: cloudRes.secure_url,
+                bytes: cloudRes.bytes,
+                format: cloudRes.format,
+                fileName: file.name,
+                width: cloudRes.width || null,
+                height: cloudRes.height || null,
+                durationSeconds: cloudRes.duration || null
+            });
+            if (!confirmData) return;
+            log('Confirm upload thành công!', 'success');
+
+            // 3d. Attach to Verification
+            log(`Step 3d: Gắn document (type=${docType}) vào verification...`);
+            const docData = await request('POST', `/api/me/verifications/${verificationId}/documents`, {
+                mediaUploadId: sig.mediaUploadId,
+                documentType: docType
+            });
+            if (docData) {
+                log(`Document đã gắn: type=${docType}`, 'success');
+                log(`<pre>${JSON.stringify(docData, null, 2)}</pre>`, 'info');
+                addPreview(cloudRes.secure_url, docType);
+            }
+        }
+
+        // Step 4: Submit
+        async function submitVerification() {
+            if (!jwt) { log('Chưa đăng nhập', 'warn'); return; }
+            const verificationId = document.getElementById('verificationId').value;
+            if (!verificationId) { log('Chưa tạo verification', 'warn'); return; }
+
+            log('Submitting verification...');
+            const data = await request('POST', `/api/me/verifications/${verificationId}/submit`);
+            if (data !== null) {
+                log('Verification đã submit! eKYC đang xử lý ở background...', 'success');
+                setStep(5);
+            }
+        }
+
+        // Step 5: Check result
+        async function getVerification() {
+            if (!jwt) { log('Chưa đăng nhập', 'warn'); return; }
+            const verificationId = document.getElementById('verificationId').value;
+            if (!verificationId) { log('Nhập verification ID', 'warn'); return; }
+
+            const data = await request('GET', `/api/me/verifications/${verificationId}`);
+            if (data) {
+                log(`<pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+            }
+        }
+
+        async function getMyVerifications() {
+            if (!jwt) { log('Chưa đăng nhập', 'warn'); return; }
+            const data = await request('GET', '/api/me/verifications');
+            if (data) {
+                log(`<pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+            }
+        }
+
+        // Helpers
+        function addPreview(url, docType) {
+            const labels = { id_front: 'CCCD Trước', id_back: 'CCCD Sau', selfie: 'Chân dung', business_license: 'Giấy phép KD' };
+            const grid = document.getElementById('previews');
+            grid.innerHTML += `<div class="preview-item"><img src="${url}" alt="${docType}"/><div class="label">${labels[docType] || docType}</div></div>`;
+        }
+
+        function normalize(obj) {
+            if (!obj || typeof obj !== 'object') return obj;
+            const out = {};
+            for (const [k, v] of Object.entries(obj)) {
+                const ck = k.charAt(0).toLowerCase() + k.slice(1);
+                out[ck] = v;
+            }
+            return out;
+        }
+
+        setStep(1);
+    </script>
+</body>
+</html>
