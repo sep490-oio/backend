@@ -9,16 +9,21 @@ namespace OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 
 public sealed class Bid : BaseEntity<BidId>, ICreatedAtEntity
 {
+    private readonly List<BidEvent> _bidEvents = [];
+    
     public AuctionId AuctionId { get; private set; }
     public UserId BidderId { get; private set; }
     public Money Amount { get; private set; }
-    public bool IsAutoBid { get; private set; }      // is_auto_bid
     public AutoBidId? AutoBidId { get; private set; }
+    public bool IsAutoBid { get; private set; }      // is_auto_bid
     public BidStatus Status { get; private set; }    // status
     public IPAddress? IpAddress { get; private set; } // ip_address
     public DateTime CreatedAt { get; private set; }  // created_at
     
-    public Auction Auction { get; private set; }
+    // Navigation
+    public Auction Auction { get; private set; } = null!;
+    public AutoBid? AutoBid { get; private set; }
+    public IReadOnlyCollection<BidEvent> BidEvents => _bidEvents.AsReadOnly();
 
     private Bid() { }
 

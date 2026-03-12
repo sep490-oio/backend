@@ -11,6 +11,7 @@ using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
+using CategoryId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.CategoryId;
 
 namespace OIO.Application.Context.AuctionContext.Queries.GetAuctions;
 
@@ -67,26 +68,26 @@ internal sealed class GetAuctionsQueryHandler
         {
             var searchTerm = parameters.Search.ToLower();
             query = query.Where(x =>
-                x.Item.Title.ToLower().Contains(searchTerm) ||
+                x.Item.Title.Value.ToLower().Contains(searchTerm) ||
                 (x.Item.Description != null && x.Item.Description.ToLower().Contains(searchTerm)));
         }
 
         // Price range
         if (parameters.MinPrice.HasValue)
         {
-            query = query.Where(x => x.CurrentPrice.Amount >= parameters.MinPrice.Value);
+            query = query.Where(x => x.Pricing.CurrentPrice.Amount >= parameters.MinPrice.Value);
         }
 
         if (parameters.MaxPrice.HasValue)
         {
-            query = query.Where(x => x.CurrentPrice.Amount <= parameters.MaxPrice.Value);
+            query = query.Where(x => x.Pricing.CurrentPrice.Amount <= parameters.MaxPrice.Value);
         }
 
         // Ending within N hours
         if (parameters.EndingWithinHours.HasValue)
         {
             var deadline = nowUtc.AddHours(parameters.EndingWithinHours.Value);
-            query = query.Where(x => x.Duration.EndTime <= deadline);
+            query = query.Where(x => x.Info.EndTime <= deadline);
         }
 
         // Featured
@@ -106,24 +107,24 @@ internal sealed class GetAuctionsQueryHandler
         var auctions = await query
             .Select(x => new AuctionListItemDto(
                 x.Id.Value,
-                x.Item.Title,
+                x.Item.Title.Value,
                 x.Item.Media
                     .Where(img => img.IsPrimary)
-                    .Select(img => img.Url)
+                    .Select(img => img.Info.SecureUrl)
                     .FirstOrDefault(),
-                x.CurrentPrice.ToDto(),
-                x.StartingPrice.ToDto(),
-                x.BuyNowPrice != null ? x.BuyNowPrice.ToDto() : null,
-                x.StartingPrice.Currency.Id,
+                x.Pricing.CurrentPrice.ToDto(),
+                x.Pricing.StartingPrice.ToDto(),
+                x.Pricing.BuyNowPrice != null ? x.Pricing.BuyNowPrice.ToDto() : null,
+                x.Pricing.StartingPrice.Currency.Id,
                 x.Status.Id,
                 x.BidCount,
                 x.WatchCount,
-                x.Duration.StartTime,
-                x.Duration.EndTime,
-                x.RemainingTime(nowUtc),
+                x.Info.StartTime,
+                x.Info.EndTime,
+                x.Info.RemainingTime(nowUtc),
                 x.IsEndingSoon(nowUtc, extensionThresholdMinutes),
                 x.IsFeatured,
-                x.SellerId.Value))
+                x.Item.SellerId.Value))
             .ToPagedListAsync(totalCount, parameters,cancellationToken);
 
         return auctions;

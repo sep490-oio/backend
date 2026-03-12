@@ -32,7 +32,7 @@ public static class CheckContextExtension
 
         public CheckField<TOwner, TProperty> Field<TProperty>(
             TProperty property,
-            Expression<Func<TOwner, TProperty>> exprPropertyName,
+            Expression<Func<TOwner, object>> exprPropertyName,
             string? propertyName = null,
             string? fieldName = null,
             string? separator = null)

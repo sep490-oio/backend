@@ -1,5 +1,5 @@
 using OIO.Application.Context.AuctionContext.DTOs;
-using OIO.Domain.Context.AuctionContext.Aggregates.Items;
+using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 
 namespace OIO.Application.Context.AuctionContext.Mappings;
 
@@ -9,16 +9,16 @@ public static class ItemImageMappings
     {
         return new ItemMediaDto(
             Id: media.Id.Value,
-            Url: media.Url,
-            PublicId: media.PublicId,
+            Url: media.Info.SecureUrl,
+            PublicId: media.StorageRef.PublicId,
             ResourceType: media.ResourceType,
             IsPrimary: media.IsPrimary,
             SortOrder: media.SortOrder,
-            FileName: media.FileName,
-            Bytes: media.Bytes,
-            Format: media.Format,
-            Width: media.Width,
-            Height: media.Height,
-            DurationSeconds: media.DurationSeconds);
+            FileName: media.Info.FileName,
+            Bytes: media.Info.Bytes,
+            Format: media.Info.Format,
+            Width: media.Info.Width,
+            Height: media.Info.Height,
+            DurationSeconds: media.Info.DurationSeconds);
     }
 }

@@ -71,7 +71,7 @@ internal sealed class ActivateAuctionCommandHandler
         // Schedule end job
         await _scheduler.ScheduleEndAsync(
             auction.Id.Value, 
-            auction.Duration.EndTime,
+            auction.Info.EndTime,
             cancellationToken);
 
         return UnitResult.Success<Error>();

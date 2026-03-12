@@ -15,8 +15,7 @@ internal sealed class SystemSettingConfiguration
         builder.HasKey(s => s.Id);
 
         builder.Property(s => s.Id)
-            .HasColumnName("Id")
-            .HasMaxLength(200)
+            .HasColumnName("id")
             .IsRequired()
             .HasConversion(x => x.Value, x => SystemSettingId.From(x));
 

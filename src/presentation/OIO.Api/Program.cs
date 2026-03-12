@@ -60,7 +60,6 @@ if (app.Environment.IsDevelopment() || appInfo.Features.EnableScalar)
     
     await app.ApplyMigrationsAsync();
     await DatabaseSeeder.SeedAsync(app.Services);
-    await FakeDataSeeder.SeedAsync(app.Services);
     
 }
 

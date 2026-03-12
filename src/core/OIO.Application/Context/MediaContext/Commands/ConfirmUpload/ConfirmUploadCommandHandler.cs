@@ -8,6 +8,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.Shared.Entities;
 using OIO.Domain.Context.Shared.Errors;
+using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.Shared.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
@@ -20,6 +21,7 @@ public sealed record ConfirmUploadCommand(
     string SecureUrl,
     long Bytes,
     string Format,
+    string? FileName,
     int? Width,
     int? Height,
     double? DurationSeconds) : ICommand<ConfirmUploadResponse>, IHasValidate
@@ -94,21 +96,25 @@ internal sealed class ConfirmUploadCommandHandler
             return MediaErrors.NotOwnedByUser(mediaUploadId);
         }
 
-        if (mediaUpload.PublicId != request.PublicId)
+        if (mediaUpload.StorageRef.PublicId != request.PublicId)
         {
             _logger.LogWarning("PublicId mismatch for media upload {MediaUploadId}. Expected: {ExpectedPublicId}, Actual: {ActualPublicId}",
-                mediaUploadId, mediaUpload.PublicId, request.PublicId);
+                mediaUploadId, mediaUpload.StorageRef.PublicId, request.PublicId);
             return MediaErrors.PublicIdMismatch;
         }
-        
-        var result = mediaUpload.Confirm(
+
+        var mediaInfo = MediaInfo.Create(
             secureUrl: request.SecureUrl,
+            fileName: request.FileName,
             bytes: request.Bytes,
             format: request.Format,
             width: request.Width,
             height: request.Height,
+            durationSeconds: request.DurationSeconds);
+        
+        var result = mediaUpload.Confirm(
+            mediaInfo: mediaInfo,
             orphanExpirationMinutes: await _appConfigs.Media.GetOrphanExpirationMinutesAsync(cancellationToken),
-            durationSeconds: request.DurationSeconds,
             nowUtc: _clock.UtcNow);
 
         if (result.IsFailure)

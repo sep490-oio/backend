@@ -8,14 +8,16 @@ using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
-using OIO.Domain.Context.AuctionContext.Aggregates.Items;
 using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.CatalogContext.Aggregates.Items;
+using OIO.Domain.Context.Shared.Enums;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
+using ItemId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId;
 
 namespace OIO.Application.Context.AuctionContext.Commands.CreateAuction;
 
@@ -88,52 +90,29 @@ internal sealed class CreateAuctionCommandHandler
         var nowUtc = _clock.UtcNow;
         
         var currency = Currency.FromId(request.Currency).Value;
-        var (_, isFailure, startingPrice, error) = Money.Create(request.StartingPrice, currency);
+        var (_, isFailure, auctionPricing, error) = AuctionPricing.Create(
+            startingPrice: request.StartingPrice,
+            bidIncrement: request.BidIncrement,
+            currency: currency,
+            reservePrice: request.ReservePrice,
+            buyNowPrice: request.BuyNowPrice);
         
         if (isFailure)
         {
             return error;
         }
         
-        (_, isFailure, var bidIncrement, error) = Money.Create(request.BidIncrement, currency);
+        
+        (_, isFailure, var auctionInfo, error) = AuctionInfo.Create(
+            nowUtc: nowUtc,
+            startTime: request.StartTime,
+            endTime: request.EndTime,
+            autoExtend: request.AutoExtend,
+            extensionMinutes: request.ExtensionMinutes);
         
         if (isFailure)
         {
             return error;
-        }
-        
-        (_, isFailure, var duration, error) = AuctionDuration.Create(
-            request.StartTime,
-            request.EndTime,
-            await _appConfigs.Auctions.GetMinDurationAsync(cancellationToken),
-            await _appConfigs.Auctions.GetMaxDurationAsync(cancellationToken),
-            nowUtc);
-        
-        if (isFailure)
-        {
-            return error;
-        }
-        
-        Money? reservePrice = null;
-        if (request.ReservePrice.HasValue)
-        {
-            (_, isFailure, reservePrice, error) = Money.Create(request.ReservePrice.Value, currency);
-            
-            if (isFailure)
-            {
-                return error;
-            }
-        }
-        
-        Money? buyNowPrice = null;
-        if (request.BuyNowPrice.HasValue)
-        {
-            (_, isFailure, buyNowPrice, error) = Money.Create(request.BuyNowPrice.Value, currency);
-            
-            if (isFailure)
-            {
-                return error;
-            }
         }
         
         var itemId = ItemId.From(request.ItemId);
@@ -172,16 +151,11 @@ internal sealed class CreateAuctionCommandHandler
         }
         
         (_, isFailure,var auction, error) = Auction.Create(
-            itemId, 
-            sellerId,
-            nowUtc,
-            duration,
-            startingPrice,
-            bidIncrement, 
-            reservePrice, 
-            buyNowPrice, 
-            request.AutoExtend, 
-            request.ExtensionMinutes);
+            sellerId: sellerId,
+            itemId: itemId, 
+            pricing: auctionPricing,
+            info: auctionInfo,
+            nowUtc: nowUtc);
 
         if(isFailure)
         {

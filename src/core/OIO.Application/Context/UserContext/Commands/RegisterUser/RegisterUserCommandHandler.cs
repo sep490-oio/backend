@@ -50,13 +50,7 @@ internal sealed class RegisterUserCommandHandler
         if (isFailure)
             return error;
 
-        (_, isFailure, var firstName, error) = FirstName.Create(request.FirstName);
-        if (request.FirstName is not null && isFailure)
-            return error;
-        
-        (_, isFailure, var lastName, error) = LastName.Create(request.LastName);
-        if (request.LastName is not null && isFailure)
-            return error;
+        var personName = PersonName.Create(request.FirstName, request.LastName);
         
         var existByEmail = await _dbContext.Set<User>().AnyAsync(x => x.Email == email, cancellationToken);
         
@@ -76,7 +70,7 @@ internal sealed class RegisterUserCommandHandler
             nowUtc,
             password);
 
-        user.UpdateProfile(nowUtc, firstName, lastName);
+        user.UpdateProfile(nowUtc, personName);
 
         user.AssignRole(App.Roles.Definitions.Bidder.Name, nowUtc);
         user.AssignRole(App.Roles.Definitions.User.Name, nowUtc);

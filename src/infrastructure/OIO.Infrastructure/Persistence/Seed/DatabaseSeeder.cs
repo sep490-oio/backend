@@ -43,6 +43,49 @@ public static class DatabaseSeeder
             throw;
         }
     }
+    
+    private static async Task SeedAdminUserAsync(
+        ApplicationDbContext dbContext,
+        IServiceProvider serviceProvider,
+        ILogger logger)
+    {
+        if (await dbContext.Set<User>().AnyAsync(x => x.Email == UserEmail.Create("admin@oio.com").Value))
+            return;
+
+        var passwordHasher = serviceProvider.GetRequiredService<IPasswordHasher>();
+        var clock = serviceProvider.GetRequiredService<IClock>();
+        var efaultAccountOptions = serviceProvider.GetRequiredService<IOptions<DefaultAccountOptions>>().Value;
+
+        var email = UserEmail.Create(efaultAccountOptions.Email);
+        var passwordHash = Password.Create(efaultAccountOptions.Password, passwordHasher);
+        var userName = UserName.Create(efaultAccountOptions.UserName);
+        var admin = User.Create(
+            userName: userName.Value,
+            email: email.Value,
+            now: clock.UtcNow,
+            password: passwordHash.Value
+        );
+
+        admin.ConfirmEmail(clock.UtcNow);
+        var personName = PersonName.Create(efaultAccountOptions.FirstName, efaultAccountOptions.LastName,
+            efaultAccountOptions.DisplayName);
+        admin.UpdateProfile(
+            name: personName,
+            now: clock.UtcNow);
+
+        admin.AssignRole(App.Roles.Definitions.Admin.Name, clock.UtcNow);
+        admin.AssignRole(App.Roles.Definitions.User.Name, clock.UtcNow);
+
+        dbContext.Set<User>().Add(admin);
+
+        // Clear domain events raised during seeding (we don't want to publish them)
+        admin.ClearDomainEvents();
+
+        await dbContext.SaveChangesAsync();
+
+        logger.LogInformation(
+            "Seeded admin user: {Email} (ID: {UserId})", email.Value, admin.Id);
+    }
 
     private static async Task SeedRolesAsync(ApplicationDbContext dbContext, ILogger logger)
     {

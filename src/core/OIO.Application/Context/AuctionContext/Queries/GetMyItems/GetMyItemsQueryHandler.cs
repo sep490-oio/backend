@@ -7,7 +7,7 @@ using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Application.Extensions;
-using OIO.Domain.Context.AuctionContext.Aggregates.Items;
+using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.AuctionContext.Queries.GetMyItems;
@@ -44,7 +44,7 @@ internal sealed class GetMyItemsQueryHandler
                 Id: item.Id.Value,
                 SellerId: item.SellerId.Value,
                 CategoryId: item.CategoryId.HasValue ? item.CategoryId.Value.Value : null,
-                Title: item.Title,
+                Title: item.Title.Value,
                 Description: item.Description,
                 Condition: item.Condition.Id,
                 Status: item.Status.Id,
@@ -53,17 +53,17 @@ internal sealed class GetMyItemsQueryHandler
                     .Select(media => 
                         new ItemMediaDto(
                             Id: media.Id.Value,
-                            Url: media.Url,
-                            PublicId: media.PublicId,
+                            Url: media.Info.SecureUrl,
+                            PublicId: media.StorageRef.PublicId,
                             ResourceType: media.ResourceType,
                             IsPrimary: media.IsPrimary,
                             SortOrder: media.SortOrder,
-                            FileName: media.FileName,
-                            Bytes: media.Bytes,
-                            Format: media.Format,
-                            Width: media.Width,
-                            Height: media.Height,
-                            DurationSeconds: media.DurationSeconds))
+                            FileName: media.Info.FileName,
+                            Bytes: media.Info.Bytes,
+                            Format: media.Info.Format,
+                            Width: media.Info.Width,
+                            Height: media.Info.Height,
+                            DurationSeconds: media.Info.DurationSeconds))
                     .ToList(),
                 CreatedAt: item.CreatedAt))
             .ToPagedListAsync(totalCount, parameters, cancellationToken);

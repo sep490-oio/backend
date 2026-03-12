@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
@@ -36,6 +36,8 @@ internal sealed class AuctionPriceHistoryConfiguration : IEntityTypeConfiguratio
                     .HasColumnName("currency")
                     .HasMaxLength(3)
                     .IsRequired();
+
+                currencyBuilder.Ignore(x => x.Symbol);
             });
         });
 
@@ -43,9 +45,10 @@ internal sealed class AuctionPriceHistoryConfiguration : IEntityTypeConfiguratio
             .HasColumnName("bid_id")
             .HasConversion(x =>  x.HasValue ? (Guid?)x.Value : null, x => x.HasValue ? BidId.From(x.Value) : null);
 
-        builder.Property(ph => ph.RecordedAt)
-            .HasColumnName("recorded_at")
+        builder.Property(ph => ph.CreatedAt)
+            .HasColumnName("created_at")
             .HasDefaultValueSql("CURRENT_TIMESTAMP")
             .IsRequired();
     }
 }
+

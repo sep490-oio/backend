@@ -152,6 +152,11 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .WithOne()
             .HasForeignKey<UserProfile>(p => p.Id)
             .OnDelete(DeleteBehavior.Cascade);
+        
+        builder.HasOne(u => u.SellerProfile)
+            .WithOne(sp => sp.User)
+            .HasForeignKey<SellerProfile>(p => p.Id)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasMany(u => u.Addresses)
             .WithOne()
@@ -175,6 +180,11 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.HasMany(u => u.Sessions)
             .WithOne()
+            .HasForeignKey(f => f.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(u =>  u.RefreshTokens)
+            .WithOne(rt => rt.User)
             .HasForeignKey(f => f.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 

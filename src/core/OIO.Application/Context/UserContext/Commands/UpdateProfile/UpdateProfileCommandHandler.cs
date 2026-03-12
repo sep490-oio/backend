@@ -41,24 +41,10 @@ internal sealed class UpdateProfileCommandHandler
     {
         var nowUtc = _clock.UtcNow;
 
-         var (_, isFailure, firstName, error) = FirstName.Create(request.FirstName);
+        var (_, isFailure, avatarUrl, error) = AvatarUrl.Create(request.AvatarUrl);
         
-        if (request.FirstName is not null && isFailure)
-            return error;
-
-        (_, isFailure, var lastName, error) = LastName.Create(request.LastName);
-        if (request.LastName is not null && isFailure)
-            return error;
-
-        (_, isFailure, var avatarUrl, error) = AvatarUrl.Create(request.AvatarUrl);
         if (request.AvatarUrl is not null && isFailure)
             return error;
-
-        (_, isFailure, var displayName, error) = DisplayName.Create(request.DisplayName);
-        if (request.DisplayName is not null &&  isFailure)
-            return error;
-        
-        
 
         var user = await _dbContext.GetByIdAsync<User, UserId>(
             _currentUser.UserId,
@@ -72,10 +58,13 @@ internal sealed class UpdateProfileCommandHandler
         //then FromId will return null, and GetValueOrDefault will return
         var gender = Gender.FromId($"{request.Gender}").GetValueOrDefault();
         
+        var personName = PersonName.Create(request.FirstName ?? user.Profile.Name?.FirstName, request.LastName ?? user.Profile.Name?.LastName, request.DisplayName ?? user.Profile.Name?.DisplayName);
+        
+        if (request.AvatarUrl is not null && isFailure)
+            return error;
+        
         var updateProfileR = user.UpdateProfile(
-            firstName: firstName,
-            lastName: lastName,
-            displayName: displayName,
+            name: personName,
             avatarUrl: avatarUrl,
             dateOfBirth: request.DateOfBirth,
             gender: gender,

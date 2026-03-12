@@ -89,7 +89,7 @@ public sealed class PendingUploadCleanupJob : IJob
         {
             var confirmedToDelete = toDelete
                 .Where(p => p.IsConfirmed)
-                .Select(p => (p.PublicId, ParseResourceType(p.ResourceType)))
+                .Select(p => (p.StorageRef.PublicId!, ParseResourceType(p.ResourceType)))
                 .ToList();
 
             if (confirmedToDelete.Count > 0)

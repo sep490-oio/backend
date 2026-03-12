@@ -4,144 +4,121 @@ using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.ValueObjects;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Events;
-using OIO.Domain.Context.AuctionContext.Aggregates.Items;
 using OIO.Domain.Context.AuctionContext.Errors;
+using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.SeedWork.Entities;
 using OIO.Domain.SeedWork.Errors;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Checks.Extensions;
+using ItemId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId;
 
 namespace OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 
 public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 {
     private readonly List<Bid> _bids = [];
-    // private readonly List<AuctionDeposit> _deposits = [];
     private readonly List<AutoBid> _autoBids = [];
+    private readonly List<SealedBid> _sealedBids = [];
     private readonly List<AuctionWatcher> _watchers = [];
     private readonly List<AuctionPriceHistory> _priceHistories = [];
+    private readonly List<AuctionDeposit> _deposits = [];
+    private readonly List<AuctionParticipant> _participants = [];
+    private readonly List<AuctionWinnerOffer> _winnerOffers = [];
+    private readonly List<AuctionRelistHistory> _relistHistories = [];
+    private readonly List<AuctionEmergency> _emergencies = [];
     
     public ItemId ItemId { get; private set; }
-    public UserId SellerId { get; private set; }
-    public Money StartingPrice { get; private set; }
-    public Money? ReservePrice { get; private set; }
-    public Money? BuyNowPrice { get; private set; }
-    public Money CurrentPrice { get; private set; }
-    public Money BidIncrement { get; private set; }
-    public AuctionDuration Duration { get; private set; }
+    public AuctionType AuctionType { get; private set; }
+    
+    public AuctionPricing Pricing { get; private set; }
+    public AuctionInfo Info { get; private set; }
+
+    // ── Result ──
     public DateTime? ActualEndTime { get; private set; }
-
     public AuctionStatus Status { get; private set; }
-    public UserId? CurrentWinnerId { get; private set; }
+    public UserId? WinnerId { get; private set; }
 
-    public bool AutoExtend { get; private set; }
-    public int ExtensionMinutes { get; private set; }
+    // ── VO: PriorityInfo ──
+    // priority_score, priority_reason
+    public PriorityInfo Priority { get; private set; }
+
+    // ── Admin assignment ──
+    public UserId? AssignedAdminId { get; private set; }
+    public DateTime? AssignedAt { get; private set; }
+
+    // ── Counters/Flags ──
     public bool IsFeatured { get; private set; }
-
     public int ViewCount { get; private set; }
     public int BidCount { get; private set; }
     public int WatchCount { get; private set; }
-    public int ExtensionCount { get; private set; }
 
+    // ── Audit ──
     public DateTime CreatedAt { get; private set; }
     public DateTime? ModifiedAt { get; private set; }
-
+    
+    // Navigation — child entities
     public Item Item { get; private set; } = null!;
     public IReadOnlyCollection<Bid> Bids => _bids.AsReadOnly();
-    // public IReadOnlyCollection<AuctionDeposit> Deposits => _deposits.AsReadOnly();
     public IReadOnlyCollection<AutoBid> AutoBids => _autoBids.AsReadOnly();
     public IReadOnlyCollection<AuctionWatcher> Watchers => _watchers.AsReadOnly();
     public IReadOnlyCollection<AuctionPriceHistory> PriceHistories => _priceHistories.AsReadOnly();
+    public IReadOnlyCollection<AuctionDeposit> Deposits => _deposits.AsReadOnly();
+    public IReadOnlyCollection<AuctionParticipant> Participants => _participants.AsReadOnly();
+    public IReadOnlyCollection<SealedBid> SealedBids => _sealedBids.AsReadOnly();
+    public IReadOnlyCollection<AuctionWinnerOffer> WinnerOffers => _winnerOffers.AsReadOnly();
+    public IReadOnlyCollection<AuctionRelistHistory> RelistHistories => _relistHistories.AsReadOnly();
+    public IReadOnlyCollection<AuctionEmergency> Emergencies => _emergencies.AsReadOnly();
 
     private Auction() { }
 
     private Auction(
         AuctionId id,
         ItemId itemId,
-        UserId sellerId,
-        DateTime nowUtc,
-        AuctionDuration duration,
-        Money startingPrice,
-        Money bidIncrement,
-        Money? reservePrice = null,
-        Money? buyNowPrice = null,
-        bool autoExtend = true,
-        int extensionMinutes = 5)
+        AuctionPricing pricing,
+        AuctionInfo info,
+        DateTime nowUtc)
         : base(id)
     {
         ItemId = itemId;
-        SellerId = sellerId;
-        StartingPrice = startingPrice;
-        ReservePrice = reservePrice;
-        BuyNowPrice = buyNowPrice;
-        CurrentPrice = startingPrice;
-        BidIncrement = bidIncrement;
-        Duration = duration;
+        Pricing = pricing;
+        Info = info;
         Status = AuctionStatus.Draft;
-        AutoExtend = autoExtend;
-        ExtensionMinutes = extensionMinutes;
         IsFeatured = false;
         ViewCount = 0;
         BidCount = 0;
         WatchCount = 0;
-        ExtensionCount = 0;
         CreatedAt = nowUtc;
     }
 
     public static Result<Auction, Error> Create(
-        ItemId itemId,
         UserId sellerId,
-        DateTime nowUtc,
-        AuctionDuration duration,
-        Money startingPrice,
-        Money bidIncrement,
-        Money? reservePrice = null,
-        Money? buyNowPrice = null,
-        bool autoExtend = true,
-        int extensionMinutes = 5)
+        ItemId itemId,
+        AuctionPricing pricing,
+        AuctionInfo info,
+        DateTime nowUtc)
     {
-        var check = Auction.Check(isInvariant: true);
-
-        check
-            .Field(reservePrice, x => x.ReservePrice)
-            .WhenHasValue(x => x.GreaterThanOrEqual(startingPrice))
-            .Field(buyNowPrice, x => x.BuyNowPrice)
-            .WhenHasValue(x => x.GreaterThan(startingPrice))
-            .Field(extensionMinutes, x => x.ExtensionMinutes)
-            .NonNegative();
-        
-        var resultCheck = check.ToUnitResult();
-        
-        if (resultCheck.IsFailure)
-        {
-            return resultCheck.Error;
-        }
-
         var auction = new Auction(
-            AuctionId.From(Guid.CreateVersion7()),
-            itemId,
-            sellerId,
-            nowUtc,
-            duration,
-            startingPrice,
-            bidIncrement, 
-            reservePrice,
-            buyNowPrice,
-            autoExtend,
-            extensionMinutes);
+            id: AuctionId.From(Guid.CreateVersion7()),
+            itemId: itemId,
+            pricing: pricing,
+            info: info,
+            nowUtc: nowUtc);
 
         auction._priceHistories.Add(
-            AuctionPriceHistory.Create(auction.Id, startingPrice, nowUtc));
+            AuctionPriceHistory.Create(
+                auctionId: auction.Id,
+                price: pricing.StartingPrice,
+                recordedAt: nowUtc));
         
         auction.RaiseDomainEvent(new AuctionCreatedEvent(
-            $"{auction.Id}", 
-            $"{itemId}",
-            $"{sellerId}",
-            startingPrice.Amount,
-            duration.StartTime,
-            duration.EndTime,
-            nowUtc));
+            AuctionId: $"{auction.Id}", 
+            ItemId: $"{itemId}",
+            SellerId: $"{sellerId}",
+            StartingPrice: pricing.StartingPrice.Amount,
+            StartTime: info.StartTime,
+            EndTime: info.EndTime,
+            OccurredAt: nowUtc));
 
         return Result.Success<Auction, Error>(auction);
     }
@@ -198,7 +175,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         if (winningBid is not null)
         {
             winningBid.MarkAsWon();
-            CurrentWinnerId = winningBid.BidderId;
+            WinnerId = winningBid.BidderId;
 
             // Mark all other active/outbid bids as cancelled
             foreach (var bid in _bids.Where(b =>
@@ -227,10 +204,10 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
         RaiseDomainEvent(new AuctionEndedEvent(
             $"{Id}", 
-            $"{CurrentWinnerId}", 
-            CurrentPrice.Amount,
+            $"{WinnerId}", 
+            Pricing.CurrentPrice.Amount,
             BidCount,
-            IsReserveMet,
+            Pricing.ReserveMet,
             nowUtc));
         
         return UnitResult.Success<Error>();
@@ -253,10 +230,10 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
             RaiseDomainEvent(new AuctionFailedEvent(
                 AuctionId: $"{Id}",
-                SellerId: $"{SellerId}",
+                SellerId: $"{Item.SellerId}",
                 Reason: "No bids received",
-                FinalPrice: CurrentPrice.Amount,
-                Currency: CurrentPrice.Currency.Id,
+                FinalPrice: Pricing.CurrentPrice.Amount,
+                Currency: Pricing.CurrentPrice.Currency.Id,
                 TotalBids: 0,
                 OccurredAt: nowUtc));
 
@@ -264,17 +241,17 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         }
 
         // Case 2: Has bids but reserve not met
-        if (!IsReserveMet)
+        if (!Pricing.ReserveMet)
         {
             var failResult = MarkAsFailed(nowUtc);
             if (failResult.IsFailure) return failResult;
 
             RaiseDomainEvent(new AuctionFailedEvent(
                 AuctionId: $"{Id}",
-                SellerId: $"{SellerId}",
+                SellerId: $"{Item.SellerId}",
                 Reason: "Reserve price not met",
-                FinalPrice: CurrentPrice.Amount,
-                Currency: CurrentPrice.Currency.Id,
+                FinalPrice: Pricing.CurrentPrice.Amount,
+                Currency: Pricing.CurrentPrice.Currency.Id,
                 TotalBids: BidCount,
                 OccurredAt: nowUtc));
 
@@ -289,10 +266,10 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
         RaiseDomainEvent(new AuctionSoldEvent(
             AuctionId: $"{Id}",
-            WinnerId: $"{CurrentWinnerId}",
-            SellerId: $"{SellerId}",
-            FinalPrice: CurrentPrice.Amount,
-            Currency: CurrentPrice.Currency.Id,
+            WinnerId: $"{WinnerId}",
+            SellerId: $"{Item.SellerId}",
+            FinalPrice: Pricing.CurrentPrice.Amount,
+            Currency: Pricing.CurrentPrice.Currency.Id,
             TotalBids: BidCount,
             OccurredAt: nowUtc));
 
@@ -300,15 +277,15 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
     }
      
     /// <summary>
-    /// Get the runner-up bidder (second highest unique bidder).
+    /// Get the runner-up bidder (second-highest unique bidder).
     /// Used when winner doesn't pay.
     /// </summary>
     public Bid? GetRunnerUpBid()
     {
-        if (CurrentWinnerId is null) return null;
+        if (WinnerId is null) return null;
 
         return _bids
-            .Where(b => b.BidderId != CurrentWinnerId &&
+            .Where(b => b.BidderId != WinnerId &&
                         (b.Status == BidStatus.Outbid || b.Status == BidStatus.Cancelled))
             .OrderByDescending(b => b.Amount.Amount)
             .FirstOrDefault();
@@ -331,9 +308,16 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         var oldWinnerBid = GetCurrentWinningBid();
         oldWinnerBid?.Cancel();
 
+        var newPrice = Pricing.WithNewBid(runnerUp.Amount.Amount);
+
+        if (newPrice.IsFailure)
+        {
+            return newPrice.Error;
+        }
+
         // Mark runner-up as new winner
-        CurrentWinnerId = runnerUp.BidderId;
-        CurrentPrice = runnerUp.Amount;
+        WinnerId = runnerUp.BidderId;
+        Pricing = newPrice.Value ;
         runnerUp.MarkAsWon();
         ModifiedAt = nowUtc;
 
@@ -342,10 +326,10 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
         RaiseDomainEvent(new AuctionSoldEvent(
             AuctionId: $"{Id}",
-            WinnerId: $"{CurrentWinnerId}",
-            SellerId: $"{SellerId}",
-            FinalPrice: CurrentPrice.Amount,
-            Currency: CurrentPrice.Currency.Id,
+            WinnerId: $"{WinnerId}",
+            SellerId: $"{Item.SellerId}",
+            FinalPrice: Pricing.CurrentPrice.Amount,
+            Currency: Pricing.CurrentPrice.Currency.Id,
             TotalBids: BidCount,
             OccurredAt: nowUtc));
 
@@ -361,10 +345,10 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             return result.Error;
         }
 
-        if (CurrentWinnerId is null)
+        if (WinnerId is null)
             return AuctionErrors.Auction.InvalidState(Status.Id, "mark as sold without a winner");
 
-        if (!IsReserveMet)
+        if (!Pricing.ReserveMet)
             return AuctionErrors.Auction.InvalidState(Status.Id, "mark as sold when reserve price not met");
 
         Status = AuctionStatus.Sold;
@@ -463,7 +447,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
                     OutbidBidderId: $"{previousBidderId}", 
                     NewHighBidderId: $"{bidderId}",
                     NewHighestBid: amount.Amount,
-                    OutbidAmount: CurrentPrice.Amount,
+                    OutbidAmount: Pricing.CurrentPrice.Amount,
                     OccurredAt: nowUtc));
             }
         }
@@ -482,7 +466,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         _bids.Add(bid);
 
         // Update auction state
-        UpdatePriceAndCount(amount, bid.Id, nowUtc);
+        UpdatePriceAndCount(amount.Amount, bid.Id, nowUtc);
 
         // Auto-extend check
         result = TryAutoExtend(
@@ -502,7 +486,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             BidId: $"{bid.Id}",
             BidderId: $"{bidderId}",
             Amount: amount.Amount, 
-            PreviousHighestBid: CurrentPrice.Amount,
+            PreviousHighestBid: Pricing.CurrentPrice.Amount,
             IsAutoBid: false,
             PreviousBidderId:  previousBidderId?.ToString(),
             BidCount: BidCount,
@@ -541,7 +525,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             return result.Error;
         }
 
-        if (BuyNowPrice is null)
+        if (Pricing.BuyNowPrice is null)
             return AuctionErrors.Auction.NotSupportBuyNow;
 
         // Cancel all existing active/winning bids
@@ -558,24 +542,31 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         }
 
         // Place winning bid at buy now price
-        var bid = Bid.Create(Id, buyerId, BuyNowPrice, autoBidId: null, ipAddress, nowUtc);
+        var bid = Bid.Create(Id, buyerId, Pricing.BuyNowPrice, autoBidId: null, ipAddress, nowUtc);
         bid.MarkAsWon();
         _bids.Add(bid);
 
+        var buyNowResult = Pricing.WithBuyNow();
+
+        if (buyNowResult.IsFailure)
+        {
+            return buyNowResult.Error;
+        }
+
         // Update auction state
-        CurrentPrice = BuyNowPrice;
-        CurrentWinnerId = buyerId;
+        Pricing = buyNowResult.Value;
+        WinnerId = buyerId;
         BidCount++;
         ActualEndTime = nowUtc;
         Status = AuctionStatus.Sold;
         ModifiedAt = nowUtc;
 
-        _priceHistories.Add(AuctionPriceHistory.Create(Id, BuyNowPrice,nowUtc, bid.Id));
+        _priceHistories.Add(AuctionPriceHistory.Create(Id, Pricing.BuyNowPrice!,nowUtc, bid.Id));
 
         RaiseDomainEvent(new BuyNowExecutedEvent(
             $"{Id}",
             $"{buyerId}", 
-            BuyNowPrice.Amount,
+            Pricing.BuyNowPrice!.Amount,
             nowUtc));
 
         return bid;
@@ -604,9 +595,9 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         }
 
         var check = AutoBid.Check(isInvariant: true)
-            .Field(maxAmount, x => x.MaxAmount)
-            .GreaterThanOrEqual(CurrentPrice)
-            .Field(incrementAmount, x => x.IncrementAmount)
+            .Field(maxAmount, x => x.Budget.MaxAmount)
+            .GreaterThanOrEqual(Pricing.CurrentPrice)
+            .Field(incrementAmount, x => x.Budget.IncrementAmount)
             .WhenHasValue(x => x.GreaterThan(Money.Zero(maxAmount.Currency)));
         
         var validationResult = check.ToResult();
@@ -631,12 +622,17 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             return existing;
         }
 
+        var budget = AutoBidBudget.Create(maxAmount.Amount, Pricing.Currency, incrementAmount?.Amount);
+
+        if (budget.IsFailure)
+        {
+            return budget.Error;
+        }
+
         var autoBid = AutoBid.Create(
             Id,
             bidderId,
-            maxAmount,
-            CurrentPrice,
-            incrementAmount,
+            budget.Value,
             nowUtc);
         
         _autoBids.Add(autoBid);
@@ -718,7 +714,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             .Where(ab => ab.BidderId != excludeBidderId &&
                          ab.IsEnabled &&
                          ab.Status == AutoBidStatus.Active)
-            .OrderByDescending(ab => ab.MaxAmount.Amount)
+            .OrderByDescending(ab => ab.Budget.MaxAmount.Amount)
             .ThenBy(ab => ab.CreatedAt)
             .ToList();
 
@@ -861,7 +857,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         autoBid.UpdateCurrentAmount(bidAmount, nowUtc);
 
         // Update auction state
-        UpdatePriceAndCount(bidAmount, bid.Id, nowUtc);
+        UpdatePriceAndCount(bidAmount.Amount, bid.Id, nowUtc);
 
         // Events
         RaiseDomainEvent(new BidPlacedEvent(
@@ -869,7 +865,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             BidId: $"{bid.Id}",
             BidderId: $"{autoBid.BidderId}",
             Amount: bidAmount.Amount, 
-            PreviousHighestBid: CurrentPrice.Amount,
+            PreviousHighestBid: Pricing.CurrentPrice.Amount,
             IsAutoBid: true,
             PreviousBidderId:  previousBidderId?.ToString(),
             BidCount: BidCount,
@@ -883,7 +879,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
                 OutbidBidderId: $"{previousBidderId}", 
                 NewHighBidderId: $"{autoBid.BidderId}",
                 NewHighestBid: bidAmount.Amount,
-                OutbidAmount: CurrentPrice.Amount,
+                OutbidAmount: Pricing.CurrentPrice.Amount,
                 OccurredAt: nowUtc));
         }
     }
@@ -901,7 +897,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             return AuctionErrors.Watcher.AlreadyWatching;
         
         
-        if (userId == SellerId)
+        if (userId == Item.SellerId)
             return AuctionErrors.Watcher.CannotWatchOwnAuction;
 
         var watcher = new AuctionWatcher(
@@ -948,7 +944,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             return AuctionErrors.Watcher.NotFound(Id, userId);
         }
 
-        if (userId == SellerId)
+        if (userId == Item.SellerId)
         {
             return AuctionErrors.Watcher.CannotWatchOwnAuction;
         }
@@ -985,8 +981,8 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
     public Money GetMinimumBidAmount()
     {
         return BidCount == 0
-            ? StartingPrice
-            : CurrentPrice + BidIncrement;
+            ? Pricing.StartingPrice
+            : Pricing.CurrentPrice + Pricing.BidIncrement;
     }
     
     public Bid? GetCurrentWinningBid()
@@ -995,39 +991,32 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             .Where(b => b.Status == BidStatus.Winning)
             .MaxBy(b => b.Amount.Amount);
     }
-    
-    public bool IsReserveMet =>
-        ReservePrice is null || CurrentPrice >= ReservePrice;
-
-    public bool HasBuyNow => BuyNowPrice is not null;
-
-    public TimeSpan RemainingTime(DateTime nowUtc) =>
-        Duration.RemainingTime(nowUtc);
 
     public bool IsEndingSoon(DateTime nowUtc, TimeSpan extensionThresholdMinutes) =>
         Status == AuctionStatus.Active &&
-        RemainingTime(nowUtc) <= extensionThresholdMinutes;
-    
-    public IReadOnlyList<Bid> GetBidsByBidder(Guid bidderId) =>
-        _bids.Where(b => b.BidderId == bidderId).ToList().AsReadOnly();
-    
-    public AutoBid? GetAutoBidForBidder(Guid bidderId) =>
-        _autoBids.FirstOrDefault(ab => ab.BidderId == bidderId);
-    public bool IsWatchedBy(Guid userId) =>
-        _watchers.Any(w => w.UserId == userId);
+        Info.RemainingTime(nowUtc) <= extensionThresholdMinutes;
     
     // ==================================================================================
     //                              PRIVATE HELPERS
     // ==================================================================================
-    private void UpdatePriceAndCount(
-        Money newPrice,
+    private UnitResult<Error> UpdatePriceAndCount(
+        decimal newPrice,
         BidId bidId,
         DateTime nowUtc)
     {
-        CurrentPrice = newPrice;
+        var result = Pricing.WithNewBid(newPrice);
+
+        if (result.IsFailure)
+        {
+            return result.Error;
+        }
+        
+        Pricing = result.Value;
         BidCount++;
         ModifiedAt = nowUtc;
-        _priceHistories.Add(AuctionPriceHistory.Create(Id, newPrice, nowUtc, bidId));
+        _priceHistories.Add(AuctionPriceHistory.Create(Id, Pricing.CurrentPrice, nowUtc, bidId));
+
+        return UnitResult.Success<Error>();
     }
     
     private UnitResult<Error> TryAutoExtend(
@@ -1037,29 +1026,27 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         TimeSpan maxDuration,
         BidId triggerByBidId)
     {
-        if (!AutoExtend || ExtensionCount >= maxExtensions || !IsEndingSoon(nowUtc, extensionThresholdMinutes)) 
+        if (!Info.AutoExtend || Info.ExtensionCount >= maxExtensions || !IsEndingSoon(nowUtc, extensionThresholdMinutes)) 
             return UnitResult.Success<Error>();
 
-        var oldEndTime = Duration.EndTime;
-        var extension = TimeSpan.FromMinutes(ExtensionMinutes);
+        var oldEndTime = Info.EndTime;
         
-        var durationResult = Duration.Extend(extension, maxDuration);
+        var durationResult = Info.Extend(maxDuration);
         if (durationResult.IsFailure)
         {
             return durationResult.Error;
         }
 
-        Duration = durationResult.Value ;
-        ExtensionCount++;
+        Info = durationResult.Value ;
         ModifiedAt = nowUtc;
 
         RaiseDomainEvent(new AuctionExtendedEvent(
             AuctionId: $"{Id}",
             TriggerByBidId: $"{triggerByBidId}",
             PreviousEndTime: oldEndTime, 
-            NewEndTime: Duration.EndTime,
-            ExtensionMinutes: ExtensionMinutes,
-            ExtensionCount: ExtensionCount,
+            NewEndTime: Info.EndTime,
+            ExtensionMinutes: Info.ExtensionMinutes,
+            ExtensionCount: Info.ExtensionCount,
             OccurredAt: nowUtc));
         
         return UnitResult.Success<Error>();
@@ -1070,7 +1057,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         if (!Status.AcceptsBids)
             return AuctionErrors.Auction.InvalidState(Status.Id, "place bid");
 
-        if (Duration.HasEnded(nowUtc))
+        if (Info.HasEnded(nowUtc))
             return AuctionErrors.Auction.Expired;
         
         return UnitResult.Success<Error>();
@@ -1078,7 +1065,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
     
     private UnitResult<Error> EnsureNotSeller(UserId bidderId)
     {
-        return bidderId == SellerId ? 
+        return bidderId == Item.SellerId ? 
             AuctionErrors.Auction.SelfBid :
             UnitResult.Success<Error>();
     }

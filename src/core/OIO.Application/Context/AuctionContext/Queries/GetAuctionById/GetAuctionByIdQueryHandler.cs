@@ -44,7 +44,7 @@ internal sealed class GetAuctionByIdQueryHandler
                 .Include(a => Enumerable.OrderByDescending<Bid, DateTime>(a.Bids, b => b.CreatedAt))
                 .Include(a => a.AutoBids)
                 .Include(a => a.Watchers)
-                .Include(a => a.PriceHistories.OrderByDescending(ph => ph.RecordedAt))
+                .Include(a => a.PriceHistories.OrderByDescending(ph => ph.CreatedAt))
                 .Include(x => x.Item)
                 .AsSplitQuery(),
             cancellationToken: cancellationToken);
@@ -67,7 +67,7 @@ internal sealed class GetAuctionByIdQueryHandler
                 .Select(b => b.ToDto())
                 .ToList(),
             PriceHistory: auction.PriceHistories
-                .OrderByDescending(ph => ph.RecordedAt)
+                .OrderByDescending(ph => ph.CreatedAt)
                 .Select(ph => ph.ToDto())
                 .ToList());
     }

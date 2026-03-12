@@ -1,4 +1,5 @@
 ﻿using CSharpFunctionalExtensions;
+using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.Shared.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
@@ -12,8 +13,8 @@ public sealed class MediaUpload : BaseEntity<MediaUploadId>, ICreatedAtEntity
     public string Context { get; private set; } = null!;
     public string ResourceType { get; private set; } = null!;
     public Guid? EntityId { get; private set; }
-    public string PublicId { get; private set; } = null!;
-    public string Folder { get; private set; } = null!;
+    public StorageRef StorageRef { get; private set; }
+    public MediaInfo Info { get; private set; }
     public bool IsConfirmed { get; private set; }
     public bool IsLinked { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -21,13 +22,6 @@ public sealed class MediaUpload : BaseEntity<MediaUploadId>, ICreatedAtEntity
     public DateTime? ConfirmedAt { get; private set; }
     public DateTime? LinkedAt { get; private set; }
 
-    public string? SecureUrl { get; private set; }
-    public string? FileName { get; private set; }
-    public long? Bytes { get; private set; }
-    public string? Format { get; private set; }
-    public int? Width { get; private set; }
-    public int? Height { get; private set; }
-    public double? DurationSeconds { get; private set; }
 
     private MediaUpload() { }
 
@@ -36,9 +30,8 @@ public sealed class MediaUpload : BaseEntity<MediaUploadId>, ICreatedAtEntity
         string context,
         string resourceType,
         Guid? entityId,
-        string publicId,
-        string folder,
-        string? fileName,
+        MediaInfo mediaInfo,
+        StorageRef storageRef,
         TimeSpan signatureExpirationMinutes,
         DateTime nowUtc)
     {
@@ -49,9 +42,8 @@ public sealed class MediaUpload : BaseEntity<MediaUploadId>, ICreatedAtEntity
             Context = context,
             ResourceType = resourceType,
             EntityId = entityId,
-            PublicId = publicId,
-            Folder = folder,
-            FileName = fileName,
+            Info = mediaInfo,
+            StorageRef = storageRef,
             IsConfirmed = false,
             IsLinked = false,
             CreatedAt = nowUtc,
@@ -62,13 +54,8 @@ public sealed class MediaUpload : BaseEntity<MediaUploadId>, ICreatedAtEntity
     public bool IsExpired(DateTime nowUtc) => !IsConfirmed && nowUtc > ExpiresAt;
 
     public UnitResult<Error> Confirm(
-        string secureUrl,
-        long bytes,
-        string format,
-        int? width,
-        int? height,
+        MediaInfo mediaInfo,
         TimeSpan orphanExpirationMinutes,
-        double? durationSeconds,
         DateTime nowUtc)
     {
         if (IsConfirmed)
@@ -77,12 +64,7 @@ public sealed class MediaUpload : BaseEntity<MediaUploadId>, ICreatedAtEntity
         if (IsExpired(nowUtc))
             return Error.Conflict("Media.SignatureExpired", "Upload signature has expired.");
 
-        SecureUrl = secureUrl;
-        Bytes = bytes;
-        Format = format;
-        Width = width;
-        Height = height;
-        DurationSeconds = durationSeconds;
+        Info = mediaInfo;
         IsConfirmed = true;
         ConfirmedAt = nowUtc;
 

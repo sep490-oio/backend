@@ -1,4 +1,5 @@
 ﻿using CSharpFunctionalExtensions;
+using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
@@ -53,13 +54,15 @@ internal sealed class PublishAuctionCommandHandler
         var auctionId = AuctionId.From(request.AuctionId);
         var auction = await _dbContext.GetByIdAsync<Auction, AuctionId>(
             id: auctionId,
+            queryBuilder: query => query
+                .Include(x => x.Item),
             cancellationToken: cancellationToken);
 
         if (auction is null)
             return AuctionErrors.Auction.NotFound(auctionId);
 
         // Only the seller can publish their auction
-        if (auction.SellerId != _currentUser.UserId)
+        if (auction.Item.SellerId != _currentUser.UserId)
             return AuctionErrors.Auction.OnlyOwnerCanPublish;
         
         var nowUtc = _clock.UtcNow;
@@ -73,7 +76,7 @@ internal sealed class PublishAuctionCommandHandler
         
         await _scheduler.ScheduleStartAsync(
             auction.Id.Value,
-            auction.Duration.StartTime,
+            auction.Info.StartTime,
             cancellationToken);
 
         return UnitResult.Success<Error>();

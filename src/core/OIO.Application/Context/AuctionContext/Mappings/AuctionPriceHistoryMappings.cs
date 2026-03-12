@@ -10,6 +10,6 @@ public static class AuctionPriceHistoryMappings
         return new PriceHistoryDto(
             Price: ph.Price.ToDto(),
             BidId: ph.BidId?.Value,
-            RecordedAt: ph.RecordedAt);
+            RecordedAt: ph.CreatedAt);
     }
 }

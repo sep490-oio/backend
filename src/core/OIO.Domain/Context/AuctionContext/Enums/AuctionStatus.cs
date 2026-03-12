@@ -14,21 +14,19 @@ public sealed class AuctionStatus : EnumValueObject<AuctionStatus>
 
     public AuctionStatus(string id) : base(id) { }
 
-    public bool CanTransitionTo(AuctionStatus target)
-    {
-        return (this, target) switch
+    public bool AcceptsBids => this == Active;
+
+    public bool CanTransitionTo(AuctionStatus target) =>
+        (Id, target.Id) switch
         {
-            _ when this == Draft && target == Pending => true,
-            _ when this == Draft && target == Cancelled => true,
-            _ when this == Pending && target == Active => true,
-            _ when this == Pending && target == Cancelled => true,
-            _ when this == Active && target == Ended => true,
-            _ when this == Active && target == Cancelled => true,
-            _ when this == Ended && target == Sold => true,
-            _ when this == Ended && target == Failed => true,
+            ("draft", "pending") => true,
+            ("pending", "active") => true,
+            ("pending", "cancelled") => true,
+            ("active", "ended") => true,
+            ("active", "cancelled") => true,
+            ("active", "sold") => true,
+            ("ended", "sold") => true,
+            ("ended", "failed") => true,
             _ => false
         };
-    }
-
-    public bool AcceptsBids => this == Active;
 }

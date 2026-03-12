@@ -7,7 +7,6 @@ using OIO.Application.Context.AuctionContext.Hubs;
 using OIO.Application.Context.AuctionContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Events;
-using OIO.Domain.Context.AuctionContext.Aggregates.Items;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;

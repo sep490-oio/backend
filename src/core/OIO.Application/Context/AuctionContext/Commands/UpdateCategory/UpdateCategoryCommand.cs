@@ -5,11 +5,13 @@ using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
-using OIO.Domain.Context.AuctionContext.Aggregates.Categories;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.CatalogContext.Aggregates.Categories;
+using OIO.Domain.Context.CatalogContext.ValueObjects;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
+using CategoryId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.CategoryId;
 
 namespace OIO.Application.Context.AuctionContext.Commands.UpdateCategory;
 
@@ -80,22 +82,28 @@ internal sealed class UpdateCategoryCommandHandler
             return AuctionErrors.Category.NotFound(categoryId);
 
         // Check slug uniqueness if changing
-        if (request.Slug is not null && request.Slug != category.Slug)
+        Slug? slug = null;
+        if (request.Slug is not null && request.Slug != category.Slug.Value)
         {
-            var slugNormalized = request.Slug.ToLowerInvariant();
+             (_, var isFailure, slug, var error) = Slug.Create(request.Slug);
+
+            if (isFailure)
+            {
+                return error;
+            }
+            
             var slugExists = await _dbContext.Set<Category>()
-                .AnyAsync(x => x.Slug == slugNormalized && x.Id != categoryId, cancellationToken);
+                .AnyAsync(x => x.Slug.Value == slug.Value && x.Id != categoryId, cancellationToken);
 
             if (slugExists)
-                return AuctionErrors.Category.SlugAlreadyExists(slugNormalized);
+                return AuctionErrors.Category.SlugAlreadyExists(slug.Value);
         }
 
         category.Update(
             nowUtc: _clock.UtcNow,
             name: request.Name,
-            slug: request.Slug,
+            slug: slug,
             description: request.Description,
-            iconUrl: request.IconUrl,
             isActive: request.IsActive,
             sortOrder: request.SortOrder);
 

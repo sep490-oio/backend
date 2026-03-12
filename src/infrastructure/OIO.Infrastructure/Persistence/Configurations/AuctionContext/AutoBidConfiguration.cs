@@ -37,51 +37,30 @@ internal sealed class AutoBidConfiguration : IEntityTypeConfiguration<AutoBid>
             .IsRequired();
 
         // Money value objects mapped as owned types
-        builder.ComplexProperty(ab => ab.MaxAmount, money =>
+        builder.ComplexProperty(ab => ab.Budget, budget =>
         {
-            money.Property(m => m.Amount)
+            budget.Property("_maxAmount")
                 .HasColumnName("max_amount")
-                .HasColumnType("numeric(18,2)")
+                .HasPrecision(18, 2)
                 .IsRequired();
 
-            money.ComplexProperty(m => m.Currency, currencyBuilder =>
-            {
-                currencyBuilder.Property(x => x.Id)
-                    .HasColumnName("max_amount_currency")
-                    .HasMaxLength(3)
-                    .IsRequired();
-            });
-        });
-
-        builder.ComplexProperty(ab => ab.CurrentAmount, money =>
-        {
-            money.Property(m => m.Amount)
+            budget.Property("_currentAmount")
                 .HasColumnName("current_amount")
-                .HasColumnType("numeric(18,2)")
+                .HasPrecision(18, 2)
                 .IsRequired();
 
-            money.ComplexProperty(m => m.Currency, currencyBuilder =>
-            {
-                currencyBuilder.Property(x => x.Id)
-                    .HasColumnName("current_amount_currency")
-                    .HasMaxLength(3)
-                    .IsRequired();
-            });
-        });
-
-        builder.ComplexProperty(ab => ab.IncrementAmount, money =>
-        {
-            money.Property(m => m.Amount)
+            budget.Property("_incrementAmount")
                 .HasColumnName("increment_amount")
-                .HasColumnType("numeric(18,2)");
+                .HasPrecision(18, 2);
 
-            money.ComplexProperty(m => m.Currency, currencyBuilder =>
-            {
-                currencyBuilder.Property(x => x.Id)
-                    .HasColumnName("current_amount_currency")
-                    .HasMaxLength(3)
-                    .IsRequired(false);
-            });
+            budget.Property("_reservedAmount")
+                .HasColumnName("reserved_amount")
+                .HasPrecision(18, 2)
+                .IsRequired();
+
+            budget.Property("_currency")
+                .HasColumnName("currency")
+                .HasMaxLength(3);
         });
         
         builder.ComplexProperty(x => x.Status, statusBuilder =>
@@ -102,6 +81,15 @@ internal sealed class AutoBidConfiguration : IEntityTypeConfiguration<AutoBid>
         builder.Property(ab => ab.LastAutoBidAt)
             .HasColumnName("last_auto_bid_at");
 
+        builder.Property(ab => ab.StopReason)
+            .HasColumnName("stop_reason");
+        
+        builder.Property(ab => ab.StoppedAt)
+            .HasColumnName("stopped_at");
+
+        builder.Property(ab => ab.LastValidationAt)
+            .HasColumnName("last_validation_at");
+
         builder.Property(ab => ab.CreatedAt)
             .HasColumnName("created_at")
             .HasDefaultValueSql("CURRENT_TIMESTAMP")
@@ -120,5 +108,12 @@ internal sealed class AutoBidConfiguration : IEntityTypeConfiguration<AutoBid>
 
         builder.HasIndex(ab => ab.BidderId)
             .HasDatabaseName("idx_auction_auto_bids_bidder_id");
+        
+        builder.HasIndex(ab => ab.LastValidationAt)
+            .HasDatabaseName("idx_auction_auto_bids_last_validation_at");
+        
+        builder.HasIndex(ab => ab.StoppedAt)
+            .HasDatabaseName("idx_auction_auto_bids_stopped_at")
+            .HasFilter("stopped_at IS NOT NULL");
     }
 }

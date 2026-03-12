@@ -10,17 +10,20 @@ using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.AppDefinitions;
-using OIO.Domain.Context.AuctionContext.Aggregates.Categories;
-using OIO.Domain.Context.AuctionContext.Aggregates.Items;
 using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.CatalogContext.Aggregates.Categories;
+using OIO.Domain.Context.CatalogContext.Aggregates.Items;
+using OIO.Domain.Context.CatalogContext.Enums;
+using OIO.Domain.Context.CatalogContext.ValueObjects;
 using OIO.Domain.Context.Shared.Entities;
 using OIO.Domain.Context.Shared.Errors;
 using OIO.Domain.Context.Shared.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
+using CategoryId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.CategoryId;
 
 namespace OIO.Application.Context.AuctionContext.Commands.CreateItem;
 
@@ -60,11 +63,8 @@ public sealed record CreateItemCommand(
         
         for (var i = 0; i < Media.Count; i++)
         {
-            var imageCheckError = Media[i].Check()
-                .WithOwnerName($"Images[{i}]")
-                .Field(Media[i].MediaUploadId)
-                .NotEmptyGuid()
-                .ToViolationsError();
+            var imageCheckError = Media[i]
+                .Validate();
                 
             checkError.Add(imageCheckError);
         }
@@ -153,13 +153,20 @@ internal sealed class CreateItemCommandHandler
             if (validationError is not null)
                 return validationError;
         }
+        
+        var ( _, isFailure, title, error) = ItemTitle.Create(request.Title);
+
+        if (isFailure)
+        {
+            return error;
+        }
 
 
         var condition = ItemCondition.FromId(request.Condition);
 
         var item = Item.Create(
             sellerId: _currentUser.UserId,
-            title: request.Title,
+            title: title,
             condition: condition.Value,
             nowUtc: nowUtc,
             categoryId: categoryId,

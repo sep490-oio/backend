@@ -7,6 +7,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.Shared.Entities;
 using OIO.Domain.Context.Shared.Errors;
+using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
 
@@ -109,16 +110,26 @@ internal sealed class RequestUploadSignatureCommandHandler
         
         var nowUtc = _clock.UtcNow;
 
+        var mediaInfo = MediaInfo.Create(
+            fileName: request.FileName);
+        var ( _, isFailure, storage, error) = StorageRef.Create(
+            publicId: publicId,
+            folder: folder);
+
+        if (isFailure)
+        {
+            return error;
+        }
+
         // Track pending upload in DB
         var mediaUpload = MediaUpload.Create(
             userId: _currentUser.UserId,
             context: request.Context,
             resourceType: contextConfig.ResourceType,
             entityId: request.EntityId,
-            publicId: publicId,
-            folder: folder,
+            mediaInfo: mediaInfo,
+            storageRef: storage,
             nowUtc: nowUtc,
-            fileName: request.FileName,
             signatureExpirationMinutes: await _appConfigs.Media.GetSignatureExpirationMinutesAsync(cancellationToken));
 
         _dbContext.Insert(mediaUpload);

@@ -1,6 +1,6 @@
 using OIO.Application.Abstractions.Sorting;
 using OIO.Application.Context.AuctionContext.DTOs;
-using OIO.Domain.Context.AuctionContext.Aggregates.Items;
+using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 
 namespace OIO.Application.Context.AuctionContext.Mappings;
 

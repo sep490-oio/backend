@@ -53,7 +53,7 @@ internal sealed class AuctionFailedEventHandler
             .Include(a => a.Item)
             .FirstOrDefaultAsync(a => 
                     a.Id == auctionId && 
-                    a.SellerId == sellerId, 
+                    a.Item.SellerId == sellerId, 
                 cancellationToken: cancellationToken);
 
         if (auction is null)

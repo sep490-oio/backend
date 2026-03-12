@@ -43,7 +43,7 @@ internal sealed class GetMyAuctionsQueryHandler
 
         var query = _dbContext.Set<Auction>()
             .AsNoTracking()
-            .Where(a => a.SellerId == _currentUser.UserId);
+            .Where(a => a.Item.SellerId == _currentUser.UserId);
 
         // Status filter
         if (!string.IsNullOrWhiteSpace(parameters.Status) && AuctionStatus.Is(parameters.Status))
@@ -61,24 +61,24 @@ internal sealed class GetMyAuctionsQueryHandler
         var myAuctions = await query
             .Select(x => new AuctionListItemDto(
                 Id: x.Id.Value,
-                ItemTitle: x.Item.Title,
+                ItemTitle: x.Item.Title.Value,
                 PrimaryImageUrl: x.Item.Media
                     .Where(img => img.IsPrimary)
-                    .Select(img => img.Url)
+                    .Select(img => img.Info.SecureUrl)
                     .FirstOrDefault(),
-                CurrentPrice: x.CurrentPrice.ToDto(),
-                StartingPrice: x.StartingPrice.ToDto(),
-                BuyNowPrice: x.BuyNowPrice != null ? x.BuyNowPrice.ToDto() : null,
-                Currency:  x.StartingPrice.Currency.Id,
+                CurrentPrice: x.Pricing.CurrentPrice.ToDto(),
+                StartingPrice: x.Pricing.StartingPrice.ToDto(),
+                BuyNowPrice: x.Pricing.BuyNowPrice != null ? x.Pricing.BuyNowPrice.ToDto() : null,
+                Currency:  x.Pricing.Currency.Id,
                 Status: x.Status.Id,
                 BidCount: x.BidCount,
                 WatchCount: x.WatchCount,
-                StartTime: x.Duration.StartTime,
-                EndTime: x.Duration.EndTime,
-                RemainingTime: x.RemainingTime(nowUtc),
+                StartTime: x.Info.StartTime,
+                EndTime: x.Info.EndTime,
+                RemainingTime: x.Info.RemainingTime(nowUtc),
                 IsEndingSoon: x.IsEndingSoon(nowUtc, extensionThresholdMinutes),
                 IsFeatured: x.IsFeatured,
-                SellerId: x.SellerId.Value))
+                SellerId: x.Item.SellerId.Value))
             .ToPagedListAsync(totalCount,parameters, cancellationToken);
 
         return myAuctions;

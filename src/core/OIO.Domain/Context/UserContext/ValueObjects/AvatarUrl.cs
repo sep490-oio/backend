@@ -17,6 +17,7 @@ public sealed class AvatarUrl : ValueObject
     public static Result<AvatarUrl, Error> Create(string? value)
     {
         var validateResult = AvatarUrl
+            .Check(isInvariant: true)
             .Field(value, nameof(Value))
             .NotNullOrWhiteSpace()
             .MaxLength(AppDefinitions.App.Constraint.AvatarUrl.MaxLength)

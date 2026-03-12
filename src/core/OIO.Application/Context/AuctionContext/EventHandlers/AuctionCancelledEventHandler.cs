@@ -42,7 +42,7 @@ internal sealed class AuctionCancelledEventHandler
                 .AsNoTracking()
                 .Include(a => a.Bids)
                 .Include(a => a.Watchers)
-                .Include(a => a.ItemId),
+                .Include(a => a.Item),
             cancellationToken: cancellationToken);
 
         if (auction is null) 
@@ -71,7 +71,7 @@ internal sealed class AuctionCancelledEventHandler
 
         var allUserIds = bidderIds
             .Union(watcherIds)
-            .Where(id => id != auction.SellerId)
+            .Where(id => id != auction.Item.SellerId)
             .Distinct()
             .ToList();
 

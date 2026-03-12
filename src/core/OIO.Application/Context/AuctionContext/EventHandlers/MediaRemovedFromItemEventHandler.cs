@@ -1,7 +1,7 @@
 ﻿using MediatR;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Media;
-using OIO.Domain.Context.AuctionContext.Aggregates.Items.Events;
+using OIO.Domain.Context.CatalogContext.Aggregates.Items.Events;
 
 namespace OIO.Application.Context.AuctionContext.EventHandlers;
 

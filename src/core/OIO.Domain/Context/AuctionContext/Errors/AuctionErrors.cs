@@ -2,6 +2,10 @@
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
+using CategoryId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.CategoryId;
+using ItemId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId;
+using ItemMediaId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemMediaId;
+using ItemQuestionId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemQuestionId;
 
 namespace OIO.Domain.Context.AuctionContext.Errors;
 

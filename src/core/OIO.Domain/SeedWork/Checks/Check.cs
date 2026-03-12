@@ -125,7 +125,7 @@ public readonly struct CheckField<TOwner, TProperty>
     
     public CheckField<TOwner, TNewProperty> Field<TNewProperty>(
         TNewProperty newProperty,
-        Expression<Func<TOwner, TNewProperty>> exprPropertyName,
+        Expression<Func<TOwner, object?>> exprPropertyName,
         string? propertyName = null,
         string? fieldName = null,
         string? separator = null)

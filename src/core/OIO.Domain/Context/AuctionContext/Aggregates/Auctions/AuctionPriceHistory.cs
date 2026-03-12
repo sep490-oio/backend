@@ -7,27 +7,31 @@ using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 
-public sealed class AuctionPriceHistory : BaseEntity<AuctionPriceHistoryId>
+public sealed class AuctionPriceHistory : BaseEntity<AuctionPriceHistoryId>, ICreatedAtEntity
 {
     public AuctionId AuctionId { get; private set; }
     public Money Price { get; private set; }
     public BidId? BidId { get; private set; }
-    public DateTime RecordedAt { get; private set; }
+    public DateTime CreatedAt { get; private set; }
 
+    // Navigation
+    public Auction Auction { get; private set; } = null!;
+    public Bid? Bid { get; private set; }
+    
     private AuctionPriceHistory() { }
 
     private AuctionPriceHistory(
         AuctionPriceHistoryId id,
         AuctionId auctionId,
         Money price,
-        DateTime recordedAt,
+        DateTime createdAt,
         BidId? bidId = null)
         : base(id)
     {
         AuctionId = auctionId;
         Price = price;
         BidId = bidId;
-        RecordedAt = recordedAt;
+        CreatedAt = createdAt;
     }
     
     public static AuctionPriceHistory Create(

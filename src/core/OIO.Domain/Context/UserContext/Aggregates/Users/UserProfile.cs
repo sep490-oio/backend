@@ -11,11 +11,7 @@ public sealed class UserProfile : BaseEntity<UserId>, IAuditableEntity
 {
     private UserProfile() {}
     
-    public FirstName? FirstName { get; private set; }
-
-    public LastName? LastName { get; private set; }
-
-    public DisplayName? DisplayName { get; private set; }
+    public PersonName Name { get; private set; }
 
     public AvatarUrl? AvatarUrl { get; private set; }
 
@@ -33,27 +29,14 @@ public sealed class UserProfile : BaseEntity<UserId>, IAuditableEntity
         CreatedAt = createdAt;
     }
 
-    public string? FullName =>
-        (FirstName, LastName) switch
-        {
-            (not null, not null) => $"{FirstName} {LastName}",
-            (not null, null) => FirstName,
-            (null, not null) => LastName,
-            _ => null
-        };
-
     internal UnitResult<Error> Update(
-        FirstName? firstName,
-        LastName? lastName,
-        DisplayName? displayName,
+        PersonName? name,
         AvatarUrl? avatarUrl,
         DateOnly? dateOfBirth,
         Gender? gender,
         DateTime now)
     {
-        FirstName = firstName ?? FirstName;
-        LastName = lastName ?? LastName;
-        DisplayName = displayName ?? DisplayName;
+        Name = name ?? Name;
         AvatarUrl = avatarUrl ?? AvatarUrl;
         DateOfBirth = dateOfBirth ??  DateOfBirth;
         Gender = gender ?? Gender;

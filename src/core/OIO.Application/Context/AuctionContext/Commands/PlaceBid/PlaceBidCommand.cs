@@ -30,7 +30,7 @@ public sealed record PlaceBidCommand(
             .NonNegative()
             .Field(Currency)
             .NotWhiteSpace()
-            .InSet(Domain.Context.Shared.ValueObjects.Currency.All.Select(x => x.Id));
+            .InSet(Domain.Context.Shared.Enums.Currency.All.Select(x => x.Id));
     }
 }
 

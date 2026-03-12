@@ -1,0 +1,69 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+
+namespace OIO.Infrastructure.Persistence.Configurations.PaymentContext;
+
+internal sealed class WalletConfiguration : IEntityTypeConfiguration<Wallet>
+{
+    public void Configure(EntityTypeBuilder<Wallet> builder)
+    {
+        builder.ToTable("wallets");
+
+        builder.HasKey(w => w.Id);
+
+        builder.Property(w => w.UserId)
+            .HasColumnName("user_id")
+            .IsRequired();
+
+        builder.Property(w => w.Balance)
+            .HasColumnName("balance")
+            .HasColumnType("numeric(18,2)")
+            .HasDefaultValue(0m)
+            .IsRequired();
+
+        builder.Property(w => w.PendingBalance)
+            .HasColumnName("pending_balance")
+            .HasColumnType("numeric(18,2)")
+            .HasDefaultValue(0m);
+
+        builder.Property(w => w.Currency)
+            .HasColumnName("currency")
+            .HasMaxLength(3)
+            .HasDefaultValue("VND");
+
+        builder.Property(w => w.IsActive)
+            .HasColumnName("is_active")
+            .HasDefaultValue(true);
+
+        builder.Property(w => w.Version)
+            .HasColumnName("version")
+            .HasDefaultValue(0)
+            .IsConcurrencyToken();
+
+        builder.Property(w => w.CreatedAt)
+            .HasColumnName("created_at")
+            .HasDefaultValueSql("CURRENT_TIMESTAMP")
+            .IsRequired();
+
+        builder.Property(w => w.ModifiedAt)
+            .HasColumnName("modified_at");
+
+        // Navigation
+        builder.HasMany(w => w.WalletTransactions)
+            .WithOne(wt => wt.Wallet)
+            .HasForeignKey(wt => wt.WalletId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Constraints
+        builder.HasIndex(w => w.UserId)
+            .IsUnique()
+            .HasDatabaseName("uq_wallets_user_id");
+
+        builder.ToTable(t =>
+        {
+            t.HasCheckConstraint("chk_non_negative_balance", "balance >= 0");
+            t.HasCheckConstraint("chk_non_negative_pending", "pending_balance >= 0");
+        });
+    }
+}

@@ -5,12 +5,14 @@ using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
-using OIO.Domain.Context.AuctionContext.Aggregates.Categories;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.CatalogContext.Aggregates.Categories;
+using OIO.Domain.Context.CatalogContext.ValueObjects;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
+using CategoryId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.CategoryId;
 
 namespace OIO.Application.Context.AuctionContext.Commands.CreateCategory;
 
@@ -72,7 +74,7 @@ internal sealed class CreateCategoryCommandHandler
         var normalizedSlug = request.Slug.Trim().ToLowerInvariant();
         // Check slug uniqueness
         var slugExists = await _dbContext.Set<Category>()
-            .AnyAsync(c => c.Slug == normalizedSlug, cancellationToken);
+            .AnyAsync(c => c.Slug.Value == normalizedSlug, cancellationToken);
             
         if (slugExists)
             return AuctionErrors.Category.SlugAlreadyExists(request.Slug);
@@ -90,32 +92,37 @@ internal sealed class CreateCategoryCommandHandler
             if (parent is null)
                 return AuctionErrors.Category.NotFound(categoryId);
         }
+        
+        var (_, isFailure, slug, error) = Slug.Create(request.Slug);
+
+        if (isFailure)
+        {
+            return error;
+        }
 
         CategoryPath? path;
         if (parent is null)
         {
-            (_, var  isFailure, path, var  error) = CategoryPath.Create(request.Slug);
+            (_, isFailure, path, error) = CategoryPath.Create(request.Slug);
             
             if (isFailure)
                 return error;
         }
         else
         {
-            (_, var  isFailure, path, var  error)  = CategoryPath.FromParent(parent.Path, request.Slug);
-            
-            if (isFailure)
-                return error;
+            path = CategoryPath.FromParent(parent.Path, slug);
         }
+        
         var nowUtc = _clock.UtcNow;
 
+        //TODO: implement upload icon for category
         var category = Category.Create(
             name: request.Name,
-            slug: request.Slug,
+            slug: slug,
             nowUtc: nowUtc,
             parentPath: path,
             parentId: parent?.Id,
             description: request.Description,
-            iconUrl: request.IconUrl,
             sortOrder: request.SortOrder);
 
         _dbContext.Insert(category);

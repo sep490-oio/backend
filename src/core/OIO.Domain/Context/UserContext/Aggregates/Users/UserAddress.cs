@@ -17,9 +17,7 @@ public sealed class UserAddress : BaseEntity<UserAddressId>, IAuditableEntity
 
     public AddressType Type { get; private set; }
 
-    public string RecipientName { get; private set; }
-
-    public PhoneNumber PhoneNumber { get; private set; }
+    public RecipientInfo Recipient { get; private set; }
 
     public Address Address { get; private set; }
 
@@ -32,8 +30,7 @@ public sealed class UserAddress : BaseEntity<UserAddressId>, IAuditableEntity
     internal UserAddress(
         UserId userId,
         AddressType type,
-        string recipientName,
-        PhoneNumber phoneNumber,
+        RecipientInfo recipient,
         Address address,
         DateTime now,
         bool isDefault = false)
@@ -41,8 +38,7 @@ public sealed class UserAddress : BaseEntity<UserAddressId>, IAuditableEntity
         Id = UserAddressId.From(Guid.CreateVersion7());
         UserId = userId;
         Type = type;
-        RecipientName = recipientName;
-        PhoneNumber = phoneNumber;
+        Recipient = recipient;
         Address = address;
         IsDefault = isDefault;
         CreatedAt = now;
@@ -50,14 +46,12 @@ public sealed class UserAddress : BaseEntity<UserAddressId>, IAuditableEntity
 
     internal UnitResult<Error> Update(
         AddressType? type,
-        string? recipientName,
-        PhoneNumber? phoneNumber,
+        RecipientInfo? recipient,
         Address? address,
         DateTime now)
     {
         Type = type ?? Type;
-        RecipientName = recipientName ?? RecipientName;
-        PhoneNumber = phoneNumber ?? PhoneNumber;
+        Recipient = recipient ?? Recipient;
         Address = address ?? Address;
 
         ModifiedAt = now;

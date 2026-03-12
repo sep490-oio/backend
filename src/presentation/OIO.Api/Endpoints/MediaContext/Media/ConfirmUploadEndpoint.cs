@@ -13,6 +13,7 @@ public sealed class ConfirmUploadEndpoint : IEndpoint
         string SecureUrl,
         long Bytes,
         string Format,
+        string? FileName,
         int? Width,
         int? Height,
         double? DurationSeconds);
@@ -30,6 +31,7 @@ public sealed class ConfirmUploadEndpoint : IEndpoint
                     request.SecureUrl,
                     request.Bytes,
                     request.Format,
+                    request.FileName,
                     request.Width,
                     request.Height,
                     request.DurationSeconds);

@@ -65,4 +65,10 @@ public sealed class PhoneNumber : ValueObject
         yield return Value;
         yield return CountryCode;
     }
+    
+    public IEnumerable<object> GetEqualityComponentsPublic()
+    {
+        yield return Value;
+        yield return CountryCode;
+    }
 }

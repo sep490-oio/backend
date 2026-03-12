@@ -216,12 +216,12 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
 
         return new AuctionSnapshotGrain(
             AuctionId: auction.Id.Value,
-            CurrentPrice: auction.CurrentPrice.Amount,
+            CurrentPrice: auction.Pricing.CurrentPrice.Amount,
             MinimumNextBid: auction.GetMinimumBidAmount().Amount,
             BidCount: auction.BidCount,
             Status: auction.Status.Id,
-            EndTime: auction.Duration.EndTime,
-            WinnerId: auction.CurrentWinnerId?.Value);
+            EndTime: auction.Info.EndTime,
+            WinnerId: auction.WinnerId?.Value);
     }
 
     // ==================== Internal Helpers ====================
@@ -242,7 +242,7 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
             query => query
                 .Include(a => a.Bids.OrderByDescending(b => b.CreatedAt))
                 .Include(a => a.AutoBids)
-                .Include(a => a.PriceHistories.OrderByDescending(ph => ph.RecordedAt))
+                .Include(a => a.PriceHistories.OrderByDescending(ph => ph.CreatedAt))
                 .AsSplitQuery(),
             cancellationToken);
 

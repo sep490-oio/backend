@@ -108,5 +108,7 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<UserR
 
         // ==================== Ignore computed properties ====================
         builder.Ignore(t => t.IsRevoked);
+        
+        builder.HasQueryFilter(d => d.User.DeletedAt == null);
     }
 }
