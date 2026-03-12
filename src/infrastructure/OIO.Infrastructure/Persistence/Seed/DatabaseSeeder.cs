@@ -13,6 +13,9 @@ using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Services;
 using OIO.Domain.Context.UserContext.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.Context.WarehouseContext.Aggregates.ShippingProviders;
+using OIO.Domain.Context.WarehouseContext.Enums;
+using OIO.Domain.Context.WarehouseContext.ValueObjects;
 using OIO.Infrastructure.Settings;
 using OIO.Infrastructure.Settings.Apps;
 
@@ -35,6 +38,7 @@ public static class DatabaseSeeder
             await AssignPermissionsToRolesAsync(dbContext, logger);
             //await SeedAdminUserAsync(dbContext, scope.ServiceProvider, logger);
             await SeedSystemSettingsAsync(scope.ServiceProvider);
+            await SeedShippingProviderConfigsAsync(scope.ServiceProvider);
             logger.LogInformation("Database seeding completed successfully.");
         }
         catch (Exception ex)
@@ -265,5 +269,56 @@ public static class DatabaseSeeder
         }
 
         await dbContext.SaveChangesAsync();
+    }
+      public static async Task SeedShippingProviderConfigsAsync(IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var clock     = scope.ServiceProvider.GetRequiredService<IClock>();
+        var logger    = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationDbContext>>();
+
+        var ghnCode = ShippingProviderCode.FromId("ghn").GetValueOrThrow();
+
+        var alreadyExists = await dbContext.Set<ShippingProviderConfig>()
+            .AnyAsync(c => c.ProviderCode == ghnCode);
+
+        if (alreadyExists)
+        {
+            logger.LogInformation("ShippingProviderConfig for GHN already seeded — skipping.");
+            return;
+        }
+
+        var ghnConfig = ShippingProviderConfig.Create(
+            providerCode: ghnCode,
+            displayName:  "Giao Hang Nhanh (Sandbox)",
+            environment:  ShippingEnvironment.Sandbox,
+            apiBaseUrl:   "https://dev-online-gateway.ghn.vn",
+            credentials:  ShippingCredentials.From(
+                """{"token":"672e7794-1adb-11f1-8ebe-9e0b214fdae6","shop_id":199494,"client_id":2511126}"""),
+
+            pickName:     "OIO Warehouse",
+            pickPhone:    "0900000000",
+            pickAddress:  "7 Duong D1",
+            pickWard:     "Long Thanh My",
+            pickDistrict: "Thu Duc",
+            pickProvince: "Ho Chi Minh",
+
+            now: clock.UtcNow,
+
+            // GHN internal IDs — confirmed from master data API
+            // Province: 202 | District: 3695 | Ward: 90752
+            pickCarrierAddressData: CarrierAddressData.From(
+                """{"district_id": 3695, "ward_code": "90752"}"""),
+
+            webhookSecret: null,
+            isDefault: true
+        );
+
+        dbContext.Set<ShippingProviderConfig>().Add(ghnConfig);
+        await dbContext.SaveChangesAsync();
+
+        logger.LogInformation(
+            "Seeded ShippingProviderConfig: GHN Sandbox (Id={Id}).",
+            ghnConfig.Id.Value);
     }
 }
