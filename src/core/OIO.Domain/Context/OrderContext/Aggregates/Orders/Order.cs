@@ -3,9 +3,8 @@ using OIO.Domain.Context.OrderContext.Enums;
 using OIO.Domain.Context.OrderContext.ValueObjects;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.Aggregates.Escrows;
-using OIO.Domain.Context.Shared.ValueObjects;
-using OIO.Domain.Context.ShippingContext.Aggregates;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments;
 using OIO.Domain.SeedWork.Entities;
 
 namespace OIO.Domain.Context.OrderContext.Aggregates.Orders;

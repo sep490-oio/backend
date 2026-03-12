@@ -12,8 +12,8 @@ using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.Context.ReviewContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.ValueObjects.Ids;
-using OIO.Domain.Context.ShippingContext.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
 using OIO.Infrastructure.Persistence.Converters;
 
@@ -229,9 +229,6 @@ public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
 
         configurationBuilder.Properties<OutboundShipmentId>()
             .HaveConversion<EfCoreConverters.OutboundShipmentIdEfCoreValueConverter>();
-
-        configurationBuilder.Properties<ShipmentEventId>()
-            .HaveConversion<EfCoreConverters.ShipmentEventIdEfCoreValueConverter>();
 
         configurationBuilder.Properties<ShipmentTrackingEventId>()
             .HaveConversion<EfCoreConverters.ShipmentTrackingEventIdEfCoreValueConverter>();

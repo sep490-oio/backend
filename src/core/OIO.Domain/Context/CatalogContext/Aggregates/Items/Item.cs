@@ -10,7 +10,7 @@ using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Entities;
 using OIO.Domain.SeedWork.Errors;
 using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
-using OIO.Domain.Context.ShippingContext.Aggregates;
+using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 
 namespace OIO.Domain.Context.CatalogContext.Aggregates.Items;
 

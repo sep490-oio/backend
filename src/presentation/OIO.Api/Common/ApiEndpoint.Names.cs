@@ -107,5 +107,26 @@ public static partial class ApiEndpoint
             public const string GetCategoryChildren = nameof(GetCategoryChildren);
             public const string UpdateCategory = nameof(UpdateCategory);
         }
+        
+        public static class Warehouse
+        {
+            public const string BookInboundShipment  = nameof(BookInboundShipment);
+            public const string BookOutboundShipment = nameof(BookOutboundShipment);
+            public const string GhnWebhook           = nameof(GhnWebhook);
+            public const string InspectWarehouseItem = nameof(InspectWarehouseItem);
+            public const string StoreWarehouseItem   = nameof(StoreWarehouseItem);
+            public const string CreateStorageLocation = nameof(CreateStorageLocation);
+            public const string GetStorageLocations   = nameof(GetStorageLocations);
+            public const string GetInboundShipments      = nameof(GetInboundShipments);
+            public const string GetInboundShipmentById   = nameof(GetInboundShipmentById);
+            public const string GetOutboundShipments     = nameof(GetOutboundShipments);
+            public const string GetOutboundShipmentById  = nameof(GetOutboundShipmentById);
+            public const string GetWarehouseItems = nameof(GetWarehouseItems);
+            public const string CancelInboundShipment          = nameof(CancelInboundShipment);
+            public const string CancelOutboundShipment         = nameof(CancelOutboundShipment);
+            public const string DeleteStorageLocation          = nameof(DeleteStorageLocation);
+            public const string UpdateStorageLocation          = nameof(UpdateStorageLocation);
+            public const string UpdateShippingProviderConfig   = nameof(UpdateShippingProviderConfig);
+        }
     }
 }

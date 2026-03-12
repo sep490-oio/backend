@@ -110,6 +110,25 @@ public static partial class ApiEndpoint
             public const string GetChildren = $"{Base}/{{categoryId:guid}}/children";
             public const string Update = $"{Base}/{{categoryId:guid}}";
         }
+        
+        public static class Warehouse
+        {
+            private const string Base = "api/warehouse";
+            
+            public const string InspectWarehouseItem = $"{Base}/inbound-shipments/{{shipmentId}}/inspect";
+            public const string BookInbound  = $"{Base}/inbound-shipments";
+            public const string BookOutbound = $"{Base}/outbound-shipments";
+            public const string StoreItem   = $"{Base}/warehouse-items/{{warehouseItemId}}/store";
+            public const string GhnWebhook   = "webhooks/ghn";
+            public const string StorageLocations = $"{Base}/storage-locations";
+            public const string InboundShipmentById  = $"{Base}/inbound-shipments/{{shipmentId:guid}}";
+            public const string OutboundShipmentById = $"{Base}/outbound-shipments/{{shipmentId:guid}}";
+            public const string WarehouseItems = $"{Base}/warehouse-items";
+            public const string CancelInbound              = $"{Base}/inbound-shipments/{{shipmentId:guid}}/cancel";
+            public const string CancelOutbound             = $"{Base}/outbound-shipments/{{shipmentId:guid}}/cancel";
+            public const string StorageLocationById        = $"{Base}/storage-locations/{{locationId:guid}}";
+            public const string ShippingProviderConfigById = $"{Base}/shipping-provider-configs/{{configId:guid}}";
+        }
 
         public static class Me
         {

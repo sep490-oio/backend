@@ -19,7 +19,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Context\DisputeContext\" />
       <Folder Include="Context\NotificationContext\" />
       <Folder Include="Context\PaymentContext\" />
       <Folder Include="Context\ReviewContext\" />

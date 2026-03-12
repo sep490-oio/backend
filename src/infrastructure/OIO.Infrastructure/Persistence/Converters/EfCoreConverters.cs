@@ -6,8 +6,8 @@ using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.Context.ReviewContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.ValueObjects.Ids;
-using OIO.Domain.Context.ShippingContext.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
 using Vogen;
 
 namespace OIO.Infrastructure.Persistence.Converters;
@@ -78,7 +78,6 @@ namespace OIO.Infrastructure.Persistence.Converters;
 //ShippingContext
 [EfCoreConverter<InboundShipmentId>]
 [EfCoreConverter<OutboundShipmentId>]
-[EfCoreConverter<ShipmentEventId>]
 [EfCoreConverter<ShipmentTrackingEventId>]
 [EfCoreConverter<ShippingProviderConfigId>]
 [EfCoreConverter<WarehouseItemId>]

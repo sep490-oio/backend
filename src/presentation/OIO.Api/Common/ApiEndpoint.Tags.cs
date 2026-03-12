@@ -12,5 +12,7 @@ public static partial class ApiEndpoint
         public const string Media = nameof(Media);
         public const string Me = nameof(Me);
         public const string Hub = nameof(Hub);
+        public const string Warehouse = nameof(Warehouse);
+        public const string Webhooks  = nameof(Webhooks);
     }
 }

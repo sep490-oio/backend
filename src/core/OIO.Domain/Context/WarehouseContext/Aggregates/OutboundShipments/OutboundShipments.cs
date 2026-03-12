@@ -1,4 +1,6 @@
 ﻿using CSharpFunctionalExtensions;
+using OIO.Domain.Context.OrderContext.Aggregates.Orders;
+using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.Events;
 using OIO.Domain.Context.WarehouseContext.Enums;
@@ -31,7 +33,7 @@ public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
 
     private OutboundShipment(
         OutboundShipmentId id,
-        Guid orderId,
+        OrderId orderId,
         WarehouseItemId warehouseItemId,
         ShippingProviderCode providerCode,
         string clientOrderCode,
@@ -64,7 +66,7 @@ public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
         CreatedAt                    = now;
     }
 
-    public Guid OrderId { get; private set; }
+    public OrderId OrderId { get; private set; }
     public WarehouseItemId WarehouseItemId { get; private set; }
     public ShippingProviderCode ProviderCode { get; private set; }
 
@@ -110,10 +112,11 @@ public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
     public DateTime CreatedAt { get; private set; }
     public DateTime? ModifiedAt { get; private set; }
 
-    public IReadOnlyList<ShipmentTrackingEvent> TrackingEvents => _trackingEvents;
+    public Order Order { get; private set; }
+    public IReadOnlyCollection<ShipmentTrackingEvent> TrackingEvents => _trackingEvents.AsReadOnly();
 
     public static OutboundShipment Create(
-        Guid orderId,
+        OrderId orderId,
         WarehouseItemId warehouseItemId,
         ShippingProviderCode providerCode,
         string clientOrderCode,

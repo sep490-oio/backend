@@ -14,7 +14,7 @@ using OIO.Infrastructure.Persistence;
 namespace OIO.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260311231129_Initial")]
+    [Migration("20260312042726_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -1610,6 +1610,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("submitted_at");
 
+                    b.Property<Guid>("WarehouseItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("warehouse_item_id");
+
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Condition", "OIO.Domain.Context.CatalogContext.Aggregates.Items.Item.Condition#ItemCondition", b1 =>
                         {
                             b1.IsRequired();
@@ -1662,6 +1666,9 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("SubmittedAt")
                         .HasDatabaseName("idx_items_submitted_at");
+
+                    b.HasIndex("WarehouseItemId")
+                        .HasDatabaseName("ix_items_warehouse_item_id");
 
                     b.ToTable("items", null, t =>
                         {
@@ -4453,690 +4460,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.ToTable("system_settings", (string)null);
                 });
 
-            modelBuilder.Entity("OIO.Domain.Context.ShippingContext.Aggregates.InboundShipment", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime?>("ArrivedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("arrived_at");
-
-                    b.Property<Guid>("AuctionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("auction_id");
-
-                    b.Property<string>("CarrierTrackingNumber")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("carrier_tracking_number");
-
-                    b.Property<string>("ClientOrderCode")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("client_order_code");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<DateTime?>("ExpectedArrivalAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expected_arrival_at");
-
-                    b.Property<string>("ExtraData")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("extra_data");
-
-                    b.Property<Guid>("ItemId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("item_id");
-
-                    b.Property<DateTime?>("ModifiedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("modified_at");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("text")
-                        .HasColumnName("notes");
-
-                    b.Property<string>("ProviderCode")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("provider_code");
-
-                    b.Property<Guid>("SellerId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("seller_id");
-
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "Cost", "OIO.Domain.Context.ShippingContext.Aggregates.InboundShipment.Cost#ShippingCost", b1 =>
-                        {
-                            b1.IsRequired();
-
-                            b1.Property<decimal>("CodAmount")
-                                .HasColumnType("numeric(18,2)")
-                                .HasColumnName("cod_amount");
-
-                            b1.Property<decimal>("InsuranceValue")
-                                .HasColumnType("numeric(18,2)")
-                                .HasColumnName("insurance_value");
-
-                            b1.Property<decimal>("ShippingFee")
-                                .HasColumnType("numeric(18,2)")
-                                .HasColumnName("shipping_fee");
-                        });
-
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "Package", "OIO.Domain.Context.ShippingContext.Aggregates.InboundShipment.Package#PackageDimensions", b1 =>
-                        {
-                            b1.IsRequired();
-
-                            b1.Property<int?>("HeightCm")
-                                .HasColumnType("integer")
-                                .HasColumnName("height_cm");
-
-                            b1.Property<int?>("LengthCm")
-                                .HasColumnType("integer")
-                                .HasColumnName("length_cm");
-
-                            b1.Property<int>("WeightGrams")
-                                .HasColumnType("integer")
-                                .HasColumnName("weight_grams");
-
-                            b1.Property<int?>("WidthCm")
-                                .HasColumnType("integer")
-                                .HasColumnName("width_cm");
-                        });
-
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "Sender", "OIO.Domain.Context.ShippingContext.Aggregates.InboundShipment.Sender#SenderAddress", b1 =>
-                        {
-                            b1.IsRequired();
-
-                            b1.Property<string>("Address")
-                                .IsRequired()
-                                .HasMaxLength(500)
-                                .HasColumnType("character varying(500)")
-                                .HasColumnName("sender_address");
-
-                            b1.Property<string>("CarrierAddressData")
-                                .HasColumnType("jsonb")
-                                .HasColumnName("sender_carrier_address_data");
-
-                            b1.Property<string>("District")
-                                .IsRequired()
-                                .HasMaxLength(100)
-                                .HasColumnType("character varying(100)")
-                                .HasColumnName("sender_district");
-
-                            b1.Property<string>("Name")
-                                .IsRequired()
-                                .HasMaxLength(200)
-                                .HasColumnType("character varying(200)")
-                                .HasColumnName("sender_name");
-
-                            b1.Property<string>("Phone")
-                                .IsRequired()
-                                .HasMaxLength(20)
-                                .HasColumnType("character varying(20)")
-                                .HasColumnName("sender_phone");
-
-                            b1.Property<string>("Province")
-                                .IsRequired()
-                                .HasMaxLength(100)
-                                .HasColumnType("character varying(100)")
-                                .HasColumnName("sender_province");
-
-                            b1.Property<string>("Ward")
-                                .IsRequired()
-                                .HasMaxLength(100)
-                                .HasColumnType("character varying(100)")
-                                .HasColumnName("sender_ward");
-                        });
-
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "Status", "OIO.Domain.Context.ShippingContext.Aggregates.InboundShipment.Status#InboundShipmentStatus", b1 =>
-                        {
-                            b1.IsRequired();
-
-                            b1.Property<string>("Id")
-                                .IsRequired()
-                                .HasMaxLength(30)
-                                .HasColumnType("character varying(30)")
-                                .HasColumnName("status");
-                        });
-
-                    b.HasKey("Id")
-                        .HasName("pk_inbound_shipments");
-
-                    b.HasIndex("CarrierTrackingNumber")
-                        .HasDatabaseName("idx_inbound_shipments_tracking");
-
-                    b.HasIndex("ItemId")
-                        .HasDatabaseName("idx_inbound_shipments_item");
-
-                    b.HasIndex("SellerId")
-                        .HasDatabaseName("idx_inbound_shipments_seller");
-
-                    b.ToTable("inbound_shipments", (string)null);
-                });
-
-            modelBuilder.Entity("OIO.Domain.Context.ShippingContext.Aggregates.OutboundShipment", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("CarrierTrackingNumber")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("carrier_tracking_number");
-
-                    b.Property<string>("ClientOrderCode")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("client_order_code");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<DateTime?>("DeliveredAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("delivered_at");
-
-                    b.Property<DateTime?>("DispatchedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("dispatched_at");
-
-                    b.Property<DateTime?>("EstimatedDeliveryAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("estimated_delivery_at");
-
-                    b.Property<string>("ExtraData")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("extra_data");
-
-                    b.Property<string>("HandlingNote")
-                        .HasColumnType("text")
-                        .HasColumnName("handling_note");
-
-                    b.Property<DateTime?>("ModifiedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("modified_at");
-
-                    b.Property<Guid>("OrderId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("order_id");
-
-                    b.Property<DateTime?>("PackedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("packed_at");
-
-                    b.Property<Guid?>("PackedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("packed_by");
-
-                    b.Property<short?>("PaymentTypeId")
-                        .HasColumnType("smallint")
-                        .HasColumnName("payment_type_id");
-
-                    b.Property<string>("ProviderCode")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("provider_code");
-
-                    b.Property<string>("RecipientCarrierAddressData")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("recipient_carrier_address_data");
-
-                    b.Property<string>("ShippingLabelUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("shipping_label_url");
-
-                    b.Property<string>("ShippingMethod")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("shipping_method");
-
-                    b.Property<Guid>("WarehouseItemId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("warehouse_item_id");
-
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "Cost", "OIO.Domain.Context.ShippingContext.Aggregates.OutboundShipment.Cost#ShippingCost", b1 =>
-                        {
-                            b1.IsRequired();
-
-                            b1.Property<decimal>("CodAmount")
-                                .HasColumnType("numeric(18,2)")
-                                .HasColumnName("cod_amount");
-
-                            b1.Property<decimal>("InsuranceValue")
-                                .HasColumnType("numeric(18,2)")
-                                .HasColumnName("insurance_value");
-
-                            b1.Property<decimal>("ShippingFee")
-                                .HasColumnType("numeric(18,2)")
-                                .HasColumnName("shipping_fee");
-                        });
-
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "Package", "OIO.Domain.Context.ShippingContext.Aggregates.OutboundShipment.Package#PackageDimensions", b1 =>
-                        {
-                            b1.IsRequired();
-
-                            b1.Property<int?>("HeightCm")
-                                .HasColumnType("integer")
-                                .HasColumnName("height_cm");
-
-                            b1.Property<int?>("LengthCm")
-                                .HasColumnType("integer")
-                                .HasColumnName("length_cm");
-
-                            b1.Property<int>("WeightGrams")
-                                .HasColumnType("integer")
-                                .HasColumnName("weight_grams");
-
-                            b1.Property<int?>("WidthCm")
-                                .HasColumnType("integer")
-                                .HasColumnName("width_cm");
-                        });
-
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "Status", "OIO.Domain.Context.ShippingContext.Aggregates.OutboundShipment.Status#OutboundShipmentStatus", b1 =>
-                        {
-                            b1.IsRequired();
-
-                            b1.Property<string>("Id")
-                                .IsRequired()
-                                .HasMaxLength(30)
-                                .HasColumnType("character varying(30)")
-                                .HasColumnName("status");
-                        });
-
-                    b.HasKey("Id")
-                        .HasName("pk_outbound_shipments");
-
-                    b.HasIndex("CarrierTrackingNumber")
-                        .HasDatabaseName("idx_outbound_shipments_tracking");
-
-                    b.HasIndex("OrderId")
-                        .HasDatabaseName("idx_outbound_shipments_order");
-
-                    b.HasIndex("WarehouseItemId")
-                        .IsUnique()
-                        .HasDatabaseName("idx_outbound_shipments_warehouse_item");
-
-                    b.ToTable("outbound_shipments", (string)null);
-                });
-
-            modelBuilder.Entity("OIO.Domain.Context.ShippingContext.Aggregates.ShipmentTrackingEvent", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("CarrierStatusDesc")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("carrier_status_desc");
-
-                    b.Property<string>("CarrierStatusRaw")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("carrier_status_raw");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<DateTime>("EventTime")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("event_time");
-
-                    b.Property<string>("Location")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("location");
-
-                    b.Property<string>("NormalizedStatus")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("normalized_status");
-
-                    b.Property<string>("ProviderCode")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("provider_code");
-
-                    b.Property<string>("RawPayload")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("raw_payload")
-                        .HasDefaultValueSql("'{}'::jsonb");
-
-                    b.Property<string>("ReasonCode")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("reason_code");
-
-                    b.Property<string>("ReasonDescription")
-                        .HasColumnType("text")
-                        .HasColumnName("reason_description");
-
-                    b.Property<Guid>("ShipmentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("shipment_id");
-
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "ShipmentType", "OIO.Domain.Context.ShippingContext.Aggregates.ShipmentTrackingEvent.ShipmentType#ShipmentTrackingType", b1 =>
-                        {
-                            b1.IsRequired();
-
-                            b1.Property<string>("Id")
-                                .IsRequired()
-                                .HasMaxLength(20)
-                                .HasColumnType("character varying(20)")
-                                .HasColumnName("shipment_type");
-                        });
-
-                    b.HasKey("Id")
-                        .HasName("pk_shipment_tracking_events");
-
-                    b.HasIndex("ShipmentId")
-                        .HasDatabaseName("idx_shipment_tracking_events_shipment");
-
-                    b.HasIndex("NormalizedStatus", "CreatedAt")
-                        .HasDatabaseName("idx_shipment_tracking_events_status_created");
-
-                    b.ToTable("shipment_tracking_events", (string)null);
-                });
-
-            modelBuilder.Entity("OIO.Domain.Context.ShippingContext.Aggregates.ShippingProviderConfig", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("ApiBaseUrl")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("api_base_url");
-
-                    b.Property<string>("CachedToken")
-                        .HasColumnType("text")
-                        .HasColumnName("cached_token");
-
-                    b.Property<DateTime?>("CachedTokenExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("cached_token_expires_at");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<string>("Credentials")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("credentials");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("display_name");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true)
-                        .HasColumnName("is_active");
-
-                    b.Property<bool>("IsDefault")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_default");
-
-                    b.Property<DateTime?>("ModifiedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("modified_at");
-
-                    b.Property<string>("ProviderCode")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("provider_code");
-
-                    b.Property<string>("WebhookSecret")
-                        .HasColumnType("text")
-                        .HasColumnName("webhook_secret");
-
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "Environment", "OIO.Domain.Context.ShippingContext.Aggregates.ShippingProviderConfig.Environment#ProviderEnvironment", b1 =>
-                        {
-                            b1.IsRequired();
-
-                            b1.Property<string>("Id")
-                                .IsRequired()
-                                .HasMaxLength(20)
-                                .HasColumnType("character varying(20)")
-                                .HasColumnName("environment");
-                        });
-
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "PickAddress", "OIO.Domain.Context.ShippingContext.Aggregates.ShippingProviderConfig.PickAddress#PickAddress", b1 =>
-                        {
-                            b1.IsRequired();
-
-                            b1.Property<string>("Address")
-                                .IsRequired()
-                                .HasMaxLength(500)
-                                .HasColumnType("character varying(500)")
-                                .HasColumnName("pick_address");
-
-                            b1.Property<string>("CarrierAddressData")
-                                .HasColumnType("jsonb")
-                                .HasColumnName("pick_carrier_address_data");
-
-                            b1.Property<string>("District")
-                                .IsRequired()
-                                .HasMaxLength(100)
-                                .HasColumnType("character varying(100)")
-                                .HasColumnName("pick_district");
-
-                            b1.Property<string>("Name")
-                                .IsRequired()
-                                .HasMaxLength(200)
-                                .HasColumnType("character varying(200)")
-                                .HasColumnName("pick_name");
-
-                            b1.Property<string>("Phone")
-                                .IsRequired()
-                                .HasMaxLength(20)
-                                .HasColumnType("character varying(20)")
-                                .HasColumnName("pick_phone");
-
-                            b1.Property<string>("Province")
-                                .IsRequired()
-                                .HasMaxLength(100)
-                                .HasColumnType("character varying(100)")
-                                .HasColumnName("pick_province");
-
-                            b1.Property<string>("Ward")
-                                .IsRequired()
-                                .HasMaxLength(100)
-                                .HasColumnType("character varying(100)")
-                                .HasColumnName("pick_ward");
-                        });
-
-                    b.HasKey("Id")
-                        .HasName("pk_shipping_provider_configs");
-
-                    b.HasIndex("ProviderCode")
-                        .IsUnique()
-                        .HasDatabaseName("uq_shipping_provider_configs_code");
-
-                    b.ToTable("shipping_provider_configs", (string)null);
-                });
-
-            modelBuilder.Entity("OIO.Domain.Context.ShippingContext.Aggregates.WarehouseItem", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<Guid>("InboundShipmentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("inbound_shipment_id");
-
-                    b.Property<DateTime?>("InspectedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("inspected_at");
-
-                    b.Property<Guid?>("InspectedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("inspected_by");
-
-                    b.Property<string>("InspectionImages")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("inspection_images");
-
-                    b.Property<string>("InspectionNotes")
-                        .HasColumnType("text")
-                        .HasColumnName("inspection_notes");
-
-                    b.Property<Guid>("ItemId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("item_id");
-
-                    b.Property<DateTime?>("ModifiedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("modified_at");
-
-                    b.Property<DateTime?>("ReceivedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("received_at");
-
-                    b.Property<Guid?>("StorageLocationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("storage_location_id");
-
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "ConditionOnArrival", "OIO.Domain.Context.ShippingContext.Aggregates.WarehouseItem.ConditionOnArrival#WarehouseItemCondition", b1 =>
-                        {
-                            b1.IsRequired();
-
-                            b1.Property<string>("Id")
-                                .IsRequired()
-                                .HasMaxLength(20)
-                                .HasColumnType("character varying(20)")
-                                .HasColumnName("condition_on_arrival");
-                        });
-
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "Status", "OIO.Domain.Context.ShippingContext.Aggregates.WarehouseItem.Status#WarehouseItemStatus", b1 =>
-                        {
-                            b1.IsRequired();
-
-                            b1.Property<string>("Id")
-                                .IsRequired()
-                                .HasMaxLength(20)
-                                .HasColumnType("character varying(20)")
-                                .HasColumnName("status");
-                        });
-
-                    b.HasKey("Id")
-                        .HasName("pk_warehouse_items");
-
-                    b.HasIndex("InboundShipmentId")
-                        .IsUnique()
-                        .HasDatabaseName("idx_warehouse_items_inbound_shipment");
-
-                    b.HasIndex("ItemId")
-                        .IsUnique()
-                        .HasDatabaseName("idx_warehouse_items_item");
-
-                    b.HasIndex("StorageLocationId")
-                        .HasDatabaseName("idx_warehouse_items_storage_location");
-
-                    b.ToTable("warehouse_items", (string)null);
-                });
-
-            modelBuilder.Entity("OIO.Domain.Context.ShippingContext.Aggregates.WarehouseStorageLocation", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<bool>("IsOccupied")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_occupied");
-
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "Location", "OIO.Domain.Context.ShippingContext.Aggregates.WarehouseStorageLocation.Location#StorageLocationCode", b1 =>
-                        {
-                            b1.IsRequired();
-
-                            b1.Property<string>("Aisle")
-                                .IsRequired()
-                                .HasMaxLength(10)
-                                .HasColumnType("character varying(10)")
-                                .HasColumnName("aisle");
-
-                            b1.Property<string>("Bin")
-                                .IsRequired()
-                                .HasMaxLength(10)
-                                .HasColumnType("character varying(10)")
-                                .HasColumnName("bin");
-
-                            b1.Property<string>("Label")
-                                .IsRequired()
-                                .HasMaxLength(50)
-                                .HasColumnType("character varying(50)")
-                                .HasColumnName("label");
-
-                            b1.Property<string>("Shelf")
-                                .IsRequired()
-                                .HasMaxLength(10)
-                                .HasColumnType("character varying(10)")
-                                .HasColumnName("shelf");
-
-                            b1.Property<string>("Zone")
-                                .IsRequired()
-                                .HasMaxLength(10)
-                                .HasColumnType("character varying(10)")
-                                .HasColumnName("zone");
-                        });
-
-                    b.HasKey("Id")
-                        .HasName("pk_warehouse_storage_locations");
-
-                    b.ToTable("warehouse_storage_locations", (string)null);
-                });
-
             modelBuilder.Entity("OIO.Domain.Context.UserContext.Aggregates.Roles.Permission", b =>
                 {
                     b.Property<string>("Code")
@@ -6542,6 +5865,697 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.ToTable("verification_document_type", (string)null);
                 });
 
+            modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments.InboundShipment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("ArrivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("arrived_at");
+
+                    b.Property<string>("CarrierTrackingNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("carrier_tracking_number");
+
+                    b.Property<string>("ClientOrderCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("client_order_code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime?>("ExpectedArrivalAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expected_arrival_at");
+
+                    b.Property<string>("ExtraData")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("extra_data");
+
+                    b.Property<decimal>("InsuranceValue")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("insurance_value");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("item_id");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("ProviderCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("provider_code");
+
+                    b.Property<Guid>("SellerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("seller_id");
+
+                    b.Property<string>("SenderAddress")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("sender_address");
+
+                    b.Property<string>("SenderCarrierAddressData")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("sender_carrier_address_data");
+
+                    b.Property<string>("SenderDistrict")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("sender_district");
+
+                    b.Property<string>("SenderName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("sender_name");
+
+                    b.Property<string>("SenderPhone")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("sender_phone");
+
+                    b.Property<string>("SenderProvince")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("sender_province");
+
+                    b.Property<string>("SenderWard")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("sender_ward");
+
+                    b.Property<decimal>("ShippingFee")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("shipping_fee");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("status");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Dimensions", "OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments.InboundShipment.Dimensions#PackageDimensions", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<int?>("HeightCm")
+                                .HasColumnType("integer")
+                                .HasColumnName("height_cm");
+
+                            b1.Property<int?>("LengthCm")
+                                .HasColumnType("integer")
+                                .HasColumnName("length_cm");
+
+                            b1.Property<int>("WeightGrams")
+                                .HasColumnType("integer")
+                                .HasColumnName("weight_grams");
+
+                            b1.Property<int?>("WidthCm")
+                                .HasColumnType("integer")
+                                .HasColumnName("width_cm");
+                        });
+
+                    b.HasKey("Id")
+                        .HasName("pk_inbound_shipments");
+
+                    b.HasIndex("CarrierTrackingNumber")
+                        .HasDatabaseName("idx_inbound_shipments_carrier_tracking_number")
+                        .HasFilter("carrier_tracking_number IS NOT NULL");
+
+                    b.HasIndex("ClientOrderCode")
+                        .IsUnique()
+                        .HasDatabaseName("idx_unique_inbound_shipments_client_order_code");
+
+                    b.HasIndex("ItemId")
+                        .HasDatabaseName("idx_inbound_shipments_item_id");
+
+                    b.HasIndex("SellerId")
+                        .HasDatabaseName("idx_inbound_shipments_seller_id");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("idx_inbound_shipments_status");
+
+                    b.ToTable("inbound_shipments", (string)null);
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.OutboundShipment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CarrierTrackingNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("carrier_tracking_number");
+
+                    b.Property<string>("ClientOrderCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("client_order_code");
+
+                    b.Property<decimal>("CodAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("cod_amount");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("delivered_at");
+
+                    b.Property<DateTime?>("DispatchedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("dispatched_at");
+
+                    b.Property<DateTime?>("EstimatedDeliveryAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("estimated_delivery_at");
+
+                    b.Property<string>("ExtraData")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("extra_data");
+
+                    b.Property<string>("GhnHandlingNote")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("ghn_handling_note");
+
+                    b.Property<string>("GhnPaymentType")
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)")
+                        .HasColumnName("ghn_payment_type");
+
+                    b.Property<decimal>("InsuranceValue")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("insurance_value");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_id");
+
+                    b.Property<DateTime?>("PackedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("packed_at");
+
+                    b.Property<Guid?>("PackedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("packed_by");
+
+                    b.Property<string>("ProviderCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("provider_code");
+
+                    b.Property<string>("RecipientCarrierAddressData")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("recipient_carrier_address_data");
+
+                    b.Property<decimal>("ShippingFee")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("shipping_fee");
+
+                    b.Property<string>("ShippingLabelUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("shipping_label_url");
+
+                    b.Property<string>("ShippingMethod")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("shipping_method");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("WarehouseItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("warehouse_item_id");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Dimensions", "OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.OutboundShipment.Dimensions#PackageDimensions", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<int?>("HeightCm")
+                                .HasColumnType("integer")
+                                .HasColumnName("height_cm");
+
+                            b1.Property<int?>("LengthCm")
+                                .HasColumnType("integer")
+                                .HasColumnName("length_cm");
+
+                            b1.Property<int>("WeightGrams")
+                                .HasColumnType("integer")
+                                .HasColumnName("weight_grams");
+
+                            b1.Property<int?>("WidthCm")
+                                .HasColumnType("integer")
+                                .HasColumnName("width_cm");
+                        });
+
+                    b.HasKey("Id")
+                        .HasName("pk_outbound_shipments");
+
+                    b.HasIndex("CarrierTrackingNumber")
+                        .HasDatabaseName("idx_outbound_shipments_carrier_tracking_number")
+                        .HasFilter("carrier_tracking_number IS NOT NULL");
+
+                    b.HasIndex("ClientOrderCode")
+                        .IsUnique()
+                        .HasDatabaseName("idx_unique_outbound_shipments_client_order_code");
+
+                    b.HasIndex("OrderId")
+                        .HasDatabaseName("idx_outbound_shipments_order_id");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("idx_outbound_shipments_status");
+
+                    b.HasIndex("WarehouseItemId")
+                        .IsUnique()
+                        .HasDatabaseName("idx_unique_outbound_shipments_warehouse_item_id");
+
+                    b.ToTable("outbound_shipments", null, t =>
+                        {
+                            t.HasCheckConstraint("chk_outbound_shipments_cod_amount", "cod_amount >= 0");
+
+                            t.HasCheckConstraint("chk_outbound_shipments_insurance_value", "insurance_value >= 0");
+
+                            t.HasCheckConstraint("chk_outbound_shipments_shipping_fee", "shipping_fee >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.ShipmentTrackingEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CarrierStatusDesc")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("carrier_status_desc");
+
+                    b.Property<string>("CarrierStatusRaw")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("carrier_status_raw");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime>("EventTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("event_time");
+
+                    b.Property<Guid?>("InboundShipmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("inbound_shipment_id");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("location");
+
+                    b.Property<string>("NormalizedStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("normalized_status");
+
+                    b.Property<Guid?>("OutboundShipmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("outbound_shipment_id");
+
+                    b.Property<string>("ProviderCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("provider_code");
+
+                    b.Property<string>("RawPayload")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("raw_payload");
+
+                    b.Property<string>("ReasonCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("reason_code");
+
+                    b.Property<string>("ReasonDescription")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason_description");
+
+                    b.Property<Guid>("ShipmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("shipment_id");
+
+                    b.Property<string>("ShipmentType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("shipment_type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_shipment_tracking_events");
+
+                    b.HasIndex("InboundShipmentId", "EventTime")
+                        .HasDatabaseName("idx_shipment_tracking_events_inbound_shipment_id");
+
+                    b.HasIndex("OutboundShipmentId", "EventTime")
+                        .HasDatabaseName("idx_shipment_tracking_events_outbound_shipment_id");
+
+                    b.HasIndex("ShipmentId", "CarrierStatusRaw", "EventTime")
+                        .HasDatabaseName("idx_shipment_tracking_events_shipment_carrier_status");
+
+                    b.ToTable("shipment_tracking_events", (string)null);
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.ShippingProviders.ShippingProviderConfig", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ApiBaseUrl")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("api_base_url");
+
+                    b.Property<string>("CachedToken")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("cached_token");
+
+                    b.Property<DateTime?>("CachedTokenExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cached_token_expires_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Credentials")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("credentials");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("display_name");
+
+                    b.Property<string>("Environment")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("environment");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDefault")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_default");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
+
+                    b.Property<string>("PickAddress")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("pick_address");
+
+                    b.Property<string>("PickCarrierAddressData")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("pick_carrier_address_data");
+
+                    b.Property<string>("PickDistrict")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("pick_district");
+
+                    b.Property<string>("PickName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("pick_name");
+
+                    b.Property<string>("PickPhone")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("pick_phone");
+
+                    b.Property<string>("PickProvince")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("pick_province");
+
+                    b.Property<string>("PickWard")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("pick_ward");
+
+                    b.Property<string>("ProviderCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("provider_code");
+
+                    b.Property<string>("WebhookSecret")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("webhook_secret");
+
+                    b.HasKey("Id")
+                        .HasName("pk_shipping_provider_configs");
+
+                    b.HasIndex("IsDefault")
+                        .HasDatabaseName("idx_shipping_provider_configs_default_active")
+                        .HasFilter("is_default = TRUE AND is_active = TRUE");
+
+                    b.HasIndex("ProviderCode")
+                        .IsUnique()
+                        .HasDatabaseName("idx_unique_shipping_provider_configs_provider_code");
+
+                    b.ToTable("shipping_provider_configs", null, t =>
+                        {
+                            t.HasCheckConstraint("chk_shipping_provider_configs_cached_token", "(cached_token IS NULL AND cached_token_expires_at IS NULL) OR (cached_token IS NOT NULL AND cached_token_expires_at IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.WarehouseItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ConditionOnArrival")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("condition_on_arrival");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid>("InboundShipmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("inbound_shipment_id");
+
+                    b.Property<DateTime?>("InspectedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("inspected_at");
+
+                    b.Property<Guid?>("InspectedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("inspected_by");
+
+                    b.Property<string>("InspectionImages")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("inspection_images");
+
+                    b.Property<string>("InspectionNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("inspection_notes");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("item_id");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
+
+                    b.Property<DateTime?>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("received_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid?>("StorageLocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("storage_location_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_warehouse_items");
+
+                    b.HasIndex("InboundShipmentId")
+                        .IsUnique()
+                        .HasDatabaseName("idx_unique_warehouse_items_inbound_shipment_id");
+
+                    b.HasIndex("ItemId")
+                        .HasDatabaseName("idx_warehouse_items_item_id");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("idx_warehouse_items_status");
+
+                    b.HasIndex("StorageLocationId")
+                        .HasDatabaseName("idx_warehouse_items_storage_location_id")
+                        .HasFilter("storage_location_id IS NOT NULL");
+
+                    b.ToTable("warehouse_items", (string)null);
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseStorage.WarehouseStorageLocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Aisle")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("aisle");
+
+                    b.Property<string>("Bin")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("bin");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<bool>("IsOccupied")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_occupied");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("label");
+
+                    b.Property<string>("Shelf")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("shelf");
+
+                    b.Property<string>("Zone")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("zone");
+
+                    b.HasKey("Id")
+                        .HasName("pk_warehouse_storage_locations");
+
+                    b.HasIndex("IsOccupied")
+                        .HasDatabaseName("idx_warehouse_storage_locations_vacant")
+                        .HasFilter("is_occupied = FALSE");
+
+                    b.HasIndex("Label")
+                        .IsUnique()
+                        .HasDatabaseName("idx_unique_warehouse_storage_locations_label");
+
+                    b.ToTable("warehouse_storage_locations", (string)null);
+                });
+
             modelBuilder.Entity("OIO.Infrastructure.Outbox.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -6882,7 +6896,16 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_items_categories_category_id");
 
+                    b.HasOne("OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.WarehouseItem", "WarehouseItem")
+                        .WithMany()
+                        .HasForeignKey("WarehouseItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_items_warehouse_item_warehouse_item_id");
+
                     b.Navigation("Category");
+
+                    b.Navigation("WarehouseItem");
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.CatalogContext.Aggregates.Items.ItemMedia", b =>
@@ -7089,56 +7112,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.Navigation("Review");
                 });
 
-            modelBuilder.Entity("OIO.Domain.Context.ShippingContext.Aggregates.OutboundShipment", b =>
-                {
-                    b.HasOne("OIO.Domain.Context.OrderContext.Aggregates.Orders.Order", "Order")
-                        .WithMany("OutboundShipments")
-                        .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_outbound_shipments_orders_order_id");
-
-                    b.HasOne("OIO.Domain.Context.ShippingContext.Aggregates.WarehouseItem", "WarehouseItem")
-                        .WithOne("OutboundShipment")
-                        .HasForeignKey("OIO.Domain.Context.ShippingContext.Aggregates.OutboundShipment", "WarehouseItemId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_outbound_shipments_warehouse_item_warehouse_item_id");
-
-                    b.Navigation("Order");
-
-                    b.Navigation("WarehouseItem");
-                });
-
-            modelBuilder.Entity("OIO.Domain.Context.ShippingContext.Aggregates.WarehouseItem", b =>
-                {
-                    b.HasOne("OIO.Domain.Context.ShippingContext.Aggregates.InboundShipment", "InboundShipment")
-                        .WithOne("WarehouseItem")
-                        .HasForeignKey("OIO.Domain.Context.ShippingContext.Aggregates.WarehouseItem", "InboundShipmentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_warehouse_items_inbound_shipments_inbound_shipment_id");
-
-                    b.HasOne("OIO.Domain.Context.CatalogContext.Aggregates.Items.Item", "Item")
-                        .WithOne("WarehouseItem")
-                        .HasForeignKey("OIO.Domain.Context.ShippingContext.Aggregates.WarehouseItem", "ItemId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_warehouse_items_items_item_id");
-
-                    b.HasOne("OIO.Domain.Context.ShippingContext.Aggregates.WarehouseStorageLocation", "StorageLocation")
-                        .WithMany()
-                        .HasForeignKey("StorageLocationId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_warehouse_items_warehouse_storage_location_storage_location");
-
-                    b.Navigation("InboundShipment");
-
-                    b.Navigation("Item");
-
-                    b.Navigation("StorageLocation");
-                });
-
             modelBuilder.Entity("OIO.Domain.Context.UserContext.Aggregates.Roles.RolePermission", b =>
                 {
                     b.HasOne("OIO.Domain.Context.UserContext.Aggregates.Roles.Permission", "Permission")
@@ -7320,6 +7293,55 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.Navigation("Verification");
                 });
 
+            modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.OutboundShipment", b =>
+                {
+                    b.HasOne("OIO.Domain.Context.OrderContext.Aggregates.Orders.Order", "Order")
+                        .WithMany("OutboundShipments")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_outbound_shipments_orders_order_id");
+
+                    b.HasOne("OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.WarehouseItem", null)
+                        .WithOne()
+                        .HasForeignKey("OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.OutboundShipment", "WarehouseItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_outbound_shipments_warehouse_item_warehouse_item_id");
+
+                    b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.ShipmentTrackingEvent", b =>
+                {
+                    b.HasOne("OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments.InboundShipment", null)
+                        .WithMany("TrackingEvents")
+                        .HasForeignKey("InboundShipmentId")
+                        .HasConstraintName("fk_shipment_tracking_events_inbound_shipments_inbound_shipment");
+
+                    b.HasOne("OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.OutboundShipment", null)
+                        .WithMany("TrackingEvents")
+                        .HasForeignKey("OutboundShipmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_shipment_tracking_events_outbound_shipments_outbound_shipme");
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.WarehouseItem", b =>
+                {
+                    b.HasOne("OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments.InboundShipment", null)
+                        .WithOne()
+                        .HasForeignKey("OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.WarehouseItem", "InboundShipmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_warehouse_items_inbound_shipments_inbound_shipment_id");
+
+                    b.HasOne("OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseStorage.WarehouseStorageLocation", null)
+                        .WithMany()
+                        .HasForeignKey("StorageLocationId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_warehouse_items_warehouse_storage_location_storage_location");
+                });
+
             modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzJobDetail", b =>
                 {
                     b.Navigation("Triggers");
@@ -7388,9 +7410,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.Navigation("ModerationReviews");
 
                     b.Navigation("Questions");
-
-                    b.Navigation("WarehouseItem")
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.ModerationContext.Aggregates.Disputes.Dispute", b =>
@@ -7444,16 +7463,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.Navigation("Votes");
                 });
 
-            modelBuilder.Entity("OIO.Domain.Context.ShippingContext.Aggregates.InboundShipment", b =>
-                {
-                    b.Navigation("WarehouseItem");
-                });
-
-            modelBuilder.Entity("OIO.Domain.Context.ShippingContext.Aggregates.WarehouseItem", b =>
-                {
-                    b.Navigation("OutboundShipment");
-                });
-
             modelBuilder.Entity("OIO.Domain.Context.UserContext.Aggregates.Roles.Permission", b =>
                 {
                     b.Navigation("RolePermissions");
@@ -7499,6 +7508,16 @@ namespace OIO.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("OIO.Domain.Context.UserContext.Aggregates.Users.UserSession", b =>
                 {
                     b.Navigation("Tokens");
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments.InboundShipment", b =>
+                {
+                    b.Navigation("TrackingEvents");
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.OutboundShipment", b =>
+                {
+                    b.Navigation("TrackingEvents");
                 });
 #pragma warning restore 612, 618
         }

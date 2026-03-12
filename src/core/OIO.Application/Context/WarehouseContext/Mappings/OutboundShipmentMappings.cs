@@ -8,7 +8,7 @@ internal static class OutboundShipmentMappings
     public static OutboundShipmentDto ToDto(this OutboundShipment shipment) =>
         new(
             Id:                   shipment.Id.Value,
-            OrderId:              shipment.OrderId,
+            OrderId:              shipment.OrderId.Value,
             WarehouseItemId:      shipment.WarehouseItemId.Value,
             ProviderCode:         shipment.ProviderCode.Id,
             ClientOrderCode:      shipment.ClientOrderCode,

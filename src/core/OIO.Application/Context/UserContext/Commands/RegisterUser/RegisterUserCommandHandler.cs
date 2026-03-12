@@ -50,14 +50,16 @@ internal sealed class RegisterUserCommandHandler
         if (isFailure)
             return error;
 
-        var personName = PersonName.Create(request.FirstName, request.LastName);
+        var personName = PersonName.Create(request.FirstName, request.LastName, request.UserName);
         
-        var existByEmail = await _dbContext.Set<User>().AnyAsync(x => x.Email == email, cancellationToken);
+        var existByEmail = await _dbContext.Set<User>()
+            .AnyAsync(x => x.Email == email, cancellationToken);
         
         if (existByEmail)
             return UserErrors.User.EmailAlreadyExists;
 
-        var existByUserName = await _dbContext.Set<User>().AnyAsync(x => x.UserName == userName, cancellationToken);
+        var existByUserName = await _dbContext.Set<User>()
+            .AnyAsync(x => x.UserName == userName, cancellationToken);
         
         if (existByUserName)
             return UserErrors.User.UserNameAlreadyExists;

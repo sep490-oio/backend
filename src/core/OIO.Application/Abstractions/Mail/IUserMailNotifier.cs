@@ -7,12 +7,14 @@ public interface IUserMailNotifier
         string userName,
         string token,
         string userId,
+        DateTime tokenExpiry,
         CancellationToken cancellationToken = default);
 
     Task SendPasswordResetAsync(
         string toEmail, 
         string userName,
         string token,
+        DateTime tokenExpiry,
         CancellationToken cancellationToken = default);
 
     Task SendResendVerifyAsync(
@@ -20,6 +22,7 @@ public interface IUserMailNotifier
         string userName,
         string token,
         string userId,
+        DateTime tokenExpiry,
         CancellationToken cancellationToken = default);
 
     // ==================== Security ====================

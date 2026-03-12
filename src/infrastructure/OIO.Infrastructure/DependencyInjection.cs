@@ -67,6 +67,7 @@ public static class DependencyInjection
                 .AddHealthCheckService(configuration)
                 .AddEmail(configuration)
                 .AddBackgroundJobs()
+                .AddSchedulingServices(configuration, connectionString)
                 .AddOutbox(configuration)
                 .AddMedia(configuration)
                 .AddSecurityServices()
@@ -76,7 +77,7 @@ public static class DependencyInjection
         }
         
         private IServiceCollection AddPersistence(
-            IConfiguration configuration)
+            IConfiguration configuration, string connectionString)
         {
             // Interceptors
             services.AddSingleton<AuditableEntityInterceptor>();

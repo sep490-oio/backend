@@ -7,7 +7,6 @@ using OIO.Application.Abstractions.Mail;
 using OIO.Infrastructure.Mail.RazorEmails.Rendering;
 using OIO.Infrastructure.Mail.RazorEmails.Rendering.ViewModels;
 using OIO.Infrastructure.Mail.RazorEmails.Rendering.Views;
-using OIO.Infrastructure.Settings;
 using OIO.Infrastructure.Settings.Apps;
 
 namespace OIO.Infrastructure.Services;
@@ -19,21 +18,18 @@ public class UserMailNotifier : IUserMailNotifier
     private readonly RazorViewRenderer _renderer;
     private readonly IClock _clock;
     private readonly ILogger<UserMailNotifier> _logger;
-    private readonly IAppConfigs _appConfigs;
     
     public UserMailNotifier(
         IOptionsMonitor<AppInfoOptions> options,
         IMailSender mailSender,
         RazorViewRenderer renderer,
         IClock clock,
-        IAppConfigs appConfigs,
         ILogger<UserMailNotifier> logger)
     {
         _options = options.CurrentValue;
         _mailSender = mailSender;
         _renderer = renderer;
         _clock = clock;
-        _appConfigs = appConfigs;
         _logger = logger;
     }
     
@@ -42,6 +38,7 @@ public class UserMailNotifier : IUserMailNotifier
         string userName,
         string token, 
         string userId,
+        DateTime tokenExpiry,
         CancellationToken cancellationToken = default)
     {
         var verifyLink = BuildFrontendUrl(_options.EmailVerifyPath, new()
@@ -49,15 +46,13 @@ public class UserMailNotifier : IUserMailNotifier
             ["token"] = token,
             ["userId"] = userId
         });
-       
-        var tokenExpirationMinutes = await _appConfigs.Auth.GetEmailVerificationTokenExpirationMinutesAsync(cancellationToken);
         
         var html = await _renderer.Render<WelcomeMail, WelcomeMailViewModel>(
             new WelcomeMailViewModel
             {
                 UserName = userName,
                 VerifyLink = verifyLink,
-                ExpirationHours = tokenExpirationMinutes.Hours 
+                ExpiredAt = tokenExpiry.ToString("dddd, dd MMMM yyyy hh:mm tt"),
             });
         
         var subject = $"Welcome to {_options.AppName}! Please verify your email";
@@ -74,6 +69,7 @@ public class UserMailNotifier : IUserMailNotifier
         string toEmail,
         string userName,
         string token,
+        DateTime tokenExpiry,
         CancellationToken cancellationToken = default)
     {
         var resetLink = BuildFrontendUrl(_options.ResetPasswordPath, new()
@@ -82,15 +78,12 @@ public class UserMailNotifier : IUserMailNotifier
             ["token"] = token
         });
         
-        var tokenExpirationMinutes = await _appConfigs.Auth.GetPasswordResetTokenExpirationMinutesAsync(cancellationToken);
-
-        
         var html = await _renderer.Render<PasswordResetMail, PasswordResetMailViewModel>(
             new PasswordResetMailViewModel
             {
                 UserName = userName,
                 ResetLink = resetLink,
-                ExpirationHours = tokenExpirationMinutes.Hours
+                ExpiredAt = tokenExpiry.ToString("dddd, dd MMMM yyyy hh:mm tt")
             });
 
         var subject = $"{_options.AppName} — Reset your password";
@@ -107,6 +100,7 @@ public class UserMailNotifier : IUserMailNotifier
         string userName,
         string token,
         string userId,
+        DateTime tokenExpiry,
         CancellationToken cancellationToken = default)
     {
         var verifyLink = BuildFrontendUrl(_options.EmailVerifyPath, new()
@@ -114,15 +108,13 @@ public class UserMailNotifier : IUserMailNotifier
             ["token"] = token,
             ["userId"] = userId
         });
-        
-        var tokenExpirationMinutes = await _appConfigs.Auth.GetEmailVerificationTokenExpirationMinutesAsync(cancellationToken);
 
         var html = await _renderer.Render<ResendVerifyMail, ResendVerifyMailViewModel>(
             new ResendVerifyMailViewModel
             {
                 UserName = userName,
                 VerifyUrl = verifyLink,
-                ExpirationHours = tokenExpirationMinutes.Hours
+                ExpiredAt = tokenExpiry.ToString("dddd, dd MMMM yyyy hh:mm tt")
             });
 
         var subject = $"{_options.AppName} — Verify your email";

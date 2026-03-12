@@ -4,14 +4,14 @@ public class PhoneVerificationMailViewModel
 {
     public required string UserName { get; set; }
     public required string OtpCode { get; set; }
-    public required int ExpirationMinutes { get; set; }
+    public required string ExpiredAt { get; set; }
 }
 
 public sealed class ResendVerifyMailViewModel
 {
     public required string UserName { get; set; }
     public required string VerifyUrl { get; set; }
-    public required int ExpirationHours { get; set; }
+    public required string ExpiredAt { get; set; }
 }
     
 public sealed class OutbidMailViewModel

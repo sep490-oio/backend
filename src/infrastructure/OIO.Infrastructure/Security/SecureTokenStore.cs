@@ -32,7 +32,7 @@ internal sealed class SecureTokenStore : ISecureTokenStore
         _logger = logger;
     }
 
-    public async Task<string> CreateTokenAsync(
+    public async Task<(string token, TimeSpan ttl)> CreateTokenAsync(
         TokenType type,
         UserId userId,
         TimeSpan? expiration = null,
@@ -61,7 +61,7 @@ internal sealed class SecureTokenStore : ISecureTokenStore
             "Created {Type} token for user {UserId}. Expires in {Expiration}.",
             type, userId, expiration);
 
-        return plainToken;
+        return (plainToken, ttl);
     }
 
     public async Task<bool> ValidateTokenAsync(

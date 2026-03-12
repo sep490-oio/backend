@@ -7,6 +7,7 @@ using OIO.Application.Abstractions.Shipping;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Application.Context.WarehouseContext.Mappings;
+using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments;
 using OIO.Domain.Context.WarehouseContext.Aggregates.ShippingProviders;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
@@ -162,7 +163,7 @@ internal sealed class BookOutboundShipmentCommandHandler
 
         // ── 7. Create OutboundShipment ────────────────────────────────────────
         var shipment = OutboundShipment.Create(
-            orderId:        request.OrderId,
+            orderId:        OrderId.From(request.OrderId),
             warehouseItemId: warehouseItemId,
             providerCode:   config.ProviderCode,
             clientOrderCode: clientOrderCode,
