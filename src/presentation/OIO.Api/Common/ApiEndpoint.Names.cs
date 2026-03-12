@@ -1,9 +1,15 @@
-﻿namespace OIO.Api.Common;
+namespace OIO.Api.Common;
 
 public static partial class ApiEndpoint
 {
     public static class Names
     {
+        public static class Terms
+        {
+            public const string GetActiveTerms = nameof(GetActiveTerms);
+            public const string GetActiveTermsByType = nameof(GetActiveTermsByType);
+            public const string GetTermById = nameof(GetTermById);
+        }
         public static class Me
         {
             public const string GetMyAuctions = nameof(GetMyAuctions);
@@ -24,6 +30,24 @@ public static partial class ApiEndpoint
             public const string SetPhoneNumber = nameof(SetPhoneNumber);
             public const string UpdateMyAddress = nameof(UpdateMyAddress);
             public const string UpdateMyProfile = nameof(UpdateMyProfile);
+            public const string AcceptTerm = nameof(AcceptTerm);
+            public const string GetMyAcceptedTerms = nameof(GetMyAcceptedTerms);
+            public const string CheckPendingTerms = nameof(CheckPendingTerms);
+            public const string GetMyWallet = nameof(GetMyWallet);
+
+            // Verifications
+            public const string CreateVerification = nameof(CreateVerification);
+            public const string GetMyVerifications = nameof(GetMyVerifications);
+            public const string GetMyVerificationById = nameof(GetMyVerificationById);
+            public const string UpdateVerification = nameof(UpdateVerification);
+            public const string UploadVerificationDocument = nameof(UploadVerificationDocument);
+            public const string DeleteVerificationDocument = nameof(DeleteVerificationDocument);
+            public const string SubmitVerification = nameof(SubmitVerification);
+
+            // Seller Profile
+            public const string CreateSellerProfile = nameof(CreateSellerProfile);
+            public const string GetMySellerProfile = nameof(GetMySellerProfile);
+            public const string UpdateSellerProfile = nameof(UpdateSellerProfile);
         }
 
         public static class Media
@@ -51,6 +75,20 @@ public static partial class ApiEndpoint
             public const string GetAllSettings = nameof(GetAllSettings);
             public const string GetSettingByKey = nameof(GetSettingByKey);
             public const string UpdateSetting = nameof(UpdateSetting);
+            public const string CreateTermsDocument = nameof(CreateTermsDocument);
+            public const string ActivateTermsDocument = nameof(ActivateTermsDocument);
+            public const string GetAllTermsDocuments = nameof(GetAllTermsDocuments);
+
+            // Verifications
+            public const string GetPendingVerifications = nameof(GetPendingVerifications);
+            public const string GetVerificationById = nameof(GetVerificationById);
+            public const string ApproveVerification = nameof(ApproveVerification);
+            public const string RejectVerification = nameof(RejectVerification);
+
+            // Seller Profiles
+            public const string GetSellerProfiles = nameof(GetSellerProfiles);
+            public const string VerifySellerProfile = nameof(VerifySellerProfile);
+            public const string RejectSellerProfile = nameof(RejectSellerProfile);
         }
 
         public static class Auth
@@ -68,6 +106,7 @@ public static partial class ApiEndpoint
         public static class Items
         {
             public const string CreateItem = nameof(CreateItem);
+            public const string GetAllItems = nameof(GetAllItems);
             public const string GetItemById = nameof(GetItemById);
             public const string GetMyItems = nameof(GetMyItems);
             public const string ActivateItem = nameof(ActivateItem);
@@ -108,6 +147,11 @@ public static partial class ApiEndpoint
             public const string UpdateCategory = nameof(UpdateCategory);
         }
         
+        public static class Sellers
+        {
+            public const string GetSellerById = nameof(GetSellerById);
+        }
+
         public static class Warehouse
         {
             public const string BookInboundShipment  = nameof(BookInboundShipment);

@@ -1,6 +1,8 @@
 ﻿using System.Net;
 using CSharpFunctionalExtensions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
+using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.Shared.Enums;
 using OIO.Domain.Context.UserContext.Aggregates.Roles;
 using OIO.Domain.Context.UserContext.Aggregates.Users.Events;
 using OIO.Domain.Context.UserContext.Enums;
@@ -70,6 +72,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
 
     public bool IsDeleted => DeletedAt is not null;
     
+    public Wallet Wallet { get; private set; }
     public UserProfile Profile { get; private set; }
     public SellerProfile SellerProfile { get; private set; }
     public IReadOnlyCollection<UserAddress> Addresses => _addresses.AsReadOnly();
@@ -107,6 +110,8 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         UserName userName, 
         UserEmail email, 
         DateTime now,
+        PersonName personName,
+        Currency currency,
         Password? password = null)
     {
         var user = new User(
@@ -118,6 +123,11 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
 
         // Initialize profile
         user.Profile = new UserProfile(user.Id, now);
+        user.Profile.Update(
+            now: now,
+            name: personName);
+        
+        user.Wallet = Wallet.Create(user.Id, currency, now);
 
         user.RaiseDomainEvent(new UserCreatedEvent(
             user.Id.ToString(),
@@ -234,7 +244,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
             
             return unitResult;
         }
-
+        
         ModifiedAt = now;
 
         RaiseDomainEvent(new UserEmailConfirmedEvent(Id.ToString(), Email, now));
@@ -437,7 +447,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         
         Profile ??= new UserProfile(Id, now);
         
-        unitResult = Profile.Update(name, avatarUrl, dateOfBirth, gender, now);
+        unitResult = Profile.Update(now, name, avatarUrl, dateOfBirth, gender);
         
         if (unitResult.IsFailure)
         {

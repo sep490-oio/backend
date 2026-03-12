@@ -14,5 +14,9 @@ public static partial class ApiEndpoint
         public const string Hub = nameof(Hub);
         public const string Warehouse = nameof(Warehouse);
         public const string Webhooks  = nameof(Webhooks);
+        public const string Terms = nameof(Terms);
+        public const string Verifications = nameof(Verifications);
+        public const string SellerProfiles = nameof(SellerProfiles);
+        public const string Sellers = nameof(Sellers);
     }
 }

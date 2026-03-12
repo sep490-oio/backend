@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using CloudinaryDotNet;
@@ -38,7 +38,7 @@ internal sealed class CloudinarySignatureService : IMediaSignatureService
 
     public UploadSignatureResult GenerateSignature(
         MediaResourceType resourceType,
-        string publicId,
+        string mediaName,
         string folder,
         string? eager = null,
         string[]? allowedFormats = null)
@@ -51,7 +51,7 @@ internal sealed class CloudinarySignatureService : IMediaSignatureService
         var paramsToSign = new SortedDictionary<string, string>
         {
             ["folder"] = folder,
-            ["public_id"] = publicId,
+            ["public_id"] = mediaName,
             ["timestamp"] = timestamp.ToString(CultureInfo.InvariantCulture)
         };
 
@@ -77,6 +77,7 @@ internal sealed class CloudinarySignatureService : IMediaSignatureService
 
         // Upload URL varies by resource type
         var uploadUrl = $"{opts.BaseUrl}/{opts.CloudName}/{resourceTypePath}/upload";
+        var publicId = $"{folder}/{mediaName}";
 
         _logger.LogDebug(
             "Generated {ResourceType} upload signature: publicId={PublicId}, folder={Folder}",

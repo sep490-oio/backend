@@ -1,4 +1,4 @@
-﻿using OIO.Domain.Context.UserContext.Aggregates.Roles;
+using OIO.Domain.Context.UserContext.Aggregates.Roles;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 
 namespace OIO.Domain.AppDefinitions;
@@ -52,6 +52,14 @@ public static partial class App
 
                     // Me
                     Permissions.Catalogs.Me.ReadWatchlist,
+                    Permissions.Catalogs.Me.ReadTerms,
+                    Permissions.Catalogs.Me.AcceptTerms,
+
+                    // Verification & Seller Profile
+                    Permissions.Catalogs.Me.ManageVerification,
+                    Permissions.Catalogs.Me.ReadVerification,
+                    Permissions.Catalogs.Me.ManageSellerProfile,
+                    Permissions.Catalogs.Me.ReadSellerProfile,
                 ],
 
                 [Bidder] =
@@ -82,14 +90,21 @@ public static partial class App
 
                     // Me
                     Permissions.Catalogs.Me.ReadWatchlist,
+                    Permissions.Catalogs.Me.ReadTerms,
+                    Permissions.Catalogs.Me.AcceptTerms,
+
                     // Bidding
                     Permissions.Catalogs.Auctions.Bid,
                     Permissions.Catalogs.Auctions.BuyNow,
                     Permissions.Catalogs.Auctions.AutoBid,
                     Permissions.Catalogs.Auctions.ReadAutoBid,
-
-                    // Me
                     Permissions.Catalogs.Me.ReadBids,
+
+                    // Verification & Seller Profile
+                    Permissions.Catalogs.Me.ManageVerification,
+                    Permissions.Catalogs.Me.ReadVerification,
+                    Permissions.Catalogs.Me.ManageSellerProfile,
+                    Permissions.Catalogs.Me.ReadSellerProfile,
                 ],
 
                 [Seller] = 
@@ -120,6 +135,9 @@ public static partial class App
 
                     // Me
                     Permissions.Catalogs.Me.ReadWatchlist,
+                    Permissions.Catalogs.Me.ReadTerms,
+                    Permissions.Catalogs.Me.AcceptTerms,
+
                     // Items
                     Permissions.Catalogs.Items.Create,
                     Permissions.Catalogs.Items.Activate,
@@ -131,9 +149,12 @@ public static partial class App
                     Permissions.Catalogs.Auctions.Create,
                     Permissions.Catalogs.Auctions.Publish,
                     Permissions.Catalogs.Auctions.Cancel,
-
-                    // Me
                     Permissions.Catalogs.Me.ReadAuctions,
+
+                    // Verification & Seller Profile
+                    Permissions.Catalogs.Me.ReadVerification,
+                    Permissions.Catalogs.Me.ManageSellerProfile,
+                    Permissions.Catalogs.Me.ReadSellerProfile,
                 ],
 
                 [Admin] = Permissions.Catalogs.All

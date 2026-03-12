@@ -46,39 +46,64 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
 
         builder.ComplexProperty(a => a.Pricing, pricing =>
         {
-            pricing.Property("_startingPrice")
-                .HasColumnName("starting_price")
-                .HasPrecision(18, 2)
-                .IsRequired();
+            pricing.ComplexProperty(p => p.StartingPrice, startingPrice =>
+            {
+                startingPrice.Property(cp => cp.Amount)
+                    .HasColumnName("starting_price")
+                    .HasColumnType("numeric(18,2)")
+                    .IsRequired();
 
-            pricing.Property("_reservePrice")
-                .HasColumnName("reserve_price")
-                .HasPrecision(18, 2);
-
-            pricing.Property("_buyNowPrice")
-                .HasColumnName("buy_now_price")
-                .HasPrecision(18, 2);
-
-            pricing.Property("_currentPrice")
-                .HasColumnName("current_price")
-                .HasPrecision(18, 2)
-                .IsRequired();
-
-            pricing.Property("_bidIncrement")
-                .HasColumnName("bid_increment")
-                .HasPrecision(18, 2)
-                .IsRequired();
-
-            pricing.Property("_currency")
-                .HasColumnName("currency")
-                .HasMaxLength(3);
+                startingPrice.Ignore(cp => cp.Currency);
+            });
             
-            pricing.Ignore(p => p.Currency);
-            pricing.Ignore(p => p.StartingPrice);
-            pricing.Ignore(p => p.ReservePrice);
-            pricing.Ignore(p => p.BuyNowPrice);
-            pricing.Ignore(p => p.BidIncrement);
-            pricing.Ignore(p => p.Currency);
+            pricing.ComplexProperty(p => p.ReservePrice, reservePrice =>
+            {
+                reservePrice.Property(cp => cp.Amount)
+                    .HasColumnName("reserve_price")
+                    .HasColumnType("numeric(18,2)");
+
+                reservePrice.Ignore(cp => cp.Currency);
+            });
+            
+            pricing.ComplexProperty(p => p.BuyNowPrice, buyNowPrice =>
+            {
+                buyNowPrice.Property(cp => cp.Amount)
+                    .HasColumnName("buy_now_price")
+                    .HasColumnType("numeric(18,2)");
+
+                buyNowPrice.Ignore(cp => cp.Currency);
+            });
+
+            pricing.ComplexProperty(p => p.CurrentPrice, currentPrice =>
+            {
+                currentPrice.Property(cp => cp.Amount)
+                    .HasColumnName("current_price")
+                    .HasColumnType("numeric(18,2)")
+                    .IsRequired();
+
+                currentPrice.Ignore(cp => cp.Currency);
+            });
+
+            pricing.ComplexProperty(p => p.BidIncrement, bidIncrement =>
+            {
+                bidIncrement.Property(cp => cp.Amount)
+                    .HasColumnName("bid_increment")
+                    .HasColumnType("numeric(18,2)")
+                    .IsRequired();
+
+                bidIncrement.Ignore(cp => cp.Currency);
+            });
+            
+            pricing.ComplexProperty(p => p.Currency, currency =>
+            {
+                currency.Property(cp => cp.Id)
+                    .HasColumnName("currency")
+                    .IsRequired();
+
+                currency.Ignore(cp => cp.Symbol);
+            });
+
+            
             pricing.Ignore(p => p.NextMinimumBid);
             pricing.Ignore(p => p.HasBuyNowPrice);
             pricing.Ignore(p => p.HasReservePrice);

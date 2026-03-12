@@ -1,7 +1,10 @@
-﻿using System.Net;
+using System.Net;
+using CSharpFunctionalExtensions;
 using OIO.Domain.Context.UserContext.Enums;
+using OIO.Domain.Context.UserContext.Errors;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
+using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Domain.Context.UserContext.Aggregates.Users;
 
@@ -20,6 +23,64 @@ public sealed class SellerProfile : BaseEntity<UserId>, IAuditableEntity
     public User User { get; private set; } = null!;
 
     private SellerProfile() { }
+
+    public static SellerProfile Create(
+        UserId userId,
+        string storeName,
+        string storeDescription,
+        DateTime nowUtc)
+    {
+        return new SellerProfile
+        {
+            Id = userId,
+            StoreName = storeName.Trim(),
+            StoreDescription = storeDescription.Trim(),
+            Status = SellerProfileStatus.Pending,
+            TotalSalesCount = 0,
+            TotalSalesAmount = 0,
+            CreatedAt = nowUtc
+        };
+    }
+
+    public UnitResult<Error> Update(
+        string storeName,
+        string storeDescription,
+        DateTime nowUtc)
+    {
+        if (Status == SellerProfileStatus.Rejected)
+        {
+            Status = SellerProfileStatus.Pending;
+        }
+
+        StoreName = storeName.Trim();
+        StoreDescription = storeDescription.Trim();
+        ModifiedAt = nowUtc;
+
+        return UnitResult.Success<Error>();
+    }
+
+    public UnitResult<Error> Verify(DateTime nowUtc)
+    {
+        if (Status != SellerProfileStatus.Pending)
+            return UserErrors.SellerProfile.CannotVerifyInCurrentStatus(Status);
+
+        Status = SellerProfileStatus.Verified;
+        VerifiedAt = nowUtc;
+        ModifiedAt = nowUtc;
+
+        return UnitResult.Success<Error>();
+    }
+
+    public UnitResult<Error> Reject(DateTime nowUtc)
+    {
+        if (Status != SellerProfileStatus.Pending)
+            return UserErrors.SellerProfile.CannotRejectInCurrentStatus(Status);
+
+        Status = SellerProfileStatus.Rejected;
+        ModifiedAt = nowUtc;
+
+        return UnitResult.Success<Error>();
+    }
 }
 
 /// <summary>
@@ -43,4 +104,28 @@ public sealed class VerificationHistory : BaseEntity<VerificationHistoryId>, ICr
     public IdentityVerification Verification { get; private set; } = null!;
 
     private VerificationHistory() { }
+
+    internal static VerificationHistory Create(
+        IdentityVerificationId verificationId,
+        VerificationHistoryAction action,
+        string? oldStatus,
+        string? newStatus,
+        UserId performedBy,
+        PerformerType performerType,
+        DateTime nowUtc,
+        string? notes = null)
+    {
+        return new VerificationHistory
+        {
+            Id = VerificationHistoryId.From(Guid.CreateVersion7()),
+            VerificationId = verificationId,
+            Action = action,
+            OldStatus = oldStatus,
+            NewStatus = newStatus,
+            PerformedBy = performedBy,
+            PerformedByType = performerType,
+            Notes = notes,
+            CreatedAt = nowUtc
+        };
+    }
 }

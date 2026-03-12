@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +19,7 @@ using OIO.Application.Abstractions.Settings;
 using OIO.Application.Abstractions.Shipping;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.UserContext.Services;
+using OIO.Application.Abstractions.Ekyc;
 using OIO.Infrastructure.Authorizations;
 using OIO.Infrastructure.Clock;
 using OIO.Infrastructure.Persistence;
@@ -37,6 +38,7 @@ using OIO.Infrastructure.Security;
 using OIO.Infrastructure.Settings.Apps;
 using Quartz;
 using StackExchange.Redis;
+using OIO.Infrastructure.Ekyc;
 using OIO.Infrastructure.Shipping;
 using OIO.Infrastructure.Shipping.Ghn;
 
@@ -71,7 +73,8 @@ public static class DependencyInjection
                 .AddOutbox(configuration)
                 .AddMedia(configuration)
                 .AddSecurityServices()
-                .AddShipping();
+                .AddShipping()
+                .AddEkyc(configuration);
 
             return services;
         }
@@ -328,6 +331,14 @@ public static class DependencyInjection
 
             return services;
         }
+        private IServiceCollection AddEkyc(IConfiguration configuration)
+        {
+            services.Configure<VnptEkycOptions>(configuration.GetSection(VnptEkycOptions.SectionName));
+            services.AddHttpClient<IEkycProvider, VnptEkycProvider>();
+
+            return services;
+        }
+
         private IServiceCollection AddShipping()
         {
             services.AddHttpClient("GhnClient");

@@ -30,11 +30,11 @@ public sealed class UserProfile : BaseEntity<UserId>, IAuditableEntity
     }
 
     internal UnitResult<Error> Update(
-        PersonName? name,
-        AvatarUrl? avatarUrl,
-        DateOnly? dateOfBirth,
-        Gender? gender,
-        DateTime now)
+        DateTime now,
+        PersonName? name = null,
+        AvatarUrl? avatarUrl = null,
+        DateOnly? dateOfBirth = null,
+        Gender? gender = null)
     {
         Name = name ?? Name;
         AvatarUrl = avatarUrl ?? AvatarUrl;

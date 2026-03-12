@@ -53,5 +53,6 @@ internal sealed class WalletTransactionConfiguration : IEntityTypeConfiguration<
         // Indexes
         builder.HasIndex(wt => wt.WalletId)
             .HasDatabaseName("idx_wallet_transactions_wallet");
+        builder.HasQueryFilter(wt => wt.Wallet.User.DeletedAt == null);
     }
 }

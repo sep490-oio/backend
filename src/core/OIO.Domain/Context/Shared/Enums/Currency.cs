@@ -1,4 +1,5 @@
 ﻿using CSharpFunctionalExtensions;
+using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Domain.Context.Shared.Enums;
 
@@ -339,5 +340,13 @@ public sealed class Currency : EnumValueObject<Currency>
             "ZWG" => "ZWG",
             _ => throw new ApplicationException("The currency code is invalid")
         };
+    }
+
+    public static class Errors
+    {
+        public static readonly Error NotSupported = Error.Validation(
+            "currency",
+            "Currency.NotSupported",
+            "The specified currency is not supported.");
     }
 }

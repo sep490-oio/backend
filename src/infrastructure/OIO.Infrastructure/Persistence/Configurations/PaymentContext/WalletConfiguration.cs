@@ -16,21 +16,37 @@ internal sealed class WalletConfiguration : IEntityTypeConfiguration<Wallet>
             .HasColumnName("user_id")
             .IsRequired();
 
-        builder.Property(w => w.Balance)
-            .HasColumnName("balance")
-            .HasColumnType("numeric(18,2)")
-            .HasDefaultValue(0m)
-            .IsRequired();
+        builder.ComplexProperty(w => w.WalletFunds, walletFunds =>
+        {
+            walletFunds.ComplexProperty(p => p.Balance, balance =>
+            {
+                balance.Property(cp => cp.Amount)
+                    .HasColumnName("balance")
+                    .HasColumnType("numeric(18,2)")
+                    .IsRequired();
 
-        builder.Property(w => w.PendingBalance)
-            .HasColumnName("pending_balance")
-            .HasColumnType("numeric(18,2)")
-            .HasDefaultValue(0m);
+                balance.Ignore(cp => cp.Currency);
+            });
+            
+            walletFunds.ComplexProperty(p => p.PendingBalance, pendingBalance =>
+            {
+                pendingBalance.Property(cp => cp.Amount)
+                    .HasColumnName("pending_balance")
+                    .HasColumnType("numeric(18,2)")
+                    .IsRequired();
 
-        builder.Property(w => w.Currency)
-            .HasColumnName("currency")
-            .HasMaxLength(3)
-            .HasDefaultValue("VND");
+                pendingBalance.Ignore(cp => cp.Currency);
+            });
+            
+            walletFunds.ComplexProperty(p => p.Currency, currency =>
+            {
+                currency.Property(cp => cp.Id)
+                    .HasColumnName("currency")
+                    .IsRequired();
+
+                currency.Ignore(cp => cp.Symbol);
+            });
+        });
 
         builder.Property(w => w.IsActive)
             .HasColumnName("is_active")
@@ -65,5 +81,7 @@ internal sealed class WalletConfiguration : IEntityTypeConfiguration<Wallet>
             t.HasCheckConstraint("chk_non_negative_balance", "balance >= 0");
             t.HasCheckConstraint("chk_non_negative_pending", "pending_balance >= 0");
         });
+        
+        builder.HasQueryFilter(w => w.User.DeletedAt == null );
     }
 }

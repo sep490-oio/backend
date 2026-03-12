@@ -74,6 +74,13 @@ public class VerificationDocumentConfiguration : IEntityTypeConfiguration<Verifi
                 .HasDefaultValue(DocumentVerificationStatus.Pending.Id)
                 .IsRequired();
         });
+        
+        builder.ComplexProperty(x => x.DocumentType, documentType =>
+        {
+            documentType.Property(vs => vs.Id)
+                .HasColumnName("document_type")
+                .IsRequired();
+        });
 
         builder.Property(f => f.VerificationNotes)
             .HasColumnName("verification_notes");

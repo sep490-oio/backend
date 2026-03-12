@@ -11,6 +11,7 @@ public class RegisterUserEndpoint : IEndpoint
         [Required] string UserName,
         [Required] string Email,
         [Required] string Password,
+        [Required] string Currency,
         string? FirstName = null,
         string? LastName = null);
     
@@ -25,6 +26,7 @@ public class RegisterUserEndpoint : IEndpoint
                     request.UserName,
                     request.Email,
                     request.Password,
+                    request.Currency,
                     request.FirstName,
                     request.LastName);
                 

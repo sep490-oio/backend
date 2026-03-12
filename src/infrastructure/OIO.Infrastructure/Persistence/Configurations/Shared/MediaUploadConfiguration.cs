@@ -75,8 +75,7 @@ internal sealed class MediaUploadConfiguration
         builder.ComplexProperty(c => c.Info, iconInfoBuilder =>
         {
             iconInfoBuilder.Property(i => i.SecureUrl)
-                .HasColumnName("secure_url")
-                .IsRequired();
+                .HasColumnName("secure_url");
             
             iconInfoBuilder.Property(i => i.FileName)
                 .HasColumnName("file_name");

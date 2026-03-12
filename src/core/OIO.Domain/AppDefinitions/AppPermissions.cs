@@ -1,4 +1,4 @@
-﻿using OIO.Domain.Context.UserContext.Aggregates.Roles;
+using OIO.Domain.Context.UserContext.Aggregates.Roles;
 
 namespace OIO.Domain.AppDefinitions;
 
@@ -35,6 +35,16 @@ public static partial class App
                 public const string ReadBids = "me:bids:read";
                 
                 public const string ReadWatchlist = "me:watchlist:read";
+                public const string ReadTerms = "users:me:terms:read";
+                public const string AcceptTerms = "users:me:terms:accept";
+
+                // Verifications
+                public const string ManageVerification = "users:me:verification:manage";
+                public const string ReadVerification = "users:me:verification:read";
+
+                // Seller Profile
+                public const string ManageSellerProfile = "users:me:seller-profile:manage";
+                public const string ReadSellerProfile = "users:me:seller-profile:read";
             }
 
             // ==================== Items ====================
@@ -105,6 +115,16 @@ public static partial class App
                 public const string ManagePermissions = "admin:permissions:manage";
                 public const string ReadSettings = "admin:settings:read";
                 public const string ManageSettings = "admin:settings:manage";
+                public const string ReadTerms = "admin:terms:read";
+                public const string ManageTerms = "admin:terms:manage";
+
+                // Verifications
+                public const string ReadVerifications = "admin:verifications:read";
+                public const string ManageVerifications = "admin:verifications:manage";
+
+                // Seller Profiles
+                public const string ReadSellerProfiles = "admin:seller-profiles:read";
+                public const string ManageSellerProfiles = "admin:seller-profiles:manage";
             }
 
             // ==================== ALL PERMISSIONS ====================
@@ -124,6 +144,12 @@ public static partial class App
                 Me.ReadAuctions,
                 Me.ReadBids,
                 Me.ReadWatchlist,
+                Me.ReadTerms,
+                Me.AcceptTerms,
+                Me.ManageVerification,
+                Me.ReadVerification,
+                Me.ManageSellerProfile,
+                Me.ReadSellerProfile,
 
                 // Admin
                 Admin.ReadUsers,
@@ -138,6 +164,13 @@ public static partial class App
                 Admin.DenyPermission,
                 Admin.ManagePermissions,
                 Admin.ReadSettings,
+                Admin.ReadTerms,
+                Admin.ManageTerms,
+                Admin.ReadVerifications,
+                Admin.ManageVerifications,
+                Admin.ReadSellerProfiles,
+                Admin.ManageSellerProfiles,
+                Admin.ManageSettings,
 
                 // Items
                 Items.Create,
@@ -190,6 +223,12 @@ public static partial class App
                 Admin.ReadRoles,
                 Admin.ReadPermissions,
                 Admin.ReadSettings,
+                Admin.ReadTerms,
+                Admin.ManageTerms,
+                Admin.ReadVerifications,
+                Admin.ManageVerifications,
+                Admin.ReadSellerProfiles,
+                Admin.ManageSellerProfiles,
             ];
         }
 
@@ -220,6 +259,12 @@ public static partial class App
                 public static readonly Permission ReadAuctions = Permission.Create(Catalogs.Me.ReadAuctions);
                 public static readonly Permission ReadBids = Permission.Create(Catalogs.Me.ReadBids);
                 public static readonly Permission ReadWatchlist = Permission.Create(Catalogs.Me.ReadWatchlist);
+                public static readonly Permission ReadTerms = Permission.Create(Catalogs.Me.ReadTerms);
+                public static readonly Permission AcceptTerms = Permission.Create(Catalogs.Me.AcceptTerms);
+                public static readonly Permission ManageVerification = Permission.Create(Catalogs.Me.ManageVerification);
+                public static readonly Permission ReadVerification = Permission.Create(Catalogs.Me.ReadVerification);
+                public static readonly Permission ManageSellerProfile = Permission.Create(Catalogs.Me.ManageSellerProfile);
+                public static readonly Permission ReadSellerProfile = Permission.Create(Catalogs.Me.ReadSellerProfile);
             }
 
             public static class Admin
@@ -242,6 +287,12 @@ public static partial class App
                 // Settings management permissions (2151 - 2200)
                 public static readonly Permission ReadSettings = Permission.Create(Catalogs.Admin.ReadSettings);
                 public static readonly Permission ManageSettings = Permission.Create(Catalogs.Admin.ManageSettings);
+                public static readonly Permission ReadTerms = Permission.Create(Catalogs.Admin.ReadTerms);
+                public static readonly Permission ManageTerms = Permission.Create(Catalogs.Admin.ManageTerms);
+                public static readonly Permission ReadVerifications = Permission.Create(Catalogs.Admin.ReadVerifications);
+                public static readonly Permission ManageVerifications = Permission.Create(Catalogs.Admin.ManageVerifications);
+                public static readonly Permission ReadSellerProfiles = Permission.Create(Catalogs.Admin.ReadSellerProfiles);
+                public static readonly Permission ManageSellerProfiles = Permission.Create(Catalogs.Admin.ManageSellerProfiles);
             }
 
             public static class Items
@@ -320,6 +371,12 @@ public static partial class App
                 [Catalogs.Me.ReadAuctions] = Me.ReadAuctions,
                 [Catalogs.Me.ReadBids] = Me.ReadBids,
                 [Catalogs.Me.ReadWatchlist] = Me.ReadWatchlist,
+                [Catalogs.Me.ReadTerms] = Me.ReadTerms,
+                [Catalogs.Me.AcceptTerms] = Me.AcceptTerms,
+                [Catalogs.Me.ManageVerification] = Me.ManageVerification,
+                [Catalogs.Me.ReadVerification] = Me.ReadVerification,
+                [Catalogs.Me.ManageSellerProfile] = Me.ManageSellerProfile,
+                [Catalogs.Me.ReadSellerProfile] = Me.ReadSellerProfile,
 
                 // Items
                 [Catalogs.Items.Create] = Items.Create,
@@ -371,6 +428,12 @@ public static partial class App
                 [Catalogs.Admin.ManagePermissions] = Admin.ManagePermissions,
                 [Catalogs.Admin.ReadSettings] = Admin.ReadSettings,
                 [Catalogs.Admin.ManageSettings] = Admin.ManageSettings,
+                [Catalogs.Admin.ReadTerms] = Admin.ReadTerms,
+                [Catalogs.Admin.ManageTerms] = Admin.ManageTerms,
+                [Catalogs.Admin.ReadVerifications] = Admin.ReadVerifications,
+                [Catalogs.Admin.ManageVerifications] = Admin.ManageVerifications,
+                [Catalogs.Admin.ReadSellerProfiles] = Admin.ReadSellerProfiles,
+                [Catalogs.Admin.ManageSellerProfiles] = Admin.ManageSellerProfiles,
             };
         }
     }

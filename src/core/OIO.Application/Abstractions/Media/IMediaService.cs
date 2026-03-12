@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using OIO.Application.Abstractions.Commons;
 using OIO.Domain.SeedWork.Errors;
 
@@ -11,7 +11,7 @@ public interface IMediaSignatureService
     /// </summary>
     UploadSignatureResult GenerateSignature(
         MediaResourceType resourceType,
-        string publicId,
+        string mediaName,
         string folder,
         string? eager = null,
         string[]? allowedFormats = null);
@@ -91,12 +91,18 @@ public sealed class UploadContextRegistry
 
     public bool IsUserContext(string contextName) =>
         contextName.StartsWith("user_", StringComparison.OrdinalIgnoreCase);
+    
+    public bool IsTermContext(string contextName) =>
+        contextName.StartsWith("term_", StringComparison.OrdinalIgnoreCase);
 
     public bool IsCategoryContext(string contextName) =>
         contextName.StartsWith("category_", StringComparison.OrdinalIgnoreCase);
 
     public bool IsDisputeContext(string contextName) =>
         contextName.StartsWith("dispute_", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsVerificationContext(string contextName) =>
+        contextName.StartsWith("verification_", StringComparison.OrdinalIgnoreCase);
     
     // ==================== Resource Type Limits ====================
 
@@ -129,6 +135,7 @@ public sealed class UploadContextRegistry
             "image" => MediaResourceType.Image,
             "video" => MediaResourceType.Video,
             "raw" => MediaResourceType.Raw,
+            "document" => MediaResourceType.Raw,
             _ => throw new ArgumentException($"Unknown resource type: {resourceType}")
         };
 }

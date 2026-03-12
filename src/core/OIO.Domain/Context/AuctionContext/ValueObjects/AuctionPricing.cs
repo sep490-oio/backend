@@ -8,7 +8,7 @@ namespace OIO.Domain.Context.AuctionContext.ValueObjects;
 
 public sealed class AuctionPricing : ValueObject
 {
-    private decimal _startingPrice;
+    private readonly decimal _startingPrice;
     private readonly decimal? _reservePrice;
     private readonly decimal? _buyNowPrice;
     private readonly decimal _currentPrice;
@@ -16,13 +16,42 @@ public sealed class AuctionPricing : ValueObject
     private readonly string _currency;
 
     // ── Public Money API (domain logic dùng these) ──
-    public Money StartingPrice => Money.Of(_startingPrice, new Currency(_currency));
-    public Money? ReservePrice => _reservePrice.HasValue ? Money.Of(_reservePrice.Value, new Currency(_currency)) : null;
-    public Money? BuyNowPrice => _buyNowPrice.HasValue ? Money.Of(_buyNowPrice.Value, new Currency(_currency)) : null;
-    public Money CurrentPrice => Money.Of(_currentPrice, new Currency(_currency));
-    public Money BidIncrement => Money.Of(_bidIncrement, new Currency(_currency));
+    public Money StartingPrice
+    {
+        get => Money.Of(_startingPrice, new Currency(_currency));
+        private init => _startingPrice = value.Amount;
+    }
+
+    public Money? ReservePrice
+    {
+        get => _reservePrice.HasValue ? Money.Of(_reservePrice.Value, new Currency(_currency)) : null;
+        private init => _reservePrice = value?.Amount;
+    }
+
+    public Money? BuyNowPrice
+    {
+        get => _buyNowPrice.HasValue ? Money.Of(_buyNowPrice.Value, new Currency(_currency)) : null;
+        private init  => _buyNowPrice = value?.Amount;
+    }
+
+    public Money CurrentPrice
+    {
+        get => Money.Of(_currentPrice, new Currency(_currency));
+        private init => _currentPrice = value.Amount;
+    }
+
+    public Money BidIncrement
+    {
+        get => Money.Of(_bidIncrement, new Currency(_currency));
+        private init => _bidIncrement = value.Amount;
+    }
+
+    public Currency Currency
+    {
+        get => new Currency(_currency);
+        private init => _currency = value.Id;
+    }
     public Money NextMinimumBid => Money.Of(_currentPrice + _bidIncrement, new Currency(_currency));
-    public Currency Currency => new Currency(_currency);
     
     public bool HasReservePrice => _reservePrice.HasValue;
     public bool HasBuyNowPrice => _buyNowPrice.HasValue;

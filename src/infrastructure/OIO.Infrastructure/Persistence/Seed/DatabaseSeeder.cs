@@ -7,6 +7,7 @@ using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Settings;
 using OIO.Domain.AppDefinitions;
 using OIO.Domain.Context.Shared.Entities;
+using OIO.Domain.Context.Shared.Enums;
 using OIO.Domain.Context.Shared.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.Aggregates.Roles;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
@@ -36,7 +37,7 @@ public static class DatabaseSeeder
             await SeedPermissionsAsync(dbContext, logger);
             await SeedRolesAsync(dbContext, logger);
             await AssignPermissionsToRolesAsync(dbContext, logger);
-            //await SeedAdminUserAsync(dbContext, scope.ServiceProvider, logger);
+            await SeedAdminUserAsync(dbContext, scope.ServiceProvider, logger);
             await SeedSystemSettingsAsync(scope.ServiceProvider);
             await SeedShippingProviderConfigsAsync(scope.ServiceProvider);
             logger.LogInformation("Database seeding completed successfully.");
@@ -63,19 +64,21 @@ public static class DatabaseSeeder
         var email = UserEmail.Create(efaultAccountOptions.Email);
         var passwordHash = Password.Create(efaultAccountOptions.Password, passwordHasher);
         var userName = UserName.Create(efaultAccountOptions.UserName);
+        
+        var personName = PersonName.Create(efaultAccountOptions.FirstName, efaultAccountOptions.LastName,
+            efaultAccountOptions.DisplayName);
+        
         var admin = User.Create(
             userName: userName.Value,
             email: email.Value,
             now: clock.UtcNow,
+            personName: personName,
+            currency: Currency.Vnd,
             password: passwordHash.Value
         );
 
         admin.ConfirmEmail(clock.UtcNow);
-        var personName = PersonName.Create(efaultAccountOptions.FirstName, efaultAccountOptions.LastName,
-            efaultAccountOptions.DisplayName);
-        admin.UpdateProfile(
-            name: personName,
-            now: clock.UtcNow);
+       
 
         admin.AssignRole(App.Roles.Definitions.Admin.Name, clock.UtcNow);
         admin.AssignRole(App.Roles.Definitions.User.Name, clock.UtcNow);

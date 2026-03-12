@@ -98,12 +98,12 @@ internal sealed class RequestUploadSignatureCommandHandler
         // Build unique publicId
         var uniqueSuffix = Guid.NewGuid().ToString("N")[..12];
         var prefix = resourceType.ToFilePrefix();
-        var publicId = $"{folder}/{prefix}_{uniqueSuffix}";
+        var mediaName = $"{prefix}_{uniqueSuffix}";
 
         // Generate Cloudinary signature
         var signatureResult = _signatureService.GenerateSignature(
             resourceType: resourceType,
-            publicId: publicId,
+            mediaName: mediaName,
             folder: folder,
             eager: contextConfig.Eager,
             allowedFormats: contextConfig.AllowedFormats);
@@ -113,8 +113,8 @@ internal sealed class RequestUploadSignatureCommandHandler
         var mediaInfo = MediaInfo.Create(
             fileName: request.FileName);
         var ( _, isFailure, storage, error) = StorageRef.Create(
-            publicId: publicId,
-            folder: folder);
+            publicId: signatureResult.PublicId,
+            folder: signatureResult.Folder);
 
         if (isFailure)
         {
@@ -142,7 +142,7 @@ internal sealed class RequestUploadSignatureCommandHandler
             Timestamp: signatureResult.Timestamp,
             ApiKey: signatureResult.ApiKey,
             CloudName: signatureResult.CloudName,
-            PublicId: signatureResult.PublicId,
+            PublicId: mediaName,
             Folder: signatureResult.Folder,
             Eager: signatureResult.Eager,
             ResourceType: signatureResult.ResourceType,

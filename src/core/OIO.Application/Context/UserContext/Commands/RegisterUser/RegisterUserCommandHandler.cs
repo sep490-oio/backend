@@ -6,6 +6,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.DTOs;
 using OIO.Application.Context.UserContext.Mappings;
 using OIO.Domain.AppDefinitions;
+using OIO.Domain.Context.Shared.Enums;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Errors;
 using OIO.Domain.Context.UserContext.Services;
@@ -49,7 +50,12 @@ internal sealed class RegisterUserCommandHandler
         (_, isFailure, var password, error) = Password.Create(request.Password, _passwordHasher);
         if (isFailure)
             return error;
+        
+        var currency = Currency.FromId(request.Currency);
 
+        if (currency.HasNoValue)
+            return Currency.Errors.NotSupported;
+            
         var personName = PersonName.Create(request.FirstName, request.LastName, request.UserName);
         
         var existByEmail = await _dbContext.Set<User>()
@@ -70,9 +76,9 @@ internal sealed class RegisterUserCommandHandler
             userName,
             email,
             nowUtc,
+            personName,
+            currency.Value,
             password);
-
-        user.UpdateProfile(nowUtc, personName);
 
         user.AssignRole(App.Roles.Definitions.Bidder.Name, nowUtc);
         user.AssignRole(App.Roles.Definitions.User.Name, nowUtc);

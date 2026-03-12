@@ -1,4 +1,4 @@
-﻿namespace OIO.Api.Common;
+namespace OIO.Api.Common;
 
 public static partial class ApiEndpoint
 {
@@ -12,6 +12,15 @@ public static partial class ApiEndpoint
             public const string Confirm = $"{Base}/confirm";
             public const string Contexts = $"{Base}/contexts";
         }
+        
+        public static class Terms
+        {
+            private const string Base = "api/terms";
+
+            public const string GetActive = $"{Base}/active";
+            public const string GetActiveByType = $"{Base}/{{type}}/active";
+            public const string GetById = $"{Base}/{{termId:guid}}";
+        }
 
         public static class Admins
         {
@@ -24,7 +33,12 @@ public static partial class ApiEndpoint
             public const string GetAllSettings = $"{Base}/settings";
             public const string GetSettingByKey = $"{Base}/settings/{{key}}";
             public const string UpdateSetting = $"{Base}/settings/{{key}}";
+            
+            public const string GetAllTerms = $"{Base}/terms";
+            public const string CreateTerms = $"{Base}/terms";
+            public const string ActivateTerms = $"{Base}/terms/{{id:guid}}/activate";
 
+            
             public const string RevokeRole = $"{Base}/users/{{userId:guid}}/roles/{{role}}";
             public const string RevokePermission = $"{Base}/users/{{userId:guid}}/permissions/{{permission}}";
             public const string RemoveUser = $"{Base}/users/{{userId:guid}}";
@@ -35,6 +49,17 @@ public static partial class ApiEndpoint
             public const string DenyPermission = $"{Base}/users/{{userId:guid}}/permissions/{{permission}}";
             public const string UnlockUser = $"{Base}/users/{{userId:guid}}/unlock";
             public const string TogglePermission = $"{Base}/roles/{{role}}/permissions/{{permission}}";
+
+            // Verifications
+            public const string GetPendingVerifications = $"{Base}/verifications";
+            public const string GetVerificationById = $"{Base}/verifications/{{verificationId:guid}}";
+            public const string ApproveVerification = $"{Base}/verifications/{{verificationId:guid}}/approve";
+            public const string RejectVerification = $"{Base}/verifications/{{verificationId:guid}}/reject";
+
+            // Seller Profiles
+            public const string GetSellerProfiles = $"{Base}/seller-profiles";
+            public const string VerifySellerProfile = $"{Base}/seller-profiles/{{id:guid}}/verify";
+            public const string RejectSellerProfile = $"{Base}/seller-profiles/{{id:guid}}/reject";
         }
 
         public static class Auth
@@ -56,6 +81,7 @@ public static partial class ApiEndpoint
             private const string Base = "api/items";
 
             public const string Create = Base;
+            public const string GetAll = Base;
             public const string GetById = $"{Base}/{{itemId:guid}}";
             public const string Activate = $"{Base}/{{itemId:guid}}/activate";
             public const string GetBySeller = $"{Base}/my";
@@ -111,6 +137,13 @@ public static partial class ApiEndpoint
             public const string Update = $"{Base}/{{categoryId:guid}}";
         }
         
+        public static class Sellers
+        {
+            private const string Base = "api/sellers";
+
+            public const string GetById = $"{Base}/{{sellerId:guid}}";
+        }
+
         public static class Warehouse
         {
             private const string Base = "api/warehouse";
@@ -152,6 +185,24 @@ public static partial class ApiEndpoint
             public const string SetPhoneNumber = $"{Base}/phone";
             public const string UpdateAddress = $"{Base}/addresses/{{addressId:guid}}";
             public const string UpdateCurrentUserProfile = $"{Base}/profile";
+            public const string AcceptTerm = $"{Base}/terms/{{termDocumentId:guid}}/accept";
+            public const string GetMyAcceptedTerms = $"{Base}/terms";
+            public const string CheckPendingTerms = $"{Base}/terms/pending";
+            public const string GetMyWallet = $"{Base}/wallet";
+
+            // Verifications
+            public const string CreateVerification = $"{Base}/verifications";
+            public const string GetMyVerifications = $"{Base}/verifications";
+            public const string GetMyVerificationById = $"{Base}/verifications/{{verificationId:guid}}";
+            public const string UpdateVerification = $"{Base}/verifications/{{verificationId:guid}}";
+            public const string UploadVerificationDocument = $"{Base}/verifications/{{verificationId:guid}}/documents";
+            public const string DeleteVerificationDocument = $"{Base}/verifications/{{verificationId:guid}}/documents/{{docId:guid}}";
+            public const string SubmitVerification = $"{Base}/verifications/{{verificationId:guid}}/submit";
+
+            // Seller Profile
+            public const string CreateSellerProfile = $"{Base}/seller-profile";
+            public const string GetMySellerProfile = $"{Base}/seller-profile";
+            public const string UpdateSellerProfile = $"{Base}/seller-profile";
         }
     }
 }

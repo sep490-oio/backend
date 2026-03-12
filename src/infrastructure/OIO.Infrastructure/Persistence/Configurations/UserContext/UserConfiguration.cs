@@ -7,6 +7,7 @@ using OIO.Domain.Context.UserContext.Enums;
 using OIO.Domain.Context.UserContext.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.AppDefinitions;
+using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
 
 namespace OIO.Infrastructure.Persistence.Configurations.UserContext;
 
@@ -187,6 +188,12 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .WithOne(rt => rt.User)
             .HasForeignKey(f => f.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+        
+        builder.HasOne(u => u.Wallet)
+            .WithOne(w => w.User)
+            .HasForeignKey<Wallet>( w => w.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
 
         // ==================== Query Filters ====================
         builder.HasQueryFilter(u => u.DeletedAt == null);

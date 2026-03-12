@@ -4,7 +4,7 @@ namespace OIO.Domain.Context.Shared.ValueObjects;
 
 public sealed class MediaInfo : ValueObject
 {
-    public string SecureUrl { get; }
+    public string? SecureUrl { get; }
     public string? FileName { get; }
     public long? Bytes { get; }
     public string? Format { get; }
