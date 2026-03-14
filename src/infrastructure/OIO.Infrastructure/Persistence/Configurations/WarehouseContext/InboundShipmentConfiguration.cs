@@ -32,7 +32,16 @@ internal sealed class InboundShipmentConfiguration : IEntityTypeConfiguration<In
             .HasColumnName("seller_id")
             .IsRequired()
             .HasConversion(x => x.Value, v => UserId.From(v));
-
+        // ==================== Shipment Mode ====================
+        builder.Property(e => e.ShipmentMode)
+            .HasColumnName("shipment_mode")
+            .HasMaxLength(20)
+            .IsRequired()
+            .HasConversion(x => x.Id, v => InboundShipmentMode.FromId(v).GetValueOrThrow());
+ 
+        builder.Property(e => e.ExternalCarrierName)
+            .HasColumnName("external_carrier_name")
+            .HasMaxLength(100);
         // ==================== Carrier ====================
         builder.Property(e => e.ProviderCode)
             .HasColumnName("provider_code")
@@ -174,7 +183,8 @@ internal sealed class InboundShipmentConfiguration : IEntityTypeConfiguration<In
 
         builder.HasIndex(e => e.Status)
             .HasDatabaseName("idx_inbound_shipments_status");
-
+        builder.HasIndex(e => e.ShipmentMode)
+            .HasDatabaseName("idx_inbound_shipments_shipment_mode");
         // ==================== Ignore ====================
         builder.Ignore(e => e.DomainEvents);
     }

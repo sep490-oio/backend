@@ -5,6 +5,8 @@ public sealed record InboundShipmentDto(
     Guid    ItemId,
     Guid    SellerId,
     string  ProviderCode,
+    string ShipmentMode,
+    string? ExternalCarrierName,
     string  ClientOrderCode,
     string? CarrierTrackingNumber,
     string  SenderName,
