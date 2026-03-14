@@ -6,10 +6,16 @@ public sealed class ShippingProviderCode : EnumValueObject<ShippingProviderCode>
 {
     public static readonly ShippingProviderCode Ghn  = new("ghn");
     public static readonly ShippingProviderCode Ghtk = new("ghtk");
-
+    public static readonly ShippingProviderCode External = new("external");
     private ShippingProviderCode(string id) : base(id) { }
 }
+public sealed class InboundShipmentMode : EnumValueObject<InboundShipmentMode>
+{
+    public static readonly InboundShipmentMode PlatformManaged = new("platform_managed");
+    public static readonly InboundShipmentMode ExternalCarrier  = new("external_carrier");
 
+    private InboundShipmentMode(string id) : base(id) { }
+}
 public sealed class ShippingEnvironment : EnumValueObject<ShippingEnvironment>
 {
     public static readonly ShippingEnvironment Sandbox    = new("sandbox");

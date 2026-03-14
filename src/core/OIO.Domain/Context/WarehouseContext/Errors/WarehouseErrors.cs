@@ -9,26 +9,54 @@ public static class WarehouseErrors
         public static Error NotFound(string id) => Error.NotFound(
             code: "InboundShipment.NotFound",
             description: $"Inbound shipment '{id}' was not found.");
-
+ 
         public static readonly Error AlreadyBooked = Error.Conflict(
             code: "InboundShipment.AlreadyBooked",
             description: "This inbound shipment has already been booked with a carrier.");
-
+ 
         public static readonly Error AlreadyArrived = Error.Conflict(
             code: "InboundShipment.AlreadyArrived",
             description: "This inbound shipment has already arrived at the warehouse.");
-
+ 
         public static readonly Error CannotInspect = Error.Conflict(
             code: "InboundShipment.CannotInspect",
             description: "Shipment must be in 'arrived' status before it can be inspected.");
-
+ 
         public static readonly Error CannotComplete = Error.Conflict(
             code: "InboundShipment.CannotComplete",
             description: "Shipment must be in 'inspected' status before it can be completed.");
-
+ 
         public static readonly Error CannotCancel = Error.Conflict(
             code: "InboundShipment.CannotCancel",
             description: "Shipment cannot be cancelled in its current status.");
+ 
+        public static readonly Error NotExternalCarrier = Error.Conflict(
+            code: "InboundShipment.NotExternalCarrier",
+            description: "Only external carrier shipments can have their status manually advanced.");
+ 
+        public static readonly Error NotPlatformManaged = Error.Conflict(
+            code: "InboundShipment.NotPlatformManaged",
+            description: "This operation is only valid for platform-managed shipments.");
+ 
+        public static readonly Error StatusUnchanged = Error.Conflict(
+            code: "InboundShipment.StatusUnchanged",
+            description: "The shipment is already in the requested status.");
+ 
+        public static readonly Error InvalidTransition = Error.Conflict(
+            code: "InboundShipment.InvalidTransition",
+            description: "The requested status transition is not allowed.");
+ 
+        public static readonly Error ExternalCarrierNameRequired = 
+        Error.Validation("Inbound", "InboundShipment.ExternalCarrierNameRequired", 
+            "ExternalCarrierName is required for external carrier shipments.");
+ 
+        public static readonly Error ExternalTrackingAlreadySet = Error.Conflict(
+            code: "InboundShipment.ExternalTrackingAlreadySet",
+            description: "A tracking number has already been set for this shipment.");
+ 
+        public static readonly Error TrackingNotAllowedForExternal = Error.Conflict(
+            code: "InboundShipment.TrackingNotAllowedForExternal",
+            description: "Carrier webhook tracking is not applicable to external carrier shipments.");
     }
 
     public static class WarehouseItem
@@ -40,9 +68,11 @@ public static class WarehouseErrors
         public static readonly Error AlreadyStored = Error.Conflict(
             code: "WarehouseItem.AlreadyStored",
             description: "This item is already stored in a location.");
+
         public static readonly Error AlreadyInspected = Error.Conflict(
             code: "WarehouseItem.AlreadyInspected",
-            description: "This item is already AlreadyInspected.");
+            description: "This item has already been inspected.");
+
         public static readonly Error NotInspected = Error.Conflict(
             code: "WarehouseItem.NotInspected",
             description: "Item must be inspected before it can be stored.");
