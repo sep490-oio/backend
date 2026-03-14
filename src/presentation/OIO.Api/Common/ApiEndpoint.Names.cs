@@ -127,6 +127,8 @@ public static partial class ApiEndpoint
             public const string DeleteStorageLocation          = nameof(DeleteStorageLocation);
             public const string UpdateStorageLocation          = nameof(UpdateStorageLocation);
             public const string UpdateShippingProviderConfig   = nameof(UpdateShippingProviderConfig);
+            public const string SetExternalTrackingNumber = nameof(SetExternalTrackingNumber);
+
         }
     }
 }

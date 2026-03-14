@@ -128,6 +128,7 @@ public static partial class ApiEndpoint
             public const string CancelOutbound             = $"{Base}/outbound-shipments/{{shipmentId:guid}}/cancel";
             public const string StorageLocationById        = $"{Base}/storage-locations/{{locationId:guid}}";
             public const string ShippingProviderConfigById = $"{Base}/shipping-provider-configs/{{configId:guid}}";
+            public const string SetExternalTracking = $"{Base}/inbound-shipments/{{shipmentId}}/tracking";
         }
 
         public static class Me
