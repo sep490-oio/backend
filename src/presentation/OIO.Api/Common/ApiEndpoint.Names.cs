@@ -128,7 +128,7 @@ public static partial class ApiEndpoint
             public const string UpdateStorageLocation          = nameof(UpdateStorageLocation);
             public const string UpdateShippingProviderConfig   = nameof(UpdateShippingProviderConfig);
             public const string SetExternalTrackingNumber = nameof(SetExternalTrackingNumber);
-
+            public const string UpdateExternalShipmentStatus   = nameof(UpdateExternalShipmentStatus);
         }
     }
 }

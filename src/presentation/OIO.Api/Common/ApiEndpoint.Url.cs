@@ -129,6 +129,7 @@ public static partial class ApiEndpoint
             public const string StorageLocationById        = $"{Base}/storage-locations/{{locationId:guid}}";
             public const string ShippingProviderConfigById = $"{Base}/shipping-provider-configs/{{configId:guid}}";
             public const string SetExternalTracking = $"{Base}/inbound-shipments/{{shipmentId}}/tracking";
+            public const string UpdateExternalStatus   = $"{Base}/inbound-shipments/{{shipmentId}}/status";
         }
 
         public static class Me

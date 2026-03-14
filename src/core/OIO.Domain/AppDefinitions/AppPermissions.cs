@@ -71,7 +71,7 @@ public static partial class App
                 public const string Store   = "warehouse:item:store";
                 public const string ManageLocations = "warehouse:locations:manage";
                 public const string ReadShipments    = "warehouse:shipments:read";
-
+                public const string UpdateExternalStatus = "warehouse:inbound:update-external-status";
             }
 
             // ==================== Media ====================
@@ -284,6 +284,7 @@ public static partial class App
                 public static readonly Permission Inspect = Permission.Create(Catalogs.Warehouse.Inspect);
                 public static readonly Permission ManageLocations = Permission.Create(Catalogs.Warehouse.ManageLocations);
                 public static readonly Permission ReadShipments = Permission.Create(Catalogs.Warehouse.ReadShipments);
+                public static readonly Permission UpdateExternalStatus = Permission.Create(Catalogs.Warehouse.UpdateExternalStatus);
             }
             
             public static class Categories
