@@ -17,6 +17,8 @@ public sealed record BookInboundShipmentCommand(
     decimal InsuranceValue,
     string  ItemName,
     decimal ItemPrice,
+    string? ShipmentMode                   = null,   // null = platform_managed
+    string? ExternalCarrierName            = null,   // required when ShipmentMode = external_carrier
     int?    LengthCm                       = null,
     int?    WidthCm                        = null,
     int?    HeightCm                       = null,

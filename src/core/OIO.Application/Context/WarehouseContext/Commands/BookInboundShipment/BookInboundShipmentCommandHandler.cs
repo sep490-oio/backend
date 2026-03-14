@@ -19,11 +19,11 @@ namespace OIO.Application.Context.WarehouseContext.Commands.BookInboundShipment;
 internal sealed class BookInboundShipmentCommandHandler
     : ICommandHandler<BookInboundShipmentCommand, InboundShipmentDto>
 {
-    private readonly IDbContext      _dbContext;
-    private readonly IUnitOfWork     _unitOfWork;
-    private readonly ICurrentUser    _currentUser;
+    private readonly IDbContext       _dbContext;
+    private readonly IUnitOfWork      _unitOfWork;
+    private readonly ICurrentUser     _currentUser;
     private readonly IShippingService _shippingService;
-    private readonly IClock          _clock;
+    private readonly IClock           _clock;
 
     public BookInboundShipmentCommandHandler(
         IDbContext       dbContext,
@@ -43,9 +43,54 @@ internal sealed class BookInboundShipmentCommandHandler
         BookInboundShipmentCommand request,
         CancellationToken          cancellationToken)
     {
-        var now = _clock.UtcNow;
+        var now        = _clock.UtcNow;
+        var isExternal = request.ShipmentMode == InboundShipmentMode.ExternalCarrier.Id;
 
-        // ── 1. Load ShippingProviderConfig ────────────────────────────────────
+        // ── 1. Build package dimensions ───────────────────────────────────────
+        var dimensionsResult = PackageDimensions.Create(
+            weightGrams: request.WeightGrams,
+            lengthCm:    request.LengthCm,
+            widthCm:     request.WidthCm,
+            heightCm:    request.HeightCm);
+
+        if (dimensionsResult.IsFailure) return dimensionsResult.Error;
+        var dimensions = dimensionsResult.Value;
+
+        // ── 2a. External carrier — skip carrier API ───────────────────────────
+        if (isExternal)
+        {
+            if (string.IsNullOrWhiteSpace(request.ExternalCarrierName))
+                return WarehouseErrors.InboundShipment.ExternalCarrierNameRequired;
+
+            var externalCode = $"EXT-{Guid.NewGuid():N}"[..20];
+
+            var externalResult = InboundShipment.Create(
+                itemId:              request.ItemId,
+                sellerId:            _currentUser.UserId,
+                providerCode:        ShippingProviderCode.External,
+                clientOrderCode:     externalCode,
+                senderName:          request.SenderName,
+                senderPhone:         request.SenderPhone,
+                senderAddress:       request.SenderAddress,
+                senderWard:          request.SenderWard,
+                senderDistrict:      request.SenderDistrict,
+                senderProvince:      request.SenderProvince,
+                dimensions:          dimensions,
+                now:                 now,
+                shipmentMode:        InboundShipmentMode.ExternalCarrier,
+                externalCarrierName: request.ExternalCarrierName,
+                insuranceValue:      request.InsuranceValue,
+                notes:               request.Notes);
+
+            if (externalResult.IsFailure) return externalResult.Error;
+
+            _dbContext.Insert(externalResult.Value);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            return externalResult.Value.ToDto();
+        }
+
+        // ── 2b. Platform-managed — load ShippingProviderConfig ────────────────
         ShippingProviderConfig? config;
 
         if (!string.IsNullOrWhiteSpace(request.ProviderCode))
@@ -71,17 +116,7 @@ internal sealed class BookInboundShipmentCommandHandler
                 return WarehouseErrors.ShippingProvider.NoDefaultProvider;
         }
 
-        // ── 2. Build package dimensions ───────────────────────────────────────
-        var dimensionsResult = PackageDimensions.Create(
-            weightGrams: request.WeightGrams,
-            lengthCm:    request.LengthCm,
-            widthCm:     request.WidthCm,
-            heightCm:    request.HeightCm);
-
-        if (dimensionsResult.IsFailure) return dimensionsResult.Error;
-        var dimensions = dimensionsResult.Value;
-
-        // ── 3. Generate unique client order code ──────────────────────────────
+        // ── 3. Generate client order code ─────────────────────────────────────
         var clientOrderCode = $"INB-{Guid.NewGuid():N}"[..20];
 
         // ── 4. Call carrier API ───────────────────────────────────────────────
@@ -92,22 +127,22 @@ internal sealed class BookInboundShipmentCommandHandler
             ClientOrderCode = clientOrderCode,
 
             // Warehouse is the delivery destination
-            RecipientName                  = config.PickName,
-            RecipientPhone                 = config.PickPhone,
-            RecipientAddress               = config.PickAddress,
-            RecipientWard                  = config.PickWard,
-            RecipientDistrict              = config.PickDistrict,
-            RecipientProvince              = config.PickProvince,
-            RecipientCarrierAddressDataJson = config.PickCarrierAddressData?.RawJson,
+            RecipientName                   = config.PickName,
+            RecipientPhone                  = config.PickPhone,
+            RecipientAddress                = config.PickAddress,
+            RecipientWard                   = config.PickWard,
+            RecipientDistrict               = config.PickDistrict,
+            RecipientProvince               = config.PickProvince,
+            RecipientCarrierAddressDataJson  = config.PickCarrierAddressData?.RawJson,
 
             // Seller is the pickup point
-            SenderName                  = request.SenderName,
-            SenderPhone                 = request.SenderPhone,
-            SenderAddress               = request.SenderAddress,
-            SenderWard                  = request.SenderWard,
-            SenderDistrict              = request.SenderDistrict,
-            SenderProvince              = request.SenderProvince,
-            SenderCarrierAddressDataJson = request.SenderCarrierAddressDataJson,
+            SenderName                   = request.SenderName,
+            SenderPhone                  = request.SenderPhone,
+            SenderAddress                = request.SenderAddress,
+            SenderWard                   = request.SenderWard,
+            SenderDistrict               = request.SenderDistrict,
+            SenderProvince               = request.SenderProvince,
+            SenderCarrierAddressDataJson  = request.SenderCarrierAddressDataJson,
 
             WeightGrams    = request.WeightGrams,
             LengthCm       = request.LengthCm,
@@ -136,28 +171,32 @@ internal sealed class BookInboundShipmentCommandHandler
 
         if (bookingResult.IsFailure) return bookingResult.Error;
         var booking = bookingResult.Value;
-        
+
         // ── 5. Create InboundShipment domain entity ───────────────────────────
-        var shipment = InboundShipment.Create(
-            itemId:    request.ItemId,
-            sellerId:  _currentUser.UserId,
-            providerCode:     config.ProviderCode,
-            clientOrderCode:  clientOrderCode,
-            senderName:       request.SenderName,
-            senderPhone:      request.SenderPhone,
-            senderAddress:    request.SenderAddress,
-            senderWard:       request.SenderWard,
-            senderDistrict:   request.SenderDistrict,
-            senderProvince:   request.SenderProvince,
-            dimensions:       dimensions,
-            now:              now,
+        var createResult = InboundShipment.Create(
+            itemId:          request.ItemId,
+            sellerId:        _currentUser.UserId,
+            providerCode:    config.ProviderCode,
+            clientOrderCode: clientOrderCode,
+            senderName:      request.SenderName,
+            senderPhone:     request.SenderPhone,
+            senderAddress:   request.SenderAddress,
+            senderWard:      request.SenderWard,
+            senderDistrict:  request.SenderDistrict,
+            senderProvince:  request.SenderProvince,
+            dimensions:      dimensions,
+            now:             now,
+            shipmentMode:    InboundShipmentMode.PlatformManaged,
             senderCarrierAddressData: request.SenderCarrierAddressDataJson is not null
                 ? CarrierAddressData.From(request.SenderCarrierAddressDataJson)
                 : null,
-            shippingFee:      booking.ShippingFee,
-            insuranceValue:   request.InsuranceValue,
-            notes:            request.Notes,
+            shippingFee:       booking.ShippingFee,
+            insuranceValue:    request.InsuranceValue,
+            notes:             request.Notes,
             expectedArrivalAt: booking.EstimatedDeliveryAt);
+
+        if (createResult.IsFailure) return createResult.Error;
+        var shipment = createResult.Value;
 
         // ── 6. Record carrier booking ─────────────────────────────────────────
         var bookedResult = shipment.RecordBooked(booking.CarrierTrackingNumber, now);
