@@ -24,4 +24,56 @@ public sealed class AuctionEmergency : BaseEntity<AuctionEmergencyId>
     public IReadOnlyCollection<AuctionEmergencyAction> Actions => _actions.AsReadOnly();
 
     private AuctionEmergency() { }
+
+    private AuctionEmergency(
+        AuctionEmergencyId id,
+        AuctionId auctionId,
+        UserId? triggeredById,
+        string triggerSource,
+        string reason,
+        DateTime nowUtc)
+        : base(id)
+    {
+        AuctionId = auctionId;
+        TriggeredById = triggeredById;
+        TriggerSource = triggerSource;
+        Reason = reason;
+        Status = EmergencyStatus.Triggered;
+        TriggeredAt = nowUtc;
+    }
+
+    public static AuctionEmergency Create(
+        AuctionId auctionId,
+        UserId? triggeredById,
+        string triggerSource,
+        string reason,
+        string initialPayload,
+        DateTime nowUtc)
+    {
+        var emergency = new AuctionEmergency(
+            AuctionEmergencyId.From(Guid.CreateVersion7()),
+            auctionId,
+            triggeredById,
+            triggerSource,
+            reason,
+            nowUtc);
+
+        emergency.LogAction("triggered", initialPayload, nowUtc);
+
+        return emergency;
+    }
+
+    public void MoveTo(EmergencyStatus status, string actionType, string payload, DateTime nowUtc)
+    {
+        Status = status;
+        ResolvedAt = status == EmergencyStatus.Resolved || status == EmergencyStatus.Dismissed
+            ? nowUtc
+            : null;
+        LogAction(actionType, payload, nowUtc);
+    }
+
+    public void LogAction(string actionType, string payload, DateTime nowUtc)
+    {
+        _actions.Add(AuctionEmergencyAction.Create(Id, actionType, payload, nowUtc));
+    }
 }

@@ -5,6 +5,7 @@ using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Media;
 using OIO.Application.Abstractions.Messaging;
+using OIO.Application.Context.MediaContext.Services;
 using OIO.Application.Context.UserContext.DTOs;
 using OIO.Application.Context.UserContext.Mappings;
 using OIO.Application.Context.UserContext.Services;
@@ -24,6 +25,7 @@ internal sealed class CreateTermsDocumentCommandHandler : ICommandHandler<Create
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
     private readonly UploadContextRegistry _contextRegistry;
+    private readonly IMediaRelocationService _mediaRelocationService;
     private readonly ILogger<CreateTermsDocumentCommandHandler> _logger;
 
     public CreateTermsDocumentCommandHandler(
@@ -32,6 +34,7 @@ internal sealed class CreateTermsDocumentCommandHandler : ICommandHandler<Create
         ICurrentUser currentUser,
         IClock clock,
         UploadContextRegistry contextRegistry,
+        IMediaRelocationService mediaRelocationService,
         ILogger<CreateTermsDocumentCommandHandler> logger)
     {
         _dbContext = dbContext;
@@ -39,6 +42,7 @@ internal sealed class CreateTermsDocumentCommandHandler : ICommandHandler<Create
         _currentUser = currentUser;
         _clock = clock;
         _contextRegistry = contextRegistry;
+        _mediaRelocationService = mediaRelocationService;
         _logger = logger;
     }
 
@@ -82,6 +86,8 @@ internal sealed class CreateTermsDocumentCommandHandler : ICommandHandler<Create
         var document = documentResult.Value;
         
         _dbContext.Insert(document);
+
+        await _mediaRelocationService.RelocateLinkedUploadAsync(mediaUpload, cancellationToken);
         
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

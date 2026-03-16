@@ -313,6 +313,27 @@ public static class UserErrors
             code: "Verification.AlreadyPending",
             description: "You already have a pending or submitted verification."
         );
+        
+        public static readonly Error AlreadyHasApprovedVerification = Error.Conflict(
+            code: "Verification.AlreadyApproved",
+            description: "You already have an approved verification of this type."
+        );
+
+        public static readonly Error DuplicateIdentity = Error.Conflict(
+            code: "Verification.DuplicateIdentity",
+            description: "This identity document is already associated with another account.");
+
+        public static readonly Error CorrectionDisputeRequiresAutoApprovedVerification = Error.Forbidden(
+            code: "Verification.CorrectionDispute.RequiresAutoApproved",
+            description: "Only auto-approved verifications can open a correction dispute.");
+
+        public static readonly Error CorrectionDisputeAlreadyOpen = Error.Conflict(
+            code: "Verification.CorrectionDispute.AlreadyOpen",
+            description: "A correction dispute for this verification is already open.");
+
+        public static readonly Error NoAdminAvailable = Error.Conflict(
+            code: "Verification.CorrectionDispute.NoAdminAvailable",
+            description: "No admin is currently available to handle this verification correction dispute.");
     }
 
     #endregion

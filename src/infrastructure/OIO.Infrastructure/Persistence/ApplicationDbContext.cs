@@ -1,9 +1,11 @@
-﻿using AppAny.Quartz.EntityFrameworkCore.Migrations;
+using AppAny.Quartz.EntityFrameworkCore.Migrations;
 using AppAny.Quartz.EntityFrameworkCore.Migrations.PostgreSQL;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Data;
+using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
 using OIO.Domain.Context.ModerationContext.ValueObjects.Ids;
@@ -21,8 +23,13 @@ namespace OIO.Infrastructure.Persistence;
 
 public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-        : base(options) { }
+    private ILogger<ApplicationDbContext> _logger;
+
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, ILogger<ApplicationDbContext> logger)
+        : base(options)
+    {
+        _logger = logger;
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -80,11 +87,70 @@ public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
     {
         return Database.BeginTransactionAsync(cancellationToken);
     }
-    
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = new CancellationToken())
+    {
+        var entry = ChangeTracker.Entries()
+            .FirstOrDefault(e => e.Entity is Auction);
+
+        if (entry != null)
+        {
+            _logger.LogError($"Entity: {entry.Metadata.Name}, State: {entry.State}");
+
+            _logger.LogError("=== DEBUG VIEW ===\n{view}", entry.DebugView.LongView);
+
+            _logger.LogError("=== SCALAR PROPERTIES ===");
+            foreach (var p in entry.Properties)
+            {
+                _logger.LogError(
+                    "{Name} ({ClrType}) | Current={Current} | Original={Original} | Temp={Temp}",
+                    p.Metadata.Name,
+                    p.Metadata.ClrType.Name,
+                    p.CurrentValue ?? "<null>",
+                    p.OriginalValue ?? "<null>",
+                    p.IsTemporary);
+            }
+
+            _logger.LogError("=== COMPLEX PROPERTIES ===");
+            foreach (var cp in entry.ComplexProperties)
+            {
+                _logger.LogError(
+                    "Complex: {Name} | Current={Current}",
+                    cp.Metadata.Name,
+                    cp.CurrentValue ?? "<null>");
+            }
+
+            _logger.LogError("=== REFERENCES ===");
+            foreach (var r in entry.References)
+            {
+                _logger.LogError(
+                    "Reference: {Name} | Current={Current} | IsLoaded={IsLoaded}",
+                    r.Metadata.Name,
+                    r.CurrentValue?.GetType().Name ?? "<null>",
+                    r.IsLoaded);
+            }
+
+            _logger.LogError("=== COLLECTIONS ===");
+            foreach (var c in entry.Collections)
+            {
+                var current = c.CurrentValue;
+                _logger.LogError(
+                    "Collection: {Name} | CurrentType={Type} | IsLoaded={IsLoaded}",
+                    c.Metadata.Name,
+                    current?.GetType().FullName ?? "<null>",
+                    c.IsLoaded);
+            }
+        }
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         configurationBuilder.Properties<AuctionDepositId>()
             .HaveConversion<EfCoreConverters.AuctionDepositIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<AuctionBuyNowReservationId>()
+            .HaveConversion<EfCoreConverters.AuctionBuyNowReservationIdEfCoreValueConverter>();
 
         configurationBuilder.Properties<AuctionEmergencyActionId>()
             .HaveConversion<EfCoreConverters.AuctionEmergencyActionIdEfCoreValueConverter>();
@@ -146,8 +212,14 @@ public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
         configurationBuilder.Properties<DisputeId>()
             .HaveConversion<EfCoreConverters.DisputeIdEfCoreValueConverter>();
 
+        configurationBuilder.Properties<DisputeMessageAttachmentId>()
+            .HaveConversion<EfCoreConverters.DisputeMessageAttachmentIdEfCoreValueConverter>();
+
         configurationBuilder.Properties<DisputeMessageId>()
             .HaveConversion<EfCoreConverters.DisputeMessageIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<DisputeParticipantStateId>()
+            .HaveConversion<EfCoreConverters.DisputeParticipantStateIdEfCoreValueConverter>();
 
         configurationBuilder.Properties<DisputeRefundId>()
             .HaveConversion<EfCoreConverters.DisputeRefundIdEfCoreValueConverter>();
@@ -203,6 +275,9 @@ public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
         configurationBuilder.Properties<WithdrawalRequestId>()
             .HaveConversion<EfCoreConverters.WithdrawalRequestIdEfCoreValueConverter>();
 
+        configurationBuilder.Properties<GatewayWebhookEventId>()
+            .HaveConversion<EfCoreConverters.GatewayWebhookEventIdEfCoreValueConverter>();
+
         configurationBuilder.Properties<BuyerReviewId>()
             .HaveConversion<EfCoreConverters.BuyerReviewIdEfCoreValueConverter>();
 
@@ -235,6 +310,9 @@ public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
 
         configurationBuilder.Properties<ShippingProviderConfigId>()
             .HaveConversion<EfCoreConverters.ShippingProviderConfigIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<WarehouseInspectionId>()
+            .HaveConversion<EfCoreConverters.WarehouseInspectionIdEfCoreValueConverter>();
 
         configurationBuilder.Properties<WarehouseItemId>()
             .HaveConversion<EfCoreConverters.WarehouseItemIdEfCoreValueConverter>();

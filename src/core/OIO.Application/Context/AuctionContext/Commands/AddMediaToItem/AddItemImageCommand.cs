@@ -8,6 +8,7 @@ using OIO.Application.Abstractions.Media;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
+using OIO.Application.Context.MediaContext.Services;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
@@ -46,6 +47,7 @@ internal sealed class AddMediaToItemCommandHandler
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
     private readonly UploadContextRegistry _contextRegistry;
+    private readonly IMediaRelocationService _mediaRelocationService;
     private readonly ILogger<AddMediaToItemCommandHandler> _logger;
 
     public AddMediaToItemCommandHandler(
@@ -54,6 +56,7 @@ internal sealed class AddMediaToItemCommandHandler
         ICurrentUser currentUser,
         IClock clock,
         UploadContextRegistry contextRegistry,
+        IMediaRelocationService mediaRelocationService,
         ILogger<AddMediaToItemCommandHandler> logger)
     {
         _dbContext = dbContext;
@@ -61,6 +64,7 @@ internal sealed class AddMediaToItemCommandHandler
         _currentUser = currentUser;
         _clock = clock;
         _contextRegistry = contextRegistry;
+        _mediaRelocationService = mediaRelocationService;
         _logger = logger;
     }
 
@@ -101,12 +105,6 @@ internal sealed class AddMediaToItemCommandHandler
             return MediaErrors.NotOwnedByUser(upload.Id);
         }
 
-        if (!upload.IsConfirmed)
-            return MediaErrors.NotConfirm;
-
-        if (upload.IsLinked)
-            return MediaErrors.AlreadyLinked;
-
         // Validate context is for items
         if (!_contextRegistry.IsItemContext(upload.Context))
         {
@@ -130,7 +128,8 @@ internal sealed class AddMediaToItemCommandHandler
         {
             return error;
         }
-        
+
+        await _mediaRelocationService.RelocateLinkedUploadAsync(upload, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return image.ToDto();

@@ -1,4 +1,4 @@
-﻿using OIO.Domain.Context.ModerationContext.ValueObjects.Ids;
+using OIO.Domain.Context.ModerationContext.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
 
@@ -15,4 +15,24 @@ public sealed class DisputeStatusHistory : BaseEntity<DisputeStatusHistoryId>, I
 
     public Dispute Dispute { get; private set; } = null!;
     private DisputeStatusHistory() { }
+
+    public static DisputeStatusHistory Create(
+        DisputeId disputeId,
+        string? oldStatus,
+        string newStatus,
+        UserId? changedBy,
+        string? reason,
+        DateTime nowUtc)
+    {
+        return new DisputeStatusHistory
+        {
+            Id = DisputeStatusHistoryId.From(Guid.CreateVersion7()),
+            DisputeId = disputeId,
+            OldStatus = oldStatus,
+            NewStatus = newStatus,
+            ChangedBy = changedBy,
+            Reason = reason,
+            CreatedAt = nowUtc
+        };
+    }
 }

@@ -15,7 +15,7 @@ internal sealed class CategoryConfiguration : IEntityTypeConfiguration<Category>
         
         builder.Property(c => c.Id)
             .HasColumnName("id")
-            .ValueGeneratedOnAdd()
+            .ValueGeneratedNever()
             .IsRequired()
             .HasConversion(
                 id => id.Value,

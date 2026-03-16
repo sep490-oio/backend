@@ -8,56 +8,26 @@ namespace OIO.Domain.Context.AuctionContext.ValueObjects;
 
 public sealed class AuctionPricing : ValueObject
 {
-    private readonly decimal _startingPrice;
-    private readonly decimal? _reservePrice;
-    private readonly decimal? _buyNowPrice;
-    private readonly decimal _currentPrice;
-    private readonly decimal _bidIncrement;
-    private readonly string _currency;
+    public decimal StartingAmount { get; private set; }
+    public decimal? ReserveAmount { get; private set; }
+    public decimal? BuyNowAmount { get; private set; }
+    public decimal CurrentAmount { get; private set; }
+    public decimal BidIncrementAmount { get; private set; }
+    public Currency Currency { get; private set; }
 
-    // ── Public Money API (domain logic dùng these) ──
-    public Money StartingPrice
-    {
-        get => Money.Of(_startingPrice, new Currency(_currency));
-        private init => _startingPrice = value.Amount;
-    }
-
-    public Money? ReservePrice
-    {
-        get => _reservePrice.HasValue ? Money.Of(_reservePrice.Value, new Currency(_currency)) : null;
-        private init => _reservePrice = value?.Amount;
-    }
-
-    public Money? BuyNowPrice
-    {
-        get => _buyNowPrice.HasValue ? Money.Of(_buyNowPrice.Value, new Currency(_currency)) : null;
-        private init  => _buyNowPrice = value?.Amount;
-    }
-
-    public Money CurrentPrice
-    {
-        get => Money.Of(_currentPrice, new Currency(_currency));
-        private init => _currentPrice = value.Amount;
-    }
-
-    public Money BidIncrement
-    {
-        get => Money.Of(_bidIncrement, new Currency(_currency));
-        private init => _bidIncrement = value.Amount;
-    }
-
-    public Currency Currency
-    {
-        get => new Currency(_currency);
-        private init => _currency = value.Id;
-    }
-    public Money NextMinimumBid => Money.Of(_currentPrice + _bidIncrement, new Currency(_currency));
+   
+    public Money NextMinimumBid => Money.Of(CurrentAmount + BidIncrementAmount, Currency);
     
-    public bool HasReservePrice => _reservePrice.HasValue;
-    public bool HasBuyNowPrice => _buyNowPrice.HasValue;
-    public bool ReserveMet => !HasReservePrice || _currentPrice >= _reservePrice!;
+    public Money StartingPrice => Money.Of(StartingAmount, Currency);
+    public Money? ReservePrice => ReserveAmount.HasValue ? Money.Of(ReserveAmount.Value, Currency) : null;
+    public Money? BuyNowPrice => BuyNowAmount.HasValue ? Money.Of(BuyNowAmount.Value, Currency) : null;
+    public Money CurrentPrice => Money.Of(CurrentAmount, Currency);
+    public Money BidIncrement => Money.Of(BidIncrementAmount, Currency);
+    public bool HasReservePrice => ReserveAmount.HasValue;
+    public bool HasBuyNowPrice => BuyNowAmount.HasValue;
+    public bool ReserveMet => !HasReservePrice || CurrentAmount >= ReserveAmount!;
     public bool IsBuyNowAvailable =>
-        HasBuyNowPrice && _currentPrice < _buyNowPrice!.Value;
+        HasBuyNowPrice && CurrentAmount < BuyNowAmount!.Value;
 
     private AuctionPricing() {} 
     
@@ -67,14 +37,14 @@ public sealed class AuctionPricing : ValueObject
         decimal? buyNowPrice,
         decimal currentPrice,
         decimal bidIncrement,
-        string currency)
+        Currency currency)
     {
-        _startingPrice = startingPrice;
-        _reservePrice = reservePrice;
-        _buyNowPrice = buyNowPrice;
-        _currentPrice = currentPrice;
-        _bidIncrement = bidIncrement;
-        _currency = currency;
+        StartingAmount = startingPrice;
+        ReserveAmount = reservePrice;
+        BuyNowAmount = buyNowPrice;
+        CurrentAmount = currentPrice;
+        BidIncrementAmount = bidIncrement;
+        Currency = currency;
     }
 
     public static Result<AuctionPricing, Error> Create(
@@ -85,11 +55,11 @@ public sealed class AuctionPricing : ValueObject
         decimal? buyNowPrice = null)
     {
         var check = AuctionPricing.Check(isInvariant: true)
-            .Field(bidIncrement, x => x.BidIncrement)
+            .Field(bidIncrement, x => x.BidIncrementAmount)
             .Positive()
-            .Field(reservePrice, x => x.ReservePrice)
+            .Field(reservePrice, x => x.ReserveAmount)
             .WhenHasValue(x => x.GreaterThanOrEqual(startingPrice))
-            .Field(buyNowPrice, x => x.BuyNowPrice)
+            .Field(buyNowPrice, x => x.BuyNowAmount)
             .WhenHasValue(x => x.GreaterThan(startingPrice))
             .ToUnitResult();
 
@@ -104,14 +74,14 @@ public sealed class AuctionPricing : ValueObject
             buyNowPrice: buyNowPrice,
             currentPrice: startingPrice,
             bidIncrement: bidIncrement,
-            currency: currency.Id);
+            currency: currency);
     }
 
-    public Result<AuctionPricing, Error> WithNewBid(decimal bidAmount)
+    public Result<AuctionPricing, Error> WithNewBid(decimal bidAmount, decimal minimumRequired)
     {
         var check = AuctionPricing.Check(isInvariant: true)
             .Field(bidAmount, "BidAmount")
-            .GreaterThanOrEqual(NextMinimumBid.Amount)
+            .GreaterThanOrEqual(minimumRequired)
             .ToUnitResult();
         
         if (check.IsFailure)
@@ -120,12 +90,12 @@ public sealed class AuctionPricing : ValueObject
         }
 
         return new AuctionPricing(
-            startingPrice: _startingPrice, 
-            reservePrice: _reservePrice,
-            buyNowPrice: _buyNowPrice,
+            startingPrice: StartingAmount, 
+            reservePrice: ReserveAmount,
+            buyNowPrice: BuyNowAmount,
             currentPrice: bidAmount,
-            bidIncrement: _bidIncrement,
-            currency: Currency.Id);
+            bidIncrement: BidIncrementAmount,
+            currency: Currency);
     }
 
     public Result<AuctionPricing, Error> WithBuyNow()
@@ -135,21 +105,21 @@ public sealed class AuctionPricing : ValueObject
                 "Buy-now is not available.");
 
         return new AuctionPricing(
-            startingPrice: _startingPrice, 
-            reservePrice: _reservePrice,
-            buyNowPrice: _buyNowPrice,
-            currentPrice: _buyNowPrice!.Value,
-            bidIncrement: _bidIncrement,
-            currency: Currency.Id);
+            startingPrice: StartingAmount, 
+            reservePrice: ReserveAmount,
+            buyNowPrice: BuyNowAmount,
+            currentPrice: BuyNowAmount!.Value,
+            bidIncrement: BidIncrementAmount,
+            currency: Currency);
     }
 
     protected override IEnumerable<object> GetEqualityComponents()
     {
-        yield return _startingPrice;
-        yield return _reservePrice ?? -1m;
-        yield return _buyNowPrice ?? -1m;
-        yield return _currentPrice;
-        yield return _bidIncrement;
-        yield return _currency;
+        yield return StartingAmount;
+        yield return ReserveAmount ?? -1m;
+        yield return BuyNowAmount ?? -1m;
+        yield return CurrentAmount;
+        yield return BidIncrementAmount;
+        yield return Currency;
     }
 }

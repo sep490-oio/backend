@@ -74,6 +74,8 @@ app.UseAuthorization();
 app.MapEndpoints();
 
 app.MapHub<AuctionHub>("/hubs/auction");
+app.MapHub<DisputeHub>("/hubs/disputes");
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.MapHealthChecks("health", new HealthCheckOptions
 {

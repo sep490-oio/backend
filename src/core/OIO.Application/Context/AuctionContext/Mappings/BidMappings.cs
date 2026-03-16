@@ -37,7 +37,7 @@ internal static class BidMappings
         .Map(x => x.ItemTitle, b => b.Auction.Item.Title)
         .Map(x => x.Amount, b => b.Amount.Amount)
         .Map(x => x.Status, b => b.Status.Id)
-        .Map(x => x.CurrentPrice, b => b.Auction.Pricing.CurrentPrice)
+        .Map(x => x.CurrentPrice, b => b.Auction.Pricing.CurrentAmount)
         .Map(x => x.AuctionStatus, b => b.Auction.Status)
         .Map(x => x.BidPlacedAt, b => b.CreatedAt)
         .Map(x => x.AuctionEndTime, b => b.Auction.Info.EndTime)

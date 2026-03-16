@@ -52,6 +52,7 @@ internal sealed class ResumeAutoBidCommandHandler
             id: auctionId,
             queryBuilder: query => query
                 .Include(a => a.AutoBids)
+                .Include(a => a.Bids)
                 .AsSplitQuery(),
             cancellationToken: cancellationToken);
 

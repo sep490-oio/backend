@@ -35,3 +35,53 @@ internal sealed class BuyNowExecutedEventHandler
             ct);
     }
 }
+
+internal sealed class AuctionBuyNowReservedEventHandler
+    : INotificationHandler<AuctionBuyNowReservedEvent>
+{
+    private readonly IAuctionNotificationService _notificationService;
+
+    public AuctionBuyNowReservedEventHandler(IAuctionNotificationService notificationService)
+    {
+        _notificationService = notificationService;
+    }
+
+    public Task Handle(AuctionBuyNowReservedEvent notification, CancellationToken ct)
+    {
+        return _notificationService.NotifyBuyNowReservedAsync(
+            Guid.Parse(notification.AuctionId),
+            new BuyNowReservedNotification(
+                AuctionId: Guid.Parse(notification.AuctionId),
+                ReservationId: Guid.Parse(notification.ReservationId),
+                BuyerId: Guid.Parse(notification.BuyerId),
+                BuyNowPrice: notification.BuyNowPrice,
+                DepositAppliedAmount: notification.DepositAppliedAmount,
+                AmountDue: notification.AmountDue,
+                ExpiresAt: new DateTimeOffset(notification.ExpiresAt)),
+            ct);
+    }
+}
+
+internal sealed class AuctionBuyNowReservationReleasedEventHandler
+    : INotificationHandler<AuctionBuyNowReservationReleasedEvent>
+{
+    private readonly IAuctionNotificationService _notificationService;
+
+    public AuctionBuyNowReservationReleasedEventHandler(IAuctionNotificationService notificationService)
+    {
+        _notificationService = notificationService;
+    }
+
+    public Task Handle(AuctionBuyNowReservationReleasedEvent notification, CancellationToken ct)
+    {
+        return _notificationService.NotifyBuyNowReservationReleasedAsync(
+            Guid.Parse(notification.AuctionId),
+            new BuyNowReservationReleasedNotification(
+                AuctionId: Guid.Parse(notification.AuctionId),
+                ReservationId: Guid.Parse(notification.ReservationId),
+                BuyerId: Guid.Parse(notification.BuyerId),
+                Reason: notification.Reason,
+                ReleasedAt: new DateTimeOffset(notification.OccurredAt)),
+            ct);
+    }
+}

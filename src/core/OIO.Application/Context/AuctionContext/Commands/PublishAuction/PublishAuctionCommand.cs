@@ -6,6 +6,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Abstractions.Scheduling;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
+using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Checks.Extensions;
@@ -73,11 +74,21 @@ internal sealed class PublishAuctionCommandHandler
             return result.Error;
         
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        
-        await _scheduler.ScheduleStartAsync(
-            auction.Id.Value,
-            auction.Info.StartTime,
-            cancellationToken);
+
+        if (auction.Status == AuctionStatus.Active)
+        {
+            await _scheduler.ScheduleEndAsync(
+                auction.Id.Value,
+                auction.Info!.EndTime,
+                cancellationToken);
+        }
+        else
+        {
+            await _scheduler.ScheduleStartAsync(
+                auction.Id.Value,
+                auction.Info!.StartTime,
+                cancellationToken);
+        }
 
         return UnitResult.Success<Error>();
         

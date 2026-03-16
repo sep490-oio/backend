@@ -1,5 +1,6 @@
-﻿using OIO.Domain.Context.ModerationContext.ValueObjects;
+using OIO.Domain.Context.ModerationContext.ValueObjects;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
+using OIO.Domain.Context.PaymentContext.DomainEvents;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.ValueObjects;
@@ -24,4 +25,58 @@ public sealed class Invoice : AggregateRoot<InvoiceId>
     public DateTime? PaidAt { get; private set; }
 
     private Invoice() { }
+
+    public static Invoice Create(
+        InvoiceNumber invoiceNumber,
+        OrderId orderId,
+        UserId buyerId,
+        UserId sellerId,
+        decimal subtotal,
+        decimal taxAmount,
+        Money totalAmount,
+        string currency,
+        DateTime nowUtc)
+    {
+        return new Invoice
+        {
+            Id = InvoiceId.From(Guid.CreateVersion7()),
+            InvoiceNumber = invoiceNumber,
+            OrderId = orderId,
+            BuyerId = buyerId,
+            SellerId = sellerId,
+            Subtotal = subtotal,
+            TaxAmount = taxAmount,
+            TotalAmount = totalAmount,
+            Currency = currency,
+            Status = InvoiceStatus.Draft,
+            IssuedAt = nowUtc
+        };
+    }
+
+    public void MarkAsIssued(DateOnly dueDate, DateTime nowUtc)
+    {
+        if (Status != InvoiceStatus.Draft) return;
+
+        Status = InvoiceStatus.Issued;
+        DueDate = dueDate;
+        IssuedAt = nowUtc;
+    }
+
+    public void MarkAsPaid(DateTime nowUtc)
+    {
+        if (Status == InvoiceStatus.Paid || Status == InvoiceStatus.Cancelled) return;
+
+        Status = InvoiceStatus.Paid;
+        PaidAt = nowUtc;
+
+        RaiseDomainEvent(new InvoicePaidDomainEvent(
+            Id, OrderId.Value, BuyerId, TotalAmount.Amount, nowUtc));
+    }
+
+    public void Cancel()
+    {
+        if (Status == InvoiceStatus.Paid || Status == InvoiceStatus.Cancelled) return;
+
+        Status = InvoiceStatus.Cancelled;
+    }
 }

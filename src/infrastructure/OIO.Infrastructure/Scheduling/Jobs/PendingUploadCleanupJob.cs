@@ -73,7 +73,8 @@ public sealed class PendingUploadCleanupJob : IJob
         // Case 3: Old linked records (audit trail cleanup)
         var oldLinked = await _dbContext.Set<MediaUpload>()
             .Where(p => p.IsLinked &&
-                        p.LinkedAt < linkedRetentionThreshold)
+                        p.LinkedAt < linkedRetentionThreshold &&
+                        !p.StorageRef.Folder.Contains("/pending/"))
             .ToListAsync(cancellationToken);
 
         if (oldLinked.Count > 0)

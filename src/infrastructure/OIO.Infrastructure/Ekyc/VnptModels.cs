@@ -129,6 +129,9 @@ internal sealed class VnptOcrObject
 
     [JsonPropertyName("expire_warning")]
     public string? ExpireWarning { get; set; }
+    
+    [JsonPropertyName("post_code")]
+    public List<VnptPostCodeObject>? PostCode { get; set; }
 }
 
 internal sealed class VnptTamperingObject
@@ -138,6 +141,21 @@ internal sealed class VnptTamperingObject
 
     [JsonPropertyName("warning")]
     public List<string>? Warning { get; set; }
+}
+
+internal sealed class VnptPostCodeObject
+{   
+    [JsonPropertyName("city")]
+    public List<object>? City { get; set; }
+    
+    [JsonPropertyName("district")]
+    public List<object>? District { get; set; }
+    
+    [JsonPropertyName("ward")]
+    public List<object>? Ward { get; set; }
+    
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
 }
 
 #endregion

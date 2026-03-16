@@ -52,6 +52,16 @@ public sealed class MediaInfo : ValueObject
             height,
             durationSeconds);
 
+    public MediaInfo WithSecureUrl(string secureUrl)
+        => new(
+            secureUrl,
+            FileName,
+            Bytes,
+            Format,
+            Width,
+            Height,
+            DurationSeconds);
+
     public bool IsVideo => DurationSeconds.HasValue;
     public bool IsImage => Width.HasValue && Height.HasValue && !DurationSeconds.HasValue;
 

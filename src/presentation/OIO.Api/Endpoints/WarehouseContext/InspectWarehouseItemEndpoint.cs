@@ -11,7 +11,7 @@ public sealed class InspectWarehouseItemEndpoint : IEndpoint
     public sealed record Request(
         string ConditionId,
         string? InspectionNotes,
-        List<string>? ImageUrls);
+        IReadOnlyList<Guid> InspectionMediaUploadIds);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
@@ -25,7 +25,7 @@ public sealed class InspectWarehouseItemEndpoint : IEndpoint
                     shipmentId,
                     request.ConditionId,
                     request.InspectionNotes,
-                    request.ImageUrls);
+                    request.InspectionMediaUploadIds);
 
                 var result = await sender.Send(command, ct);
                 return result.ToCreatedHttpResult();
@@ -33,7 +33,7 @@ public sealed class InspectWarehouseItemEndpoint : IEndpoint
             .RequireAuthorization(App.Permissions.Catalogs.Warehouse.Inspect)
             .WithName(ApiEndpoint.Names.Warehouse.InspectWarehouseItem)
             .WithTags(ApiEndpoint.Tags.Warehouse)
-            .Produces<WarehouseItemDto>(StatusCodes.Status201Created)
+            .Produces<WarehouseInspectionDto>(StatusCodes.Status201Created)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound)

@@ -6,7 +6,6 @@ public sealed record WarehouseItemCreatedEvent(
     string WarehouseItemId,
     string ItemId,
     string InboundShipmentId,
-    string ConditionOnArrival,
     DateTime OccurredOn) : DomainEvent(OccurredOn);
 
 public sealed record WarehouseItemStoredEvent(

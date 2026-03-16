@@ -15,7 +15,6 @@ namespace OIO.Application.Context.MediaContext.Commands.RequestUploadSignature;
 
 public sealed record RequestUploadSignatureCommand(
     string Context,
-    Guid? EntityId,
     string FileName) : ICommand<UploadSignatureResponse>, IHasValidate
 {
     public ViolationsError Validate()
@@ -25,9 +24,7 @@ public sealed record RequestUploadSignatureCommand(
             .Field(Context)
             .NotWhiteSpace()
             .Field(FileName)
-            .NotWhiteSpace()
-            .Field(EntityId)
-            .WhenHasValue(x => x.NotEmptyGuid());
+            .NotWhiteSpace();
     }
 }
 
@@ -39,6 +36,7 @@ public sealed record UploadSignatureResponse(
     string ApiKey,
     string CloudName,
     string PublicId,
+    string StoragePublicId,
     string Folder,
     string? Eager,
     string ResourceType,
@@ -88,14 +86,12 @@ internal sealed class RequestUploadSignatureCommandHandler
         
         var resourceType = UploadContextRegistry.ParseResourceType(contextConfig!.ResourceType);
         
-        // ===== Build folder path =====
-        // If entityId provided: "items/{entityId}"
-        // If not: "items/pending/{userId}" (temporary folder)
-        var folder = request.EntityId.HasValue ? 
-            $"{contextConfig.Folder}/{request.EntityId.Value}" : 
+        
+        //  "items/pending/{userId}" (temporary folder)
+        var folder = 
             $"{contextConfig.Folder}/pending/{_currentUser.UserId}";
 
-        // Build unique publicId
+        // Build upload public_id leaf. Cloudinary prefixes the folder separately.
         var uniqueSuffix = Guid.NewGuid().ToString("N")[..12];
         var prefix = resourceType.ToFilePrefix();
         var mediaName = $"{prefix}_{uniqueSuffix}";
@@ -112,8 +108,9 @@ internal sealed class RequestUploadSignatureCommandHandler
 
         var mediaInfo = MediaInfo.Create(
             fileName: request.FileName);
+        
         var ( _, isFailure, storage, error) = StorageRef.Create(
-            publicId: signatureResult.PublicId,
+            publicId: signatureResult.StoragePublicId,
             folder: signatureResult.Folder);
 
         if (isFailure)
@@ -126,7 +123,8 @@ internal sealed class RequestUploadSignatureCommandHandler
             userId: _currentUser.UserId,
             context: request.Context,
             resourceType: contextConfig.ResourceType,
-            entityId: request.EntityId,
+            entityId: null,
+            idType: null,
             mediaInfo: mediaInfo,
             storageRef: storage,
             nowUtc: nowUtc,
@@ -142,7 +140,8 @@ internal sealed class RequestUploadSignatureCommandHandler
             Timestamp: signatureResult.Timestamp,
             ApiKey: signatureResult.ApiKey,
             CloudName: signatureResult.CloudName,
-            PublicId: mediaName,
+            PublicId: signatureResult.UploadPublicId,
+            StoragePublicId: signatureResult.StoragePublicId,
             Folder: signatureResult.Folder,
             Eager: signatureResult.Eager,
             ResourceType: signatureResult.ResourceType,

@@ -29,17 +29,20 @@ internal sealed class SubmitVerificationCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
     private readonly ICurrentUser _currentUser;
+    private readonly VerificationDuplicateIdentityService _duplicateIdentityService;
 
     public SubmitVerificationCommandHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         IClock clock,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        VerificationDuplicateIdentityService duplicateIdentityService)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _clock = clock;
         _currentUser = currentUser;
+        _duplicateIdentityService = duplicateIdentityService;
     }
 
     public async Task<UnitResult<Error>> Handle(
@@ -56,6 +59,10 @@ internal sealed class SubmitVerificationCommandHandler
 
         if (verification is null || verification.UserId != userId)
             return UserErrors.Verification.NotFound(verificationId);
+
+        var duplicate = await _duplicateIdentityService.FindDuplicateAsync(verification, cancellationToken);
+        if (duplicate is not null)
+            return UserErrors.Verification.DuplicateIdentity;
 
         var result = verification.Submit(_clock.UtcNow);
 

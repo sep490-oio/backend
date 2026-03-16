@@ -17,6 +17,7 @@ using OIO.Application.Abstractions.Scheduling;
 using OIO.Application.Abstractions.Security;
 using OIO.Application.Abstractions.Settings;
 using OIO.Application.Abstractions.Shipping;
+using OIO.Application.Context.AuctionContext.Services;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.UserContext.Services;
 using OIO.Application.Abstractions.Ekyc;
@@ -74,7 +75,8 @@ public static class DependencyInjection
                 .AddMedia(configuration)
                 .AddSecurityServices()
                 .AddShipping()
-                .AddEkyc(configuration);
+                .AddEkyc(configuration)
+                .AddPayment(configuration);
 
             return services;
         }
@@ -224,8 +226,10 @@ public static class DependencyInjection
 
         private IServiceCollection AddSecurityServices()
         {
+            services.AddDataProtection();
             services.AddSingleton<ISecureTokenGenerator, SecureTokenGenerator>();
             services.AddScoped<ISecureTokenStore, SecureTokenStore>();
+            services.AddScoped<ISealedBidEncryptionService, SealedBidEncryptionService>();
 
             return services;
         }
@@ -270,6 +274,10 @@ public static class DependencyInjection
         private IServiceCollection AddBackgroundJobs()
         {
             services.AddHostedService<ExpiredSessionCleanupJob>();
+            services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Orders.CancelExpiredOrdersJob>();
+            services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Orders.ReleaseExpiredDecisionWindowJob>();
+            services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Auctions.ExpireRunnerUpOffersJob>();
+            services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Auctions.ExpireBuyNowReservationsJob>();
             
             return services;
         }
@@ -307,7 +315,13 @@ public static class DependencyInjection
             // Job Setups
             services.ConfigureOptions<OutboxMessagesProcessorJobSetup>();
             services.ConfigureOptions<MediaUploadCleanupJobSetup>();
+            services.ConfigureOptions<PendingUploadRelocationJobSetup>();
             services.ConfigureOptions<AuctionJobSetup>();
+            services.ConfigureOptions<AuctionAutoCompleteJobSetup>();
+
+            // Notification Delivery Job
+            services.ConfigureOptions<OIO.Infrastructure.Notification.BackgroundJobs.ProcessNotificationDeliveriesJobSetup>();
+            services.AddScoped<OIO.Application.Context.NotificationContext.Services.INotificationProvider, OIO.Infrastructure.Notification.Providers.EmailNotificationProvider>();
 
             return services;
         }
@@ -331,6 +345,7 @@ public static class DependencyInjection
 
             return services;
         }
+
         private IServiceCollection AddEkyc(IConfiguration configuration)
         {
             services.Configure<VnptEkycOptions>(configuration.GetSection(VnptEkycOptions.SectionName));
@@ -345,6 +360,21 @@ public static class DependencyInjection
             services.AddTransient<IShippingProvider, GhnShippingProvider>();
             services.AddTransient<IShippingProviderSelector, ShippingProviderSelector>();
             services.AddScoped<IShippingService, ShippingService>();
+            return services;
+        }
+
+        private IServiceCollection AddPayment(IConfiguration configuration)
+        {
+            services.Configure<Payment.VnPay.VnPayConfig>(
+                configuration.GetSection(Payment.VnPay.VnPayConfig.SectionName));
+            services.AddHttpClient<Application.Abstractions.Payment.IPaymentGatewayService,
+                Payment.VnPay.VnPayGateway>();
+
+            services.ConfigureOptions<Payment.Webhooks.ProcessGatewayWebhooksJobSetup>();
+            services.AddScoped<Payment.Webhooks.GatewayWebhookProcessor>();
+
+            services.ConfigureOptions<Payment.Reconciliation.GatewayReconciliationJobSetup>();
+
             return services;
         }
     }

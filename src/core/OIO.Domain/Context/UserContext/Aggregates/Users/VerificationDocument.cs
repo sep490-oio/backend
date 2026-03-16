@@ -51,4 +51,10 @@ public sealed class VerificationDocument : BaseEntity<VerificationDocumentId>, I
             CreatedAt = nowUtc
         };
     }
+
+    internal void RefreshMediaSnapshot(StorageRef storageRef, MediaInfo info)
+    {
+        StorageRef = storageRef;
+        Info = info;
+    }
 }

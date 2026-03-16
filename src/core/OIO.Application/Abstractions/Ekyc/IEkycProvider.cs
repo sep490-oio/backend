@@ -16,10 +16,14 @@ public interface IEkycProvider
         CancellationToken ct = default);
 }
 
+public sealed record EkycImageRef(
+    string ImageUrl,
+    string SourceKey);
+
 public sealed record EkycVerificationRequest(
-    string IdFrontImageUrl,
-    string? IdBackImageUrl,
-    string SelfieImageUrl);
+    EkycImageRef IdFrontImage,
+    EkycImageRef? IdBackImage,
+    EkycImageRef SelfieImage);
 
 public sealed record EkycVerificationResult
 {
@@ -51,6 +55,7 @@ public sealed record EkycOcrData
     public string? Nationality { get; init; }
     public string? Ethnicity { get; init; }
     public string? Address { get; init; }
+    public PostCode? PostCode { get; init; }
     public string? Hometown { get; init; }
     public string? IssueDate { get; init; }
     public string? IssuePlace { get; init; }
@@ -58,4 +63,13 @@ public sealed record EkycOcrData
     public string? CardType { get; init; }
     public bool IsIdFake { get; init; }
     public bool IsTampered { get; init; }
+}
+
+public sealed class PostCode
+{   
+    public List<object>? City { get; set; }
+    
+    public List<object>? District { get; set; }
+    
+    public List<object>? Ward { get; set; }
 }

@@ -77,11 +77,11 @@ internal sealed class CloudinarySignatureService : IMediaSignatureService
 
         // Upload URL varies by resource type
         var uploadUrl = $"{opts.BaseUrl}/{opts.CloudName}/{resourceTypePath}/upload";
-        var publicId = $"{folder}/{mediaName}";
+        var storagePublicId = $"{folder}/{mediaName}";
 
         _logger.LogDebug(
-            "Generated {ResourceType} upload signature: publicId={PublicId}, folder={Folder}",
-            resourceTypePath, publicId, folder);
+            "Generated {ResourceType} upload signature: uploadPublicId={UploadPublicId}, storagePublicId={StoragePublicId}, folder={Folder}",
+            resourceTypePath, mediaName, storagePublicId, folder);
 
         return new UploadSignatureResult(
             UploadUrl: uploadUrl,
@@ -89,10 +89,61 @@ internal sealed class CloudinarySignatureService : IMediaSignatureService
             Timestamp: timestamp,
             ApiKey: opts.ApiKey,
             CloudName: opts.CloudName,
-            PublicId: publicId,
+            UploadPublicId: mediaName,
+            StoragePublicId: storagePublicId,
             Folder: folder,
             Eager: eager,
             ResourceType: resourceTypePath);
+    }
+
+    public async Task<RenameResourceResult?> RenameResourceAsync(
+        string fromPublicId,
+        string toPublicId,
+        MediaResourceType resourceType,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var cloudinary = CreateClient();
+            var renameParams = new RenameParams(fromPublicId, toPublicId)
+            {
+                ResourceType = MapResourceType(resourceType),
+                Overwrite = false,
+                Invalidate = true
+            };
+
+            var result = await cloudinary.RenameAsync(renameParams, ct);
+
+            if (result.Error is not null)
+            {
+                _logger.LogWarning(
+                    "Failed to rename {Type} resource from {FromPublicId} to {ToPublicId}. Error: {Error}",
+                    resourceType, fromPublicId, toPublicId, result.Error.Message);
+                return null;
+            }
+
+            var finalPublicId = string.IsNullOrWhiteSpace(result.PublicId) ? toPublicId : result.PublicId;
+            var finalFolder = ExtractFolder(finalPublicId);
+            var secureUrl = !string.IsNullOrWhiteSpace(result.SecureUrl)
+                ? result.SecureUrl
+                : result.Url ?? string.Empty;
+
+            _logger.LogInformation(
+                "Renamed {Type} resource from {FromPublicId} to {ToPublicId}.",
+                resourceType, fromPublicId, finalPublicId);
+
+            return new RenameResourceResult(
+                finalPublicId,
+                finalFolder,
+                secureUrl);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Exception renaming {Type} resource from {FromPublicId} to {ToPublicId}",
+                resourceType, fromPublicId, toPublicId);
+            return null;
+        }
     }
 
     public async Task<bool> DeleteResourceAsync(
@@ -200,5 +251,11 @@ internal sealed class CloudinarySignatureService : IMediaSignatureService
     {
         var bytes = SHA1.HashData(Encoding.UTF8.GetBytes(input));
         return Convert.ToHexStringLower(bytes);
+    }
+
+    private static string ExtractFolder(string publicId)
+    {
+        var lastSlash = publicId.LastIndexOf('/');
+        return lastSlash <= 0 ? string.Empty : publicId[..lastSlash];
     }
 }

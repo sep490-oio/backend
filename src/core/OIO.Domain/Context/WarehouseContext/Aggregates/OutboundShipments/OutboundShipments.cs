@@ -208,6 +208,7 @@ public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
 
         RaiseDomainEvent(new OutboundShipmentPickedUpEvent(
             Id.ToString(),
+            OrderId.ToString(),
             ProviderCode.Id,
             CarrierTrackingNumber ?? ClientOrderCode,
             now));

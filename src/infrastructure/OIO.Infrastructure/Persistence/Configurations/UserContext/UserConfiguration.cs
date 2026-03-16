@@ -106,14 +106,14 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
                 .IsRequired();
         });
         
-        builder.ComplexProperty(u => u.Status, statusBuilder =>
-        {
-            statusBuilder.Property(s => s.Id)
-                .HasColumnName("status")
-                .HasMaxLength(30)
-                .HasDefaultValue(UserStatus.Inactive.Id)
-                .IsRequired();
-        });
+        builder.Property(s => s.Status)
+            .HasColumnName("status")
+            .HasMaxLength(30)
+            .HasDefaultValue(UserStatus.Inactive)
+            .HasConversion(
+                s => s.Id,
+                value => UserStatus.FromId(value).Value)
+            .IsRequired();
 
         builder.Property(u => u.LockoutEnabled)
             .HasColumnName("lockout_enabled")

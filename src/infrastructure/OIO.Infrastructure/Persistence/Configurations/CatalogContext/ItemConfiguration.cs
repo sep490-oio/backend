@@ -21,7 +21,7 @@ internal sealed class ItemConfiguration : IEntityTypeConfiguration<Item>
 
         builder.Property(i => i.Id)
             .HasColumnName("id")
-            .ValueGeneratedOnAdd()
+            .ValueGeneratedNever()
             .IsRequired()
             .HasConversion(
                 x => x.Value,
@@ -36,7 +36,6 @@ internal sealed class ItemConfiguration : IEntityTypeConfiguration<Item>
         
         builder.Property(i => i.CategoryId)
             .HasColumnName("category_id")
-            .IsRequired()
             .HasConversion(
                 x => x.HasValue ? x.Value.Value : default(Guid?),
                 value => value.HasValue ? CategoryId.From(value.Value) : null);

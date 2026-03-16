@@ -4,6 +4,7 @@ public sealed record VerificationDto(
     Guid Id,
     Guid UserId,
     string VerificationType,
+    bool AutoVerified,
     string? FullName,
     DateOnly? DateOfBirth,
     string? Gender,
@@ -49,6 +50,7 @@ public sealed record VerificationDocumentDto(
 public sealed record VerificationSummaryDto(
     Guid Id,
     string VerificationType,
+    bool AutoVerified,
     string? FullName,
     string Status,
     DateTime? SubmittedAt,

@@ -52,7 +52,7 @@ internal sealed class SystemSettingsService : ISystemSettingsService
                 // 2. Check DB
                 var setting = await _dbContext.Set<SystemSetting>()
                     .AsNoTracking()
-                    .FirstOrDefaultAsync(s => s.Id == systemSettingId, ct);
+                    .FirstOrDefaultAsync(s => s.Id == systemSettingId, cancel);
 
                 if (setting is null)
                     return defaultValue;

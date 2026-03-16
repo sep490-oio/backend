@@ -10,6 +10,9 @@ public readonly partial struct InboundShipmentId : IEntityId;
 public readonly partial struct WarehouseItemId : IEntityId;
 
 [ValueObject<Guid>]
+public readonly partial struct WarehouseInspectionId : IEntityId;
+
+[ValueObject<Guid>]
 public readonly partial struct OutboundShipmentId : IEntityId;
 
 [ValueObject<Guid>]

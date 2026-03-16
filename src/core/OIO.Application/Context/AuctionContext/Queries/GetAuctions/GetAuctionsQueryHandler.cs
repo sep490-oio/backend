@@ -75,12 +75,12 @@ internal sealed class GetAuctionsQueryHandler
         // Price range
         if (parameters.MinPrice.HasValue)
         {
-            query = query.Where(x => x.Pricing.CurrentPrice.Amount >= parameters.MinPrice.Value);
+            query = query.Where(x => x.Pricing.CurrentAmount >= parameters.MinPrice.Value);
         }
 
         if (parameters.MaxPrice.HasValue)
         {
-            query = query.Where(x => x.Pricing.CurrentPrice.Amount <= parameters.MaxPrice.Value);
+            query = query.Where(x => x.Pricing.CurrentAmount <= parameters.MaxPrice.Value);
         }
 
         // Ending within N hours
@@ -114,8 +114,14 @@ internal sealed class GetAuctionsQueryHandler
                     .FirstOrDefault(),
                 x.Pricing.CurrentPrice.ToDto(),
                 x.Pricing.StartingPrice.ToDto(),
-                x.Pricing.BuyNowPrice != null ? x.Pricing.BuyNowPrice.ToDto() : null,
-                x.Pricing.StartingPrice.Currency.Id,
+                x.Pricing.BuyNowAmount != null ? x.Pricing.BuyNowPrice!.ToDto() : null,
+                x.BuyNowReservations.Any(r => r.Status.Id == "pending_payment" && r.ExpiresAt > nowUtc),
+                x.BuyNowReservations
+                    .Where(r => r.Status.Id == "pending_payment" && r.ExpiresAt > nowUtc)
+                    .OrderByDescending(r => r.ExpiresAt)
+                    .Select(r => (DateTime?)r.ExpiresAt)
+                    .FirstOrDefault(),
+                x.Pricing.Currency.Id,
                 x.Status.Id,
                 x.BidCount,
                 x.WatchCount,

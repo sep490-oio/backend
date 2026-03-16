@@ -12,6 +12,7 @@ using OIO.Domain.Context.AuctionContext.Grains;
 using OIO.Domain.Context.AuctionContext.Grains.GrainModels;
 using OIO.Domain.Context.AuctionContext.Grains.GrainValueObjects;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
@@ -83,6 +84,8 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 return error;
             }
             
+            // The aggregate executes the full live-bidding cascade, including
+            // counter auto-bids and any resulting domain events, before returning.
             (_, isFailure, var bid, error) = auction.PlaceBid(
                 bidderId: UserId.From(bidderId),
                 amount: amountDomain,
@@ -140,6 +143,105 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
         {
             _logger.LogError(ex,
                 "Unexpected error executing buy now on auction {AuctionId}",
+                this.GetGrainId());
+            throw;
+        }
+    }
+
+    public async Task<Result<AuctionBuyNowReservationGrain, Error>> InitiateBuyNowReservationAsync(
+        Guid bidderId,
+        TimeSpan reservationWindow,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var nowUtc = _clock.UtcNow;
+            var (_, isFailure, auction, error) = await LoadAuctionAsync(cancellationToken);
+
+            if (isFailure)
+                return error;
+
+            (_, isFailure, var reservation, error) = auction.InitiateBuyNowReservation(
+                UserId.From(bidderId),
+                nowUtc,
+                reservationWindow);
+
+            if (isFailure)
+                return error;
+
+            await SaveAsync(auction, cancellationToken);
+            return AuctionBuyNowReservationGrain.From(reservation);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Unexpected error initiating buy-now reservation on auction {AuctionId}",
+                this.GetGrainId());
+            throw;
+        }
+    }
+
+    public async Task<Result<AuctionBuyNowReservationGrain, Error>> AttachBuyNowPaymentAsync(
+        Guid reservationId,
+        Guid paymentTransactionId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var nowUtc = _clock.UtcNow;
+            var (_, isFailure, auction, error) = await LoadAuctionAsync(cancellationToken);
+
+            if (isFailure)
+                return error;
+
+            (_, isFailure, var reservation, error) = auction.AttachBuyNowPayment(
+                AuctionBuyNowReservationId.From(reservationId),
+                TransactionId.From(paymentTransactionId),
+                nowUtc);
+
+            if (isFailure)
+                return error;
+
+            await SaveAsync(auction, cancellationToken);
+            return AuctionBuyNowReservationGrain.From(reservation);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Unexpected error attaching buy-now payment on auction {AuctionId}",
+                this.GetGrainId());
+            throw;
+        }
+    }
+
+    public async Task<UnitResult<Error>> FailBuyNowReservationAsync(
+        Guid reservationId,
+        string reason,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var nowUtc = _clock.UtcNow;
+            var (_, isFailure, auction, error) = await LoadAuctionAsync(cancellationToken);
+
+            if (isFailure)
+                return error;
+
+            var result = auction.FailBuyNowReservation(
+                AuctionBuyNowReservationId.From(reservationId),
+                reason,
+                nowUtc);
+
+            if (result.IsFailure)
+                return result.Error;
+
+            await SaveAsync(auction, cancellationToken);
+            return UnitResult.Success<Error>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Unexpected error failing buy-now reservation on auction {AuctionId}",
                 this.GetGrainId());
             throw;
         }
@@ -216,11 +318,11 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
 
         return new AuctionSnapshotGrain(
             AuctionId: auction.Id.Value,
-            CurrentPrice: auction.Pricing.CurrentPrice.Amount,
+            CurrentPrice: auction.Pricing.CurrentAmount,
             MinimumNextBid: auction.GetMinimumBidAmount().Amount,
             BidCount: auction.BidCount,
             Status: auction.Status.Id,
-            EndTime: auction.Info.EndTime,
+            EndTime: auction.Info?.EndTime ?? DateTime.MinValue,
             WinnerId: auction.WinnerId?.Value);
     }
 
@@ -240,9 +342,14 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
         _auction = await _dbContext.GetByIdAsync<Auction, AuctionId>(
             AuctionId.From(auctionId),
             query => query
+                .Include(a => a.Item)
                 .Include(a => a.Bids.OrderByDescending(b => b.CreatedAt))
                 .Include(a => a.AutoBids)
+                .Include(a => a.Deposits)
+                .Include(a => a.Participants)
+                .Include(a => a.SealedBids)
                 .Include(a => a.PriceHistories.OrderByDescending(ph => ph.CreatedAt))
+                .Include(a => a.BuyNowReservations)
                 .AsSplitQuery(),
             cancellationToken);
 

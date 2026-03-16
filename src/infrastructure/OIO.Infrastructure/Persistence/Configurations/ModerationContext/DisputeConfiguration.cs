@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OIO.Domain.Context.ModerationContext.Aggregates.Disputes;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
+using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Infrastructure.Persistence.Converters;
 
 namespace OIO.Infrastructure.Persistence.Configurations.ModerationContext;
@@ -28,8 +29,10 @@ internal sealed class DisputeConfiguration : IEntityTypeConfiguration<Dispute>
             .IsRequired();
         
         builder.Property(d => d.AuctionId)
-            .HasColumnName("auction_id")
-            .IsRequired();
+            .HasColumnName("auction_id");
+
+        builder.Property(d => d.VerificationId)
+            .HasColumnName("verification_id");
         
         builder.Property(d => d.ComplainantId)
             .HasColumnName("complainant_id")
@@ -132,9 +135,17 @@ internal sealed class DisputeConfiguration : IEntityTypeConfiguration<Dispute>
             .WithOne(sh => sh.Dispute)
             .HasForeignKey(sh => sh.DisputeId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne<IdentityVerification>()
+            .WithMany()
+            .HasForeignKey(d => d.VerificationId)
+            .OnDelete(DeleteBehavior.Restrict);
         
         builder.HasIndex(d => d.OrderId)
             .HasDatabaseName("idx_disputes_order_id");
+
+        builder.HasIndex(d => d.VerificationId)
+            .HasDatabaseName("idx_disputes_verification_id");
         
         builder.HasIndex(d => d.ComplainantId)
             .HasDatabaseName("idx_disputes_complainant_id");

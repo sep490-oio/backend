@@ -12,11 +12,16 @@ public sealed class MediaUpload : BaseEntity<MediaUploadId>, ICreatedAtEntity
     public UserId UserId { get; private set; }
     public string Context { get; private set; } = null!;
     public string ResourceType { get; private set; } = null!;
-    public Guid? EntityId { get; private set; }
+    public string? EntityId { get; private set; }
+    public string? IdType { get; private set; }
     public StorageRef StorageRef { get; private set; }
     public MediaInfo Info { get; private set; }
     public bool IsConfirmed { get; private set; }
     public bool IsLinked { get; private set; }
+    public int RelocationAttemptCount { get; private set; }
+    public DateTime? NextRelocationAttemptAt { get; private set; }
+    public string? LastRelocationError { get; private set; }
+    public DateTime? RelocatedAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime ExpiresAt { get; private set; }
     public DateTime? ConfirmedAt { get; private set; }
@@ -29,7 +34,8 @@ public sealed class MediaUpload : BaseEntity<MediaUploadId>, ICreatedAtEntity
         UserId userId,
         string context,
         string resourceType,
-        Guid? entityId,
+        string? entityId,
+        string? idType,
         MediaInfo mediaInfo,
         StorageRef storageRef,
         TimeSpan signatureExpirationMinutes,
@@ -42,10 +48,12 @@ public sealed class MediaUpload : BaseEntity<MediaUploadId>, ICreatedAtEntity
             Context = context,
             ResourceType = resourceType,
             EntityId = entityId,
+            IdType = idType,
             Info = mediaInfo,
             StorageRef = storageRef,
             IsConfirmed = false,
             IsLinked = false,
+            RelocationAttemptCount = 0,
             CreatedAt = nowUtc,
             ExpiresAt = nowUtc.Add(signatureExpirationMinutes)
         };
@@ -74,20 +82,66 @@ public sealed class MediaUpload : BaseEntity<MediaUploadId>, ICreatedAtEntity
         return UnitResult.Success<Error>();
     }
 
-    public UnitResult<Error> LinkToEntity(
-        Guid entityId,
-        DateTime nowUtc)
+    public UnitResult<Error> LinkToEntity<TId>(
+        TId entityId,
+        DateTime nowUtc) where TId  : IEntityId
     {
         if (!IsConfirmed)
             return Error.Conflict("Media.LinkUnConfirmed", "Cannot link unconfirmed upload.");
 
-        if (IsLinked)
-            return Error.Conflict("Media.AlreadyLinked", "Upload already linked.");
+        switch (IsLinked)
+        {
+            case true when 
+                string.Equals(EntityId, $"{entityId}", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(IdType, typeof(TId).Name, StringComparison.OrdinalIgnoreCase):
+                return UnitResult.Success<Error>();
+            case true:
+                return Error.Conflict("Media.AlreadyLinked", "Upload already linked.");
+        }
 
-        EntityId = entityId;
+        EntityId = $"{entityId}";
+        IdType = typeof(TId).Name;
         IsLinked = true;
         LinkedAt = nowUtc;
         
+        return UnitResult.Success<Error>();
+    }
+
+    public bool RequiresRelocation() =>
+        IsLinked &&
+        RelocatedAt is null &&
+        !string.IsNullOrWhiteSpace(StorageRef.Folder) &&
+        StorageRef.Folder.Contains("/pending/", StringComparison.OrdinalIgnoreCase);
+
+    public UnitResult<Error> MarkRelocationSucceeded(
+        StorageRef storageRef,
+        MediaInfo mediaInfo,
+        DateTime nowUtc)
+    {
+        if (!IsLinked)
+            return Error.Conflict("Media.RelocationRequiresLink", "Cannot relocate media that is not linked.");
+
+        StorageRef = storageRef;
+        Info = mediaInfo;
+        RelocatedAt = nowUtc;
+        RelocationAttemptCount = 0;
+        NextRelocationAttemptAt = null;
+        LastRelocationError = null;
+
+        return UnitResult.Success<Error>();
+    }
+
+    public UnitResult<Error> MarkRelocationRetry(
+        string error,
+        DateTime? nextAttemptAt)
+    {
+        if (!IsLinked)
+            return Error.Conflict("Media.RelocationRequiresLink", "Cannot retry relocation for media that is not linked.");
+
+        RelocationAttemptCount++;
+        NextRelocationAttemptAt = nextAttemptAt;
+        LastRelocationError = error;
+
         return UnitResult.Success<Error>();
     }
 }

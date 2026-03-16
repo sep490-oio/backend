@@ -20,7 +20,7 @@ internal sealed class PaymentMethodConfiguration : IEntityTypeConfiguration<Paym
         {
             typeBuilder.Property(t => t.Id)
                 .HasColumnName("type")
-                .HasMaxLength(30)
+                .HasMaxLength(50)
                 .IsRequired();
         });
 
@@ -28,34 +28,37 @@ internal sealed class PaymentMethodConfiguration : IEntityTypeConfiguration<Paym
             .HasColumnName("provider")
             .HasMaxLength(50);
 
-        builder.ComplexProperty(p => p.Card, card =>
+        builder.ComplexProperty(p => p.Card, cardBuilder =>
         {
-            card.Property(c => c.LastFour)
+            cardBuilder.Property(c => c.HolderName)
+                .HasColumnName("holder_name")
+                .HasMaxLength(100);
+
+            cardBuilder.Property(c => c.LastFour)
                 .HasColumnName("last_four")
                 .HasMaxLength(4);
 
-            card.Property(c => c.ExpiryMonth)
+            cardBuilder.Property(c => c.ExpiryMonth)
                 .HasColumnName("expiry_month");
 
-            card.Property(c => c.ExpiryYear)
+            cardBuilder.Property(c => c.ExpiryYear)
                 .HasColumnName("expiry_year");
-
-            card.Property(c => c.HolderName)
-                .HasColumnName("holder_name")
-                .HasMaxLength(200);
         });
 
         builder.Property(p => p.IsDefault)
             .HasColumnName("is_default")
-            .HasDefaultValue(false);
+            .HasDefaultValue(false)
+            .IsRequired();
 
         builder.Property(p => p.IsVerified)
             .HasColumnName("is_verified")
-            .HasDefaultValue(false);
+            .HasDefaultValue(false)
+            .IsRequired();
 
         builder.Property(p => p.IsActive)
             .HasColumnName("is_active")
-            .HasDefaultValue(true);
+            .HasDefaultValue(true)
+            .IsRequired();
 
         builder.Property(p => p.TokenReference)
             .HasColumnName("token_reference")
@@ -65,5 +68,9 @@ internal sealed class PaymentMethodConfiguration : IEntityTypeConfiguration<Paym
             .HasColumnName("created_at")
             .HasDefaultValueSql("CURRENT_TIMESTAMP")
             .IsRequired();
+
+        // Index
+        builder.HasIndex(p => new { p.UserId, p.IsActive })
+            .HasDatabaseName("idx_payment_methods_user_active");
     }
 }

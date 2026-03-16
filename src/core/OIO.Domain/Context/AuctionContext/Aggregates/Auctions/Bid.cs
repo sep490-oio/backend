@@ -53,7 +53,8 @@ public sealed class Bid : BaseEntity<BidId>, ICreatedAtEntity
         Money amount, 
         AutoBidId? autoBidId,
         IPAddress? ipAddress,
-        DateTime nowUtc) 
+        DateTime nowUtc,
+        DateTime? createdAt = null) 
     {
         var bid = new Bid(
             BidId.From(Guid.CreateVersion7()), 
@@ -62,7 +63,7 @@ public sealed class Bid : BaseEntity<BidId>, ICreatedAtEntity
             amount, 
             autoBidId, 
             ipAddress, 
-            nowUtc);
+            createdAt ?? nowUtc);
 
         return bid;
     }

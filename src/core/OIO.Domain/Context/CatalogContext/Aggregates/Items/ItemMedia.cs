@@ -46,5 +46,11 @@ public sealed class ItemMedia : BaseEntity<ItemMediaId>, ICreatedAtEntity
     public void SetAsPrimary() => IsPrimary = true;
     public void UnsetPrimary() => IsPrimary = false;
     public void Reorder(int sortOrder) => SortOrder = sortOrder;
+
+    public void RefreshMediaSnapshot(StorageRef storageRef, MediaInfo info)
+    {
+        StorageRef = storageRef;
+        Info = info;
+    }
    
 }

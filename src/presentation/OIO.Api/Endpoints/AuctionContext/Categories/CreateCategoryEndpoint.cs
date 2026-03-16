@@ -12,7 +12,7 @@ public sealed class CreateCategoryEndpoint : IEndpoint
         string Slug,
         Guid? ParentId = null,
         string? Description = null,
-        string? IconUrl = null,
+        Guid? MediaUploadId = null,
         int SortOrder = 0);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
@@ -27,7 +27,7 @@ public sealed class CreateCategoryEndpoint : IEndpoint
                     request.Slug,
                     request.ParentId,
                     request.Description,
-                    request.IconUrl,
+                    request.MediaUploadId,
                     request.SortOrder);
 
                 var result = await sender.Send(command, ct);

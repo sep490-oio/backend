@@ -96,7 +96,7 @@ internal sealed class ConfirmUploadCommandHandler
             return MediaErrors.NotOwnedByUser(mediaUploadId);
         }
 
-        if (mediaUpload.StorageRef.PublicId != request.PublicId)
+        if (!MatchesPublicId(mediaUpload.StorageRef.PublicId, request.PublicId))
         {
             _logger.LogWarning("PublicId mismatch for media upload {MediaUploadId}. Expected: {ExpectedPublicId}, Actual: {ActualPublicId}",
                 mediaUploadId, mediaUpload.StorageRef.PublicId, request.PublicId);
@@ -129,5 +129,18 @@ internal sealed class ConfirmUploadCommandHandler
             SecureUrl: request.SecureUrl,
             PublicId: request.PublicId,
             ResourceType: mediaUpload.ResourceType);
+    }
+
+    private static bool MatchesPublicId(string expectedPublicId, string actualPublicId)
+    {
+        if (string.Equals(expectedPublicId, actualPublicId, StringComparison.Ordinal))
+            return true;
+
+        var expectedLeaf = expectedPublicId.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+        var actualLeaf = actualPublicId.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+
+        return !string.IsNullOrWhiteSpace(expectedLeaf) &&
+               !string.IsNullOrWhiteSpace(actualLeaf) &&
+               string.Equals(expectedLeaf, actualLeaf, StringComparison.Ordinal);
     }
 }

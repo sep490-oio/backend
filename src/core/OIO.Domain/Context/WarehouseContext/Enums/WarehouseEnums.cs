@@ -1,11 +1,12 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 
 namespace OIO.Domain.Context.WarehouseContext.Enums;
 
 public sealed class ShippingProviderCode : EnumValueObject<ShippingProviderCode>
 {
-    public static readonly ShippingProviderCode Ghn  = new("ghn");
-    public static readonly ShippingProviderCode Ghtk = new("ghtk");
+    public static readonly ShippingProviderCode Ghn      = new("ghn");
+    public static readonly ShippingProviderCode Ghtk     = new("ghtk");
+    public static readonly ShippingProviderCode External  = new("external");
 
     private ShippingProviderCode(string id) : base(id) { }
 }
@@ -68,6 +69,17 @@ public sealed class WarehouseItemCondition : EnumValueObject<WarehouseItemCondit
     public static readonly WarehouseItemCondition Damaged    = new("damaged");
 
     private WarehouseItemCondition(string id) : base(id) { }
+}
+
+public sealed class WarehouseInspectionDecisionStatus : EnumValueObject<WarehouseInspectionDecisionStatus>
+{
+    public static readonly WarehouseInspectionDecisionStatus PendingReview = new("pending_review");
+    public static readonly WarehouseInspectionDecisionStatus Approved = new("approved");
+    public static readonly WarehouseInspectionDecisionStatus Rejected = new("rejected");
+    public static readonly WarehouseInspectionDecisionStatus ConditionConfirmationRequired = new("condition_confirmation_required");
+    public static readonly WarehouseInspectionDecisionStatus ConditionConfirmed = new("condition_confirmed");
+
+    private WarehouseInspectionDecisionStatus(string id) : base(id) { }
 }
 
 public sealed class NormalizedTrackingStatus : EnumValueObject<NormalizedTrackingStatus>

@@ -1,9 +1,12 @@
+using System;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using CSharpFunctionalExtensions;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OIO.Application.Abstractions.Caching;
 using OIO.Application.Abstractions.Ekyc;
 using OIO.Domain.SeedWork.Errors;
 
@@ -15,15 +18,23 @@ internal sealed class VnptEkycProvider : IEkycProvider
 
     private readonly HttpClient _httpClient;
     private readonly VnptEkycOptions _options;
+    private readonly HybridCache _cache;
     private readonly ILogger<VnptEkycProvider> _logger;
+    private readonly HybridCacheEntryOptions _hashCacheOptions = new()
+    {
+        Expiration = TimeSpan.FromHours(24),
+        LocalCacheExpiration = TimeSpan.FromHours(1)
+    };
 
     public VnptEkycProvider(
         HttpClient httpClient,
         IOptions<VnptEkycOptions> options,
+        HybridCache cache,
         ILogger<VnptEkycProvider> logger)
     {
         _httpClient = httpClient;
         _options = options.Value;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -41,18 +52,30 @@ internal sealed class VnptEkycProvider : IEkycProvider
         try
         {
             // 1. Download images from our storage & upload to VNPT
-            var frontHash = await UploadImageFromUrlAsync(request.IdFrontImageUrl, "id_front", ct);
+            var frontHash = await UploadImageFromUrlAsync(
+                request.IdFrontImage.ImageUrl,
+                "id_front",
+                request.IdFrontImage.SourceKey,
+                ct);
             if (frontHash.IsFailure) return frontHash.Error;
 
             string? backHash = null;
-            if (!string.IsNullOrWhiteSpace(request.IdBackImageUrl))
+            if (request.IdBackImage is not null)
             {
-                var backResult = await UploadImageFromUrlAsync(request.IdBackImageUrl, "id_back", ct);
+                var backResult = await UploadImageFromUrlAsync(
+                    request.IdBackImage.ImageUrl,
+                    "id_back",
+                    request.IdBackImage.SourceKey,
+                    ct);
                 if (backResult.IsFailure) return backResult.Error;
                 backHash = backResult.Value;
             }
 
-            var selfieHash = await UploadImageFromUrlAsync(request.SelfieImageUrl, "selfie", ct);
+            var selfieHash = await UploadImageFromUrlAsync(
+                request.SelfieImage.ImageUrl,
+                "selfie",
+                request.SelfieImage.SourceKey,
+                ct);
             if (selfieHash.IsFailure) return selfieHash.Error;
 
             // 2. OCR - extract ID info
@@ -115,6 +138,12 @@ internal sealed class VnptEkycProvider : IEkycProvider
                 Nationality = ocr.Object?.Nationality,
                 Ethnicity = ocr.Object?.Nation,
                 Address = ocr.Object?.RecentLocation,
+                PostCode = ocr.Object?.PostCode?.Where(x => x.Type is "address").Select(pc => new PostCode()
+                {
+                    City = pc.City,
+                    District = pc.District,
+                    Ward = pc.Ward
+                }).FirstOrDefault(),
                 Hometown = ocr.Object?.OriginLocation,
                 IssueDate = ocr.Object?.IssueDate,
                 IssuePlace = ocr.Object?.IssuePlace,
@@ -192,8 +221,25 @@ internal sealed class VnptEkycProvider : IEkycProvider
     #region VNPT API Calls
 
     private async Task<Result<string, Error>> UploadImageFromUrlAsync(
-        string imageUrl, string title, CancellationToken ct)
+        string imageUrl,
+        string title,
+        string sourceKey,
+        CancellationToken ct)
     {
+        var cacheKey = string.IsNullOrWhiteSpace(sourceKey)
+            ? null
+            : $"ekyc:vnpt:upload-hash:{sourceKey.Trim()}";
+
+        if (cacheKey is not null)
+        {
+            var (exists, cachedHash) = await _cache.TryGetValueAsync<string>(cacheKey, ct);
+            if (exists && !string.IsNullOrWhiteSpace(cachedHash))
+            {
+                _logger.LogDebug("Reusing cached VNPT upload hash for {Title}: {Hash}", title, cachedHash);
+                return cachedHash;
+            }
+        }
+
         _logger.LogDebug("Downloading image for VNPT upload: {Title} from {Url}", title, imageUrl);
 
         byte[] imageBytes;
@@ -250,6 +296,17 @@ internal sealed class VnptEkycProvider : IEkycProvider
         }
 
         _logger.LogDebug("VNPT upload success for {Title}: {Hash}", title, result.Object.Hash);
+
+        if (cacheKey is not null)
+        {
+            await _cache.SetAsync(
+                cacheKey,
+                result.Object.Hash,
+                _hashCacheOptions,
+                [$"ekyc-vnpt-upload-hash:{title}"],
+                cancellationToken: ct);
+        }
+
         return result.Object.Hash;
     }
 
@@ -267,7 +324,9 @@ internal sealed class VnptEkycProvider : IEkycProvider
             Token = token
         };
 
-        return await PostJsonAsync<VnptOcrRequest, VnptOcrResponse>(endpoint, requestBody, "OCR", ct);
+        var response = await PostJsonAsync<VnptOcrRequest, VnptOcrResponse>(endpoint, requestBody, "OCR", ct);
+        
+        return response;
     }
 
     private async Task<Result<VnptCardLivenessResponse, Error>> CheckCardLivenessAsync(

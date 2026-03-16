@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using OIO.Domain.Context.UserContext.ValueObjects;
 
 namespace OIO.Infrastructure.Persistence.Extensions;
 
@@ -20,8 +19,6 @@ public static class MigrationExtensions
             logger.LogInformation("Applying database migrations...");
 
             await dbContext.Database.MigrateAsync();
-            
-            
 
             logger.LogInformation("Database migrations applied successfully.");
         }
@@ -31,4 +28,5 @@ public static class MigrationExtensions
             throw;
         }
     }
+
 }

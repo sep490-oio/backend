@@ -4,7 +4,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OIO.Application.Abstractions.Clock;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Settings;
+using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.AppDefinitions;
 using OIO.Domain.Context.Shared.Entities;
 using OIO.Domain.Context.Shared.Enums;
@@ -29,7 +31,8 @@ public static class DatabaseSeeder
         using var scope = serviceProvider.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationDbContext>>();
-
+        var permissionService = scope.ServiceProvider.GetRequiredService<IPermissionService>();
+        await permissionService.InvalidatePermissionsCacheAsync();
         try
         {
             logger.LogInformation("Starting database seeding...");
@@ -40,6 +43,7 @@ public static class DatabaseSeeder
             await SeedAdminUserAsync(dbContext, scope.ServiceProvider, logger);
             await SeedSystemSettingsAsync(scope.ServiceProvider);
             await SeedShippingProviderConfigsAsync(scope.ServiceProvider);
+            await CoreFlowFakeDataSeeder.SeedAsync(dbContext, scope.ServiceProvider, logger);
             logger.LogInformation("Database seeding completed successfully.");
         }
         catch (Exception ex)
@@ -202,8 +206,11 @@ public static class DatabaseSeeder
         using var scope = services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var options = scope.ServiceProvider.GetRequiredService<IOptions<AppInfoOptions>>().Value;
+        var settingsService = scope.ServiceProvider.GetRequiredService<ISystemSettingsService>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationDbContext>>();
         var clock = scope.ServiceProvider.GetRequiredService<IClock>();
+
+        await settingsService.InvalidateCacheAsync();
 
         var seeds = new Dictionary<string, (object Value, string Type, string Description)>
         {

@@ -52,6 +52,7 @@ public static partial class App
             {
                 public const string Create = "items:create";
                 public const string Activate = "items:activate";
+                public const string Resubmit = "items:resubmit";
                 public const string ReadMy = "items:my:read";
                 public const string ManageMedia = "items:media:manage";
                 public const string AskQuestion = "items:questions:ask";
@@ -63,6 +64,7 @@ public static partial class App
             {
                 public const string Create = "auctions:create";
                 public const string Publish = "auctions:publish";
+                public const string Submit = "auctions:submit";
                 public const string Cancel = "auctions:cancel";
                 public const string Bid = "auctions:bid";
                 public const string BuyNow = "auctions:buy-now";
@@ -125,6 +127,14 @@ public static partial class App
                 // Seller Profiles
                 public const string ReadSellerProfiles = "admin:seller-profiles:read";
                 public const string ManageSellerProfiles = "admin:seller-profiles:manage";
+
+                // Item Moderation
+                public const string ReadItems = "admin:items:read";
+                public const string ManageItems = "admin:items:manage";
+
+                // Payment Operations
+                public const string ReadPayments = "admin:payments:read";
+                public const string ManagePayments = "admin:payments:manage";
             }
 
             // ==================== ALL PERMISSIONS ====================
@@ -171,10 +181,15 @@ public static partial class App
                 Admin.ReadSellerProfiles,
                 Admin.ManageSellerProfiles,
                 Admin.ManageSettings,
+                Admin.ReadItems,
+                Admin.ManageItems,
+                Admin.ReadPayments,
+                Admin.ManagePayments,
 
                 // Items
                 Items.Create,
                 Items.Activate,
+                Items.Resubmit,
                 Items.ReadMy,
                 Items.ManageMedia,
                 Items.AskQuestion,
@@ -183,6 +198,7 @@ public static partial class App
                 // Auctions
                 Auctions.Create,
                 Auctions.Publish,
+                Auctions.Submit,
                 Auctions.Cancel,
                 Auctions.Bid,
                 Auctions.BuyNow,
@@ -229,6 +245,10 @@ public static partial class App
                 Admin.ManageVerifications,
                 Admin.ReadSellerProfiles,
                 Admin.ManageSellerProfiles,
+                Admin.ReadItems,
+                Admin.ManageItems,
+                Admin.ReadPayments,
+                Admin.ManagePayments,
             ];
         }
 
@@ -293,6 +313,10 @@ public static partial class App
                 public static readonly Permission ManageVerifications = Permission.Create(Catalogs.Admin.ManageVerifications);
                 public static readonly Permission ReadSellerProfiles = Permission.Create(Catalogs.Admin.ReadSellerProfiles);
                 public static readonly Permission ManageSellerProfiles = Permission.Create(Catalogs.Admin.ManageSellerProfiles);
+                public static readonly Permission ReadItems = Permission.Create(Catalogs.Admin.ReadItems);
+                public static readonly Permission ManageItems = Permission.Create(Catalogs.Admin.ManageItems);
+                public static readonly Permission ReadPayments = Permission.Create(Catalogs.Admin.ReadPayments);
+                public static readonly Permission ManagePayments = Permission.Create(Catalogs.Admin.ManagePayments);
             }
 
             public static class Items
@@ -301,6 +325,7 @@ public static partial class App
                 //Item management permissions (3001 - 3050)
                 public static readonly Permission Create = Permission.Create(Catalogs.Items.Create);
                 public static readonly Permission Activate = Permission.Create(Catalogs.Items.Activate);
+                public static readonly Permission Resubmit = Permission.Create(Catalogs.Items.Resubmit);
                 public static readonly Permission ReadMy = Permission.Create(Catalogs.Items.ReadMy);
                 // Item Media management permissions for items (3051 - 3100)
                 public static readonly Permission ManageMedia = Permission.Create(Catalogs.Items.ManageMedia);
@@ -315,6 +340,7 @@ public static partial class App
                 // Auction management permissions (4001 - 4050)
                 public static readonly Permission Create = Permission.Create(Catalogs.Auctions.Create);
                 public static readonly Permission Publish = Permission.Create(Catalogs.Auctions.Publish);
+                public static readonly Permission Submit = Permission.Create(Catalogs.Auctions.Submit);
                 public static readonly Permission Cancel = Permission.Create(Catalogs.Auctions.Cancel);
                 public static readonly Permission BuyNow = Permission.Create(Catalogs.Auctions.BuyNow);
                 // Bidding permissions (4051 - 4100)
@@ -381,6 +407,7 @@ public static partial class App
                 // Items
                 [Catalogs.Items.Create] = Items.Create,
                 [Catalogs.Items.Activate] = Items.Activate,
+                [Catalogs.Items.Resubmit] = Items.Resubmit,
                 [Catalogs.Items.ReadMy] = Items.ReadMy,
                 [Catalogs.Items.ManageMedia] = Items.ManageMedia,
                 [Catalogs.Items.AskQuestion] = Items.AskQuestion,
@@ -389,6 +416,7 @@ public static partial class App
                 // Auctions
                 [Catalogs.Auctions.Create] = Auctions.Create,
                 [Catalogs.Auctions.Publish] = Auctions.Publish,
+                [Catalogs.Auctions.Submit] = Auctions.Submit,
                 [Catalogs.Auctions.Cancel] = Auctions.Cancel,
                 [Catalogs.Auctions.Bid] = Auctions.Bid,
                 [Catalogs.Auctions.BuyNow] = Auctions.BuyNow,
@@ -434,6 +462,10 @@ public static partial class App
                 [Catalogs.Admin.ManageVerifications] = Admin.ManageVerifications,
                 [Catalogs.Admin.ReadSellerProfiles] = Admin.ReadSellerProfiles,
                 [Catalogs.Admin.ManageSellerProfiles] = Admin.ManageSellerProfiles,
+                [Catalogs.Admin.ReadItems] = Admin.ReadItems,
+                [Catalogs.Admin.ManageItems] = Admin.ManageItems,
+                [Catalogs.Admin.ReadPayments] = Admin.ReadPayments,
+                [Catalogs.Admin.ManagePayments] = Admin.ManagePayments,
             };
         }
     }

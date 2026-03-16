@@ -12,9 +12,68 @@ public sealed class Report : BaseEntity<ReportId>, ICreatedAtEntity
     public Guid EntityId { get; private set; }
     public string ReasonCode { get; private set; }
     public string? Description { get; private set; }
+    public string? Attachments { get; private set; }
     public ReportStatus Status { get; private set; }
     public UserId? AssignedTo { get; private set; }
+    public DateTime? AssignedAt { get; private set; }
+    public string? ResolutionNotes { get; private set; }
+    public DateTime? ResolvedAt { get; private set; }
+    public DateTime? EscalatedEmergencyAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
+    public DateTime? ModifiedAt { get; private set; }
 
     private Report() { }
+
+    public static Report Create(
+        UserId reporterId,
+        string entityType,
+        Guid entityId,
+        string reasonCode,
+        string? description,
+        string? attachments,
+        DateTime nowUtc)
+    {
+        return new Report
+        {
+            Id = ReportId.From(Guid.CreateVersion7()),
+            ReporterId = reporterId,
+            EntityType = entityType,
+            EntityId = entityId,
+            ReasonCode = reasonCode,
+            Description = description,
+            Attachments = attachments,
+            Status = ReportStatus.Open,
+            CreatedAt = nowUtc,
+            ModifiedAt = nowUtc
+        };
+    }
+
+    public void Assign(UserId adminId, DateTime nowUtc)
+    {
+        AssignedTo = adminId;
+        AssignedAt = nowUtc;
+        Status = ReportStatus.UnderReview;
+        ModifiedAt = nowUtc;
+    }
+
+    public void Resolve(string? resolutionNotes, bool dismissed, DateTime nowUtc)
+    {
+        ResolutionNotes = resolutionNotes;
+        ResolvedAt = nowUtc;
+        Status = dismissed ? ReportStatus.Dismissed : ReportStatus.ActionTaken;
+        ModifiedAt = nowUtc;
+    }
+
+    public void Close(DateTime nowUtc)
+    {
+        Status = ReportStatus.Closed;
+        ModifiedAt = nowUtc;
+    }
+
+    public void MarkEscalated(DateTime nowUtc)
+    {
+        EscalatedEmergencyAt = nowUtc;
+        Status = ReportStatus.ActionTaken;
+        ModifiedAt = nowUtc;
+    }
 }

@@ -1,5 +1,6 @@
-﻿using MediatR;
+using MediatR;
 using OIO.Api.Common;
+using OIO.Api.Filters;
 using OIO.Application.Context.MediaContext.Commands.ConfirmUpload;
 using OIO.Domain.AppDefinitions;
 
@@ -35,15 +36,16 @@ public sealed class ConfirmUploadEndpoint : IEndpoint
                     request.Width,
                     request.Height,
                     request.DurationSeconds);
-
-                var result = await sender.Send(command, ct);
-
-                return result.ToCreatedHttpResult();
+                return await sender.Send(command, ct);
             })
+            .AddEndpointFilter(new IdempotencyFilter<ConfirmUploadResponse>(
+                IdempotencyHttpPolicies.ConfirmUpload()))
             .RequireAuthorization(App.Permissions.Catalogs.Media.ConfirmUpload)
             .WithName(ApiEndpoint.Names.Media.ConfirmUpload)
             .WithTags(ApiEndpoint.Tags.Media)
             .Produces(StatusCodes.Status201Created)
-            .ProducesValidationProblem();
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict);
     }
 }

@@ -62,7 +62,7 @@ internal sealed class GetMyAuctionWatchlistQueryHandler
                     .Where(img => img.IsPrimary)
                     .Select(img => img.Info.SecureUrl)
                     .FirstOrDefault(),
-                CurrentPrice: x.Auction.Pricing.CurrentPrice.Amount,
+                CurrentPrice: x.Auction.Pricing.CurrentAmount,
                 Currency: x.Auction.Pricing.Currency.Id,
                 AuctionStatus: x.Auction.Status.Id,
                 BidCount: x.Auction.BidCount,

@@ -25,6 +25,21 @@ public interface IAuctionGrain : IGrainWithGuidKey
         Guid bidderId,
         IPAddress? ipAddress,
         CancellationToken cancellationToken = default);
+
+    Task<Result<AuctionBuyNowReservationGrain, Error>> InitiateBuyNowReservationAsync(
+        Guid bidderId,
+        TimeSpan reservationWindow,
+        CancellationToken cancellationToken = default);
+
+    Task<Result<AuctionBuyNowReservationGrain, Error>> AttachBuyNowPaymentAsync(
+        Guid reservationId,
+        Guid paymentTransactionId,
+        CancellationToken cancellationToken = default);
+
+    Task<UnitResult<Error>> FailBuyNowReservationAsync(
+        Guid reservationId,
+        string reason,
+        CancellationToken cancellationToken = default);
     
     Task<Result<AutoBidGrain, Error>> ConfigureAutoBidAsync(
         Guid bidderId,

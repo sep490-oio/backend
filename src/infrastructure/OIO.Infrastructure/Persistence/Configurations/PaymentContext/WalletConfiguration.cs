@@ -18,25 +18,15 @@ internal sealed class WalletConfiguration : IEntityTypeConfiguration<Wallet>
 
         builder.ComplexProperty(w => w.WalletFunds, walletFunds =>
         {
-            walletFunds.ComplexProperty(p => p.Balance, balance =>
-            {
-                balance.Property(cp => cp.Amount)
-                    .HasColumnName("balance")
-                    .HasColumnType("numeric(18,2)")
-                    .IsRequired();
-
-                balance.Ignore(cp => cp.Currency);
-            });
+            walletFunds.Property(cp => cp.BalanceAmount)
+                .HasColumnName("balance")
+                .HasColumnType("numeric(18,2)")
+                .IsRequired();
             
-            walletFunds.ComplexProperty(p => p.PendingBalance, pendingBalance =>
-            {
-                pendingBalance.Property(cp => cp.Amount)
-                    .HasColumnName("pending_balance")
-                    .HasColumnType("numeric(18,2)")
-                    .IsRequired();
-
-                pendingBalance.Ignore(cp => cp.Currency);
-            });
+            walletFunds.Property(cp => cp.PendingBalanceAmount)
+                .HasColumnName("pending_balance")
+                .HasColumnType("numeric(18,2)")
+                .IsRequired();
             
             walletFunds.ComplexProperty(p => p.Currency, currency =>
             {
@@ -46,6 +36,9 @@ internal sealed class WalletConfiguration : IEntityTypeConfiguration<Wallet>
 
                 currency.Ignore(cp => cp.Symbol);
             });
+
+            walletFunds.Ignore(cp => cp.PendingBalance);
+            walletFunds.Ignore(cp => cp.Balance);
         });
 
         builder.Property(w => w.IsActive)

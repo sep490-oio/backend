@@ -63,7 +63,16 @@ internal sealed class CreateVerificationCommandHandler
 
         if (hasPending)
             return UserErrors.Verification.HasPendingVerification;
-
+        
+        var hasApproved = await _dbContext.Set<IdentityVerification>()
+            .AnyAsync(v => v.UserId == userId
+                           && v.Status == IdentityVerificationStatus.Approved
+                           && v.VerificationType.Id == request.VerificationType,
+                cancellationToken);
+        
+        if (hasApproved)
+            return UserErrors.Verification.AlreadyHasApprovedVerification;
+        
         var verificationType = VerificationType.FromId(request.VerificationType).Value;
 
         var verification = IdentityVerification.Create(userId, verificationType, nowUtc);

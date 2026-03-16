@@ -7,9 +7,21 @@ public static class SettingKeys
     public const string AuctionExtensionThreshold = "auction:extension_threshold";
     public const string AuctionMaxDuration = "auction:max_duration";
     public const string AuctionMinDuration = "auction:min_duration";
+    public const string AuctionRunnerUpOfferExpirationHours = "auction:runner_up_offer_expiration_hours";
 
     // Items
     public const string ItemMaxQuestions = "item:max_questions";
+
+    // Orders
+    public const string OrderReturnDecisionWindowDays = "order:return_decision_window_days";
+
+    // Ops
+    public const string OpsAutoSuspendOnEmergency = "ops:auto_suspend_on_emergency";
+    public const string OpsAutoSuspendAfterNonPaymentCount = "ops:auto_suspend_after_non_payment_count";
+
+    // Monitoring
+    public const string MonitoringInvalidBidBurstThreshold = "monitoring:invalid_bid_burst_threshold";
+    public const string MonitoringBidBurstThreshold = "monitoring:bid_burst_threshold";
 
     // Media
     public const string MediaSignatureExpiration = "media:signature_expiration_minutes";

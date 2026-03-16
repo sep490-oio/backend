@@ -9,6 +9,10 @@ public sealed class ModerationAction : EnumValueObject<ModerationAction>
     public static readonly ModerationAction StartedReview = new("started_review");
     public static readonly ModerationAction Approved = new("approved");
     public static readonly ModerationAction Rejected = new("rejected");
+    public static readonly ModerationAction PlatformVerified = new("platform_verified");
+    public static readonly ModerationAction PlatformRejected = new("platform_rejected");
+    public static readonly ModerationAction ConditionConfirmationRequested = new("condition_confirmation_requested");
+    public static readonly ModerationAction ConditionConfirmed = new("condition_confirmed");
     public static readonly ModerationAction Resubmitted = new("resubmitted");
     public static readonly ModerationAction Removed = new("removed");
     private ModerationAction(string id) : base(id) { }

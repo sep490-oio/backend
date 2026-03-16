@@ -1,5 +1,6 @@
-﻿using MediatR;
+using MediatR;
 using OIO.Api.Common;
+using OIO.Api.Filters;
 using OIO.Application.Context.MediaContext.Commands.RequestUploadSignature;
 using OIO.Domain.AppDefinitions;
 
@@ -9,8 +10,7 @@ public sealed class RequestUploadSignatureEndpoint : IEndpoint
 {
     public sealed record Request(
         string Context,
-        string FileName,
-        Guid? EntityId = null);
+        string FileName);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
@@ -21,17 +21,18 @@ public sealed class RequestUploadSignatureEndpoint : IEndpoint
             {
                 var command = new RequestUploadSignatureCommand(
                     request.Context,
-                    request.EntityId,
                     request.FileName);
 
-                var result = await sender.Send(command, ct);
-
-                return result.ToOkHttpResult();
+                return await sender.Send(command, ct);
             })
+            .AddEndpointFilter(new IdempotencyFilter<UploadSignatureResponse>(
+                IdempotencyHttpPolicies.RequestUploadSignature()))
             .RequireAuthorization(App.Permissions.Catalogs.Media.Upload)
             .WithName(ApiEndpoint.Names.Media.RequestUploadSignature)
             .WithTags(ApiEndpoint.Tags.Media)
             .Produces(StatusCodes.Status200OK)
-            .ProducesValidationProblem();
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict);
     }
 }

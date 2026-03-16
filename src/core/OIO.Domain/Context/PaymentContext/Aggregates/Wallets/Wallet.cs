@@ -1,9 +1,13 @@
-﻿using OIO.Domain.Context.PaymentContext.ValueObjects;
+using CSharpFunctionalExtensions;
+using OIO.Domain.Context.PaymentContext.Enums;
+using OIO.Domain.Context.PaymentContext.ValueObjects;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.Enums;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.Context.PaymentContext.DomainEvents;
 using OIO.Domain.SeedWork.Entities;
+using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
 
@@ -38,5 +42,176 @@ public sealed class Wallet : AggregateRoot<WalletId>, IAuditableEntity, IVersion
             Version = 1,
             CreatedAt = nowUtc,
         };
+    }
+
+    /// <summary>
+    /// Nạp tiền vào ví (credit). Tự động tạo WalletTransaction ghi nhận.
+    /// </summary>
+    public UnitResult<Error> Credit(
+        decimal amount,
+        TransactionId? transactionId,
+        string? description,
+        DateTime nowUtc)
+    {
+        var balanceBefore = WalletFunds.BalanceAmount;
+
+        var creditResult = WalletFunds.Credit(amount);
+        if (creditResult.IsFailure)
+            return creditResult.Error;
+
+        WalletFunds = creditResult.Value;
+
+        _walletTransactions.Add(WalletTransaction.Create(
+            walletId: Id,
+            type: WalletTransactionType.Credit,
+            amount: amount,
+            balanceBefore: balanceBefore,
+            balanceAfter: WalletFunds.BalanceAmount,
+            transactionId: transactionId,
+            description: description,
+            nowUtc: nowUtc));
+
+        ModifiedAt = nowUtc;
+
+        RaiseDomainEvent(new WalletCreditedDomainEvent(
+            Id, UserId, amount, WalletFunds.BalanceAmount, description, nowUtc));
+
+        return UnitResult.Success<Error>();
+    }
+
+    /// <summary>
+    /// Trừ tiền từ ví (debit). Tự động tạo WalletTransaction ghi nhận.
+    /// </summary>
+    public UnitResult<Error> Debit(
+        decimal amount,
+        TransactionId? transactionId,
+        string? description,
+        DateTime nowUtc)
+    {
+        var balanceBefore = WalletFunds.BalanceAmount;
+
+        var debitResult = WalletFunds.Debit(amount);
+        if (debitResult.IsFailure)
+            return debitResult.Error;
+
+        WalletFunds = debitResult.Value;
+
+        _walletTransactions.Add(WalletTransaction.Create(
+            walletId: Id,
+            type: WalletTransactionType.Debit,
+            amount: amount,
+            balanceBefore: balanceBefore,
+            balanceAfter: WalletFunds.BalanceAmount,
+            transactionId: transactionId,
+            description: description,
+            nowUtc: nowUtc));
+
+        ModifiedAt = nowUtc;
+
+        RaiseDomainEvent(new WalletDebitedDomainEvent(
+            Id, UserId, amount, WalletFunds.BalanceAmount, description, nowUtc));
+
+        return UnitResult.Success<Error>();
+    }
+
+    /// <summary>
+    /// Giữ tiền (Hold): Chuyển từ số dư khả dụng sang số dư đang chờ. Tạo WalletTransaction.
+    /// </summary>
+    public UnitResult<Error> Hold(
+        decimal amount,
+        TransactionId? transactionId,
+        string? description,
+        DateTime nowUtc)
+    {
+        var balanceBefore = WalletFunds.BalanceAmount;
+
+        var holdResult = WalletFunds.AddPending(amount);
+        if (holdResult.IsFailure)
+            return holdResult.Error;
+
+        WalletFunds = holdResult.Value;
+
+        _walletTransactions.Add(WalletTransaction.Create(
+            walletId: Id,
+            type: WalletTransactionType.Hold,
+            amount: amount,
+            balanceBefore: balanceBefore,
+            balanceAfter: WalletFunds.BalanceAmount, // Lưu ý: BalanceAmount đã bị giảm sau khi Hold
+            transactionId: transactionId,
+            description: description,
+            nowUtc: nowUtc));
+
+        ModifiedAt = nowUtc;
+
+        RaiseDomainEvent(new WalletHeldDomainEvent(
+            Id, UserId, amount, description, nowUtc));
+
+        return UnitResult.Success<Error>();
+    }
+
+    /// <summary>
+    /// Nhả tiền giữ (Unhold): Chuyển từ số dư đang chờ về khả dụng. Tạo WalletTransaction.
+    /// </summary>
+    public UnitResult<Error> Unhold(
+        decimal amount,
+        TransactionId? transactionId,
+        string? description,
+        DateTime nowUtc)
+    {
+        var balanceBefore = WalletFunds.BalanceAmount;
+
+        var unholdResult = WalletFunds.ReleasePending(amount);
+        if (unholdResult.IsFailure)
+            return unholdResult.Error;
+
+        WalletFunds = unholdResult.Value;
+
+        _walletTransactions.Add(WalletTransaction.Create(
+            walletId: Id,
+            type: WalletTransactionType.Release,
+            amount: amount,
+            balanceBefore: balanceBefore,
+            balanceAfter: WalletFunds.BalanceAmount, // BalanceAmount sẽ tăng lên sau khi nhả hold
+            transactionId: transactionId,
+            description: description,
+            nowUtc: nowUtc));
+
+        ModifiedAt = nowUtc;
+
+        RaiseDomainEvent(new WalletUnheldDomainEvent(
+            Id, UserId, amount, description, nowUtc));
+
+        return UnitResult.Success<Error>();
+    }
+
+    /// <summary>
+    /// Trừ tiền đã giữ (Debit Pending): Trừ dứt điểm từ Pending. Tạo WalletTransaction.
+    /// </summary>
+    public UnitResult<Error> DebitPending(
+        decimal amount,
+        TransactionId? transactionId,
+        string? description,
+        DateTime nowUtc)
+    {
+        var balanceBefore = WalletFunds.BalanceAmount;
+
+        var debitPendingResult = WalletFunds.DebitPending(amount);
+        if (debitPendingResult.IsFailure)
+            return debitPendingResult.Error;
+
+        WalletFunds = debitPendingResult.Value;
+
+        _walletTransactions.Add(WalletTransaction.Create(
+            walletId: Id,
+            type: WalletTransactionType.Debit, // Vẫn là Debit do tiền đi ra khỏi hệ thống
+            amount: amount,
+            balanceBefore: balanceBefore,
+            balanceAfter: WalletFunds.BalanceAmount, // BalanceAmount không đổi trong DebitPending
+            transactionId: transactionId,
+            description: description,
+            nowUtc: nowUtc));
+
+        ModifiedAt = nowUtc;
+        return UnitResult.Success<Error>();
     }
 }

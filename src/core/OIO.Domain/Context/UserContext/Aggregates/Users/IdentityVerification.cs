@@ -110,9 +110,13 @@ public sealed class IdentityVerification : AggregateRoot<IdentityVerificationId>
         PerformerType performerType,
         string? nationality = null)
     {
+        var canUpdateApprovedVerification = Status == IdentityVerificationStatus.Approved &&
+            performerType == PerformerType.Admin;
+
         if (Status != IdentityVerificationStatus.Pending
             && Status != IdentityVerificationStatus.Rejected
-            && Status != IdentityVerificationStatus.UnderReview)
+            && Status != IdentityVerificationStatus.UnderReview
+            && !canUpdateApprovedVerification)
             return UserErrors.Verification.CannotUpdateInCurrentStatus(Status);
 
         if (Status == IdentityVerificationStatus.Rejected)
@@ -120,6 +124,15 @@ public sealed class IdentityVerification : AggregateRoot<IdentityVerificationId>
             Status = IdentityVerificationStatus.Pending;
             RejectionReason = null;
             RejectionCode = null;
+        }
+
+        string? notes = null;
+        if (canUpdateApprovedVerification)
+        {
+            AutoVerified = false;
+            VerifiedBy = performedBy;
+            VerifiedAt = nowUtc;
+            notes = "Approved verification corrected by admin";
         }
 
         FullName = fullName.Trim();
@@ -136,7 +149,8 @@ public sealed class IdentityVerification : AggregateRoot<IdentityVerificationId>
             Status.Id,
             performedBy,
             performerType,
-            nowUtc);
+            nowUtc,
+            notes);
 
         return UnitResult.Success<Error>();
     }
@@ -166,7 +180,7 @@ public sealed class IdentityVerification : AggregateRoot<IdentityVerificationId>
         _documents.Add(doc);
         ModifiedAt = nowUtc;
 
-        var result = upload.LinkToEntity(Id.Value, nowUtc);
+        var result = upload.LinkToEntity(Id, nowUtc);
 
         if (result.IsFailure)
             return result.Error;
@@ -203,6 +217,23 @@ public sealed class IdentityVerification : AggregateRoot<IdentityVerificationId>
             UserId,
             PerformerType.Buyer,
             nowUtc);
+
+        return UnitResult.Success<Error>();
+    }
+
+    public UnitResult<Error> RefreshDocumentSnapshot(
+        string oldPublicId,
+        StorageRef storageRef,
+        MediaInfo info,
+        DateTime nowUtc)
+    {
+        var document = _documents.FirstOrDefault(x => x.StorageRef.PublicId == oldPublicId);
+
+        if (document is null)
+            return Error.NotFound("Media.VerificationDocumentNotFound", $"Verification document not found for public id '{oldPublicId}'.");
+
+        document.RefreshMediaSnapshot(storageRef, info);
+        ModifiedAt = nowUtc;
 
         return UnitResult.Success<Error>();
     }

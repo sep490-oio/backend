@@ -12,12 +12,16 @@ public static class AutoBidMappings
             AuctionId: autoBid.AuctionId.Value,
             BidderId: autoBid.BidderId.Value,
             IsEnabled: autoBid.IsEnabled,
-            MaxAmount: autoBid.Budget.MaxAmount.ToDto(),
-            CurrentAmount: autoBid.Budget.CurrentAmount.ToDto(),
-            IncrementAmount: autoBid.Budget.IncrementAmount?.ToDto(),
+            MaxAmount: autoBid.Budget.MaxPrice.ToDto(),
+            CurrentAmount: autoBid.Budget.CurrentPrice.ToDto(),
+            ReservedAmount: autoBid.Budget.ReservedPrice.ToDto(),
+            IncrementAmount: autoBid.Budget.Increment?.ToDto(),
             Status: autoBid.Status.Id,
             TotalAutoBids: autoBid.TotalAutoBids,
             LastAutoBidAt: autoBid.LastAutoBidAt,
+            StopReason: autoBid.StopReason,
+            StoppedAt: autoBid.StoppedAt,
+            LastValidationAt: autoBid.LastValidationAt,
             CreatedAt: autoBid.CreatedAt);
     }
 }

@@ -11,6 +11,7 @@ public static class VerificationMappings
             Id: v.Id.Value,
             UserId: v.UserId.Value,
             VerificationType: v.VerificationType.Id,
+            AutoVerified: v.AutoVerified,
             FullName: v.FullName,
             DateOfBirth: v.DateOfBirth,
             Gender: v.Gender?.Id,
@@ -62,6 +63,7 @@ public static class VerificationMappings
         return new VerificationSummaryDto(
             Id: v.Id.Value,
             VerificationType: v.VerificationType.Id,
+            AutoVerified: v.AutoVerified,
             FullName: v.FullName,
             Status: v.Status.Id,
             SubmittedAt: v.SubmittedAt,

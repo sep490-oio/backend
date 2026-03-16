@@ -23,6 +23,12 @@ internal sealed class AuctionRelistHistoryConfiguration : IEntityTypeConfigurati
             .IsRequired()
             .HasConversion(x => x.Value, x => AuctionId.From(x));
 
+        builder.Property(rh => rh.NewAuctionId)
+            .HasColumnName("new_auction_id")
+            .HasConversion(
+                x => x.HasValue ? x.Value.Value : default(Guid?),
+                x => x.HasValue ? AuctionId.From(x.Value) : null);
+
         builder.Property(rh => rh.RelistNo)
             .HasColumnName("relist_no")
             .IsRequired();
@@ -41,6 +47,9 @@ internal sealed class AuctionRelistHistoryConfiguration : IEntityTypeConfigurati
         builder.HasIndex(rh => new { rh.AuctionId, rh.RelistNo })
             .HasDatabaseName("idx_auction_relist_history_auction_id")
             .IsUnique();;
+
+        builder.HasIndex(rh => rh.NewAuctionId)
+            .HasDatabaseName("idx_auction_relist_history_new_auction_id");
     }
 }
 

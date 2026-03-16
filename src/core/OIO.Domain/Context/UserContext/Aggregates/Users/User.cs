@@ -74,7 +74,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
     
     public Wallet Wallet { get; private set; }
     public UserProfile Profile { get; private set; }
-    public SellerProfile SellerProfile { get; private set; }
+    public SellerProfile? SellerProfile { get; private set; }
     public IReadOnlyCollection<UserAddress> Addresses => _addresses.AsReadOnly();
     public IReadOnlyCollection<UserRole> Roles => _roles.AsReadOnly();
     public IReadOnlyCollection<UserPermission> Permissions => _permissions.AsReadOnly();

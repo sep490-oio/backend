@@ -82,7 +82,7 @@ internal sealed class ReorderItemMediaCommandHandler
         
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Result.Success<Error>();
+        return UnitResult.Success<Error>();
     }
 }
 

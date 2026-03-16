@@ -39,8 +39,28 @@ internal sealed class MediaConfigsBridge : IMediaConfigs
             cancellationToken);
 
     public async Task<IReadOnlyList<UploadContextOption>> GetUploadContextsAsync(CancellationToken cancellationToken = default) =>
-        await _settings.GetAsync<IReadOnlyList<UploadContextOption>>(
-            SettingKeys.MediaUploadContexts, 
-            _defaults.UploadContexts,
-            cancellationToken);
+        MergeUploadContexts(
+            await _settings.GetAsync<IReadOnlyList<UploadContextOption>>(
+                SettingKeys.MediaUploadContexts,
+                _defaults.UploadContexts,
+                cancellationToken),
+            _defaults.UploadContexts);
+
+    private static IReadOnlyList<UploadContextOption> MergeUploadContexts(
+        IReadOnlyList<UploadContextOption> configuredContexts,
+        IReadOnlyList<UploadContextOption> defaultContexts)
+    {
+        var merged = configuredContexts
+            .ToDictionary(x => x.Name, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var context in defaultContexts)
+        {
+            if (!merged.ContainsKey(context.Name))
+                merged[context.Name] = context;
+        }
+
+        return merged.Values
+            .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
 }

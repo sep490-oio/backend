@@ -17,6 +17,15 @@ public interface IMediaSignatureService
         string[]? allowedFormats = null);
 
     /// <summary>
+    /// Rename an existing resource to a final public id/folder.
+    /// </summary>
+    Task<RenameResourceResult?> RenameResourceAsync(
+        string fromPublicId,
+        string toPublicId,
+        MediaResourceType resourceType,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Delete a resource from Cloudinary by publicId and resource type.
     /// </summary>
     Task<bool> DeleteResourceAsync(
@@ -38,10 +47,16 @@ public sealed record UploadSignatureResult(
     long Timestamp,
     string ApiKey,
     string CloudName,
-    string PublicId,
+    string UploadPublicId,
+    string StoragePublicId,
     string Folder,
     string? Eager,
     string ResourceType);
+
+public sealed record RenameResourceResult(
+    string PublicId,
+    string Folder,
+    string SecureUrl);
  
 public sealed class UploadContextRegistry
 {
@@ -103,6 +118,9 @@ public sealed class UploadContextRegistry
 
     public bool IsVerificationContext(string contextName) =>
         contextName.StartsWith("verification_", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsWarehouseInspectionContext(string contextName) =>
+        contextName.StartsWith("warehouse_inspection_", StringComparison.OrdinalIgnoreCase);
     
     // ==================== Resource Type Limits ====================
 

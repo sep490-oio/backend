@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
-using OIO.Domain.Context.Shared.ValueObjects;
+using OIO.Domain.Context.Shared.Enums;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using ItemId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId;
 
@@ -36,74 +36,56 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
             .IsRequired()
             .HasConversion(x => x.Value, x => ItemId.From(x));
 
-        builder.ComplexProperty(auction => auction.AuctionType, auctionTypeBuilder =>
-        {
-            auctionTypeBuilder.Property(auctionType => auctionType.Id)
-                .HasColumnName("auction_type")
-                .HasDefaultValue(AuctionType.Regular.Id)
-                .IsRequired();
-        });
+        builder.Property(auction => auction.AuctionType)
+            .HasColumnName("auction_type")
+            .HasConversion(x => x != null ? x.Id : null, x => x == null ? null : AuctionType.FromId(x).Value);
 
         builder.ComplexProperty(a => a.Pricing, pricing =>
         {
-            pricing.ComplexProperty(p => p.StartingPrice, startingPrice =>
-            {
-                startingPrice.Property(cp => cp.Amount)
-                    .HasColumnName("starting_price")
-                    .HasColumnType("numeric(18,2)")
-                    .IsRequired();
+            pricing.Property(p => p.StartingAmount)
+                .HasColumnName("starting_price")
+                .HasColumnType("numeric(18,2)")
+                .IsRequired();
 
-                startingPrice.Ignore(cp => cp.Currency);
-            });
+            pricing.Property(p => p.ReserveAmount)
+                .HasColumnName("reserve_price")
+                .HasColumnType("numeric(18,2)");
+
+            pricing.Property(p => p.BuyNowAmount)
+                .HasColumnName("buy_now_price")
+                .HasColumnType("numeric(18,2)");
+
+            pricing.Property(p => p.CurrentAmount)
+                .HasColumnName("current_price")
+                .HasColumnType("numeric(18,2)")
+                .IsRequired();
+
+            pricing.Property(p => p.BidIncrementAmount)
+                .HasColumnName("bid_increment")
+                .HasColumnType("numeric(18,2)")
+                .IsRequired();
+
+            // pricing.ComplexProperty(p => p.Currency, currency =>
+            // {
+            //     currency.Property(c => c.Id)
+            //         .HasColumnName("currency")
+            //         .HasMaxLength(3)
+            //         .IsRequired();
+            // });
             
-            pricing.ComplexProperty(p => p.ReservePrice, reservePrice =>
-            {
-                reservePrice.Property(cp => cp.Amount)
-                    .HasColumnName("reserve_price")
-                    .HasColumnType("numeric(18,2)");
+            pricing.Property(c => c.Currency)
+                .HasColumnName("currency")
+                .HasMaxLength(3)
+                .HasConversion(x => x.Id, x => Currency.FromId(x).Value)
+                .IsRequired();
+               
 
-                reservePrice.Ignore(cp => cp.Currency);
-            });
-            
-            pricing.ComplexProperty(p => p.BuyNowPrice, buyNowPrice =>
-            {
-                buyNowPrice.Property(cp => cp.Amount)
-                    .HasColumnName("buy_now_price")
-                    .HasColumnType("numeric(18,2)");
+            pricing.Ignore(p => p.StartingPrice);
+            pricing.Ignore(p => p.ReservePrice);
+            pricing.Ignore(p => p.BuyNowPrice);
+            pricing.Ignore(p => p.CurrentPrice);
+            pricing.Ignore(p => p.BidIncrement);
 
-                buyNowPrice.Ignore(cp => cp.Currency);
-            });
-
-            pricing.ComplexProperty(p => p.CurrentPrice, currentPrice =>
-            {
-                currentPrice.Property(cp => cp.Amount)
-                    .HasColumnName("current_price")
-                    .HasColumnType("numeric(18,2)")
-                    .IsRequired();
-
-                currentPrice.Ignore(cp => cp.Currency);
-            });
-
-            pricing.ComplexProperty(p => p.BidIncrement, bidIncrement =>
-            {
-                bidIncrement.Property(cp => cp.Amount)
-                    .HasColumnName("bid_increment")
-                    .HasColumnType("numeric(18,2)")
-                    .IsRequired();
-
-                bidIncrement.Ignore(cp => cp.Currency);
-            });
-            
-            pricing.ComplexProperty(p => p.Currency, currency =>
-            {
-                currency.Property(cp => cp.Id)
-                    .HasColumnName("currency")
-                    .IsRequired();
-
-                currency.Ignore(cp => cp.Symbol);
-            });
-
-            
             pricing.Ignore(p => p.NextMinimumBid);
             pricing.Ignore(p => p.HasBuyNowPrice);
             pricing.Ignore(p => p.HasReservePrice);
@@ -168,6 +150,23 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
         builder.Property(a => a.WinnerId)
             .HasColumnName("winner_id")
             .HasConversion(x => x.HasValue ? (Guid?)x.Value : null , x => x.HasValue ? UserId.From(x.Value) : null);
+
+        builder.Property(a => a.AssignedAdminId)
+            .HasColumnName("assigned_admin_id")
+            .HasConversion(x => x.HasValue ? (Guid?)x.Value.Value : null, x => x.HasValue ? UserId.From(x.Value) : null);
+
+        builder.Property(a => a.AssignedAt)
+            .HasColumnName("assigned_at");
+
+        builder.Property(a => a.VerifyByPlatform)
+            .HasColumnName("verify_by_platform")
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(a => a.RejectionCount)
+            .HasColumnName("rejection_count")
+            .HasDefaultValue(0)
+            .IsRequired();
 
         builder.Property(a => a.IsFeatured)
             .HasColumnName("is_featured")
@@ -241,10 +240,18 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
             .WithOne(ae => ae.Auction)
             .HasForeignKey(e => e.AuctionId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(a => a.BuyNowReservations)
+            .WithOne(r => r.Auction)
+            .HasForeignKey(r => r.AuctionId)
+            .OnDelete(DeleteBehavior.Cascade);
         
         builder.HasOne(a => a.Item)
-            .WithMany()
+            .WithMany(i => i.Auctions)
             .HasForeignKey(a => a.ItemId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(a => a.AssignedAdminId)
+            .HasDatabaseName("idx_auctions_assigned_admin_id");
     }
 }

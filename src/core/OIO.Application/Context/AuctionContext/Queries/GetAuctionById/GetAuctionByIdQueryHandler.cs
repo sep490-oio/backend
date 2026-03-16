@@ -41,9 +41,10 @@ internal sealed class GetAuctionByIdQueryHandler
         var auction = await _dbContext.GetByIdAsync<Auction, AuctionId>(
             id: auctionId,
             queryBuilder: query => query
-                .Include(a => Enumerable.OrderByDescending<Bid, DateTime>(a.Bids, b => b.CreatedAt))
+                .Include(a => a.Bids.OrderByDescending(b => b.CreatedAt))
                 .Include(a => a.AutoBids)
                 .Include(a => a.Watchers)
+                .Include(a => a.BuyNowReservations)
                 .Include(a => a.PriceHistories.OrderByDescending(ph => ph.CreatedAt))
                 .Include(x => x.Item)
                 .AsSplitQuery(),

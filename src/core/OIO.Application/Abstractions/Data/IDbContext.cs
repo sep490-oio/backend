@@ -1,6 +1,5 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using OIO.Domain.SeedWork.Entities;
 
 namespace OIO.Application.Abstractions.Data;
@@ -33,11 +32,4 @@ public interface IDbContext
         string sql,
         IEnumerable<SqlParameter> parameters,
         CancellationToken cancellationToken = default);
-}
-
-public interface IUnitOfWork
-{
-    Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
-   
-    Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default);
 }

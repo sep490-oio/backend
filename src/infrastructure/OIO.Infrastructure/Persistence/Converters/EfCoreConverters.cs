@@ -1,4 +1,4 @@
-﻿using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
 using OIO.Domain.Context.ModerationContext.ValueObjects.Ids;
 using OIO.Domain.Context.NotificationContext.ValueObjects.Ids;
@@ -14,6 +14,7 @@ namespace OIO.Infrastructure.Persistence.Converters;
 
 //AuctionContext
 [EfCoreConverter<AuctionDepositId>]
+[EfCoreConverter<AuctionBuyNowReservationId>]
 [EfCoreConverter<AuctionEmergencyActionId>]
 [EfCoreConverter<AuctionId>]
 [EfCoreConverter<AuctionParticipantId>]
@@ -38,7 +39,9 @@ namespace OIO.Infrastructure.Persistence.Converters;
 [EfCoreConverter<AuditLogId>]
 [EfCoreConverter<DisputeEvidenceId>]
 [EfCoreConverter<DisputeId>]
+[EfCoreConverter<DisputeMessageAttachmentId>]
 [EfCoreConverter<DisputeMessageId>]
+[EfCoreConverter<DisputeParticipantStateId>]
 [EfCoreConverter<DisputeRefundId>]
 [EfCoreConverter<DisputeResponseTemplateId>]
 [EfCoreConverter<DisputeStatusHistoryId>]
@@ -63,6 +66,7 @@ namespace OIO.Infrastructure.Persistence.Converters;
 [EfCoreConverter<WalletId>]
 [EfCoreConverter<WalletTransactionId>]
 [EfCoreConverter<WithdrawalRequestId>]
+[EfCoreConverter<GatewayWebhookEventId>]
 
 //ReviewContext
 [EfCoreConverter<BuyerReviewId>]
@@ -80,6 +84,7 @@ namespace OIO.Infrastructure.Persistence.Converters;
 [EfCoreConverter<OutboundShipmentId>]
 [EfCoreConverter<ShipmentTrackingEventId>]
 [EfCoreConverter<ShippingProviderConfigId>]
+[EfCoreConverter<WarehouseInspectionId>]
 [EfCoreConverter<WarehouseItemId>]
 [EfCoreConverter<WarehouseStorageLocationId>]
 

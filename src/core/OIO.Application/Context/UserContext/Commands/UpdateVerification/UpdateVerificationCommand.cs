@@ -6,6 +6,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.DTOs;
 using OIO.Application.Context.UserContext.Mappings;
 using OIO.Application.Context.UserContext.Services;
+using OIO.Domain.AppDefinitions;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Enums;
 using OIO.Domain.Context.UserContext.Errors;
@@ -61,17 +62,20 @@ internal sealed class UpdateVerificationCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
     private readonly ICurrentUser _currentUser;
+    private readonly VerificationDuplicateIdentityService _duplicateIdentityService;
 
     public UpdateVerificationCommandHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         IClock clock,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        VerificationDuplicateIdentityService duplicateIdentityService)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _clock = clock;
         _currentUser = currentUser;
+        _duplicateIdentityService = duplicateIdentityService;
     }
 
     public async Task<Result<VerificationDto, Error>> Handle(
@@ -89,6 +93,10 @@ internal sealed class UpdateVerificationCommandHandler
         if (verification is null)
             return UserErrors.Verification.NotFound(verificationId);
 
+        var isAdmin = _currentUser.IsInRole(App.Roles.Catalogs.Admin);
+        if (!isAdmin && verification.UserId != userId)
+            return UserErrors.Verification.NotFound(verificationId);
+
         var gender = Gender.FromId(request.Gender).Value;
         var idType = IdType.FromId(request.IdType).Value;
 
@@ -102,13 +110,18 @@ internal sealed class UpdateVerificationCommandHandler
         var permanentAddress = PermanentAddress.Create(
             request.FullAddress, request.Province, request.District, request.Ward);
 
+        var performerType = isAdmin ? PerformerType.Admin : PerformerType.Buyer;
         var result = verification.Update(
             request.FullName, request.DateOfBirth, gender,
             documentResult.Value, permanentAddress,
-            _clock.UtcNow, userId, PerformerType.Admin, request.Nationality);
+            _clock.UtcNow, userId, performerType, request.Nationality);
 
         if (result.IsFailure)
             return result.Error;
+
+        var duplicate = await _duplicateIdentityService.FindDuplicateAsync(verification, cancellationToken);
+        if (duplicate is not null)
+            return UserErrors.Verification.DuplicateIdentity;
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

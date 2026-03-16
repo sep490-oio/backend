@@ -1,15 +1,22 @@
 ﻿using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
+using OIO.Application.Abstractions.Media;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
+using OIO.Application.Context.MediaContext.Services;
+using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.CatalogContext.Aggregates.Categories;
 using OIO.Domain.Context.CatalogContext.ValueObjects;
+using OIO.Domain.Context.Shared.Entities;
+using OIO.Domain.Context.Shared.Errors;
+using OIO.Domain.Context.Shared.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
 using CategoryId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.CategoryId;
@@ -21,7 +28,7 @@ public sealed record CreateCategoryCommand(
     string Slug,
     Guid? ParentId = null,
     string? Description = null,
-    string? IconUrl = null,
+    Guid? MediaUploadId = null,
     int SortOrder = 0) : ICommand<CategoryDto>, IHasValidate
 {
     public ViolationsError Validate()
@@ -39,10 +46,9 @@ public sealed record CreateCategoryCommand(
             .WhenHasValue( x =>
                 x.NotWhiteSpace()
                 .MaxLength(500))
-            .Field(IconUrl)
+            .Field(MediaUploadId)
             .WhenHasValue(x =>
-                x.NotWhiteSpace()
-                .MaxLength(500))
+                x.NotEmptyGuid())
             .Field(SortOrder)
             .GreaterThanOrEqual(0)
             .Field(ParentId)
@@ -50,21 +56,34 @@ public sealed record CreateCategoryCommand(
     }
 }
 
+
 internal sealed class CreateCategoryCommandHandler
     : ICommandHandler<CreateCategoryCommand, CategoryDto>
 {
     private readonly IDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly UploadContextRegistry _contextRegistry;
+    private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
+    private readonly IMediaRelocationService _mediaRelocationService;
+    private readonly ILogger<CreateCategoryCommandHandler> _logger;
 
     public CreateCategoryCommandHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
-        IClock clock)
+        UploadContextRegistry contextRegistry,
+        ICurrentUser currentUser,
+        IClock clock,
+        IMediaRelocationService mediaRelocationService,
+        ILogger<CreateCategoryCommandHandler> logger)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
+        _contextRegistry = contextRegistry;
+        _currentUser = currentUser;
         _clock = clock;
+        _mediaRelocationService = mediaRelocationService;
+        _logger = logger;
     }
 
     public async Task<Result<CategoryDto, Error>> Handle(
@@ -113,6 +132,7 @@ internal sealed class CreateCategoryCommandHandler
             path = CategoryPath.FromParent(parent.Path, slug);
         }
         
+        
         var nowUtc = _clock.UtcNow;
 
         //TODO: implement upload icon for category
@@ -125,7 +145,51 @@ internal sealed class CreateCategoryCommandHandler
             description: request.Description,
             sortOrder: request.SortOrder);
 
+        MediaUpload? linkedUpload = null;
+        if(request.MediaUploadId.HasValue)
+        {
+            var mediaUploadId = MediaUploadId.From(request.MediaUploadId.Value);
+            var upload = await _dbContext.GetByIdAsync<MediaUpload, MediaUploadId>(
+                id: mediaUploadId,
+                cancellationToken: cancellationToken);
+
+            if (upload is null)
+                return MediaErrors.NotFound(mediaUploadId);
+
+            if (upload.UserId != _currentUser.UserId)
+            {
+                _logger.LogWarning("User {UserId} attempted to use media upload {MediaUploadId} which they do not own.",
+                    _currentUser.UserId, mediaUploadId);
+                return MediaErrors.NotOwnedByUser(mediaUploadId);
+            }
+
+            if (!upload.IsConfirmed)
+                return MediaErrors.NotConfirm;
+
+            if (upload.IsLinked)
+                return MediaErrors.AlreadyLinked;
+
+            if (!_contextRegistry.IsCategoryContext(upload.Context))
+            {
+                _logger.LogWarning("Media upload {MediaUploadId} has invalid context {Context} for category {category}.",
+                    mediaUploadId, upload.Context, category.Id);
+                return MediaErrors.WrongContext(upload.Context, await _contextRegistry.GetAllContextAsync(cancellationToken));
+            }
+            
+            category.Update(
+                nowUtc: nowUtc, 
+                iconInfo: upload?.Info,
+                iconStorage: upload?.StorageRef);
+
+            upload!.LinkToEntity(category.Id, nowUtc);
+            linkedUpload = upload;
+        }
+        
         _dbContext.Insert(category);
+
+        if (linkedUpload is not null)
+            await _mediaRelocationService.RelocateLinkedUploadAsync(linkedUpload, cancellationToken);
+        
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return category.ToDto();

@@ -46,7 +46,7 @@ public sealed class TermsDocument : BaseEntity<TermsDocumentId>, ICreatedAtEntit
             .Field(termType)
             .NotWhiteSpace()
             .Field(upload.Info.SecureUrl)
-            .NotWhiteSpace()
+            .NotNullOrWhiteSpace()
             .Field(upload.StorageRef.PublicId)
             .NotWhiteSpace()
             .Field(upload.StorageRef.Folder)
@@ -68,7 +68,7 @@ public sealed class TermsDocument : BaseEntity<TermsDocumentId>, ICreatedAtEntit
             upload.Info,
             nowUtc);
         
-        var result = upload.LinkToEntity(termsDocument.Id.Value, nowUtc);
+        var result = upload.LinkToEntity(termsDocument.Id, nowUtc);
         
         if (result.IsFailure)
             return result.Error;
@@ -86,5 +86,11 @@ public sealed class TermsDocument : BaseEntity<TermsDocumentId>, ICreatedAtEntit
     public void Deactivate()
     {
         IsActive = false;
+    }
+
+    public void RefreshMediaSnapshot(StorageRef storageRef, MediaInfo info)
+    {
+        StorageRef = storageRef;
+        Info = info;
     }
 }

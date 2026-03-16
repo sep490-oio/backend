@@ -8,6 +8,7 @@ using OIO.Application.Abstractions.Media;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
+using OIO.Application.Context.MediaContext.Services;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.AppDefinitions;
 using OIO.Domain.Context.AuctionContext.Errors;
@@ -95,6 +96,7 @@ internal sealed class CreateItemCommandHandler
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
     private readonly UploadContextRegistry _contextRegistry;
+    private readonly IMediaRelocationService _mediaRelocationService;
     private readonly ILogger<CreateItemCommandHandler> _logger;
 
     public CreateItemCommandHandler(
@@ -104,6 +106,7 @@ internal sealed class CreateItemCommandHandler
         IClock clock,
         IAppConfigs appConfigs,
         UploadContextRegistry contextRegistry,
+        IMediaRelocationService mediaRelocationService,
         ILogger<CreateItemCommandHandler> logger)
     {
         _dbContext = dbContext;
@@ -111,6 +114,7 @@ internal sealed class CreateItemCommandHandler
         _currentUser = currentUser;
         _clock = clock;
         _contextRegistry = contextRegistry;
+        _mediaRelocationService = mediaRelocationService;
         _logger = logger;
     }
 
@@ -194,6 +198,12 @@ internal sealed class CreateItemCommandHandler
         }
 
         _dbContext.Insert(item);
+
+        if (mediaUploads is not null)
+        {
+            foreach (var upload in mediaUploads)
+                await _mediaRelocationService.RelocateLinkedUploadAsync(upload, cancellationToken);
+        }
         
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

@@ -1,4 +1,4 @@
-﻿namespace OIO.Domain.AppDefinitions;
+namespace OIO.Domain.AppDefinitions;
 
 public static partial class App
 {
@@ -75,6 +75,13 @@ public static partial class App
         public static class Item
         {
             public const int TitleMaxLength = 255;
+        }
+
+        public static class Auction
+        {
+            public const int MaxRejectionsPerAuction = 3;
+            public const int MaxRejectedAuctionsBeforeSuspension = 10;
+            public const int AutoCompleteDaysAfterDelivery = 3;
         }
     }
 }

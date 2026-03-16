@@ -85,8 +85,6 @@ internal sealed class RemoveItemMediaCommandHandler
         if (result.IsFailure)
             return result.Error;
         
-        _dbContext.Update(item);
-        
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success<Error>();

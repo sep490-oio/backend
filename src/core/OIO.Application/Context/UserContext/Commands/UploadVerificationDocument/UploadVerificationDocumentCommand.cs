@@ -7,6 +7,7 @@ using OIO.Application.Abstractions.Media;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.DTOs;
 using OIO.Application.Context.UserContext.Mappings;
+using OIO.Application.Context.MediaContext.Services;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.Shared.Entities;
 using OIO.Domain.Context.Shared.Errors;
@@ -47,6 +48,7 @@ internal sealed class UploadVerificationDocumentCommandHandler
     private readonly IClock _clock;
     private readonly ICurrentUser _currentUser;
     private readonly UploadContextRegistry _contextRegistry;
+    private readonly IMediaRelocationService _mediaRelocationService;
     private readonly ILogger<UploadVerificationDocumentCommandHandler> _logger;
 
     public UploadVerificationDocumentCommandHandler(
@@ -55,6 +57,7 @@ internal sealed class UploadVerificationDocumentCommandHandler
         IClock clock,
         ICurrentUser currentUser,
         UploadContextRegistry contextRegistry,
+        IMediaRelocationService mediaRelocationService,
         ILogger<UploadVerificationDocumentCommandHandler> logger)
     {
         _dbContext = dbContext;
@@ -62,6 +65,7 @@ internal sealed class UploadVerificationDocumentCommandHandler
         _clock = clock;
         _currentUser = currentUser;
         _contextRegistry = contextRegistry;
+        _mediaRelocationService = mediaRelocationService;
         _logger = logger;
     }
 
@@ -116,6 +120,8 @@ internal sealed class UploadVerificationDocumentCommandHandler
 
         if (docResult.IsFailure)
             return docResult.Error;
+
+        await _mediaRelocationService.RelocateLinkedUploadAsync(upload, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

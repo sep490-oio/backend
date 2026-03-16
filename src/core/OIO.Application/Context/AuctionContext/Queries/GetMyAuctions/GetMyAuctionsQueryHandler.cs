@@ -68,14 +68,20 @@ internal sealed class GetMyAuctionsQueryHandler
                     .FirstOrDefault(),
                 CurrentPrice: x.Pricing.CurrentPrice.ToDto(),
                 StartingPrice: x.Pricing.StartingPrice.ToDto(),
-                BuyNowPrice: x.Pricing.BuyNowPrice != null ? x.Pricing.BuyNowPrice.ToDto() : null,
+                BuyNowPrice: x.Pricing.BuyNowAmount != null ? x.Pricing.BuyNowPrice!.ToDto() : null,
+                IsBuyNowReserved: x.BuyNowReservations.Any(r => r.Status.Id == "pending_payment" && r.ExpiresAt > nowUtc),
+                BuyNowReservedUntil: x.BuyNowReservations
+                    .Where(r => r.Status.Id == "pending_payment" && r.ExpiresAt > nowUtc)
+                    .OrderByDescending(r => r.ExpiresAt)
+                    .Select(r => (DateTime?)r.ExpiresAt)
+                    .FirstOrDefault(),
                 Currency:  x.Pricing.Currency.Id,
                 Status: x.Status.Id,
                 BidCount: x.BidCount,
                 WatchCount: x.WatchCount,
-                StartTime: x.Info.StartTime,
-                EndTime: x.Info.EndTime,
-                RemainingTime: x.Info.RemainingTime(nowUtc),
+                StartTime: x.Info != null ? x.Info.StartTime : null,
+                EndTime: x.Info != null ? x.Info.EndTime : null,
+                RemainingTime: x.Info != null ? x.Info.RemainingTime(nowUtc) : null,
                 IsEndingSoon: x.IsEndingSoon(nowUtc, extensionThresholdMinutes),
                 IsFeatured: x.IsFeatured,
                 SellerId: x.Item.SellerId.Value))

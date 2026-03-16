@@ -155,6 +155,12 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.DeliveredAt)
             .HasColumnName("delivered_at");
 
+        builder.Property(o => o.DecisionWindowEndsAt)
+            .HasColumnName("decision_window_ends_at");
+
+        builder.Property(o => o.DisputedAt)
+            .HasColumnName("disputed_at");
+
         builder.Property(o => o.CompletedAt)
             .HasColumnName("completed_at");
 

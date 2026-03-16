@@ -68,7 +68,10 @@ internal sealed class CreateSellerProfileCommandHandler
             return UserErrors.SellerProfile.IdentityNotVerified;
 
         var profile = SellerProfile.Create(
-            userId, request.StoreName, request.StoreDescription, _clock.UtcNow);
+            userId, 
+            request.StoreName,
+            request.StoreDescription,
+            _clock.UtcNow);
 
         _dbContext.Insert(profile);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

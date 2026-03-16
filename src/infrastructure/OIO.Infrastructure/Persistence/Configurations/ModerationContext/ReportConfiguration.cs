@@ -34,6 +34,10 @@ internal sealed class ReportConfiguration : IEntityTypeConfiguration<Report>
         builder.Property(r => r.Description)
             .HasColumnName("description");
 
+        builder.Property(r => r.Attachments)
+            .HasColumnName("attachments")
+            .HasColumnType("jsonb");
+
         builder.ComplexProperty(r => r.Status, statusBuilder =>
         {
             statusBuilder.Property(s => s.Id)
@@ -47,10 +51,25 @@ internal sealed class ReportConfiguration : IEntityTypeConfiguration<Report>
         builder.Property(r => r.AssignedTo)
             .HasColumnName("assigned_to");
 
+        builder.Property(r => r.AssignedAt)
+            .HasColumnName("assigned_at");
+
+        builder.Property(r => r.ResolutionNotes)
+            .HasColumnName("resolution_notes");
+
+        builder.Property(r => r.ResolvedAt)
+            .HasColumnName("resolved_at");
+
+        builder.Property(r => r.EscalatedEmergencyAt)
+            .HasColumnName("escalated_emergency_at");
+
         builder.Property(r => r.CreatedAt)
             .HasColumnName("created_at")
             .HasDefaultValueSql("CURRENT_TIMESTAMP")
             .IsRequired();
+
+        builder.Property(r => r.ModifiedAt)
+            .HasColumnName("modified_at");
 
         // Indexes
         builder.HasIndex(r => new { r.EntityType, r.EntityId })
