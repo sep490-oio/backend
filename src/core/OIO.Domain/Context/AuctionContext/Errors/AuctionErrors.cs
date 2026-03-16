@@ -157,7 +157,7 @@ public static class AuctionErrors
 
         public static readonly Error BuyNowUnavailableForScheduledAuction =
             Error.Conflict("Auction.BuyNowUnavailableForScheduledAuction",
-                "Buy now is only available while qualification is open or while the auction is active.");
+                "Buy now is only available while qualification is open before the auction starts.");
     }
 
     public static class Bid

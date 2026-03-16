@@ -20,11 +20,6 @@ public interface IAuctionGrain : IGrainWithGuidKey
         MoneyGrain amount,
         IPAddress? ipAddress,
         CancellationToken cancellationToken = default);
-    
-    Task<Result<BidGrain, Error>> ExecuteBuyNowAsync(
-        Guid bidderId,
-        IPAddress? ipAddress,
-        CancellationToken cancellationToken = default);
 
     Task<Result<AuctionBuyNowReservationGrain, Error>> InitiateBuyNowReservationAsync(
         Guid bidderId,

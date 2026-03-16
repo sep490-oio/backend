@@ -22,6 +22,13 @@ public static class SettingKeys
     // Monitoring
     public const string MonitoringInvalidBidBurstThreshold = "monitoring:invalid_bid_burst_threshold";
     public const string MonitoringBidBurstThreshold = "monitoring:bid_burst_threshold";
+    public const string MonitoringAuctionCollusionSessionDeviceWindowDays = "monitoring:auction_collusion_session_device_window_days";
+    public const string MonitoringAuctionCollusionSessionIpWindowDays = "monitoring:auction_collusion_session_ip_window_days";
+    public const string MonitoringAuctionCollusionPingPongWindowMinutes = "monitoring:auction_collusion_ping_pong_window_minutes";
+    public const string MonitoringAuctionCollusionPingPongMinimumBids = "monitoring:auction_collusion_ping_pong_minimum_bids";
+    public const string MonitoringAuctionCollusionPingPongDominanceThresholdPercent = "monitoring:auction_collusion_ping_pong_dominance_threshold_percent";
+    public const string MonitoringAuctionCollusionRepeatedPairWindowDays = "monitoring:auction_collusion_repeated_pair_window_days";
+    public const string MonitoringAuctionCollusionRepeatedPairThreshold = "monitoring:auction_collusion_repeated_pair_threshold";
 
     // Media
     public const string MediaSignatureExpiration = "media:signature_expiration_minutes";

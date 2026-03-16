@@ -278,6 +278,7 @@ public static class DependencyInjection
             services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Orders.ReleaseExpiredDecisionWindowJob>();
             services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Auctions.ExpireRunnerUpOffersJob>();
             services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Auctions.ExpireBuyNowReservationsJob>();
+            services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Auctions.ScanActiveAuctionsForCollusionJob>();
             
             return services;
         }

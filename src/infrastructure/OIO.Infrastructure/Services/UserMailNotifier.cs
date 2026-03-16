@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Net;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Mail;
@@ -144,6 +145,98 @@ public class UserMailNotifier : IUserMailNotifier
             to: toEmail,
             subject: subject,
             htmlBody: html, 
+            cancellationToken: cancellationToken);
+    }
+
+    public async Task SendEmailConfirmedAsync(
+        string toEmail,
+        string userName,
+        CancellationToken cancellationToken = default)
+    {
+        var safeUserName = WebUtility.HtmlEncode(userName);
+        var html =
+            $"<p>Hello {safeUserName},</p>" +
+            $"<p>Your email address has been verified successfully. You can now use all features that require a confirmed email on {_options.AppName}.</p>" +
+            "<p>If you did not expect this change, please contact support immediately.</p>";
+
+        var subject = $"{_options.AppName} - Email verified successfully";
+
+        await SendAsync(
+            to: toEmail,
+            subject: subject,
+            htmlBody: html,
+            cancellationToken: cancellationToken);
+    }
+
+    public async Task SendAccountLockedAlertAsync(
+        string toEmail,
+        string userName,
+        DateTime lockoutEnd,
+        int failedAttempts,
+        CancellationToken cancellationToken = default)
+    {
+        var safeUserName = WebUtility.HtmlEncode(userName);
+        var html =
+            $"<p>Hello {safeUserName},</p>" +
+            $"<p>Your account has been temporarily locked after {failedAttempts} failed sign-in attempts.</p>" +
+            $"<p>Lockout end: {lockoutEnd:yyyy-MM-dd HH:mm:ss} UTC.</p>" +
+            "<p>If this was not you, please reset your password after the lockout period ends.</p>";
+
+        var subject = $"{_options.AppName} - Security alert: account temporarily locked";
+
+        await SendAsync(
+            to: toEmail,
+            subject: subject,
+            htmlBody: html,
+            cancellationToken: cancellationToken);
+    }
+
+    public async Task SendSecuritySessionRevokedAlertAsync(
+        string toEmail,
+        string userName,
+        string reason,
+        Guid deviceId,
+        CancellationToken cancellationToken = default)
+    {
+        var safeUserName = WebUtility.HtmlEncode(userName);
+        var safeReason = WebUtility.HtmlEncode(reason);
+        var html =
+            $"<p>Hello {safeUserName},</p>" +
+            "<p>One of your sessions was revoked for security reasons.</p>" +
+            $"<p>Device: {deviceId}</p>" +
+            $"<p>Reason: {safeReason}</p>" +
+            "<p>If this was not expected, please change your password and review your active sessions.</p>";
+
+        var subject = $"{_options.AppName} - Security alert: session revoked";
+
+        await SendAsync(
+            to: toEmail,
+            subject: subject,
+            htmlBody: html,
+            cancellationToken: cancellationToken);
+    }
+
+    public async Task SendAccountStatusChangedAsync(
+        string toEmail,
+        string userName,
+        string oldStatus,
+        string newStatus,
+        CancellationToken cancellationToken = default)
+    {
+        var safeUserName = WebUtility.HtmlEncode(userName);
+        var safeOldStatus = WebUtility.HtmlEncode(oldStatus);
+        var safeNewStatus = WebUtility.HtmlEncode(newStatus);
+        var html =
+            $"<p>Hello {safeUserName},</p>" +
+            $"<p>Your account status has changed from <strong>{safeOldStatus}</strong> to <strong>{safeNewStatus}</strong>.</p>" +
+            "<p>If you believe this change is incorrect, please contact support.</p>";
+
+        var subject = $"{_options.AppName} - Your account status has changed";
+
+        await SendAsync(
+            to: toEmail,
+            subject: subject,
+            htmlBody: html,
             cancellationToken: cancellationToken);
     }
 

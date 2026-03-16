@@ -83,6 +83,12 @@ internal sealed class UserSessionConfiguration : IEntityTypeConfiguration<UserSe
         
         builder.HasIndex(f => f.AbsoluteExpiresAt)
             .HasDatabaseName("ix_user_sessions_absolute_expires_at");
+
+        builder.HasIndex(f => new { f.DeviceId, f.CreatedAt })
+            .HasDatabaseName("ix_user_sessions_device_created_at");
+
+        builder.HasIndex(f => new { f.IpAddress, f.CreatedAt })
+            .HasDatabaseName("ix_user_sessions_ip_created_at");
         
         
     }

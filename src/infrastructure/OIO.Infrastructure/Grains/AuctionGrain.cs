@@ -111,43 +111,6 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
         }
     }
 
-    // ==================== BuyNow ====================
-
-    public async Task<Result<BidGrain, Error>> ExecuteBuyNowAsync(
-        Guid bidderId,
-        IPAddress? ipAddress,
-        CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var nowUtc = _clock.UtcNow;
-            var (_, isFailure, auction, error) = await LoadAuctionAsync(cancellationToken);
-
-            if (isFailure)
-            {
-                return error;
-            }
-
-            (_, isFailure, var bid, error) = auction.ExecuteBuyNow(UserId.From(bidderId), nowUtc, ipAddress);
-
-            if (isFailure)
-            {
-                return error;
-            }
-            
-            await SaveAsync(auction, cancellationToken);
-
-            return BidGrain.From(bid);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex,
-                "Unexpected error executing buy now on auction {AuctionId}",
-                this.GetGrainId());
-            throw;
-        }
-    }
-
     public async Task<Result<AuctionBuyNowReservationGrain, Error>> InitiateBuyNowReservationAsync(
         Guid bidderId,
         TimeSpan reservationWindow,

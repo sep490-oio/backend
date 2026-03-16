@@ -74,5 +74,8 @@ internal sealed class MonitoringAlertConfiguration : IEntityTypeConfiguration<Mo
         // Indexes
         builder.HasIndex(a => new { a.EntityType, a.EntityId })
             .HasDatabaseName("idx_monitoring_alerts_entity");
+
+        builder.HasIndex(a => new { a.EntityType, a.EntityId, a.AlertType, a.CreatedAt })
+            .HasDatabaseName("idx_monitoring_alerts_entity_type_created_at");
     }
 }

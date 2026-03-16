@@ -97,6 +97,12 @@ internal sealed class BidConfiguration : IEntityTypeConfiguration<Bid>
         builder.HasIndex(b => new { b.AuctionId, b.CreatedAt})
             .HasDatabaseName("idx_bids_auction_created_at");
 
+        builder.HasIndex(b => new { b.AuctionId, b.BidderId, b.CreatedAt })
+            .HasDatabaseName("idx_bids_auction_bidder_created_at");
+
+        builder.HasIndex(b => new { b.AuctionId, b.IpAddress, b.CreatedAt })
+            .HasDatabaseName("idx_bids_auction_ip_created_at");
+
         builder.HasIndex(b => b.BidderId)
             .HasDatabaseName("idx_bids_bidder");
     }

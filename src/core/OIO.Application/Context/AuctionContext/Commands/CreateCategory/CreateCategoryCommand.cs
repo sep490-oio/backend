@@ -135,7 +135,7 @@ internal sealed class CreateCategoryCommandHandler
         
         var nowUtc = _clock.UtcNow;
 
-        //TODO: implement upload icon for category
+        
         var category = Category.Create(
             name: request.Name,
             slug: slug,

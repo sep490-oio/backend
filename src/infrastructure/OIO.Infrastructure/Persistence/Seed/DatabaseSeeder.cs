@@ -233,6 +233,29 @@ public static class DatabaseSeeder
                 options.ItemDefaults.MaxQuestionsPerItem, options.ItemDefaults.MaxQuestionsPerItem.GetType().Name,
                 "Max questions per item"),
 
+            // Monitoring
+            [SettingKeys.MonitoringAuctionCollusionSessionDeviceWindowDays] = (
+                90, typeof(int).Name,
+                "Recent session window in days for seller-bidder or bidder-bidder same-device collusion checks"),
+            [SettingKeys.MonitoringAuctionCollusionSessionIpWindowDays] = (
+                30, typeof(int).Name,
+                "Recent session window in days for seller-bidder or bidder-bidder same-ip collusion checks"),
+            [SettingKeys.MonitoringAuctionCollusionPingPongWindowMinutes] = (
+                10, typeof(int).Name,
+                "Rolling window in minutes used to detect ping-pong bid ladders"),
+            [SettingKeys.MonitoringAuctionCollusionPingPongMinimumBids] = (
+                6, typeof(int).Name,
+                "Minimum number of bids required inside the ping-pong window before generating a signal"),
+            [SettingKeys.MonitoringAuctionCollusionPingPongDominanceThresholdPercent] = (
+                80, typeof(int).Name,
+                "Minimum dominance percentage for two bidders inside the ping-pong window"),
+            [SettingKeys.MonitoringAuctionCollusionRepeatedPairWindowDays] = (
+                30, typeof(int).Name,
+                "Recent history window in days used to detect repeated suspicious bidder pairs"),
+            [SettingKeys.MonitoringAuctionCollusionRepeatedPairThreshold] = (
+                3, typeof(int).Name,
+                "Minimum number of auctions required before escalating repeated suspicious pairs"),
+
             // Media
             [SettingKeys.MediaSignatureExpiration] = (
                 options.MediaDefaults.SignatureExpirationMinutes, options.MediaDefaults.SignatureExpirationMinutes.GetType().Name,

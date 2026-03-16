@@ -947,97 +947,6 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         return UnitResult.Success<Error>();
     }
 
-    /// <summary>
-    /// Execute Buy Now. Immediately ends the auction with the buyer as winner.
-    /// </summary>
-    public Result<Bid, Error> ExecuteBuyNow(
-        UserId buyerId,
-        DateTime nowUtc,
-        IPAddress? ipAddress = null)
-    {
-        var result = EnsureAcceptsBids(nowUtc);
-        
-        if (result.IsFailure)
-        {
-            return result.Error;
-        }
-
-        result = EnsureNotLockedByBuyNowReservation(nowUtc);
-        if (result.IsFailure)
-        {
-            return result.Error;
-        }
-
-        result = EnsureNotSeller(buyerId);
-        
-        if (result.IsFailure)
-        {
-            return result.Error;
-        }
-
-        result = EnsureBidderEligible(buyerId, nowUtc);
-
-        if (result.IsFailure)
-        {
-            return result.Error;
-        }
-
-        if (Pricing.BuyNowAmount is null)
-            return AuctionErrors.Auction.NotSupportBuyNow;
-
-        // Cancel all existing active/winning bids
-        foreach (var existingBid in _bids.Where(b =>
-                     b.Status == BidStatus.Active || b.Status == BidStatus.Winning))
-        {
-            existingBid.Cancel();
-        }
-
-        // Cancel all auto-bids
-        foreach (var ab in _autoBids.Where(ab => ab.Status == AutoBidStatus.Active))
-        {
-            ab.MarkAsOutbid(nowUtc);
-        }
-
-        // Place winning bid at buy now price
-        var bid = Bid.Create(Id, buyerId, Pricing.BuyNowPrice!, autoBidId: null, ipAddress, nowUtc);
-        bid.MarkAsWon();
-        _bids.Add(bid);
-
-        var buyNowResult = Pricing.WithBuyNow();
-
-        if (buyNowResult.IsFailure)
-        {
-            return buyNowResult.Error;
-        }
-
-        // Update auction state
-        Pricing = buyNowResult.Value;
-        WinnerId = buyerId;
-        BidCount++;
-        ActualEndTime = nowUtc;
-        Status = AuctionStatus.Sold;
-        ModifiedAt = nowUtc;
-
-        _priceHistories.Add(AuctionPriceHistory.Create(Id, Pricing.BuyNowPrice!,nowUtc, bid.Id));
-
-        RaiseDomainEvent(new AuctionSoldEvent(
-            AuctionId: $"{Id}",
-            WinnerId: $"{buyerId}",
-            SellerId: $"{Item.SellerId}",
-            FinalPrice: Pricing.BuyNowAmount!.Value,
-            Currency: Pricing.Currency.Id,
-            TotalBids: BidCount,
-            OccurredAt: nowUtc));
-
-        RaiseDomainEvent(new BuyNowExecutedEvent(
-            $"{Id}",
-            $"{buyerId}", 
-            Pricing.BuyNowAmount!.Value,
-            nowUtc));
-
-        return bid;
-    }
-    
     // ==================================================================================
     //                              AUTO BIDDING
     // ==================================================================================
@@ -1914,29 +1823,16 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         if (sellerResult.IsFailure)
             return sellerResult.Error;
 
-        if (Status == AuctionStatus.Active)
-        {
-            if (Info is null)
-                return AuctionErrors.Auction.TimingRequired;
+        if (Status != AuctionStatus.Scheduled)
+            return AuctionErrors.Auction.BuyNowUnavailableForScheduledAuction;
 
-            if (Info.HasEnded(nowUtc))
-                return AuctionErrors.Auction.Expired;
+        if (Info is null)
+            return AuctionErrors.Auction.TimingRequired;
 
-            return UnitResult.Success<Error>();
-        }
+        if (!Info.HasQualification || !Info.IsQualificationOpen(nowUtc))
+            return AuctionErrors.Auction.BuyNowUnavailableForScheduledAuction;
 
-        if (Status == AuctionStatus.Scheduled)
-        {
-            if (Info is null)
-                return AuctionErrors.Auction.TimingRequired;
-
-            if (!Info.HasQualification || !Info.IsQualificationOpen(nowUtc))
-                return AuctionErrors.Auction.BuyNowUnavailableForScheduledAuction;
-
-            return UnitResult.Success<Error>();
-        }
-
-        return AuctionErrors.Auction.InvalidState(Status.Id, "buy now");
+        return UnitResult.Success<Error>();
     }
 
     private UnitResult<Error> EnsureBuyerQualifiedForBuyNow(UserId buyerId, DateTime nowUtc)
