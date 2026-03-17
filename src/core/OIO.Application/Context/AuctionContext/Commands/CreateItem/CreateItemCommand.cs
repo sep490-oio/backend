@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
@@ -104,7 +104,6 @@ internal sealed class CreateItemCommandHandler
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
         IClock clock,
-        IAppConfigs appConfigs,
         UploadContextRegistry contextRegistry,
         IMediaRelocationService mediaRelocationService,
         ILogger<CreateItemCommandHandler> logger)
@@ -185,7 +184,7 @@ internal sealed class CreateItemCommandHandler
                 
                 var upload = mediaUploads.First(p => p.Id == mediaUploadId);
 
-                var maxForType = await _contextRegistry.GetMaxForEntityMediaAsync("item", upload.ResourceType, cancellationToken);
+                var maxForType = _contextRegistry.GetMaxForEntityMedia("item", upload.ResourceType);
                 
                 // Add image to item domain
                 item.AddMedia(
@@ -258,9 +257,11 @@ internal sealed class CreateItemCommandHandler
         if (invalidContext.Count > 0)
         {
             _logger.LogWarning("Media uploads invalid context: {InvalidContext}", string.Join(", ", invalidContext.Select(p => p.Id)));
-            return MediaErrors.WrongContext(invalidContext[0].Context, await _contextRegistry.GetAllContextAsync(cancellationToken));
+            return MediaErrors.WrongContext(invalidContext[0].Context, _contextRegistry.GetAllContext());
         }
 
         return null;
     }
 }
+
+

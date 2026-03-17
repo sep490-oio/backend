@@ -3,7 +3,7 @@ using System.Text.Json;
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Messaging;
-using OIO.Application.Abstractions.Settings;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
@@ -49,20 +49,20 @@ internal sealed class PlaceBidCommandHandler
     private readonly ICurrentUser _currentUser;
     private readonly IDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ISystemSettingsService _settings;
+    private readonly IRuntimeSettings _runtimeSettings;
 
     public PlaceBidCommandHandler(
         IGrainFactory grainFactory,
         ICurrentUser currentUser,
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
-        ISystemSettingsService settings)
+        IRuntimeSettings runtimeSettings)
     {
         _grainFactory = grainFactory;
         _currentUser = currentUser;
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
-        _settings = settings;
+        _runtimeSettings = runtimeSettings;
     }
 
     public async Task<Result<BidDto, Error>> Handle(
@@ -128,10 +128,7 @@ internal sealed class PlaceBidCommandHandler
             ipAddress: request.IpAddress,
             nowUtc: nowUtc));
 
-        var threshold = await _settings.GetAsync(
-            SettingKeys.MonitoringInvalidBidBurstThreshold,
-            5,
-            cancellationToken);
+        var threshold = _runtimeSettings.Monitoring.InvalidBidBurstThreshold;
 
         if (threshold <= 0)
         {

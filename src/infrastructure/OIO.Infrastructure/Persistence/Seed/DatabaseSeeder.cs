@@ -1,16 +1,11 @@
-﻿using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OIO.Application.Abstractions.Clock;
-using OIO.Application.Abstractions.Commons;
-using OIO.Application.Abstractions.Settings;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.AppDefinitions;
-using OIO.Domain.Context.Shared.Entities;
 using OIO.Domain.Context.Shared.Enums;
-using OIO.Domain.Context.Shared.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.Aggregates.Roles;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Services;
@@ -20,7 +15,6 @@ using OIO.Domain.Context.WarehouseContext.Aggregates.ShippingProviders;
 using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.Context.WarehouseContext.ValueObjects;
 using OIO.Infrastructure.Settings;
-using OIO.Infrastructure.Settings.Apps;
 
 namespace OIO.Infrastructure.Persistence.Seed;
 
@@ -41,7 +35,6 @@ public static class DatabaseSeeder
             await SeedRolesAsync(dbContext, logger);
             await AssignPermissionsToRolesAsync(dbContext, logger);
             await SeedAdminUserAsync(dbContext, scope.ServiceProvider, logger);
-            await SeedSystemSettingsAsync(scope.ServiceProvider);
             await SeedShippingProviderConfigsAsync(scope.ServiceProvider);
             await CoreFlowFakeDataSeeder.SeedAsync(dbContext, scope.ServiceProvider, logger);
             logger.LogInformation("Database seeding completed successfully.");
@@ -156,10 +149,10 @@ public static class DatabaseSeeder
     private static async Task AssignPermissionsToRolesAsync(
         ApplicationDbContext dbContext, ILogger logger, CancellationToken ct = default)
     {
-        // Nếu seeding nhiều bước trong cùng DbContext, nên clear để tránh “đã tracked”
+        // N?u seeding nhi?u bu?c trong c�ng DbContext, n�n clear d? tr�nh �d� tracked�
         dbContext.ChangeTracker.Clear();
 
-        // Lấy existing theo key thật (RoleId, PermissionId) cho chuẩn và nhanh
+        // L?y existing theo key th?t (RoleId, PermissionId) cho chu?n v� nhanh
         var existingPairs = await dbContext.Set<RolePermission>()
             .AsNoTracking()
             .Select(rp => new { Role = rp.RoleName, Permission = rp.PermissionCode })
@@ -170,7 +163,7 @@ public static class DatabaseSeeder
             .ToHashSet();
 
         var toInsert = new List<RolePermission>();
-        var seenInsert = new HashSet<(string RoleId, string PermissionId)>(); // chống trùng trong batch
+        var seenInsert = new HashSet<(string RoleId, string PermissionId)>(); // ch?ng tr�ng trong batch
 
         foreach (var role in App.Roles.Catalogs.All)
         {
@@ -180,7 +173,7 @@ public static class DatabaseSeeder
             {
                 var key = (role, permission);
 
-                // đã có trong DB hoặc đã thêm vào batch
+                // d� c� trong DB ho?c d� th�m v�o batch
                 if (existingSet.Contains(key) || !seenInsert.Add(key))
                     continue;
 
@@ -195,115 +188,13 @@ public static class DatabaseSeeder
 
         logger.LogInformation("Assigned {Count} new role-permissions.", toInsert.Count);
 
-        // Lưu ý: rolePermission.Permission / Role thường null vì bạn chỉ set FK
-        // => log bằng Id/Code thay vì navigation
+        // Luu �: rolePermission.Permission / Role thu?ng null v� b?n ch? set FK
+        // => log b?ng Id/Code thay v� navigation
         foreach (var rp in toInsert)
             logger.LogInformation("Assigned PermissionId={PermissionId} to RoleId={RoleId}.", rp.PermissionCode, rp.RoleName);
     }
     
-    private static async Task SeedSystemSettingsAsync(IServiceProvider services)
-    {
-        using var scope = services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var options = scope.ServiceProvider.GetRequiredService<IOptions<AppInfoOptions>>().Value;
-        var settingsService = scope.ServiceProvider.GetRequiredService<ISystemSettingsService>();
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationDbContext>>();
-        var clock = scope.ServiceProvider.GetRequiredService<IClock>();
-
-        await settingsService.InvalidateCacheAsync();
-
-        var seeds = new Dictionary<string, (object Value, string Type, string Description)>
-        {
-            // Auction
-            [SettingKeys.AuctionMaxExtensions] = (
-                options.AuctionDefaults.MaxExtensionsPerAuction, options.AuctionDefaults.MaxExtensionsPerAuction.GetType().Name,
-                "Maximum number of anti-sniping extensions per auction"),
-            [SettingKeys.AuctionExtensionThreshold] = (
-                options.AuctionDefaults.ExtensionThresholdMinutes, options.AuctionDefaults.ExtensionThresholdMinutes.GetType().Name,
-                "Time before end when a bid triggers extension"),
-            [SettingKeys.AuctionMaxDuration] = (
-                options.AuctionDefaults.MaxDuration, options.AuctionDefaults.MaxDuration.GetType().Name,
-                "Maximum allowed auction duration"),
-            [SettingKeys.AuctionMinDuration] = (
-                options.AuctionDefaults.MinDuration, options.AuctionDefaults.MinDuration.GetType().Name,
-                "Minimum allowed auction duration"),
-
-            // Items
-            [SettingKeys.ItemMaxQuestions] = (
-                options.ItemDefaults.MaxQuestionsPerItem, options.ItemDefaults.MaxQuestionsPerItem.GetType().Name,
-                "Max questions per item"),
-
-            // Monitoring
-            [SettingKeys.MonitoringAuctionCollusionSessionDeviceWindowDays] = (
-                90, typeof(int).Name,
-                "Recent session window in days for seller-bidder or bidder-bidder same-device collusion checks"),
-            [SettingKeys.MonitoringAuctionCollusionSessionIpWindowDays] = (
-                30, typeof(int).Name,
-                "Recent session window in days for seller-bidder or bidder-bidder same-ip collusion checks"),
-            [SettingKeys.MonitoringAuctionCollusionPingPongWindowMinutes] = (
-                10, typeof(int).Name,
-                "Rolling window in minutes used to detect ping-pong bid ladders"),
-            [SettingKeys.MonitoringAuctionCollusionPingPongMinimumBids] = (
-                6, typeof(int).Name,
-                "Minimum number of bids required inside the ping-pong window before generating a signal"),
-            [SettingKeys.MonitoringAuctionCollusionPingPongDominanceThresholdPercent] = (
-                80, typeof(int).Name,
-                "Minimum dominance percentage for two bidders inside the ping-pong window"),
-            [SettingKeys.MonitoringAuctionCollusionRepeatedPairWindowDays] = (
-                30, typeof(int).Name,
-                "Recent history window in days used to detect repeated suspicious bidder pairs"),
-            [SettingKeys.MonitoringAuctionCollusionRepeatedPairThreshold] = (
-                3, typeof(int).Name,
-                "Minimum number of auctions required before escalating repeated suspicious pairs"),
-
-            // Media
-            [SettingKeys.MediaSignatureExpiration] = (
-                options.MediaDefaults.SignatureExpirationMinutes, options.MediaDefaults.SignatureExpirationMinutes.GetType().Name,
-                "Upload signature TTL in minutes"),
-            [SettingKeys.MediaOrphanExpiration] = (
-                options.MediaDefaults.OrphanExpirationMinutes, options.MediaDefaults.OrphanExpirationMinutes.GetType().Name,
-                "Orphan upload cleanup threshold in minutes"),
-            [SettingKeys.MediaLinkedRetention] = (
-                options.MediaDefaults.LinkedRecordRetentionDays, options.MediaDefaults.LinkedRecordRetentionDays.GetType().Name,
-                "Days to keep linked upload records"),
-            [SettingKeys.MediaCleanupInterval] = (
-                options.MediaDefaults.CleanupIntervalMinutes, options.MediaDefaults.CleanupIntervalMinutes.GetType().Name,
-                "Media cleanup job interval in minutes"),
-            [SettingKeys.MediaUploadContexts] = (
-                options.MediaDefaults.UploadContexts, options.MediaDefaults.UploadContexts.GetType().Name,
-                "Upload context configurations"),
-
-            // Auth
-            [SettingKeys.AuthPasswordResetExpiration] = (
-                options.AuthDefaults.PasswordResetTokenExpirationMinutes, options.AuthDefaults.PasswordResetTokenExpirationMinutes.GetType().Name,
-                "Password reset token TTL in minutes"),
-            [SettingKeys.AuthResendEmailCooldown] = (
-                options.AuthDefaults.ResendEmailCooldownSeconds, options.AuthDefaults.ResendEmailCooldownSeconds.GetType().Name,
-                "Cooldown between resend email requests in seconds"),
-            [SettingKeys.AuthMaxPasswordResetAttempts] = (
-                options.AuthDefaults.MaxPasswordResetAttemptsPerHour, options.AuthDefaults.MaxPasswordResetAttemptsPerHour.GetType().Name,
-                "Max password reset attempts per hour"),
-        };
-
-        foreach (var (key, (value, type, description)) in seeds)
-        {
-            var settingId = SystemSettingId.From(key);
-            var exists = await dbContext.Set<SystemSetting>()
-                .AnyAsync(s => s.Id == settingId);
-
-            if (!exists)
-            {
-                var json = JsonSerializer.Serialize(value);
-                var setting = SystemSetting.Create(clock.UtcNow, key, json, type, description);
-                dbContext.Set<SystemSetting>().Add(setting);
-
-                logger.LogInformation("Seeded setting: {Key} = {Value}", key, json);
-            }
-        }
-
-        await dbContext.SaveChangesAsync();
-    }
-      public static async Task SeedShippingProviderConfigsAsync(IServiceProvider services)
+    public static async Task SeedShippingProviderConfigsAsync(IServiceProvider services)
     {
         using var scope = services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -317,7 +208,7 @@ public static class DatabaseSeeder
 
         if (alreadyExists)
         {
-            logger.LogInformation("ShippingProviderConfig for GHN already seeded — skipping.");
+            logger.LogInformation("ShippingProviderConfig for GHN already seeded � skipping.");
             return;
         }
 
@@ -338,7 +229,7 @@ public static class DatabaseSeeder
 
             now: clock.UtcNow,
 
-            // GHN internal IDs — confirmed from master data API
+            // GHN internal IDs � confirmed from master data API
             // Province: 202 | District: 3695 | Ward: 90752
             pickCarrierAddressData: CarrierAddressData.From(
                 """{"district_id": 3695, "ward_code": "90752"}"""),
@@ -355,3 +246,4 @@ public static class DatabaseSeeder
             ghnConfig.Id.Value);
     }
 }
+

@@ -69,8 +69,14 @@ internal sealed class GetReviewQueueQueryHandler
 
         var totalCount = await query.CountAsync(cancellationToken);
 
-        var items = await query
+        var pagedItems = await query
             .OrderBy(i => i.SubmittedAt)
+            .Include(item => item.Auctions)
+            .Include(item => item.Media)
+            .AsSplitQuery()
+            .ToPagedListAsync(totalCount, parameters, cancellationToken);
+
+        var items = pagedItems.Items
             .Select(item => new ReviewQueueItemDto(
                 ItemId: item.Id.Value,
                 AuctionId: item.Auctions
@@ -81,14 +87,13 @@ internal sealed class GetReviewQueueQueryHandler
                 Status: item.Status.Id,
                 Condition: item.Condition.Id,
                 SellerId: item.SellerId.Value,
-                AssignedAdminId: item.AssignedAdminId != null ? item.AssignedAdminId.Value.Value : null,
+                AssignedAdminId: item.AssignedAdminId?.Value,
                 ResubmissionCount: item.ResubmissionCount,
                 MediaCount: item.Media.Count,
                 SubmittedAt: item.SubmittedAt,
                 CreatedAt: item.CreatedAt))
-            .ToPagedListAsync(totalCount, parameters, cancellationToken);
+            .ToList();
 
-
-        return items;
+        return items.ToPagedList(totalCount, parameters);
     }
 }

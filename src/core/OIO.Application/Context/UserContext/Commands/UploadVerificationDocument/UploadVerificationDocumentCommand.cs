@@ -109,12 +109,12 @@ internal sealed class UploadVerificationDocumentCommandHandler
         {
             _logger.LogWarning("Media upload {MediaUploadId} has invalid context {Context} for verification {VerificationId}.",
                 mediaUploadId, upload.Context, verificationId);
-            return MediaErrors.WrongContext(upload.Context, await _contextRegistry.GetAllContextAsync(cancellationToken));
+            return MediaErrors.WrongContext(upload.Context, _contextRegistry.GetAllContext());
         }
 
         var nowUtc = _clock.UtcNow;
         var docType = VerificationDocumentType.FromId(request.DocumentType).Value;
-        var maxForType = await _contextRegistry.GetMaxForEntityMediaAsync("verification", upload.ResourceType, cancellationToken);
+        var maxForType = _contextRegistry.GetMaxForEntityMedia("verification", upload.ResourceType);
 
         var docResult = verification.AddDocument(docType, upload, maxForType, nowUtc);
 
@@ -128,3 +128,4 @@ internal sealed class UploadVerificationDocumentCommandHandler
         return docResult.Value.ToDto();
     }
 }
+

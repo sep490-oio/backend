@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.DTOs;
+using OIO.Application.Context.UserContext.Mappings;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.SeedWork.Errors;
 
@@ -32,26 +33,14 @@ internal sealed class GetAllTermsDocumentsQueryHandler : IQueryHandler<GetAllTer
         if (request.IsActive.HasValue)
             query = query.Where(x => x.IsActive == request.IsActive.Value);
 
-        var documents = await query
+        var entities = await query
             .OrderBy(x => x.TermType)
             .ThenByDescending(x => x.Version)
-            .Select(x => new TermsDocumentDto(
-                x.Id.Value,
-                x.TermType,
-                x.Version,
-                x.IsActive,
-                x.PublishedAt,
-                x.CreatedAt,
-                x.Info.SecureUrl!,
-                x.Info.FileName,
-                x.Info.Bytes,
-                x.Info.Format,
-                x.Info.Width,
-                x.Info.Height,
-                x.Info.DurationSeconds,
-                x.StorageRef.PublicId,
-                x.StorageRef.Folder))
             .ToListAsync(cancellationToken);
+
+        var documents = entities
+            .Select(x => x.ToDto())
+            .ToList();
 
         return documents;
     }

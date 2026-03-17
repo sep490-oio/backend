@@ -24,7 +24,9 @@ internal sealed class GetStorageLocationsQueryHandler(IDbContext db)
         GetStorageLocationsQuery request,
         CancellationToken cancellationToken)
     {
-        var query = db.Set<WarehouseStorageLocation>().AsQueryable();
+        var query = db.Set<WarehouseStorageLocation>()
+            .AsNoTracking()
+            .AsQueryable();
 
         if (request.VacantOnly)
             query = query.Where(l => !l.IsOccupied);
@@ -42,9 +44,8 @@ internal sealed class GetStorageLocationsQueryHandler(IDbContext db)
             .ThenBy(l => l.Bin)
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
-            .Select(l => l.ToDto())
             .ToListAsync(cancellationToken);
 
-        return locations;
+        return locations.Select(l => l.ToDto()).ToList();
     }
 }

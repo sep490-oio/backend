@@ -4,6 +4,7 @@ using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.PaymentContext.Aggregates.PaymentMethods;
+using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.PaymentContext.Commands.PaymentMethods;
@@ -28,8 +29,10 @@ internal sealed class DeletePaymentMethodCommandHandler : ICommandHandler<Delete
 
     public async Task<UnitResult<Error>> Handle(DeletePaymentMethodCommand request, CancellationToken cancellationToken)
     {
+        var paymentMethodId = PaymentMethodId.From(request.PaymentMethodId);
+
         var targetMethod = await _dbContext.Set<PaymentMethod>()
-            .FirstOrDefaultAsync(p => p.Id.Value == request.PaymentMethodId && p.UserId == _currentUser.UserId, cancellationToken);
+            .FirstOrDefaultAsync(p => p.Id == paymentMethodId && p.UserId == _currentUser.UserId, cancellationToken);
 
         if (targetMethod is null)
             return Error.NotFound("PaymentMethod.NotFound", "Payment method not found.");

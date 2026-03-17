@@ -101,7 +101,7 @@ internal sealed class CreateAuctionCommandHandler
     private readonly IDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
-    private readonly IAppConfigs _appConfigs;
+    private readonly IRuntimeSettings _runtimeSettings;
     private readonly IClock _clock;
     private readonly UploadContextRegistry _contextRegistry;
     private readonly IMediaRelocationService _mediaRelocationService;
@@ -112,7 +112,7 @@ internal sealed class CreateAuctionCommandHandler
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
-        IAppConfigs appConfigs,
+        IRuntimeSettings runtimeSettings,
         IClock clock,
         UploadContextRegistry contextRegistry,
         IMediaRelocationService mediaRelocationService,
@@ -122,7 +122,7 @@ internal sealed class CreateAuctionCommandHandler
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
-        _appConfigs = appConfigs;
+        _runtimeSettings = runtimeSettings;
         _clock = clock;
         _contextRegistry = contextRegistry;
         _mediaRelocationService = mediaRelocationService;
@@ -185,8 +185,8 @@ internal sealed class CreateAuctionCommandHandler
             {
                 var mediaUploadId = MediaUploadId.From(mediaReq.MediaUploadId);
                 var upload = mediaUploads.First(p => p.Id == mediaUploadId);
-                var maxForType = await _contextRegistry.GetMaxForEntityMediaAsync(
-                    "item", upload.ResourceType, cancellationToken);
+                var maxForType = _contextRegistry.GetMaxForEntityMedia(
+                    "item", upload.ResourceType);
                 item.AddMedia(nowUtc, upload, mediaReq.IsPrimary, maxForType, mediaReq.SortOrder);
             }
         }
@@ -222,7 +222,7 @@ internal sealed class CreateAuctionCommandHandler
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return auction.ToDto(nowUtc,
-            await _appConfigs.Auctions.GetExtensionThresholdMinutesAsync(cancellationToken));
+            _runtimeSettings.Auction.ExtensionThreshold);
     }
 
     private Error? ValidateMediaUploads(
@@ -263,3 +263,6 @@ internal sealed class CreateAuctionCommandHandler
         return null;
     }
 }
+
+
+

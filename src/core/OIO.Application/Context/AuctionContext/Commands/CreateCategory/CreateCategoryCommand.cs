@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
@@ -173,7 +173,7 @@ internal sealed class CreateCategoryCommandHandler
             {
                 _logger.LogWarning("Media upload {MediaUploadId} has invalid context {Context} for category {category}.",
                     mediaUploadId, upload.Context, category.Id);
-                return MediaErrors.WrongContext(upload.Context, await _contextRegistry.GetAllContextAsync(cancellationToken));
+                return MediaErrors.WrongContext(upload.Context, _contextRegistry.GetAllContext());
             }
             
             category.Update(
@@ -195,3 +195,4 @@ internal sealed class CreateCategoryCommandHandler
         return category.ToDto();
     }
 }
+

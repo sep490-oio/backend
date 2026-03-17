@@ -43,9 +43,10 @@ internal sealed class RefundEscrowCommandHandler : ICommandHandler<RefundEscrowC
     public async Task<UnitResult<Error>> Handle(RefundEscrowCommand request, CancellationToken cancellationToken)
     {
         var now = _clock.UtcNow;
+        var escrowId = EscrowId.From(request.EscrowId);
 
         var escrow = await _dbContext.Set<Escrow>()
-            .FirstOrDefaultAsync(e => e.Id.Value == request.EscrowId, cancellationToken);
+            .FirstOrDefaultAsync(e => e.Id == escrowId, cancellationToken);
 
         if (escrow is null)
             return Error.NotFound("Escrow.NotFound", "Escrow not found.");

@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
-using OIO.Application.Abstractions.Settings;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
 using OIO.Application.Context.ModerationContext.Services;
@@ -52,7 +52,7 @@ internal sealed class TriggerAuctionEmergencyCommandHandler
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
     private readonly EscrowSettlementService _settlementService;
-    private readonly ISystemSettingsService _settings;
+    private readonly IRuntimeSettings _runtimeSettings;
     private readonly ModerationAuditService _auditService;
     private readonly ILogger<TriggerAuctionEmergencyCommandHandler> _logger;
 
@@ -63,7 +63,7 @@ internal sealed class TriggerAuctionEmergencyCommandHandler
         ICurrentUser currentUser,
         IClock clock,
         EscrowSettlementService settlementService,
-        ISystemSettingsService settings,
+        IRuntimeSettings runtimeSettings,
         ModerationAuditService auditService,
         ILogger<TriggerAuctionEmergencyCommandHandler> logger)
     {
@@ -73,7 +73,7 @@ internal sealed class TriggerAuctionEmergencyCommandHandler
         _currentUser = currentUser;
         _clock = clock;
         _settlementService = settlementService;
-        _settings = settings;
+        _runtimeSettings = runtimeSettings;
         _auditService = auditService;
         _logger = logger;
     }
@@ -185,10 +185,7 @@ internal sealed class TriggerAuctionEmergencyCommandHandler
 
         _dbContext.Insert(sellerRiskFlag);
 
-        var autoSuspend = await _settings.GetAsync(
-            SettingKeys.OpsAutoSuspendOnEmergency,
-            false,
-            cancellationToken);
+        var autoSuspend = _runtimeSettings.Ops.AutoSuspendOnEmergency;
 
         if (autoSuspend)
         {
@@ -222,3 +219,6 @@ internal sealed class TriggerAuctionEmergencyCommandHandler
         return emergencyResult.Value.ToDto();
     }
 }
+
+
+

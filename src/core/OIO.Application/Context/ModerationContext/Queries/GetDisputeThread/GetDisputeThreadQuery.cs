@@ -9,6 +9,7 @@ using OIO.Domain.AppDefinitions;
 using OIO.Domain.Context.ModerationContext.Aggregates.Disputes;
 using OIO.Domain.Context.ModerationContext.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.ModerationContext.Queries.GetDisputeThread;
@@ -41,16 +42,16 @@ internal sealed class GetDisputeThreadQueryHandler(
             .ToListAsync(cancellationToken);
 
         var participantIds = participantStates
-            .Select(x => x.UserId.Value)
-            .Concat([dispute.ComplainantId.Value, dispute.RespondentId.Value])
-            .Concat(dispute.AssignedTo is null ? [] : [dispute.AssignedTo.Value.Value])
+            .Select(x => x.UserId)
+            .Concat([dispute.ComplainantId, dispute.RespondentId])
+            .Concat(dispute.AssignedTo is null ? [] : [dispute.AssignedTo.Value])
             .Distinct()
             .ToList();
 
         var users = await dbContext.Set<User>()
             .AsNoTracking()
             .Include(x => x.Roles)
-            .Where(x => participantIds.Contains(x.Id.Value))
+            .Where(x => participantIds.Contains(x.Id))
             .ToListAsync(cancellationToken);
 
         var statesByUserId = participantStates.ToDictionary(x => x.UserId.Value);

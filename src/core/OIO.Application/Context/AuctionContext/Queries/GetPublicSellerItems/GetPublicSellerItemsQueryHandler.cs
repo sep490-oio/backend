@@ -63,48 +63,28 @@ internal sealed class GetPublicSellerItemsQueryHandler(IDbContext dbContext)
         var totalCount = await query.CountAsync(cancellationToken);
 
         var pagedItems = await query
-            .Select(item => new PublicSellerItemDto(
-                Id: item.Id.Value,
-                SellerId: item.SellerId.Value,
-                CategoryId: item.CategoryId.HasValue ? item.CategoryId.Value.Value : null,
-                Title: item.Title.Value,
-                Description: item.Description,
-                Condition: item.Condition.Id,
-                Status: item.Status.Id,
-                Quantity: item.Quantity,
-                Images: item.Media
-                    .Select(media =>
-                        new ItemMediaDto(
-                            Id: media.Id.Value,
-                            Url: media.Info.SecureUrl!,
-                            PublicId: media.StorageRef.PublicId,
-                            ResourceType: media.ResourceType,
-                            IsPrimary: media.IsPrimary,
-                            SortOrder: media.SortOrder,
-                            FileName: media.Info.FileName,
-                            Bytes: media.Info.Bytes,
-                            Format: media.Info.Format,
-                            Width: media.Info.Width,
-                            Height: media.Info.Height,
-                            DurationSeconds: media.Info.DurationSeconds))
-                    .ToList(),
-                CreatedAt: item.CreatedAt,
-                Auction: null,
-                HasLiveAuction: false))
+            .Include(item => item.Media)
+            .AsSplitQuery()
             .ToPagedListAsync(totalCount, request.Parameters, cancellationToken);
 
         var itemIds = pagedItems.Items.Select(x => x.Id).ToList();
         if (itemIds.Count == 0)
-            return pagedItems;
+        {
+            return new PagedList<PublicSellerItemDto>(
+                [],
+                pagedItems.Metadata.TotalCount,
+                pagedItems.Metadata.CurrentPage,
+                pagedItems.Metadata.PageSize);
+        }
 
         var auctions = await dbContext.Set<Auction>()
             .AsNoTracking()
-            .Where(x => itemIds.Contains(x.ItemId.Value))
+            .Where(x => itemIds.Contains(x.ItemId))
             .ToListAsync(cancellationToken);
 
         var auctionLookup = auctions
             .Where(x => PublicAuctionSummaryStatuses.Contains(x.Status.Id, StringComparer.Ordinal))
-            .GroupBy(x => x.ItemId.Value)
+            .GroupBy(x => x.ItemId)
             .ToDictionary(
                 x => x.Key,
                 x => x
@@ -115,7 +95,7 @@ internal sealed class GetPublicSellerItemsQueryHandler(IDbContext dbContext)
             .Select(item =>
             {
                 if (!auctionLookup.TryGetValue(item.Id, out var auction))
-                    return item;
+                    return MapItem(item, null);
 
                 var summary = new PublicSellerItemAuctionSummaryDto(
                     AuctionId: auction.Id.Value,
@@ -126,11 +106,10 @@ internal sealed class GetPublicSellerItemsQueryHandler(IDbContext dbContext)
                     StartTime: auction.Info?.StartTime,
                     EndTime: auction.Info?.EndTime);
 
-                return item with
-                {
-                    Auction = summary,
-                    HasLiveAuction = LiveAuctionStatuses.Contains(auction.Status.Id, StringComparer.Ordinal)
-                };
+                return MapItem(
+                    item,
+                    summary,
+                    LiveAuctionStatuses.Contains(auction.Status.Id, StringComparer.Ordinal));
             })
             .ToList();
 
@@ -139,5 +118,40 @@ internal sealed class GetPublicSellerItemsQueryHandler(IDbContext dbContext)
             pagedItems.Metadata.TotalCount,
             pagedItems.Metadata.CurrentPage,
             pagedItems.Metadata.PageSize);
+    }
+
+    private static PublicSellerItemDto MapItem(
+        Item item,
+        PublicSellerItemAuctionSummaryDto? auction,
+        bool hasLiveAuction = false)
+    {
+        return new PublicSellerItemDto(
+            Id: item.Id.Value,
+            SellerId: item.SellerId.Value,
+            CategoryId: item.CategoryId?.Value,
+            Title: item.Title.Value,
+            Description: item.Description,
+            Condition: item.Condition.Id,
+            Status: item.Status.Id,
+            Quantity: item.Quantity,
+            Images: item.Media
+                .OrderBy(media => media.SortOrder)
+                .Select(media => new ItemMediaDto(
+                    Id: media.Id.Value,
+                    Url: media.Info.SecureUrl!,
+                    PublicId: media.StorageRef.PublicId,
+                    ResourceType: media.ResourceType,
+                    IsPrimary: media.IsPrimary,
+                    SortOrder: media.SortOrder,
+                    FileName: media.Info.FileName,
+                    Bytes: media.Info.Bytes,
+                    Format: media.Info.Format,
+                    Width: media.Info.Width,
+                    Height: media.Info.Height,
+                    DurationSeconds: media.Info.DurationSeconds))
+                .ToList(),
+            CreatedAt: item.CreatedAt,
+            Auction: auction,
+            HasLiveAuction: hasLiveAuction);
     }
 }

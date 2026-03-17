@@ -5,6 +5,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.PaymentContext.DTOs;
 using OIO.Application.Context.PaymentContext.Queries;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
+using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.PaymentContext.Queries.Admins.GetAdminTransactionById;
@@ -25,9 +26,11 @@ internal sealed class GetAdminTransactionByIdQueryHandler
         GetAdminTransactionByIdQuery request,
         CancellationToken cancellationToken)
     {
+        var transactionId = TransactionId.From(request.TransactionId);
+
         var transaction = await _dbContext.Set<Transaction>()
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id.Value == request.TransactionId, cancellationToken);
+            .FirstOrDefaultAsync(x => x.Id == transactionId, cancellationToken);
 
         if (transaction is null)
             return Error.NotFound("Transaction.NotFound", "Transaction not found.");

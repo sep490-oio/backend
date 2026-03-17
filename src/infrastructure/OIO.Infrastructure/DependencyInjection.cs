@@ -15,7 +15,6 @@ using OIO.Application.Abstractions.Mail;
 using OIO.Application.Abstractions.Media;
 using OIO.Application.Abstractions.Scheduling;
 using OIO.Application.Abstractions.Security;
-using OIO.Application.Abstractions.Settings;
 using OIO.Application.Abstractions.Shipping;
 using OIO.Application.Context.AuctionContext.Services;
 using OIO.Application.Context.UserContext.Services;
@@ -58,9 +57,18 @@ public static class DependencyInjection
             
             services.AddSingleton(TimeProvider.System);
             services.AddSingleton<IClock, DatetimeProvider>();
-            services.Configure<AppInfoOptions>(configuration.GetSection(AppInfoOptions.SectionName));
-            services.AddScoped<IAppConfigs, AppConfig>();
-            services.AddScoped<ISystemSettingsService, SystemSettingsService>();
+            services.Configure<AppOptions>(configuration.GetSection(AppOptions.SectionName));
+            services.Configure<FeaturesOptions>(configuration.GetSection(FeaturesOptions.SectionName));
+            services.Configure<AuctionOptions>(configuration.GetSection(AuctionOptions.SectionName));
+            services.Configure<ItemOptions>(configuration.GetSection(ItemOptions.SectionName));
+            services.Configure<MediaOptions>(configuration.GetSection(MediaOptions.SectionName));
+            services.Configure<AuthOptions>(configuration.GetSection(AuthOptions.SectionName));
+            services.Configure<MonitoringOptions>(configuration.GetSection(MonitoringOptions.SectionName));
+            services.Configure<OpsOptions>(configuration.GetSection(OpsOptions.SectionName));
+            services.Configure<OrderOptions>(configuration.GetSection(OrderOptions.SectionName));
+            services.AddSingleton<AppConfig>();
+            services.AddSingleton<IAppInfo>(serviceProvider => serviceProvider.GetRequiredService<AppConfig>());
+            services.AddSingleton<IRuntimeSettings>(serviceProvider => serviceProvider.GetRequiredService<AppConfig>());
 
             services
                 .AddPersistence(configuration, connectionString)

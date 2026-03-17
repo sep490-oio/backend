@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
@@ -51,7 +51,7 @@ internal sealed class RequestUploadSignatureCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
-    private readonly IAppConfigs _appConfigs;
+    private readonly IRuntimeSettings _runtimeSettings;
     private readonly UploadContextRegistry _contextRegistry;
 
     public RequestUploadSignatureCommandHandler(
@@ -60,7 +60,7 @@ internal sealed class RequestUploadSignatureCommandHandler
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
         IClock clock,
-        IAppConfigs appConfigs,
+        IRuntimeSettings runtimeSettings,
         UploadContextRegistry contextRegistry)
     
     {
@@ -69,7 +69,7 @@ internal sealed class RequestUploadSignatureCommandHandler
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
-        _appConfigs = appConfigs;
+        _runtimeSettings = runtimeSettings;
         _contextRegistry = contextRegistry;
     }
 
@@ -77,12 +77,12 @@ internal sealed class RequestUploadSignatureCommandHandler
         RequestUploadSignatureCommand request,
         CancellationToken cancellationToken)
     {
-        var validationError = await _contextRegistry.ValidateContextAsync(request.Context, cancellationToken);
+        var validationError = _contextRegistry.ValidateContext(request.Context);
         
         if (validationError.IsFailure)
             return validationError.Error;
 
-        var contextConfig = await _contextRegistry.GetAsync(request.Context, cancellationToken);
+        var contextConfig = _contextRegistry.Get(request.Context);
         
         var resourceType = UploadContextRegistry.ParseResourceType(contextConfig!.ResourceType);
         
@@ -128,7 +128,7 @@ internal sealed class RequestUploadSignatureCommandHandler
             mediaInfo: mediaInfo,
             storageRef: storage,
             nowUtc: nowUtc,
-            signatureExpirationMinutes: await _appConfigs.Media.GetSignatureExpirationMinutesAsync(cancellationToken));
+            signatureExpirationMinutes: _runtimeSettings.Media.SignatureExpiration);
 
         _dbContext.Insert(mediaUpload);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -149,3 +149,5 @@ internal sealed class RequestUploadSignatureCommandHandler
             AllowedFormats: contextConfig.AllowedFormats);
     }
 }
+
+

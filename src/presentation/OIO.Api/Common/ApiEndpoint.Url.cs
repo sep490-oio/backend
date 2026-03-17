@@ -30,10 +30,6 @@ public static partial class ApiEndpoint
             public const string GetRoles = $"{Base}/roles";
             public const string GetPermissions = $"{Base}/permissions";
             public const string GetUser = $"{Base}/users/{{userId:guid}}";
-            public const string GetAllSettings = $"{Base}/settings";
-            public const string GetSettingByKey = $"{Base}/settings/{{key}}";
-            public const string UpdateSetting = $"{Base}/settings/{{key}}";
-            
             public const string GetAllTerms = $"{Base}/terms";
             public const string CreateTerms = $"{Base}/terms";
             public const string ActivateTerms = $"{Base}/terms/{{id:guid}}/activate";

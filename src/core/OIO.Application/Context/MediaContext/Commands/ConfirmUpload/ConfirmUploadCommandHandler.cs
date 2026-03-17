@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
@@ -57,7 +57,7 @@ internal sealed class ConfirmUploadCommandHandler
     private readonly IDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
-    private readonly IAppConfigs _appConfigs;
+    private readonly IRuntimeSettings _runtimeSettings;
     private readonly IClock _clock;
     private readonly ILogger<ConfirmUploadCommandHandler> _logger;
 
@@ -65,14 +65,14 @@ internal sealed class ConfirmUploadCommandHandler
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
-        IAppConfigs appConfigs,
+        IRuntimeSettings runtimeSettings,
         IClock clock,
         ILogger<ConfirmUploadCommandHandler> logger)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
-        _appConfigs = appConfigs;
+        _runtimeSettings = runtimeSettings;
         _clock = clock;
         _logger = logger;
     }
@@ -114,7 +114,7 @@ internal sealed class ConfirmUploadCommandHandler
         
         var result = mediaUpload.Confirm(
             mediaInfo: mediaInfo,
-            orphanExpirationMinutes: await _appConfigs.Media.GetOrphanExpirationMinutesAsync(cancellationToken),
+            orphanExpirationMinutes: _runtimeSettings.Media.OrphanExpiration,
             nowUtc: _clock.UtcNow);
 
         if (result.IsFailure)
@@ -144,3 +144,4 @@ internal sealed class ConfirmUploadCommandHandler
                string.Equals(expectedLeaf, actualLeaf, StringComparison.Ordinal);
     }
 }
+

@@ -4,7 +4,9 @@ using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Application.Context.WarehouseContext.Mappings;
+using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments;
+using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.WarehouseContext.Queries.GetOutboundShipments;
@@ -26,13 +28,26 @@ internal sealed class GetOutboundShipmentsQueryHandler(IDbContext db)
         GetOutboundShipmentsQuery request,
         CancellationToken cancellationToken)
     {
-        var query = db.Set<OutboundShipment>().AsQueryable();
+        var query = db.Set<OutboundShipment>()
+            .AsNoTracking()
+            .Include(s => s.TrackingEvents)
+            .AsSplitQuery()
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(request.Status))
-            query = query.Where(s => s.Status.Id == request.Status);
+        {
+            var status = OutboundShipmentStatus.FromId(request.Status.Trim().ToLowerInvariant());
+            if (status.HasNoValue)
+                return Array.Empty<OutboundShipmentDto>();
+
+            query = query.Where(s => s.Status == status.Value);
+        }
 
         if (request.OrderId.HasValue)
-            query = query.Where(s => s.OrderId == request.OrderId.Value);
+        {
+            var orderId = OrderId.From(request.OrderId.Value);
+            query = query.Where(s => s.OrderId == orderId);
+        }
 
         if (!string.IsNullOrWhiteSpace(request.Search))
             query = query.Where(s =>
@@ -49,9 +64,8 @@ internal sealed class GetOutboundShipmentsQueryHandler(IDbContext db)
             .OrderByDescending(s => s.CreatedAt)
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
-            .Select(s => s.ToDto())
             .ToListAsync(cancellationToken);
 
-        return shipments;
+        return shipments.Select(s => s.ToDto()).ToList();
     }
 }

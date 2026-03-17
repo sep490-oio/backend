@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
@@ -63,7 +63,7 @@ internal sealed class UpdateAuctionCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IAuctionScheduler _scheduler;
-    private readonly IAppConfigs _appConfigs;
+    private readonly IRuntimeSettings _runtimeSettings;
     private readonly IClock _clock;
 
     public UpdateAuctionCommandHandler(
@@ -71,14 +71,14 @@ internal sealed class UpdateAuctionCommandHandler
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
         IAuctionScheduler scheduler,
-        IAppConfigs appConfigs,
+        IRuntimeSettings runtimeSettings,
         IClock clock)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _scheduler = scheduler;
-        _appConfigs = appConfigs;
+        _runtimeSettings = runtimeSettings;
         _clock = clock;
     }
 
@@ -144,7 +144,7 @@ internal sealed class UpdateAuctionCommandHandler
 
         return auction.ToDto(
             nowUtc,
-            await _appConfigs.Auctions.GetExtensionThresholdMinutesAsync(cancellationToken));
+            _runtimeSettings.Auction.ExtensionThreshold);
     }
 
     private static async Task<Result<AuctionInfo?, Error>> BuildAuctionInfoAsync(
@@ -211,4 +211,6 @@ internal sealed class UpdateAuctionCommandHandler
         return info.IsFailure ? info.Error : info.Value;
     }
 }
+
+
 

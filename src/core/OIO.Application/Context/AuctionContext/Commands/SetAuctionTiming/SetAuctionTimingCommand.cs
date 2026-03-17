@@ -47,20 +47,20 @@ internal sealed class SetAuctionTimingCommandHandler
     private readonly IDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
-    private readonly IAppConfigs _appConfigs;
+    private readonly IRuntimeSettings _runtimeSettings;
     private readonly IClock _clock;
 
     public SetAuctionTimingCommandHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
-        IAppConfigs appConfigs,
+        IRuntimeSettings runtimeSettings,
         IClock clock)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
-        _appConfigs = appConfigs;
+        _runtimeSettings = runtimeSettings;
         _clock = clock;
     }
 
@@ -108,6 +108,8 @@ internal sealed class SetAuctionTimingCommandHandler
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return auction.ToDto(nowUtc,
-            await _appConfigs.Auctions.GetExtensionThresholdMinutesAsync(cancellationToken));
+            _runtimeSettings.Auction.ExtensionThreshold);
     }
 }
+
+

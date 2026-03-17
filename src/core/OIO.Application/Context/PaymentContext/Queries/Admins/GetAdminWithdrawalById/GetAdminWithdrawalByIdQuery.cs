@@ -5,6 +5,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.PaymentContext.DTOs;
 using OIO.Application.Context.PaymentContext.Queries;
 using OIO.Domain.Context.PaymentContext.Aggregates.Withdrawals;
+using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.PaymentContext.Queries.Admins.GetAdminWithdrawalById;
@@ -25,9 +26,11 @@ internal sealed class GetAdminWithdrawalByIdQueryHandler
         GetAdminWithdrawalByIdQuery request,
         CancellationToken cancellationToken)
     {
+        var withdrawalId = WithdrawalRequestId.From(request.WithdrawalId);
+
         var withdrawal = await _dbContext.Set<WithdrawalRequest>()
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id.Value == request.WithdrawalId, cancellationToken);
+            .FirstOrDefaultAsync(x => x.Id == withdrawalId, cancellationToken);
 
         if (withdrawal is null)
             return Error.NotFound("Withdrawal.NotFound", "Withdrawal request not found.");

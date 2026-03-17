@@ -49,11 +49,12 @@ internal sealed class ReleaseEscrowToSellerCommandHandler
     {
         var now = _clock.UtcNow;
         var actorId = _currentUser.UserId;
+        var escrowId = EscrowId.From(request.EscrowId);
 
         // 1. Tìm Escrow
         var escrow = await _dbContext.Set<Escrow>()
             .Include(e => e.Order)
-            .FirstOrDefaultAsync(e => e.Id.Value == request.EscrowId, cancellationToken);
+            .FirstOrDefaultAsync(e => e.Id == escrowId, cancellationToken);
 
         if (escrow is null)
             return Error.NotFound("Escrow.NotFound", $"Escrow {request.EscrowId} not found.");

@@ -8,6 +8,7 @@ using OIO.Application.Context.ModerationContext.Services;
 using OIO.Domain.Context.ModerationContext.Aggregates.Disputes;
 using OIO.Domain.Context.ModerationContext.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.ModerationContext.Queries.GetDisputeMessages;
@@ -45,7 +46,7 @@ internal sealed class GetDisputeMessagesQueryHandler(
 
         var pageItemsDesc = await query
             .OrderByDescending(x => x.CreatedAt)
-            .ThenByDescending(x => x.Id.Value)
+            .ThenByDescending(x => x.Id)
             .ToListAsync(cancellationToken);
 
         if (request.BeforeCreatedAt.HasValue)
@@ -67,13 +68,13 @@ internal sealed class GetDisputeMessagesQueryHandler(
             pageItemsDesc.RemoveAt(pageItemsDesc.Count - 1);
 
         var senderIds = pageItemsDesc
-            .Select(x => x.SenderId.Value)
+            .Select(x => x.SenderId)
             .Distinct()
             .ToList();
 
         var displayNames = await dbContext.Set<User>()
             .AsNoTracking()
-            .Where(x => senderIds.Contains(x.Id.Value))
+            .Where(x => senderIds.Contains(x.Id))
             .ToDictionaryAsync(x => x.Id.Value, x => x.UserName.Value, cancellationToken);
 
         var nextCursorItem = pageItemsDesc.LastOrDefault();

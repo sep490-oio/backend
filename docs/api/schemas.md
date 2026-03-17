@@ -1682,12 +1682,6 @@ File nay gom request/response/DTO duoc tham chieu tu HTTP API va SignalR docs.
 - Collection payload
 - Phan tu: [string](./schemas.md#schema-string)
 
-<a id="schema-ireadonlylist-systemsettingdto"></a>
-## IReadOnlyList<SystemSettingDto>
-
-- Collection payload
-- Phan tu: [SystemSettingDto](./schemas.md#schema-systemsettingdto)
-
 <a id="schema-ireadonlylist-termsacceptancedto"></a>
 ## IReadOnlyList<TermsAcceptanceDto>
 
@@ -2747,21 +2741,6 @@ File nay gom request/response/DTO duoc tham chieu tu HTTP API va SignalR docs.
 | --- | --- | --- |
 | `Amount` | number | required |
 
-<a id="schema-systemsettingdto"></a>
-## SystemSettingDto
-
-- Source: .\src\core\OIO.Application\Context\AdminContext\DTOs\SystemSettingDto.cs
-
-| Field | Type | Ghi chu |
-| --- | --- | --- |
-| `Key` | string | optional |
-| `Value` | object | optional |
-| `ValueType` | string | optional |
-| `Description` | string | optional |
-| `CreatedAt` | datetime | optional |
-| `ModifiedAt` | datetime | optional |
-| `ModifiedBy` | string | optional |
-
 <a id="schema-togglepermissionfromroleendpoint-request"></a>
 ## TogglePermissionFromRoleEndpoint.Request
 
@@ -2843,7 +2822,7 @@ File nay gom request/response/DTO duoc tham chieu tu HTTP API va SignalR docs.
 | `FirstName` | string | optional |
 | `LastName` | string | optional |
 | `DisplayName` | string | optional |
-| `AvatarUrl` | string | optional |
+| `AvatarMediaUploadId` | guid | optional |
 | `DateOfBirth` | date | optional |
 | `Gender` | string | optional |
 
@@ -2887,16 +2866,6 @@ File nay gom request/response/DTO duoc tham chieu tu HTTP API va SignalR docs.
 | `Aisle` | string | optional |
 | `Shelf` | string | optional |
 | `Bin` | string | optional |
-
-<a id="schema-updatesystemsettingendpoint-request"></a>
-## UpdateSystemSettingEndpoint.Request
-
-- Source: .\src\presentation\OIO.Api\Endpoints\UserContext\Admins\UpdateSystemSettingEndpoint.cs
-
-| Field | Type | Ghi chu |
-| --- | --- | --- |
-| `Key` | string | optional |
-| `Value` | string | optional |
 
 <a id="schema-updateverificationendpoint-request"></a>
 ## UpdateVerificationEndpoint.Request

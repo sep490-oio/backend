@@ -187,7 +187,7 @@ internal sealed class SendDisputeMessageCommandHandler(
             return MediaErrors.NotConfirm;
 
         if (uploads.Any(x => !string.Equals(x.Context, DisputeAttachmentContext, StringComparison.OrdinalIgnoreCase)))
-            return MediaErrors.WrongContext("dispute attachments", await contextRegistry.GetAllContextAsync(cancellationToken));
+            return MediaErrors.WrongContext("dispute attachments", contextRegistry.GetAllContext());
 
         if (uploads.Any(x => x.IsLinked))
             return MediaErrors.AlreadyLinked;
@@ -209,3 +209,4 @@ internal sealed class SendDisputeMessageCommandHandler(
             attachment.Info.DurationSeconds);
     }
 }
+

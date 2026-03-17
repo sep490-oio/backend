@@ -16,12 +16,18 @@ public class PagedList<T>
 
         Items = items;
     }
+    public PagedList(IReadOnlyCollection<T> items, Metadata metadata)
+    {
+        Metadata = metadata;
+        Items = items;
+    }
 
     public static PagedList<T> ToPagedList(IReadOnlyCollection<T> source, int count, IPagedParameter pagedParameter)
     {
 
         return new PagedList<T>(source, count, pagedParameter.PageNumber, pagedParameter.PageSize);
     }
+    
 }
 
 public static class PagedListExtensions 
@@ -32,5 +38,12 @@ public static class PagedListExtensions
         {
             return new PagedList<T>(source, count, pagedParameter.PageNumber, pagedParameter.PageSize);
         }
+        
+        public PagedList<T> ToPagedList(Metadata metadata)
+        {
+            return new PagedList<T>(source, metadata);
+        }
     }
+    
+    
 }

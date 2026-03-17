@@ -74,9 +74,6 @@ public static partial class ApiEndpoint
             public const string RevokePermission = nameof(RevokePermission);
             public const string TogglePermission = nameof(TogglePermission);
             public const string UnlockUser = nameof(UnlockUser);
-            public const string GetAllSettings = nameof(GetAllSettings);
-            public const string GetSettingByKey = nameof(GetSettingByKey);
-            public const string UpdateSetting = nameof(UpdateSetting);
             public const string CreateTermsDocument = nameof(CreateTermsDocument);
             public const string ActivateTermsDocument = nameof(ActivateTermsDocument);
             public const string GetAllTermsDocuments = nameof(GetAllTermsDocuments);

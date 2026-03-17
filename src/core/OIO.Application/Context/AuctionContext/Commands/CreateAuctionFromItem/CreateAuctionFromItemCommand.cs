@@ -50,7 +50,7 @@ internal sealed class CreateAuctionFromItemCommandHandler(
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
     IClock clock,
-    IAppConfigs appConfigs,
+    IRuntimeSettings runtimeSettings,
     AuctionDraftCreationService auctionDraftCreationService)
     : ICommandHandler<CreateAuctionFromItemCommand, AuctionDto>
 {
@@ -91,6 +91,8 @@ internal sealed class CreateAuctionFromItemCommandHandler(
 
         return savedAuction.ToDto(
             clock.UtcNow,
-            await appConfigs.Auctions.GetExtensionThresholdMinutesAsync(cancellationToken));
+            runtimeSettings.Auction.ExtensionThreshold);
     }
 }
+
+

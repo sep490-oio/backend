@@ -48,10 +48,13 @@ internal sealed class GetCategoryChildrenQueryHandler
         
         var totalCount = await query.CountAsync(cancellationToken);
         
-        var children = await query
-            .Select(c => c.ToDto())
+        var pagedChildren = await query
             .ToPagedListAsync(totalCount, parameters, cancellationToken);
 
-        return children;
+        var children = pagedChildren.Items
+            .Select(c => c.ToDto())
+            .ToList();
+
+        return children.ToPagedList(totalCount, parameters);
     }
 }

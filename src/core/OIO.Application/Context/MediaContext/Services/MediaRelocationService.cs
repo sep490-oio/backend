@@ -10,8 +10,10 @@ using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
 using OIO.Domain.Context.ModerationContext.Aggregates.Disputes;
 using OIO.Domain.Context.ModerationContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.Entities;
+using OIO.Domain.Context.Shared.Errors;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
+using OIO.Domain.Context.UserContext.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
@@ -64,7 +66,7 @@ internal sealed class MediaRelocationService : IMediaRelocationService
 
         try
         {
-            var contextConfig = await _contextRegistry.GetAsync(upload.Context, cancellationToken);
+            var contextConfig = _contextRegistry.Get(upload.Context);
             if (contextConfig is null)
             {
                 ScheduleRetry(upload, $"Upload context '{upload.Context}' is no longer configured.", nowUtc);
@@ -193,6 +195,23 @@ internal sealed class MediaRelocationService : IMediaRelocationService
             return verification.RefreshDocumentSnapshot(oldPublicId, storageRef, info, nowUtc);
         }
 
+        if (_contextRegistry.IsUserAvatarContext(upload.Context))
+        {
+            var user = await FindUserAsync(upload.EntityId, cancellationToken);
+            if (user is null)
+                return Error.NotFound("Media.UserNotFound", $"User '{upload.EntityId}' was not found during media relocation.");
+
+            if (string.IsNullOrWhiteSpace(info.SecureUrl))
+                return MediaErrors.NotContainUrl;
+
+            var avatarUrlResult = AvatarUrl.Create(info.SecureUrl);
+            if (avatarUrlResult.IsFailure)
+                return avatarUrlResult.Error;
+
+            user.RefreshAvatarSnapshot(oldPublicId, avatarUrlResult.Value, nowUtc);
+            return UnitResult.Success<Error>();
+        }
+
         if (_contextRegistry.IsTermContext(upload.Context))
         {
             var document = await FindTermsDocumentAsync(upload.EntityId, cancellationToken);
@@ -293,6 +312,19 @@ internal sealed class MediaRelocationService : IMediaRelocationService
             cancellationToken);
     }
 
+    private async Task<User?> FindUserAsync(string entityId, CancellationToken cancellationToken)
+    {
+        var userId = UserId.Parse(entityId);
+        var local = _dbContext.Set<User>().Local.FirstOrDefault(x => x.Id == userId);
+        if (local is not null && local.Profile is not null)
+            return local;
+
+        return await _dbContext.GetByIdAsync<User, UserId>(
+            userId,
+            query => query.Include(x => x.Profile),
+            cancellationToken);
+    }
+
     private async Task<TermsDocument?> FindTermsDocumentAsync(string entityId, CancellationToken cancellationToken)
     {
         var documentId = TermsDocumentId.Parse(entityId);
@@ -374,3 +406,4 @@ internal sealed class MediaRelocationService : IMediaRelocationService
         return currentSecureUrl.Replace(oldPublicId, newPublicId, StringComparison.Ordinal);
     }
 }
+

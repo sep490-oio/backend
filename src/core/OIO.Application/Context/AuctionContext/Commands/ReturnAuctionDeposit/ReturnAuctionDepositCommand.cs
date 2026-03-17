@@ -35,9 +35,10 @@ internal sealed class ReturnAuctionDepositCommandHandler : ICommandHandler<Retur
     public async Task<UnitResult<Error>> Handle(ReturnAuctionDepositCommand request, CancellationToken cancellationToken)
     {
         var now = _clock.UtcNow;
+        var auctionDepositId = AuctionDepositId.From(request.AuctionDepositId);
 
         var deposit = await _dbContext.Set<AuctionDeposit>()
-            .FirstOrDefaultAsync(d => d.Id.Value == request.AuctionDepositId, cancellationToken);
+            .FirstOrDefaultAsync(d => d.Id == auctionDepositId, cancellationToken);
 
         if (deposit is null)
             return Error.NotFound("AuctionDeposit.NotFound", "Deposit not found.");

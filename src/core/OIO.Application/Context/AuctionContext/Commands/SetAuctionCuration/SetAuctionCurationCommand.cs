@@ -40,18 +40,18 @@ internal sealed class SetAuctionCurationCommandHandler
 {
     private readonly IDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IAppConfigs _appConfigs;
+    private readonly IRuntimeSettings _runtimeSettings;
     private readonly IClock _clock;
 
     public SetAuctionCurationCommandHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
-        IAppConfigs appConfigs,
+        IRuntimeSettings runtimeSettings,
         IClock clock)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
-        _appConfigs = appConfigs;
+        _runtimeSettings = runtimeSettings;
         _clock = clock;
     }
 
@@ -97,6 +97,8 @@ internal sealed class SetAuctionCurationCommandHandler
 
         return auction.ToDto(
             nowUtc,
-            await _appConfigs.Auctions.GetExtensionThresholdMinutesAsync(cancellationToken));
+            _runtimeSettings.Auction.ExtensionThreshold);
     }
 }
+
+

@@ -2,8 +2,8 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
-using OIO.Application.Abstractions.Settings;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Events;
 using OIO.Domain.Context.AuctionContext.Enums;
@@ -45,7 +45,7 @@ public sealed record AuctionCollusionFinding(
 internal sealed class AuctionCollusionDetectionService(
     IDbContext dbContext,
     IUnitOfWork unitOfWork,
-    ISystemSettingsService settings,
+    IRuntimeSettings runtimeSettings,
     IClock clock,
     ILogger<AuctionCollusionDetectionService> logger)
     : IAuctionCollusionDetectionService
@@ -143,7 +143,7 @@ internal sealed class AuctionCollusionDetectionService(
         if (auction is null)
             return;
 
-        var config = await LoadSettingsAsync(cancellationToken);
+        var config = LoadSettings();
         var findings = await AnalyzeBidSignalsAsync(
             auction,
             bidderId,
@@ -166,7 +166,7 @@ internal sealed class AuctionCollusionDetectionService(
         if (auction is null)
             return;
 
-        var config = await LoadSettingsAsync(cancellationToken);
+        var config = LoadSettings();
         var findings = await AnalyzeReservationSignalsAsync(
             auction,
             buyerId,
@@ -715,53 +715,23 @@ internal sealed class AuctionCollusionDetectionService(
             .ToList();
     }
 
-    private async Task<AuctionCollusionSettings> LoadSettingsAsync(CancellationToken cancellationToken)
+    private AuctionCollusionSettings LoadSettings()
     {
-        var sessionDeviceWindowDays = await settings.GetAsync(
-            SettingKeys.MonitoringAuctionCollusionSessionDeviceWindowDays,
-            90,
-            cancellationToken);
+        var monitoring = runtimeSettings.Monitoring;
 
-        var sessionIpWindowDays = await settings.GetAsync(
-            SettingKeys.MonitoringAuctionCollusionSessionIpWindowDays,
-            30,
-            cancellationToken);
-
-        var pingPongWindowMinutes = await settings.GetAsync(
-            SettingKeys.MonitoringAuctionCollusionPingPongWindowMinutes,
-            10,
-            cancellationToken);
-
-        var pingPongMinimumBids = await settings.GetAsync(
-            SettingKeys.MonitoringAuctionCollusionPingPongMinimumBids,
-            6,
-            cancellationToken);
-
-        var pingPongDominanceThresholdPercent = await settings.GetAsync(
-            SettingKeys.MonitoringAuctionCollusionPingPongDominanceThresholdPercent,
-            80,
-            cancellationToken);
-
-        var repeatedPairWindowDays = await settings.GetAsync(
-            SettingKeys.MonitoringAuctionCollusionRepeatedPairWindowDays,
-            30,
-            cancellationToken);
-
-        var repeatedPairThreshold = await settings.GetAsync(
-            SettingKeys.MonitoringAuctionCollusionRepeatedPairThreshold,
-            3,
-            cancellationToken);
-
-        var dominanceThreshold = Math.Clamp(pingPongDominanceThresholdPercent / 100m, 0.1m, 1m);
+        var dominanceThreshold = Math.Clamp(
+            monitoring.AuctionCollusionPingPongDominanceThresholdPercent / 100m,
+            0.1m,
+            1m);
 
         return new AuctionCollusionSettings(
-            SessionDeviceWindow: TimeSpan.FromDays(Math.Max(1, sessionDeviceWindowDays)),
-            SessionIpWindow: TimeSpan.FromDays(Math.Max(1, sessionIpWindowDays)),
-            PingPongWindow: TimeSpan.FromMinutes(Math.Max(1, pingPongWindowMinutes)),
-            PingPongMinimumBids: Math.Max(2, pingPongMinimumBids),
+            SessionDeviceWindow: TimeSpan.FromDays(Math.Max(1, monitoring.AuctionCollusionSessionDeviceWindowDays)),
+            SessionIpWindow: TimeSpan.FromDays(Math.Max(1, monitoring.AuctionCollusionSessionIpWindowDays)),
+            PingPongWindow: TimeSpan.FromMinutes(Math.Max(1, monitoring.AuctionCollusionPingPongWindowMinutes)),
+            PingPongMinimumBids: Math.Max(2, monitoring.AuctionCollusionPingPongMinimumBids),
             PingPongDominanceThreshold: dominanceThreshold,
-            RepeatedPairWindow: TimeSpan.FromDays(Math.Max(1, repeatedPairWindowDays)),
-            RepeatedPairThreshold: Math.Max(2, repeatedPairThreshold));
+            RepeatedPairWindow: TimeSpan.FromDays(Math.Max(1, monitoring.AuctionCollusionRepeatedPairWindowDays)),
+            RepeatedPairThreshold: Math.Max(2, monitoring.AuctionCollusionRepeatedPairThreshold));
     }
 
     private static bool ShouldScanAuction(Auction auction, DateTime nowUtc)

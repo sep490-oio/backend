@@ -95,14 +95,6 @@
     purpose: "Lay Get Seller Profiles qua GET /api/admin/seller-profiles."
     audience: "admin"
     notes: ""
-  "GET api/admin/settings":
-    purpose: "Lay Get All Settings qua GET /api/admin/settings."
-    audience: "admin"
-    notes: ""
-  "GET api/admin/settings/{key}":
-    purpose: "Lay Get Setting By Key qua GET /api/admin/settings/{key}."
-    audience: "admin"
-    notes: ""
   "GET api/admin/terms":
     purpose: "Lay Get All Terms Documents qua GET /api/admin/terms."
     audience: "admin"
@@ -725,10 +717,6 @@
     notes: ""
   "PUT api/admin/roles/{role}/permissions/{permission}":
     purpose: "Cap nhat Toggle Permission From Role qua PUT /api/admin/roles/{role}/permissions/{permission}."
-    audience: "admin"
-    notes: ""
-  "PUT api/admin/settings/{key}":
-    purpose: "Cap nhat Update System Setting qua PUT /api/admin/settings/{key}."
     audience: "admin"
     notes: ""
   "PUT api/admin/terms/{id:guid}/activate":

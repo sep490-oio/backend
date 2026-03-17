@@ -457,6 +457,20 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         
         return unitResult;
     }
+
+    public void RefreshAvatarSnapshot(
+        string oldPublicId,
+        AvatarUrl avatarUrl,
+        DateTime nowUtc)
+    {
+        if (Profile is null)
+            return;
+
+        if (!Profile.RefreshAvatarSnapshot(oldPublicId, avatarUrl, nowUtc))
+            return;
+
+        ModifiedAt = nowUtc;
+    }
     
     public Result<UserAddress, Error> AddAddress(
         AddressType type,

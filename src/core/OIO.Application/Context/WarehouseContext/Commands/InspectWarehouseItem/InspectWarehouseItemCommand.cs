@@ -121,7 +121,7 @@ internal sealed class InspectWarehouseItemCommandHandler(
             return MediaErrors.NotConfirm;
 
         if (uploads.Any(x => !contextRegistry.IsWarehouseInspectionContext(x.Context)))
-            return MediaErrors.WrongContext("warehouse inspection", await contextRegistry.GetAllContextAsync(cancellationToken));
+            return MediaErrors.WrongContext("warehouse inspection", contextRegistry.GetAllContext());
 
         if (uploads.Any(x => x.IsLinked))
             return MediaErrors.AlreadyLinked;
@@ -221,3 +221,4 @@ internal sealed class InspectWarehouseItemCommandHandler(
         return inspection.ToDto();
     }
 }
+

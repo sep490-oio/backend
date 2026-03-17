@@ -2,7 +2,7 @@ using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
-using OIO.Application.Abstractions.Settings;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
 using OIO.Application.Context.UserContext.Services;
@@ -27,7 +27,7 @@ internal sealed class OfferRunnerUpCommandHandler(
     IDbContext dbContext,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    ISystemSettingsService settings)
+    IRuntimeSettings runtimeSettings)
     : ICommandHandler<OfferRunnerUpCommand, WinnerOfferDto>
 {
     public async Task<Result<WinnerOfferDto, Error>> Handle(
@@ -47,10 +47,7 @@ internal sealed class OfferRunnerUpCommandHandler(
         if (auction.Item.SellerId != currentUser.UserId)
             return AuctionErrors.Auction.OnlyOwnerCanCancel;
 
-        var offerHours = await settings.GetAsync(
-            SettingKeys.AuctionRunnerUpOfferExpirationHours,
-            24,
-            cancellationToken);
+        var offerHours = runtimeSettings.Auction.RunnerUpOfferExpirationHours;
 
         var result = auction.OfferRunnerUp(DateTime.UtcNow, TimeSpan.FromHours(offerHours));
         if (result.IsFailure)

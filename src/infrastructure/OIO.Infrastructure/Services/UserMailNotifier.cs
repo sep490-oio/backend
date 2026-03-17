@@ -1,6 +1,5 @@
-ï»¿using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using System.Net;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
@@ -8,26 +7,25 @@ using OIO.Application.Abstractions.Mail;
 using OIO.Infrastructure.Mail.RazorEmails.Rendering;
 using OIO.Infrastructure.Mail.RazorEmails.Rendering.ViewModels;
 using OIO.Infrastructure.Mail.RazorEmails.Rendering.Views;
-using OIO.Infrastructure.Settings.Apps;
 
 namespace OIO.Infrastructure.Services;
 
 public class UserMailNotifier : IUserMailNotifier
 {
-    private readonly AppInfoOptions _options;
+    private readonly IAppInfo _appInfo;
     private readonly IMailSender _mailSender;
     private readonly RazorViewRenderer _renderer;
     private readonly IClock _clock;
     private readonly ILogger<UserMailNotifier> _logger;
     
     public UserMailNotifier(
-        IOptionsMonitor<AppInfoOptions> options,
+        IAppInfo appInfo,
         IMailSender mailSender,
         RazorViewRenderer renderer,
         IClock clock,
         ILogger<UserMailNotifier> logger)
     {
-        _options = options.CurrentValue;
+        _appInfo = appInfo;
         _mailSender = mailSender;
         _renderer = renderer;
         _clock = clock;
@@ -42,7 +40,7 @@ public class UserMailNotifier : IUserMailNotifier
         DateTime tokenExpiry,
         CancellationToken cancellationToken = default)
     {
-        var verifyLink = BuildFrontendUrl(_options.EmailVerifyPath, new()
+        var verifyLink = BuildFrontendUrl(_appInfo.EmailVerifyPath, new()
         {
             ["token"] = token,
             ["userId"] = userId
@@ -56,7 +54,7 @@ public class UserMailNotifier : IUserMailNotifier
                 ExpiredAt = tokenExpiry.ToString("dddd, dd MMMM yyyy hh:mm tt"),
             });
         
-        var subject = $"Welcome to {_options.AppName}! Please verify your email";
+        var subject = $"Welcome to {_appInfo.AppName}! Please verify your email";
 
         await SendAsync(
             to: toEmail,
@@ -73,7 +71,7 @@ public class UserMailNotifier : IUserMailNotifier
         DateTime tokenExpiry,
         CancellationToken cancellationToken = default)
     {
-        var resetLink = BuildFrontendUrl(_options.ResetPasswordPath, new()
+        var resetLink = BuildFrontendUrl(_appInfo.ResetPasswordPath, new()
         {
             ["email"] = toEmail,
             ["token"] = token
@@ -87,7 +85,7 @@ public class UserMailNotifier : IUserMailNotifier
                 ExpiredAt = tokenExpiry.ToString("dddd, dd MMMM yyyy hh:mm tt")
             });
 
-        var subject = $"{_options.AppName} â€” Reset your password";
+        var subject = $"{_appInfo.AppName} — Reset your password";
 
         await SendAsync(
             to: toEmail,
@@ -104,7 +102,7 @@ public class UserMailNotifier : IUserMailNotifier
         DateTime tokenExpiry,
         CancellationToken cancellationToken = default)
     {
-        var verifyLink = BuildFrontendUrl(_options.EmailVerifyPath, new()
+        var verifyLink = BuildFrontendUrl(_appInfo.EmailVerifyPath, new()
         {
             ["token"] = token,
             ["userId"] = userId
@@ -118,7 +116,7 @@ public class UserMailNotifier : IUserMailNotifier
                 ExpiredAt = tokenExpiry.ToString("dddd, dd MMMM yyyy hh:mm tt")
             });
 
-        var subject = $"{_options.AppName} â€” Verify your email";
+        var subject = $"{_appInfo.AppName} — Verify your email";
         
         await SendAsync(
             to: toEmail,
@@ -139,7 +137,7 @@ public class UserMailNotifier : IUserMailNotifier
                 ChangedAt = _clock.UtcNow
             });
 
-        var subject = $"{_options.AppName} â€” Your password was changed";
+        var subject = $"{_appInfo.AppName} — Your password was changed";
         
         await SendAsync(
             to: toEmail,
@@ -156,10 +154,10 @@ public class UserMailNotifier : IUserMailNotifier
         var safeUserName = WebUtility.HtmlEncode(userName);
         var html =
             $"<p>Hello {safeUserName},</p>" +
-            $"<p>Your email address has been verified successfully. You can now use all features that require a confirmed email on {_options.AppName}.</p>" +
+            $"<p>Your email address has been verified successfully. You can now use all features that require a confirmed email on {_appInfo.AppName}.</p>" +
             "<p>If you did not expect this change, please contact support immediately.</p>";
 
-        var subject = $"{_options.AppName} - Email verified successfully";
+        var subject = $"{_appInfo.AppName} - Email verified successfully";
 
         await SendAsync(
             to: toEmail,
@@ -182,7 +180,7 @@ public class UserMailNotifier : IUserMailNotifier
             $"<p>Lockout end: {lockoutEnd:yyyy-MM-dd HH:mm:ss} UTC.</p>" +
             "<p>If this was not you, please reset your password after the lockout period ends.</p>";
 
-        var subject = $"{_options.AppName} - Security alert: account temporarily locked";
+        var subject = $"{_appInfo.AppName} - Security alert: account temporarily locked";
 
         await SendAsync(
             to: toEmail,
@@ -207,7 +205,7 @@ public class UserMailNotifier : IUserMailNotifier
             $"<p>Reason: {safeReason}</p>" +
             "<p>If this was not expected, please change your password and review your active sessions.</p>";
 
-        var subject = $"{_options.AppName} - Security alert: session revoked";
+        var subject = $"{_appInfo.AppName} - Security alert: session revoked";
 
         await SendAsync(
             to: toEmail,
@@ -231,7 +229,7 @@ public class UserMailNotifier : IUserMailNotifier
             $"<p>Your account status has changed from <strong>{safeOldStatus}</strong> to <strong>{safeNewStatus}</strong>.</p>" +
             "<p>If you believe this change is incorrect, please contact support.</p>";
 
-        var subject = $"{_options.AppName} - Your account status has changed";
+        var subject = $"{_appInfo.AppName} - Your account status has changed";
 
         await SendAsync(
             to: toEmail,
@@ -261,7 +259,7 @@ public class UserMailNotifier : IUserMailNotifier
                 Currency = currency
             });
         
-        var subject = $"{_options.AppName} - You've been outbid! â€” {auctionTitle}";
+        var subject = $"{_appInfo.AppName} - You've been outbid! — {auctionTitle}";
         
         await SendAsync(
             to: toEmail,
@@ -298,7 +296,7 @@ public class UserMailNotifier : IUserMailNotifier
                 PaymentDeadlineHours = 48 //TODO: make it configurable
             });
         
-        var subject = $"{_options.AppName} - Congratulations! You won the auction â€” {auctionTitle}";
+        var subject = $"{_appInfo.AppName} - Congratulations! You won the auction — {auctionTitle}";
         
         await SendAsync(
             to: toEmail,
@@ -329,7 +327,7 @@ public class UserMailNotifier : IUserMailNotifier
                 WinnerName = winnerName
             });
         
-        var subject = $"{_options.AppName} - Your item was sold! â€” {auctionTitle}";
+        var subject = $"{_appInfo.AppName} - Your item was sold! — {auctionTitle}";
         
         await SendAsync(
             to: toEmail,
@@ -367,7 +365,7 @@ public class UserMailNotifier : IUserMailNotifier
                 RelistUrl = relistUrl
             });
         
-        var subject = $"{_options.AppName} - Your auction ended without a winner â€” {auctionTitle}";
+        var subject = $"{_appInfo.AppName} - Your auction ended without a winner — {auctionTitle}";
         
         await SendAsync(
             to: toEmail,
@@ -397,7 +395,7 @@ public class UserMailNotifier : IUserMailNotifier
                 HasWinner = hasWinner
             });
         
-        var subject = $"{_options.AppName} - An auction you watched has ended â€” {auctionTitle}";
+        var subject = $"{_appInfo.AppName} - An auction you watched has ended — {auctionTitle}";
         
         await SendAsync(
             to: toEmail,
@@ -423,7 +421,7 @@ public class UserMailNotifier : IUserMailNotifier
                 Reason = reason
             });
         
-        var subject = $"{_options.AppName} - An auction you participated in has been cancelled â€” {auctionTitle}";
+        var subject = $"{_appInfo.AppName} - An auction you participated in has been cancelled — {auctionTitle}";
         
         await SendAsync(
             to: toEmail,
@@ -456,7 +454,7 @@ public class UserMailNotifier : IUserMailNotifier
         string relativePath,
         Dictionary<string, string>? queryParams = null)
     {
-        var baseUrl = _options.FeUrl.TrimEnd('/');
+        var baseUrl = _appInfo.FeUrl.TrimEnd('/');
         var path = relativePath.StartsWith('/') ? relativePath : $"/{relativePath}";
         var url = $"{baseUrl}{path}";
 
@@ -471,3 +469,4 @@ public class UserMailNotifier : IUserMailNotifier
         return url;
     }
 }
+

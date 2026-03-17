@@ -7,6 +7,7 @@ using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.SeedWork.Errors;
+using ItemId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId;
 
 namespace OIO.Application.Context.WarehouseContext.Queries.GetInspectionQueue;
 
@@ -33,7 +34,7 @@ internal sealed class GetInspectionQueueQueryHandler(Application.Abstractions.Da
             return Array.Empty<InspectionQueueItemDto>();
 
         var shipmentIds = shipments.Select(x => x.Id).ToList();
-        var itemIds = shipments.Select(x => x.ItemId).Distinct().ToList();
+        var itemIds = shipments.Select(x => ItemId.From(x.ItemId)).Distinct().ToList();
 
         var inspections = await db.Set<WarehouseInspection>()
             .AsNoTracking()
@@ -42,15 +43,16 @@ internal sealed class GetInspectionQueueQueryHandler(Application.Abstractions.Da
 
         var items = await db.Set<Item>()
             .AsNoTracking()
-            .Where(x => itemIds.Contains(x.Id.Value))
+            .Where(x => itemIds.Contains(x.Id))
             .ToListAsync(cancellationToken);
+
+        var itemsById = items.ToDictionary(x => x.Id.Value);
 
         var queue = shipments
             .Select(shipment =>
             {
                 var inspection = inspections.FirstOrDefault(x => x.InboundShipmentId == shipment.Id);
-                var item = items.FirstOrDefault(x => x.Id.Value == shipment.ItemId);
-                if (item is null)
+                if (!itemsById.TryGetValue(shipment.ItemId, out var item))
                     return null;
 
                 var queueStatus = inspection is null

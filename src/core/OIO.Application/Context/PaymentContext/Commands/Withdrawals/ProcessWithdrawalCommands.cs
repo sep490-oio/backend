@@ -7,6 +7,7 @@ using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
 using OIO.Domain.Context.PaymentContext.Aggregates.Withdrawals;
 using OIO.Domain.Context.PaymentContext.Enums;
+using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
@@ -42,9 +43,10 @@ internal sealed class ApproveWithdrawalCommandHandler
     {
         var now = _clock.UtcNow;
         var adminId = _currentUser.UserId;
+        var withdrawalRequestId = WithdrawalRequestId.From(request.WithdrawalRequestId);
 
         var withdrawal = await _dbContext.Set<WithdrawalRequest>()
-            .FirstOrDefaultAsync(w => w.Id.Value == request.WithdrawalRequestId, cancellationToken);
+            .FirstOrDefaultAsync(w => w.Id == withdrawalRequestId, cancellationToken);
 
         if (withdrawal is null)
             return Error.NotFound("Withdrawal.NotFound", $"Withdrawal request {request.WithdrawalRequestId} not found.");
@@ -91,9 +93,10 @@ internal sealed class RejectWithdrawalCommandHandler
     {
         var now = _clock.UtcNow;
         var adminId = _currentUser.UserId;
+        var withdrawalRequestId = WithdrawalRequestId.From(request.WithdrawalRequestId);
 
         var withdrawal = await _dbContext.Set<WithdrawalRequest>()
-            .FirstOrDefaultAsync(w => w.Id.Value == request.WithdrawalRequestId, cancellationToken);
+            .FirstOrDefaultAsync(w => w.Id == withdrawalRequestId, cancellationToken);
 
         if (withdrawal is null)
             return Error.NotFound("Withdrawal.NotFound", $"Withdrawal request {request.WithdrawalRequestId} not found.");

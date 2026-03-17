@@ -1,8 +1,8 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
-using OIO.Application.Abstractions.Settings;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.Events;
@@ -35,7 +35,7 @@ internal sealed class OrderMarkedDeliveredEventHandler(
     IDbContext dbContext,
     IUnitOfWork unitOfWork,
     IClock clock,
-    ISystemSettingsService settings)
+    IRuntimeSettings runtimeSettings)
     : INotificationHandler<OutboundShipmentDeliveredEvent>
 {
     public async Task Handle(OutboundShipmentDeliveredEvent notification, CancellationToken cancellationToken)
@@ -46,10 +46,7 @@ internal sealed class OrderMarkedDeliveredEventHandler(
         if (order is null)
             return;
 
-        var decisionWindowDays = await settings.GetAsync(
-            SettingKeys.OrderReturnDecisionWindowDays,
-            7,
-            cancellationToken);
+        var decisionWindowDays = runtimeSettings.Order.ReturnDecisionWindowDays;
 
         var result = order.MarkAsDelivered(
             notification.DeliveredAt,

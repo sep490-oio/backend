@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
@@ -20,16 +20,16 @@ internal sealed class GetAuctionsQueryHandler
 {
     private readonly IDbContext _dbContext;
     private readonly IClock _clock;
-    private readonly IAppConfigs _appConfigs;
+    private readonly IRuntimeSettings _runtimeSettings;
 
     public GetAuctionsQueryHandler(
         IDbContext dbContext,
         IClock clock,
-        IAppConfigs appConfigs)
+        IRuntimeSettings runtimeSettings)
     {
         _dbContext = dbContext;
         _clock = clock;
-        _appConfigs = appConfigs;
+        _runtimeSettings = runtimeSettings;
     }
 
     public async Task<Result<PagedList<AuctionListItemDto>, Error>> Handle(
@@ -101,38 +101,20 @@ internal sealed class GetAuctionsQueryHandler
         // ===== COUNT =====
         var totalCount = await query.CountAsync(cancellationToken);
         
-        var extensionThresholdMinutes = await _appConfigs.Auctions.GetExtensionThresholdMinutesAsync(cancellationToken);
-        
-        
-        var auctions = await query
-            .Select(x => new AuctionListItemDto(
-                x.Id.Value,
-                x.Item.Title.Value,
-                x.Item.Media
-                    .Where(img => img.IsPrimary)
-                    .Select(img => img.Info.SecureUrl)
-                    .FirstOrDefault(),
-                x.Pricing.CurrentPrice.ToDto(),
-                x.Pricing.StartingPrice.ToDto(),
-                x.Pricing.BuyNowAmount != null ? x.Pricing.BuyNowPrice!.ToDto() : null,
-                x.BuyNowReservations.Any(r => r.Status.Id == "pending_payment" && r.ExpiresAt > nowUtc),
-                x.BuyNowReservations
-                    .Where(r => r.Status.Id == "pending_payment" && r.ExpiresAt > nowUtc)
-                    .OrderByDescending(r => r.ExpiresAt)
-                    .Select(r => (DateTime?)r.ExpiresAt)
-                    .FirstOrDefault(),
-                x.Pricing.Currency.Id,
-                x.Status.Id,
-                x.BidCount,
-                x.WatchCount,
-                x.Info.StartTime,
-                x.Info.EndTime,
-                x.Info.RemainingTime(nowUtc),
-                x.IsEndingSoon(nowUtc, extensionThresholdMinutes),
-                x.IsFeatured,
-                x.Item.SellerId.Value))
-            .ToPagedListAsync(totalCount, parameters,cancellationToken);
+        var extensionThresholdMinutes = _runtimeSettings.Auction.ExtensionThreshold;
 
-        return auctions;
+        var pagedAuctions = await query
+            .Include(x => x.Item)
+                .ThenInclude(x => x.Media)
+            .Include(x => x.BuyNowReservations)
+            .AsSplitQuery()
+            .ToPagedListAsync(totalCount, parameters, cancellationToken);
+
+        var auctions = pagedAuctions.Items
+            .Select(x => x.ToListItemDto(nowUtc, extensionThresholdMinutes))
+            .ToList();
+
+        return auctions.ToPagedList(pagedAuctions.Metadata);
     }
 }
+

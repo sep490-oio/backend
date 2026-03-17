@@ -35,7 +35,7 @@ internal sealed class RelistAuctionCommandHandler(
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
     IClock clock,
-    IAppConfigs appConfigs)
+    IRuntimeSettings runtimeSettings)
     : ICommandHandler<RelistAuctionCommand, AuctionDto>
 {
     public async Task<Result<AuctionDto, Error>> Handle(
@@ -97,6 +97,7 @@ internal sealed class RelistAuctionCommandHandler(
 
         return relistedAuction.ToDto(
             clock.UtcNow,
-            await appConfigs.Auctions.GetExtensionThresholdMinutesAsync(cancellationToken));
+            runtimeSettings.Auction.ExtensionThreshold);
     }
 }
+

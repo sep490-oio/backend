@@ -5,6 +5,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.PaymentContext.DTOs;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.PaymentContext.Queries.GetMyWalletTransactionById;
@@ -27,12 +28,14 @@ internal sealed class GetMyWalletTransactionByIdQueryHandler
         GetMyWalletTransactionByIdQuery request,
         CancellationToken cancellationToken)
     {
+        var transactionId = WalletTransactionId.From(request.TransactionId);
+
         var transaction = await _dbContext.Set<WalletTransaction>()
             .AsNoTracking()
             .Include(x => x.Wallet)
             .Include(x => x.Transaction)
             .FirstOrDefaultAsync(
-                x => x.Id.Value == request.TransactionId && x.Wallet.UserId == _currentUser.UserId,
+                x => x.Id == transactionId && x.Wallet.UserId == _currentUser.UserId,
                 cancellationToken);
 
         if (transaction is null)

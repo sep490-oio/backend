@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
@@ -109,11 +109,11 @@ internal sealed class AddMediaToItemCommandHandler
         if (!_contextRegistry.IsItemContext(upload.Context))
         {
             _logger.LogWarning("Media upload {MediaUploadId} has invalid context {Context} for item {ItemId}.", mediaUploadId, upload.Context, itemId);
-            return MediaErrors.WrongContext(upload.Context, await _contextRegistry.GetAllContextAsync());
+            return MediaErrors.WrongContext(upload.Context, _contextRegistry.GetAllContext());
         }
         
         // Get max limit for this resource type from config
-        var maxForType = await _contextRegistry.GetMaxForEntityMediaAsync("item", upload.ResourceType);
+        var maxForType = _contextRegistry.GetMaxForEntityMedia("item", upload.ResourceType);
 
 
         var (_, isFailure, image, error) = item.AddMedia(
@@ -136,3 +136,4 @@ internal sealed class AddMediaToItemCommandHandler
         
     }
 }
+

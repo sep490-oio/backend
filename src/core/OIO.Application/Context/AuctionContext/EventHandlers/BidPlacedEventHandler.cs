@@ -1,8 +1,8 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
-using OIO.Application.Abstractions.Settings;
 using OIO.Application.Context.AuctionContext.Hubs;
 using OIO.Application.Context.AuctionContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
@@ -22,20 +22,20 @@ internal sealed class BidPlacedEventHandler
 
     private readonly IDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ISystemSettingsService _settings;
+    private readonly IRuntimeSettings _runtimeSettings;
     private readonly IAuctionNotificationService _notificationService;
     private readonly ILogger<BidPlacedEventHandler> _logger;
 
     public BidPlacedEventHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
-        ISystemSettingsService settings,
+        IRuntimeSettings runtimeSettings,
         IAuctionNotificationService notificationService,
         ILogger<BidPlacedEventHandler> logger)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
-        _settings = settings;
+        _runtimeSettings = runtimeSettings;
         _notificationService = notificationService;
         _logger = logger;
     }
@@ -94,10 +94,7 @@ internal sealed class BidPlacedEventHandler
 
     private async Task CreateBidBurstAlertIfNeededAsync(BidPlacedEvent notification, CancellationToken ct)
     {
-        var threshold = await _settings.GetAsync(
-            SettingKeys.MonitoringBidBurstThreshold,
-            10,
-            ct);
+        var threshold = _runtimeSettings.Monitoring.BidBurstThreshold;
 
         if (threshold <= 0)
             return;

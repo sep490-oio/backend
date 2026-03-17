@@ -11,7 +11,7 @@ public class UpdateCurrentUserProfileEndpoint : IEndpoint
         string? FirstName,
         string? LastName,
         string? DisplayName,
-        string? AvatarUrl,
+        Guid? AvatarMediaUploadId,
         DateOnly? DateOfBirth,
         string? Gender);
 
@@ -26,7 +26,7 @@ public class UpdateCurrentUserProfileEndpoint : IEndpoint
                     request.FirstName,
                     request.LastName,
                     request.DisplayName,
-                    request.AvatarUrl,
+                    request.AvatarMediaUploadId,
                     request.DateOfBirth,
                     request.Gender);
 

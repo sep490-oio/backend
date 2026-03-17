@@ -45,4 +45,22 @@ public sealed class UserProfile : BaseEntity<UserId>, IAuditableEntity
 
         return UnitResult.Success<Error>();
     }
+
+    internal bool RefreshAvatarSnapshot(
+        string oldPublicId,
+        AvatarUrl avatarUrl,
+        DateTime now)
+    {
+        if (AvatarUrl is null ||
+            string.IsNullOrWhiteSpace(oldPublicId) ||
+            !AvatarUrl.Value.Contains(oldPublicId, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        AvatarUrl = avatarUrl;
+        ModifiedAt = now;
+
+        return true;
+    }
 }

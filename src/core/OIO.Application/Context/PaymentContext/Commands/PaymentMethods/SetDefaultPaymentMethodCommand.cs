@@ -29,8 +29,10 @@ internal sealed class SetDefaultPaymentMethodCommandHandler : ICommandHandler<Se
 
     public async Task<UnitResult<Error>> Handle(SetDefaultPaymentMethodCommand request, CancellationToken cancellationToken)
     {
+        var paymentMethodId = PaymentMethodId.From(request.PaymentMethodId);
+
         var targetMethod = await _dbContext.Set<PaymentMethod>()
-            .FirstOrDefaultAsync(p => p.Id.Value == request.PaymentMethodId && p.UserId == _currentUser.UserId, cancellationToken);
+            .FirstOrDefaultAsync(p => p.Id == paymentMethodId && p.UserId == _currentUser.UserId, cancellationToken);
 
         if (targetMethod is null)
             return Error.NotFound("PaymentMethod.NotFound", "Payment method not found.");

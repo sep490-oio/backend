@@ -1,8 +1,7 @@
-﻿using System.Net;
+using System.Net;
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
@@ -16,7 +15,6 @@ using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
-using OIO.Infrastructure.Settings;
 using OIO.Infrastructure.Settings.Apps;
 
 namespace OIO.Infrastructure.Grains;
@@ -30,7 +28,7 @@ namespace OIO.Infrastructure.Grains;
 /// - Domain logic stays in the Auction aggregate (DDD)
 /// - Grain loads from DB on first call, then caches in memory
 /// - After domain operation, saves back to DB
-/// - Domain events → Outbox messages (via SaveChanges interceptor)
+/// - Domain events ? Outbox messages (via SaveChanges interceptor)
 /// </summary>
 public sealed class AuctionGrain : Grain, IAuctionGrain
 {
@@ -38,7 +36,7 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
     private readonly ILogger<AuctionGrain> _logger;
-    private readonly IAppConfigs _appConfigs;
+    private readonly IRuntimeSettings _runtimeSettings;
 
     // In-memory cache of the auction aggregate
     private Auction? _auction;
@@ -49,13 +47,13 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
         IUnitOfWork unitOfWork,
         IClock clock,
         ILogger<AuctionGrain> logger,
-        IAppConfigs appConfigs)
+        IRuntimeSettings runtimeSettings)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _clock = clock;
         _logger = logger;
-        _appConfigs = appConfigs;
+        _runtimeSettings = runtimeSettings;
     }
 
     // ==================== PlaceBid ====================
@@ -90,9 +88,9 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 bidderId: UserId.From(bidderId),
                 amount: amountDomain,
                 nowUtc: nowUtc,
-                extensionThresholdMinutes: await _appConfigs.Auctions.GetExtensionThresholdMinutesAsync(cancellationToken),
-                maxExtensions: await _appConfigs.Auctions.GetMaxExtensionsPerAuctionAsync(cancellationToken),
-                maxDuration: await _appConfigs.Auctions.GetMaxDurationAsync(cancellationToken),
+                extensionThresholdMinutes: _runtimeSettings.Auction.ExtensionThreshold,
+                maxExtensions: _runtimeSettings.Auction.MaxExtensionsPerAuction,
+                maxDuration: _runtimeSettings.Auction.MaxDuration,
                 ipAddress: ipAddress);
             
             if (isFailure)
@@ -328,7 +326,7 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
 
     /// <summary>
     /// Save auction to DB and invalidate grain cache.
-    /// Domain events in auction → Outbox messages (via interceptor).
+    /// Domain events in auction ? Outbox messages (via interceptor).
     /// </summary>
     private async Task SaveAsync(Auction auction, CancellationToken cancellationToken = default)
     {
@@ -339,3 +337,4 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
         _auction = null;
     }
 }
+

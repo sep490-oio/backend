@@ -8,6 +8,7 @@ using OIO.Application.Context.PaymentContext.Queries;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
 using OIO.Domain.Context.PaymentContext.Aggregates.Withdrawals;
+using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.PaymentContext.Commands.Withdrawals;
@@ -38,9 +39,11 @@ internal sealed class CancelWithdrawalRequestCommandHandler
         CancelWithdrawalRequestCommand request,
         CancellationToken cancellationToken)
     {
+        var withdrawalRequestId = WithdrawalRequestId.From(request.WithdrawalRequestId);
+
         var withdrawal = await _dbContext.Set<WithdrawalRequest>()
             .FirstOrDefaultAsync(
-                x => x.Id.Value == request.WithdrawalRequestId && x.UserId == _currentUser.UserId,
+                x => x.Id == withdrawalRequestId && x.UserId == _currentUser.UserId,
                 cancellationToken);
 
         if (withdrawal is null)

@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
-using OIO.Application.Abstractions.Settings;
+using OIO.Application.Abstractions.Commons;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.ModerationContext.Aggregates;
@@ -56,7 +56,7 @@ public sealed class CancelExpiredOrdersJob : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var clock = scope.ServiceProvider.GetRequiredService<IClock>();
-        var settings = scope.ServiceProvider.GetRequiredService<ISystemSettingsService>();
+        var runtimeSettings = scope.ServiceProvider.GetRequiredService<IRuntimeSettings>();
 
         var nowUtc = clock.UtcNow;
 
@@ -75,7 +75,7 @@ public sealed class CancelExpiredOrdersJob : BackgroundService
             var result = order.Cancel("Payment deadline expired", nowUtc);
             if (result.IsSuccess)
             {
-                await MarkAuctionPaymentDefaultedAsync(dbContext, settings, order, nowUtc, ct);
+                await MarkAuctionPaymentDefaultedAsync(dbContext, runtimeSettings, order, nowUtc, ct);
                 cancelledCount++;
             }
             else
@@ -93,7 +93,7 @@ public sealed class CancelExpiredOrdersJob : BackgroundService
 
     private async Task MarkAuctionPaymentDefaultedAsync(
         ApplicationDbContext dbContext,
-        ISystemSettingsService settings,
+        IRuntimeSettings runtimeSettings,
         Order order,
         DateTime nowUtc,
         CancellationToken cancellationToken)
@@ -141,10 +141,7 @@ public sealed class CancelExpiredOrdersJob : BackgroundService
 
         dbContext.Set<MonitoringAlert>().Add(alert);
 
-        var suspendEnabled = await settings.GetAsync(
-            SettingKeys.OpsAutoSuspendAfterNonPaymentCount,
-            0,
-            cancellationToken);
+        var suspendEnabled = runtimeSettings.Ops.AutoSuspendAfterNonPaymentCount;
 
         if (suspendEnabled > 0)
         {

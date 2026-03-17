@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.MediaContext.DTOs;
@@ -11,18 +11,18 @@ public sealed record GetUploadContextsQuery : IQuery<IReadOnlyList<UploadContext
 internal sealed class GetUploadContextsQueryHandler
     : IQueryHandler<GetUploadContextsQuery, IReadOnlyList<UploadContextDto>>
 {
-    private readonly IAppConfigs _appConfigs;
+    private readonly IRuntimeSettings _runtimeSettings;
 
-    public GetUploadContextsQueryHandler(IAppConfigs appConfigs)
+    public GetUploadContextsQueryHandler(IRuntimeSettings runtimeSettings)
     {
-        _appConfigs = appConfigs;
+        _runtimeSettings = runtimeSettings;
     }
 
     public async Task<Result<IReadOnlyList<UploadContextDto>, Error>> Handle(
         GetUploadContextsQuery request,
         CancellationToken cancellationToken)
     {
-        var contexts = await _appConfigs.Media.GetUploadContextsAsync(cancellationToken);
+        var contexts = _runtimeSettings.Media.UploadContexts;
 
         return contexts.Select(c => new UploadContextDto(
                 Name: c.Name,

@@ -122,8 +122,9 @@ internal sealed class CreateTermsDocumentCommandHandler : ICommandHandler<Create
         if (!_contextRegistry.IsTermContext(found.Context))
         {
             _logger.LogWarning("Media uploads invalid context: {InvalidContext}", found.Id);
-            return MediaErrors.WrongContext(found.Context, await _contextRegistry.GetAllContextAsync(cancellationToken));
+            return MediaErrors.WrongContext(found.Context, _contextRegistry.GetAllContext());
         }
         return null;
     }
 }
+

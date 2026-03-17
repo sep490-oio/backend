@@ -8,6 +8,7 @@ using OIO.Application.Context.PaymentContext.Queries.GetMyWithdrawals;
 using OIO.Application.Extensions;
 using OIO.Domain.Context.PaymentContext.Aggregates.Withdrawals;
 using OIO.Domain.Context.PaymentContext.Enums;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.PaymentContext.Queries.Admins.GetAdminWithdrawals;
@@ -41,7 +42,7 @@ internal sealed class GetAdminWithdrawalsQueryHandler
             .AsQueryable();
 
         if (parameters.UserId.HasValue)
-            query = query.Where(x => x.UserId.Value == parameters.UserId.Value);
+            query = query.Where(x => x.UserId == UserId.From(parameters.UserId.Value));
 
         if (!string.IsNullOrWhiteSpace(parameters.Status))
         {

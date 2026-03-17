@@ -7,6 +7,36 @@ namespace OIO.Application.Context.AuctionContext.Mappings;
 
 internal static class AuctionMappings
 {
+    public static AuctionListItemDto ToListItemDto(this Auction auction, DateTime nowUtc, TimeSpan extensionThresholdMinutes)
+    {
+        var activeReservation = auction.GetActiveBuyNowReservation(nowUtc);
+        var primaryImageUrl = auction.Item.Media
+            .Where(img => img.IsPrimary)
+            .OrderBy(img => img.SortOrder)
+            .Select(img => img.Info.SecureUrl)
+            .FirstOrDefault();
+
+        return new AuctionListItemDto(
+            Id: auction.Id.Value,
+            ItemTitle: auction.Item.Title.Value,
+            PrimaryImageUrl: primaryImageUrl,
+            CurrentPrice: auction.Pricing.CurrentPrice.ToDto(),
+            StartingPrice: auction.Pricing.StartingPrice.ToDto(),
+            BuyNowPrice: auction.Pricing.BuyNowPrice?.ToDto(),
+            IsBuyNowReserved: activeReservation is not null,
+            BuyNowReservedUntil: activeReservation?.ExpiresAt,
+            Currency: auction.Pricing.Currency.Id,
+            Status: auction.Status.Id,
+            BidCount: auction.BidCount,
+            WatchCount: auction.WatchCount,
+            StartTime: auction.Info?.StartTime,
+            EndTime: auction.Info?.EndTime,
+            RemainingTime: auction.Info?.RemainingTime(nowUtc),
+            IsEndingSoon: auction.Info is not null ? auction.IsEndingSoon(nowUtc, extensionThresholdMinutes) : null,
+            IsFeatured: auction.IsFeatured,
+            SellerId: auction.Item.SellerId.Value);
+    }
+
     public static AuctionDto ToDto(this Auction auction, DateTime nowUtc, TimeSpan extensionThresholdMinutes)
     {
         var activeReservation = auction.GetActiveBuyNowReservation(nowUtc);
