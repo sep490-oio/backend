@@ -85,9 +85,12 @@ public static class IdempotencyHttpPolicies
             {
                 var request = context.Arguments
                     .OfType<Endpoints.MediaContext.Media.RequestUploadSignatureEndpoint.Request>()
-                    .First();
+                    .FirstOrDefault();
 
-                return $"{request.Context.Trim()}|{request.FileName.Trim()}";
+                var requestContext = request?.Context?.Trim() ?? string.Empty;
+                var fileName = request?.FileName?.Trim() ?? string.Empty;
+
+                return $"{requestContext}|{fileName}";
             },
             TagsFactory: (_, currentUser) => [$"media-idempotency:{currentUser.UserId.Value}"],
             ErrorFactory: CreateMediaError,
@@ -99,27 +102,28 @@ public static class IdempotencyHttpPolicies
             {
                 var request = context.Arguments
                     .OfType<Endpoints.MediaContext.Media.ConfirmUploadEndpoint.Request>()
-                    .First();
+                    .FirstOrDefault();
 
-                return $"media:idempotency:confirm:{currentUser.UserId.Value}:{request.MediaUploadId}";
+                var mediaUploadId = request?.MediaUploadId ?? Guid.Empty;
+                return $"media:idempotency:confirm:{currentUser.UserId.Value}:{mediaUploadId}";
             },
             FingerprintFactory: context =>
             {
                 var request = context.Arguments
                     .OfType<Endpoints.MediaContext.Media.ConfirmUploadEndpoint.Request>()
-                    .First();
+                    .FirstOrDefault();
 
                 return string.Join(
                     "|",
-                    request.MediaUploadId.ToString(),
-                    request.PublicId.Trim(),
-                    request.SecureUrl.Trim(),
-                    request.Bytes.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    request.Format.Trim(),
-                    request.FileName?.Trim() ?? string.Empty,
-                    request.Width?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
-                    request.Height?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
-                    request.DurationSeconds?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty);
+                    (request?.MediaUploadId ?? Guid.Empty).ToString(),
+                    request?.PublicId?.Trim() ?? string.Empty,
+                    request?.SecureUrl?.Trim() ?? string.Empty,
+                    (request?.Bytes ?? 0L).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    request?.Format?.Trim() ?? string.Empty,
+                    request?.FileName?.Trim() ?? string.Empty,
+                    request?.Width?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
+                    request?.Height?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
+                    request?.DurationSeconds?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty);
             },
             TagsFactory: (_, currentUser) => [$"media-idempotency:{currentUser.UserId.Value}"],
             ErrorFactory: CreateMediaError,
@@ -136,12 +140,12 @@ public static class IdempotencyHttpPolicies
             {
                 var request = context.Arguments
                     .OfType<Endpoints.AuctionContext.Auctions.PlaceBidEndpoint.Request>()
-                    .First();
+                    .FirstOrDefault();
 
                 return string.Join(
                     "|",
-                    request.Amount.ToString("0.########", System.Globalization.CultureInfo.InvariantCulture),
-                    request.Currency.Trim().ToUpperInvariant());
+                    (request?.Amount ?? 0m).ToString("0.########", System.Globalization.CultureInfo.InvariantCulture),
+                    request?.Currency?.Trim().ToUpperInvariant() ?? string.Empty);
             },
             TagsFactory: (context, currentUser) =>
             {
@@ -178,16 +182,16 @@ public static class IdempotencyHttpPolicies
             {
                 var request = context.Arguments
                     .OfType<Endpoints.ModerationContext.Disputes.SendDisputeMessageEndpoint.Request>()
-                    .First();
+                    .FirstOrDefault();
 
-                var trimmedMessage = request.Message?.Trim() ?? string.Empty;
+                var trimmedMessage = request?.Message?.Trim() ?? string.Empty;
                 var attachmentFingerprint = string.Join(
                     ",",
-                    (request.MediaUploadIds ?? [])
+                    (request?.MediaUploadIds ?? [])
                         .OrderBy(x => x)
                         .Select(x => x.ToString("N")));
 
-                return $"{trimmedMessage}|{attachmentFingerprint}|{request.IsInternal}";
+                return $"{trimmedMessage}|{attachmentFingerprint}|{request?.IsInternal ?? false}";
             },
             TagsFactory: (context, currentUser) =>
             {

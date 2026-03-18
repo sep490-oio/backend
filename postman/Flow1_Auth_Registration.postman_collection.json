@@ -1,0 +1,367 @@
+{
+  "info": {
+    "name": "Flow 1: Đăng ký & Xác thực tài khoản",
+    "description": "Luồng đăng ký tài khoản, xác nhận email, đăng nhập, quản lý token và profile.\n\n**Actors**: New User\n**Prerequisite**: None",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "addressId", "value": "" },
+    { "key": "deviceId", "value": "{{$guid}}" },
+    { "key": "userEmail", "value": "testuser@example.com" },
+    { "key": "userName", "value": "testuser01" },
+    { "key": "userPassword", "value": "Test@1234" }
+  ],
+  "item": [
+    {
+      "name": "1.1 Register",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "register"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userName\": \"{{userName}}\",\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"currency\": \"VND\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const res = pm.response.json();",
+              "if (res.userId) {",
+              "  pm.collectionVariables.set('userId', res.userId);",
+              "  console.log('userId saved:', res.userId);",
+              "}",
+              "pm.test('Register success', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "1.2 Confirm Email",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/confirm-email",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "confirm-email"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"token\": \"PASTE_TOKEN_FROM_EMAIL_HERE\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Email confirmed', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "1.3 Resend Confirm Email",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/resend-confirm-email",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "resend-confirm-email"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{userEmail}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "1.4 Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "login"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"account\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"deviceId\": \"{{deviceId}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const res = pm.response.json();",
+              "if (res.accessToken) {",
+              "  pm.collectionVariables.set('accessToken', res.accessToken);",
+              "  pm.collectionVariables.set('refreshToken', res.refreshToken);",
+              "  console.log('Tokens saved');",
+              "}",
+              "pm.test('Login success', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "1.5 Get Current User (Me)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/me",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "me"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Get me success', () => pm.response.to.have.status(200));",
+              "const res = pm.response.json();",
+              "if (res.id) pm.collectionVariables.set('userId', res.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "1.6 Update Profile",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/me/profile",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "me", "profile"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"firstName\": \"Nguyen\",\n  \"lastName\": \"Van A\",\n  \"dateOfBirth\": \"1995-01-15\",\n  \"gender\": \"Male\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Profile updated', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "1.7 Add Address",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/me/addresses",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "me", "addresses"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"recipientName\": \"Nguyen Van A\",\n  \"phoneNumber\": \"+84901234567\",\n  \"street\": \"123 Nguyen Hue\",\n  \"ward\": \"Ben Nghe\",\n  \"district\": \"Quan 1\",\n  \"city\": \"Ho Chi Minh\",\n  \"postalCode\": \"70000\",\n  \"type\": \"Home\",\n  \"isDefault\": true\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const res = pm.response.json();",
+              "if (res.id) pm.collectionVariables.set('addressId', res.id);",
+              "pm.test('Address added', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "1.8 Get My Addresses",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/me/addresses",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "me", "addresses"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Get addresses success', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "1.9 Get Active Sessions",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/me/sessions",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "me", "sessions"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Sessions retrieved', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "1.10 Refresh Token",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/refresh",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "refresh"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\",\n  \"deviceId\": \"{{deviceId}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const res = pm.response.json();",
+              "if (res.accessToken) {",
+              "  pm.collectionVariables.set('accessToken', res.accessToken);",
+              "  pm.collectionVariables.set('refreshToken', res.refreshToken);",
+              "}",
+              "pm.test('Token refreshed', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "1.11 Change Password",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/me/password",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "me", "password"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"oldPassword\": \"{{userPassword}}\",\n  \"newPassword\": \"NewTest@1234\",\n  \"confirmPassword\": \"NewTest@1234\"\n}"
+        }
+      }
+    },
+    {
+      "name": "1.12 Forgot Password",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/forgot-password",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "forgot-password"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{userEmail}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "1.13 Logout",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/logout",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "logout"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deviceId\": \"{{deviceId}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Logout success', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
