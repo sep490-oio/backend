@@ -1,13 +1,17 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using CSharpFunctionalExtensions.HttpResults;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.OpenApi;
 using Npgsql;
 using OIO.Api.Extensions;
+using OIO.Api.Hubs;
 using OIO.Api.Middleware;
 using OIO.Api.Services;
 using OIO.Application.Context.AuctionContext.Services;
+using OIO.Application.Context.ModerationContext.Services;
+using OIO.Application.Context.NotificationContext.Services;
 using OIO.Infrastructure.Settings;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
@@ -83,8 +87,13 @@ public static class DependencyInjection
         services.AddErrorHandling();
         services.AddEndpoints(typeof(Program).Assembly);
         services.AddCorsPolicy(configuration);
+        services.AddSingleton<IdempotencyCacheService>();
+        services.AddSingleton<AuctionBidIdempotencyHubFilter>();
         services.AddScoped<IAuctionNotificationService, AuctionNotificationService>();
-        services.AddSignalR();
+        services.AddScoped<INotificationProvider, SignalRNotificationProvider>();
+        services.AddScoped<IDisputeRealtimeService, DisputeRealtimeService>();
+        services.AddSignalR()
+            .AddHubOptions<AuctionHub>(options => options.AddFilter<AuctionBidIdempotencyHubFilter>());
     }
 
     private static void AddCorsPolicy(this IServiceCollection services, IConfiguration configuration)
@@ -98,7 +107,8 @@ public static class DependencyInjection
                 policy
                     .WithOrigins(cors.AllowedOrigins)
                     .AllowAnyMethod()
-                    .AllowAnyHeader();
+                    .AllowAnyHeader()
+                    .AllowCredentials();
             });
         });
     }

@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
@@ -8,15 +8,17 @@ using OIO.Application.Abstractions.Media;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
+using OIO.Application.Context.MediaContext.Services;
 using OIO.Application.Context.UserContext.Services;
-using OIO.Domain.Context.AuctionContext.Aggregates.Items;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.Shared.Entities;
 using OIO.Domain.Context.Shared.Errors;
 using OIO.Domain.Context.Shared.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
+using ItemId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId;
 
 namespace OIO.Application.Context.AuctionContext.Commands.AddMediaToItem;
 
@@ -45,6 +47,7 @@ internal sealed class AddMediaToItemCommandHandler
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
     private readonly UploadContextRegistry _contextRegistry;
+    private readonly IMediaRelocationService _mediaRelocationService;
     private readonly ILogger<AddMediaToItemCommandHandler> _logger;
 
     public AddMediaToItemCommandHandler(
@@ -53,6 +56,7 @@ internal sealed class AddMediaToItemCommandHandler
         ICurrentUser currentUser,
         IClock clock,
         UploadContextRegistry contextRegistry,
+        IMediaRelocationService mediaRelocationService,
         ILogger<AddMediaToItemCommandHandler> logger)
     {
         _dbContext = dbContext;
@@ -60,6 +64,7 @@ internal sealed class AddMediaToItemCommandHandler
         _currentUser = currentUser;
         _clock = clock;
         _contextRegistry = contextRegistry;
+        _mediaRelocationService = mediaRelocationService;
         _logger = logger;
     }
 
@@ -100,21 +105,15 @@ internal sealed class AddMediaToItemCommandHandler
             return MediaErrors.NotOwnedByUser(upload.Id);
         }
 
-        if (!upload.IsConfirmed)
-            return MediaErrors.NotConfirm;
-
-        if (upload.IsLinked)
-            return MediaErrors.AlreadyLinked;
-
         // Validate context is for items
         if (!_contextRegistry.IsItemContext(upload.Context))
         {
             _logger.LogWarning("Media upload {MediaUploadId} has invalid context {Context} for item {ItemId}.", mediaUploadId, upload.Context, itemId);
-            return MediaErrors.WrongContext(upload.Context, await _contextRegistry.GetAllContextAsync());
+            return MediaErrors.WrongContext(upload.Context, _contextRegistry.GetAllContext());
         }
         
         // Get max limit for this resource type from config
-        var maxForType = await _contextRegistry.GetMaxForEntityMediaAsync("item", upload.ResourceType);
+        var maxForType = _contextRegistry.GetMaxForEntityMedia("item", upload.ResourceType);
 
 
         var (_, isFailure, image, error) = item.AddMedia(
@@ -129,10 +128,12 @@ internal sealed class AddMediaToItemCommandHandler
         {
             return error;
         }
-        
+
+        await _mediaRelocationService.RelocateLinkedUploadAsync(upload, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return image.ToDto();
         
     }
 }
+

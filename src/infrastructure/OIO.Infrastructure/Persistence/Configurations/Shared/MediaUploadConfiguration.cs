@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+using EFCore.ComplexIndexes;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OIO.Domain.Context.Shared.Entities;
 using OIO.Domain.Context.Shared.ValueObjects.Ids;
@@ -37,16 +38,9 @@ internal sealed class MediaUploadConfiguration
 
         builder.Property(u => u.EntityId)
             .HasColumnName("entity_id");
-
-        builder.Property(u => u.PublicId)
-            .HasColumnName("public_id")
-            .HasMaxLength(500)
-            .IsRequired();
-
-        builder.Property(u => u.Folder)
-            .HasColumnName("folder")
-            .HasMaxLength(500)
-            .IsRequired();
+        
+        builder.Property(u => u.IdType)
+            .HasColumnName("id_type");
 
         builder.Property(u => u.IsConfirmed)
             .HasColumnName("is_confirmed")
@@ -71,29 +65,56 @@ internal sealed class MediaUploadConfiguration
         builder.Property(u => u.LinkedAt)
             .HasColumnName("linked_at");
 
-        builder.Property(u => u.SecureUrl)
-            .HasColumnName("secure_url")
-            .HasMaxLength(500);
+        builder.Property(u => u.RelocationAttemptCount)
+            .HasColumnName("relocation_attempt_count")
+            .HasDefaultValue(0);
 
-        builder.Property(u => u.FileName)
-            .HasColumnName("file_name")
-            .HasMaxLength(255);
+        builder.Property(u => u.NextRelocationAttemptAt)
+            .HasColumnName("next_relocation_attempt_at");
 
-        builder.Property(u => u.Bytes)
-            .HasColumnName("bytes");
+        builder.Property(u => u.LastRelocationError)
+            .HasColumnName("last_relocation_error")
+            .HasMaxLength(1000);
 
-        builder.Property(u => u.Format)
-            .HasColumnName("format")
-            .HasMaxLength(20);
+        builder.Property(u => u.RelocatedAt)
+            .HasColumnName("relocated_at");
 
-        builder.Property(u => u.Width)
-            .HasColumnName("width");
+        builder.ComplexProperty(c => c.StorageRef, storageRefBuilder =>
+        {
+            storageRefBuilder.Property(s => s.PublicId)
+                .HasColumnName("public_id")
+                .HasComplexIndex(indexName: "idx_media_uploads_public_id");
+            
+            storageRefBuilder.Property(s => s.Folder)
+                .HasColumnName("folder");
+        });
 
-        builder.Property(u => u.Height)
-            .HasColumnName("height");
+        builder.ComplexProperty(c => c.Info, iconInfoBuilder =>
+        {
+            iconInfoBuilder.Property(i => i.SecureUrl)
+                .HasColumnName("secure_url");
+            
+            iconInfoBuilder.Property(i => i.FileName)
+                .HasColumnName("file_name");
+            
+            iconInfoBuilder.Property(i => i.Bytes)
+                .HasColumnName("bytes");
+            
+            iconInfoBuilder.Property(i => i.Format)
+                .HasColumnName("format");
+            
+            iconInfoBuilder.Property(i => i.Width)
+                .HasColumnName("width");
+            
+            iconInfoBuilder.Property(i => i.Height)
+                .HasColumnName("height");
+            
+            iconInfoBuilder.Property(i => i.DurationSeconds)
+                .HasColumnName("duration_seconds");
 
-        builder.Property(u => u.DurationSeconds)
-            .HasColumnName("duration_seconds");
+            iconInfoBuilder.Ignore(i => i.IsVideo);
+            iconInfoBuilder.Ignore(i => i.IsImage);
+        });
 
         // Indexes
         builder.HasIndex(u => u.UserId)
@@ -107,8 +128,9 @@ internal sealed class MediaUploadConfiguration
             .HasDatabaseName("idx_media_uploads_orphan")
             .HasFilter("is_confirmed = true AND is_linked = false");
 
-        builder.HasIndex(u => u.PublicId)
-            .HasDatabaseName("idx_media_uploads_public_id");
+        builder.HasIndex(u => u.NextRelocationAttemptAt)
+            .HasDatabaseName("idx_media_uploads_next_relocation_attempt");
+
 
     }
 }

@@ -15,6 +15,7 @@ public sealed class Password : ValueObject
     public static Result<Password, Error> Create(string plainPassword, IPasswordHasher passwordHasher)
     {
         var validateResult = Password
+            .Check(isInvariant: true)
             .Field(plainPassword, "Value")!
             .NotNullOrWhiteSpace()
             .MaxLength(AppDefinitions.App.Constraint.Password.MaxLength)

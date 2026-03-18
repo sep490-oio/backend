@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
@@ -8,19 +8,21 @@ using OIO.Application.Abstractions.Media;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
+using OIO.Application.Context.MediaContext.Services;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.AppDefinitions;
-using OIO.Domain.Context.AuctionContext.Aggregates.Categories;
-using OIO.Domain.Context.AuctionContext.Aggregates.Items;
-using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.Errors;
-using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.CatalogContext.Aggregates.Categories;
+using OIO.Domain.Context.CatalogContext.Aggregates.Items;
+using OIO.Domain.Context.CatalogContext.Enums;
+using OIO.Domain.Context.CatalogContext.ValueObjects;
 using OIO.Domain.Context.Shared.Entities;
 using OIO.Domain.Context.Shared.Errors;
 using OIO.Domain.Context.Shared.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
+using CategoryId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.CategoryId;
 
 namespace OIO.Application.Context.AuctionContext.Commands.CreateItem;
 
@@ -60,11 +62,8 @@ public sealed record CreateItemCommand(
         
         for (var i = 0; i < Media.Count; i++)
         {
-            var imageCheckError = Media[i].Check()
-                .WithOwnerName($"Images[{i}]")
-                .Field(Media[i].MediaUploadId)
-                .NotEmptyGuid()
-                .ToViolationsError();
+            var imageCheckError = Media[i]
+                .Validate();
                 
             checkError.Add(imageCheckError);
         }
@@ -97,6 +96,7 @@ internal sealed class CreateItemCommandHandler
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
     private readonly UploadContextRegistry _contextRegistry;
+    private readonly IMediaRelocationService _mediaRelocationService;
     private readonly ILogger<CreateItemCommandHandler> _logger;
 
     public CreateItemCommandHandler(
@@ -104,8 +104,8 @@ internal sealed class CreateItemCommandHandler
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
         IClock clock,
-        IAppConfigs appConfigs,
         UploadContextRegistry contextRegistry,
+        IMediaRelocationService mediaRelocationService,
         ILogger<CreateItemCommandHandler> logger)
     {
         _dbContext = dbContext;
@@ -113,6 +113,7 @@ internal sealed class CreateItemCommandHandler
         _currentUser = currentUser;
         _clock = clock;
         _contextRegistry = contextRegistry;
+        _mediaRelocationService = mediaRelocationService;
         _logger = logger;
     }
 
@@ -153,13 +154,20 @@ internal sealed class CreateItemCommandHandler
             if (validationError is not null)
                 return validationError;
         }
+        
+        var ( _, isFailure, title, error) = ItemTitle.Create(request.Title);
+
+        if (isFailure)
+        {
+            return error;
+        }
 
 
         var condition = ItemCondition.FromId(request.Condition);
 
         var item = Item.Create(
             sellerId: _currentUser.UserId,
-            title: request.Title,
+            title: title,
             condition: condition.Value,
             nowUtc: nowUtc,
             categoryId: categoryId,
@@ -176,7 +184,7 @@ internal sealed class CreateItemCommandHandler
                 
                 var upload = mediaUploads.First(p => p.Id == mediaUploadId);
 
-                var maxForType = await _contextRegistry.GetMaxForEntityMediaAsync("item", upload.ResourceType, cancellationToken);
+                var maxForType = _contextRegistry.GetMaxForEntityMedia("item", upload.ResourceType);
                 
                 // Add image to item domain
                 item.AddMedia(
@@ -189,6 +197,12 @@ internal sealed class CreateItemCommandHandler
         }
 
         _dbContext.Insert(item);
+
+        if (mediaUploads is not null)
+        {
+            foreach (var upload in mediaUploads)
+                await _mediaRelocationService.RelocateLinkedUploadAsync(upload, cancellationToken);
+        }
         
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -243,9 +257,11 @@ internal sealed class CreateItemCommandHandler
         if (invalidContext.Count > 0)
         {
             _logger.LogWarning("Media uploads invalid context: {InvalidContext}", string.Join(", ", invalidContext.Select(p => p.Id)));
-            return MediaErrors.WrongContext(invalidContext[0].Context, await _contextRegistry.GetAllContextAsync(cancellationToken));
+            return MediaErrors.WrongContext(invalidContext[0].Context, _contextRegistry.GetAllContext());
         }
 
         return null;
     }
 }
+
+

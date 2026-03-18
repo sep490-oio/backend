@@ -1,51 +1,74 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
+using OIO.Application.Abstractions.Media;
 using OIO.Application.Abstractions.Messaging;
+using OIO.Application.Context.AuctionContext.Commands.CreateItem;
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
+using OIO.Application.Context.AuctionContext.Services;
+using OIO.Application.Context.MediaContext.Services;
 using OIO.Application.Context.UserContext.Services;
-using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
-using OIO.Domain.Context.AuctionContext.Aggregates.Items;
-using OIO.Domain.Context.AuctionContext.Enums;
+using OIO.Domain.AppDefinitions;
 using OIO.Domain.Context.AuctionContext.Errors;
-using OIO.Domain.Context.AuctionContext.ValueObjects;
-using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.CatalogContext.Aggregates.Categories;
+using OIO.Domain.Context.CatalogContext.Aggregates.Items;
+using OIO.Domain.Context.CatalogContext.Enums;
+using OIO.Domain.Context.CatalogContext.ValueObjects;
+using OIO.Domain.Context.Shared.Entities;
+using OIO.Domain.Context.Shared.Errors;
 using OIO.Domain.Context.Shared.ValueObjects;
+using OIO.Domain.Context.Shared.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
+using CategoryId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.CategoryId;
 
 namespace OIO.Application.Context.AuctionContext.Commands.CreateAuction;
 
 public sealed record CreateAuctionCommand(
-    DateTime NowUtc,
-    Guid ItemId,
-    decimal StartingPrice,
-    decimal BidIncrement,
-    DateTime StartTime,
-    DateTime EndTime,
+    // Item info
+    string Title,
+    string Condition,
+    Guid? CategoryId = null,
+    string? Description = null,
+    int Quantity = 1,
+    string? Attributes = null,
+    IReadOnlyList<MediaAttachment>? Media = null,
+    // Auction pricing
+    decimal StartingPrice = 0,
+    decimal BidIncrement = 0,
     decimal? ReservePrice = null,
     decimal? BuyNowPrice = null,
-    bool AutoExtend = true,
     int ExtensionMinutes = 5,
-    string Currency = "VND") : ICommand<AuctionDto>, IHasValidate
+    string Currency = "VND",
+    string AuctionType = "regular") : ICommand<AuctionDto>, IHasValidate
 {
     public ViolationsError Validate()
     {
-        return CreateAuctionCommand.Check()
+        var check = CreateAuctionCommand.Check()
             .WithOwnerName("CreateAuction")
-            .Field(ItemId)
-            .NotEmptyGuid()
+            .Field(Title)
+            .NotWhiteSpace()
+            .MaxLength(App.Constraint.Item.TitleMaxLength)
+            .Field(Condition)
+            .NotWhiteSpace()
+            .InSet(ItemCondition.All.Select(x => x.Id))
+            .Field(CategoryId)
+            .WhenHasValue(x => x.NotEmptyGuid())
+            .Field(Description)
+            .WhenHasValue(x => x.NotWhiteSpace())
+            .Field(Quantity)
+            .NotDefault()
+            .Positive()
+            .Field(Attributes)
+            .WhenHasValue(x => x.NotWhiteSpace())
             .Field(StartingPrice)
             .NonNegative()
             .Field(BidIncrement)
             .NonNegative()
-            .Field(StartTime)
-            .NotInPast(() => NowUtc)
-            .Field(EndTime)
-            .GreaterThan(StartTime)
             .Field(ReservePrice)
             .WhenHasValue(x => x.GreaterThanOrEqual(StartingPrice))
             .Field(BuyNowPrice)
@@ -54,7 +77,21 @@ public sealed record CreateAuctionCommand(
             .BetweenInclusive(1, 30)
             .Field(Currency)
             .NotWhiteSpace()
-            .ExactLength(3);
+            .ExactLength(3)
+            .Field(AuctionType)
+            .NotWhiteSpace()
+            .InSet(Domain.Context.AuctionContext.Enums.AuctionType.All.Select(x => x.Id))
+            .ToViolationsError();
+
+        if (Media is null)
+            return check;
+
+        for (var i = 0; i < Media.Count; i++)
+        {
+            check.Add(Media[i].Validate());
+        }
+
+        return check;
     }
 }
 
@@ -64,21 +101,33 @@ internal sealed class CreateAuctionCommandHandler
     private readonly IDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
-    private readonly IAppConfigs _appConfigs;
+    private readonly IRuntimeSettings _runtimeSettings;
     private readonly IClock _clock;
+    private readonly UploadContextRegistry _contextRegistry;
+    private readonly IMediaRelocationService _mediaRelocationService;
+    private readonly AuctionDraftCreationService _auctionDraftCreationService;
+    private readonly ILogger<CreateAuctionCommandHandler> _logger;
 
     public CreateAuctionCommandHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
-        IAppConfigs appConfigs,
-        IClock clock)
+        IRuntimeSettings runtimeSettings,
+        IClock clock,
+        UploadContextRegistry contextRegistry,
+        IMediaRelocationService mediaRelocationService,
+        AuctionDraftCreationService auctionDraftCreationService,
+        ILogger<CreateAuctionCommandHandler> logger)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
-        _appConfigs = appConfigs;
+        _runtimeSettings = runtimeSettings;
         _clock = clock;
+        _contextRegistry = contextRegistry;
+        _mediaRelocationService = mediaRelocationService;
+        _auctionDraftCreationService = auctionDraftCreationService;
+        _logger = logger;
     }
 
     public async Task<Result<AuctionDto, Error>> Handle(
@@ -86,115 +135,134 @@ internal sealed class CreateAuctionCommandHandler
         CancellationToken cancellationToken)
     {
         var nowUtc = _clock.UtcNow;
-        
-        var currency = Currency.FromId(request.Currency).Value;
-        var (_, isFailure, startingPrice, error) = Money.Create(request.StartingPrice, currency);
-        
-        if (isFailure)
-        {
-            return error;
-        }
-        
-        (_, isFailure, var bidIncrement, error) = Money.Create(request.BidIncrement, currency);
-        
-        if (isFailure)
-        {
-            return error;
-        }
-        
-        (_, isFailure, var duration, error) = AuctionDuration.Create(
-            request.StartTime,
-            request.EndTime,
-            await _appConfigs.Auctions.GetMinDurationAsync(cancellationToken),
-            await _appConfigs.Auctions.GetMaxDurationAsync(cancellationToken),
-            nowUtc);
-        
-        if (isFailure)
-        {
-            return error;
-        }
-        
-        Money? reservePrice = null;
-        if (request.ReservePrice.HasValue)
-        {
-            (_, isFailure, reservePrice, error) = Money.Create(request.ReservePrice.Value, currency);
-            
-            if (isFailure)
-            {
-                return error;
-            }
-        }
-        
-        Money? buyNowPrice = null;
-        if (request.BuyNowPrice.HasValue)
-        {
-            (_, isFailure, buyNowPrice, error) = Money.Create(request.BuyNowPrice.Value, currency);
-            
-            if (isFailure)
-            {
-                return error;
-            }
-        }
-        
-        var itemId = ItemId.From(request.ItemId);
         var sellerId = _currentUser.UserId;
-        
-        var item  = await _dbContext.GetByIdAsync<Item, ItemId>(
-            id: itemId, 
-            queryBuilder: query => query
-                .Include(i => i.Media.OrderBy(img => img.SortOrder)) ,
-            cancellationToken: cancellationToken);
 
-        if (item is null)
+        // ── Validate category ──
+        CategoryId? categoryId = null;
+        if (request.CategoryId.HasValue)
         {
-            return AuctionErrors.Item.NotFound(itemId);
+            categoryId = CategoryId.From(request.CategoryId.Value);
+            var categoryExists = await _dbContext.Set<Category>()
+                .AnyAsync(x => x.Id == categoryId, cancellationToken);
+            if (!categoryExists)
+                return AuctionErrors.Category.NotFound(categoryId.Value);
         }
 
-        if (item.SellerId != sellerId)
+        // ── Load & validate media uploads ──
+        List<MediaUpload>? mediaUploads = null;
+        if (request.Media is { Count: > 0 })
         {
-            return AuctionErrors.Auction.OnlyOwnerOfItem;
+            var pendingIds = request.Media.Select(i => MediaUploadId.From(i.MediaUploadId)).ToList();
+            mediaUploads = await _dbContext.Set<MediaUpload>()
+                .Where(p => pendingIds.Contains(p.Id))
+                .ToListAsync(cancellationToken);
+
+            var validationError = ValidateMediaUploads(
+                mediaUploads, pendingIds, sellerId);
+            if (validationError is not null)
+                return validationError;
         }
 
-        if (!item.IsAvailableForAuction)
-        {
-            return AuctionErrors.Item.CannotAuction( itemId, item.Status.Id);
-        }
-        
-        var auctionWithSameItem = await _dbContext.Set<Auction>()
-            .AnyAsync(a => a.ItemId == itemId &&
-                           (a.Status == AuctionStatus.Draft ||
-                            a.Status == AuctionStatus.Pending ||
-                            a.Status == AuctionStatus.Active), cancellationToken);
+        // ── Create Item ──
+        var (_, isFailure, title, error) = ItemTitle.Create(request.Title);
+        if (isFailure) return error;
 
-        if (auctionWithSameItem)
+        var condition = ItemCondition.FromId(request.Condition);
+
+        var item = Item.Create(
+            sellerId: sellerId,
+            title: title,
+            condition: condition.Value,
+            nowUtc: nowUtc,
+            categoryId: categoryId,
+            description: request.Description,
+            quantity: request.Quantity,
+            attributes: request.Attributes);
+
+        if (mediaUploads is not null && request.Media is not null)
         {
-            return AuctionErrors.Auction.ItemAlreadyInAuction;
+            foreach (var mediaReq in request.Media.OrderBy(i => i.SortOrder))
+            {
+                var mediaUploadId = MediaUploadId.From(mediaReq.MediaUploadId);
+                var upload = mediaUploads.First(p => p.Id == mediaUploadId);
+                var maxForType = _contextRegistry.GetMaxForEntityMedia(
+                    "item", upload.ResourceType);
+                item.AddMedia(nowUtc, upload, mediaReq.IsPrimary, maxForType, mediaReq.SortOrder);
+            }
         }
-        
-        (_, isFailure,var auction, error) = Auction.Create(
-            itemId, 
+
+
+        // ── Create Auction (pricing only, no timing) ──
+        var auctionResult = await _auctionDraftCreationService.CreateAsync(
+            item,
             sellerId,
+            new AuctionDraftCreationRequest(
+                request.StartingPrice,
+                request.BidIncrement,
+                request.ReservePrice,
+                request.BuyNowPrice,
+                request.Currency,
+                request.AuctionType),
             nowUtc,
-            duration,
-            startingPrice,
-            bidIncrement, 
-            reservePrice, 
-            buyNowPrice, 
-            request.AutoExtend, 
-            request.ExtensionMinutes);
+            cancellationToken);
+        if (auctionResult.IsFailure) return auctionResult.Error;
 
-        if(isFailure)
-        {
-            return error;
-        }
-        
-        item.MarkInAuction(nowUtc);
-        
+        var auction = auctionResult.Value;
+
+        _dbContext.Insert(item);
         _dbContext.Insert(auction);
+
+        // ── Submit immediately if requested ──
+        if (mediaUploads is not null)
+        {
+            foreach (var upload in mediaUploads)
+                await _mediaRelocationService.RelocateLinkedUploadAsync(upload, cancellationToken);
+        }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return auction.ToDto(nowUtc, await _appConfigs.Auctions.GetExtensionThresholdMinutesAsync(cancellationToken));
-        
+        return auction.ToDto(nowUtc,
+            _runtimeSettings.Auction.ExtensionThreshold);
+    }
+
+    private Error? ValidateMediaUploads(
+        List<MediaUpload> found,
+        List<MediaUploadId> requestedIds,
+        Domain.Context.UserContext.ValueObjects.Ids.UserId userId)
+    {
+        var foundIds = found.Select(p => p.Id).ToHashSet();
+        var missingIds = requestedIds.Where(id => !foundIds.Contains(id)).ToList();
+        if (missingIds.Count > 0)
+        {
+            _logger.LogWarning("Media uploads not found: {MissingIds}", string.Join(", ", missingIds));
+            return MediaErrors.NotFounds(string.Join(", ", missingIds));
+        }
+
+        var notOwned = found.Where(p => p.UserId != userId).ToList();
+        if (notOwned.Count > 0)
+        {
+            _logger.LogWarning("Media uploads not owned by user {UserId}: {Ids}", userId,
+                string.Join(", ", notOwned.Select(p => p.Id)));
+            return MediaErrors.NotOwnedByUser(string.Join(", ", notOwned.Select(p => p.Id)));
+        }
+
+        var unconfirmed = found.Where(p => !p.IsConfirmed).ToList();
+        if (unconfirmed.Count > 0)
+        {
+            _logger.LogWarning("Media uploads not confirmed: {Ids}", string.Join(", ", unconfirmed.Select(p => p.Id)));
+            return MediaErrors.NotConfirm;
+        }
+
+        var alreadyLinked = found.Where(p => p.IsLinked).ToList();
+        if (alreadyLinked.Count > 0)
+        {
+            _logger.LogWarning("Media uploads already linked: {Ids}", string.Join(", ", alreadyLinked.Select(p => p.Id)));
+            return MediaErrors.AlreadyLinked;
+        }
+
+        return null;
     }
 }
+
+
+

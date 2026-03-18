@@ -1,10 +1,12 @@
 ﻿using CSharpFunctionalExtensions;
+using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Abstractions.Scheduling;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
+using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Checks.Extensions;
@@ -53,13 +55,15 @@ internal sealed class PublishAuctionCommandHandler
         var auctionId = AuctionId.From(request.AuctionId);
         var auction = await _dbContext.GetByIdAsync<Auction, AuctionId>(
             id: auctionId,
+            queryBuilder: query => query
+                .Include(x => x.Item),
             cancellationToken: cancellationToken);
 
         if (auction is null)
             return AuctionErrors.Auction.NotFound(auctionId);
 
         // Only the seller can publish their auction
-        if (auction.SellerId != _currentUser.UserId)
+        if (auction.Item.SellerId != _currentUser.UserId)
             return AuctionErrors.Auction.OnlyOwnerCanPublish;
         
         var nowUtc = _clock.UtcNow;
@@ -70,11 +74,21 @@ internal sealed class PublishAuctionCommandHandler
             return result.Error;
         
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        
-        await _scheduler.ScheduleStartAsync(
-            auction.Id.Value,
-            auction.Duration.StartTime,
-            cancellationToken);
+
+        if (auction.Status == AuctionStatus.Active)
+        {
+            await _scheduler.ScheduleEndAsync(
+                auction.Id.Value,
+                auction.Info!.EndTime,
+                cancellationToken);
+        }
+        else
+        {
+            await _scheduler.ScheduleStartAsync(
+                auction.Id.Value,
+                auction.Info!.StartTime,
+                cancellationToken);
+        }
 
         return UnitResult.Success<Error>();
         

@@ -1,8 +1,7 @@
-﻿using System.Net;
+using System.Net;
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
@@ -12,10 +11,10 @@ using OIO.Domain.Context.AuctionContext.Grains;
 using OIO.Domain.Context.AuctionContext.Grains.GrainModels;
 using OIO.Domain.Context.AuctionContext.Grains.GrainValueObjects;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
-using OIO.Infrastructure.Settings;
 using OIO.Infrastructure.Settings.Apps;
 
 namespace OIO.Infrastructure.Grains;
@@ -29,7 +28,7 @@ namespace OIO.Infrastructure.Grains;
 /// - Domain logic stays in the Auction aggregate (DDD)
 /// - Grain loads from DB on first call, then caches in memory
 /// - After domain operation, saves back to DB
-/// - Domain events → Outbox messages (via SaveChanges interceptor)
+/// - Domain events ? Outbox messages (via SaveChanges interceptor)
 /// </summary>
 public sealed class AuctionGrain : Grain, IAuctionGrain
 {
@@ -37,7 +36,7 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
     private readonly ILogger<AuctionGrain> _logger;
-    private readonly IAppConfigs _appConfigs;
+    private readonly IRuntimeSettings _runtimeSettings;
 
     // In-memory cache of the auction aggregate
     private Auction? _auction;
@@ -48,13 +47,13 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
         IUnitOfWork unitOfWork,
         IClock clock,
         ILogger<AuctionGrain> logger,
-        IAppConfigs appConfigs)
+        IRuntimeSettings runtimeSettings)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _clock = clock;
         _logger = logger;
-        _appConfigs = appConfigs;
+        _runtimeSettings = runtimeSettings;
     }
 
     // ==================== PlaceBid ====================
@@ -83,13 +82,15 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 return error;
             }
             
+            // The aggregate executes the full live-bidding cascade, including
+            // counter auto-bids and any resulting domain events, before returning.
             (_, isFailure, var bid, error) = auction.PlaceBid(
                 bidderId: UserId.From(bidderId),
                 amount: amountDomain,
                 nowUtc: nowUtc,
-                extensionThresholdMinutes: await _appConfigs.Auctions.GetExtensionThresholdMinutesAsync(cancellationToken),
-                maxExtensions: await _appConfigs.Auctions.GetMaxExtensionsPerAuctionAsync(cancellationToken),
-                maxDuration: await _appConfigs.Auctions.GetMaxDurationAsync(cancellationToken),
+                extensionThresholdMinutes: _runtimeSettings.Auction.ExtensionThreshold,
+                maxExtensions: _runtimeSettings.Auction.MaxExtensionsPerAuction,
+                maxDuration: _runtimeSettings.Auction.MaxDuration,
                 ipAddress: ipAddress);
             
             if (isFailure)
@@ -108,11 +109,9 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
         }
     }
 
-    // ==================== BuyNow ====================
-
-    public async Task<Result<BidGrain, Error>> ExecuteBuyNowAsync(
+    public async Task<Result<AuctionBuyNowReservationGrain, Error>> InitiateBuyNowReservationAsync(
         Guid bidderId,
-        IPAddress? ipAddress,
+        TimeSpan reservationWindow,
         CancellationToken cancellationToken = default)
     {
         try
@@ -121,25 +120,89 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
             var (_, isFailure, auction, error) = await LoadAuctionAsync(cancellationToken);
 
             if (isFailure)
-            {
                 return error;
-            }
 
-            (_, isFailure, var bid, error) = auction.ExecuteBuyNow(UserId.From(bidderId), nowUtc, ipAddress);
+            (_, isFailure, var reservation, error) = auction.InitiateBuyNowReservation(
+                UserId.From(bidderId),
+                nowUtc,
+                reservationWindow);
 
             if (isFailure)
-            {
                 return error;
-            }
-            
-            await SaveAsync(auction, cancellationToken);
 
-            return BidGrain.From(bid);
+            await SaveAsync(auction, cancellationToken);
+            return AuctionBuyNowReservationGrain.From(reservation);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex,
-                "Unexpected error executing buy now on auction {AuctionId}",
+                "Unexpected error initiating buy-now reservation on auction {AuctionId}",
+                this.GetGrainId());
+            throw;
+        }
+    }
+
+    public async Task<Result<AuctionBuyNowReservationGrain, Error>> AttachBuyNowPaymentAsync(
+        Guid reservationId,
+        Guid paymentTransactionId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var nowUtc = _clock.UtcNow;
+            var (_, isFailure, auction, error) = await LoadAuctionAsync(cancellationToken);
+
+            if (isFailure)
+                return error;
+
+            (_, isFailure, var reservation, error) = auction.AttachBuyNowPayment(
+                AuctionBuyNowReservationId.From(reservationId),
+                TransactionId.From(paymentTransactionId),
+                nowUtc);
+
+            if (isFailure)
+                return error;
+
+            await SaveAsync(auction, cancellationToken);
+            return AuctionBuyNowReservationGrain.From(reservation);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Unexpected error attaching buy-now payment on auction {AuctionId}",
+                this.GetGrainId());
+            throw;
+        }
+    }
+
+    public async Task<UnitResult<Error>> FailBuyNowReservationAsync(
+        Guid reservationId,
+        string reason,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var nowUtc = _clock.UtcNow;
+            var (_, isFailure, auction, error) = await LoadAuctionAsync(cancellationToken);
+
+            if (isFailure)
+                return error;
+
+            var result = auction.FailBuyNowReservation(
+                AuctionBuyNowReservationId.From(reservationId),
+                reason,
+                nowUtc);
+
+            if (result.IsFailure)
+                return result.Error;
+
+            await SaveAsync(auction, cancellationToken);
+            return UnitResult.Success<Error>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Unexpected error failing buy-now reservation on auction {AuctionId}",
                 this.GetGrainId());
             throw;
         }
@@ -216,12 +279,12 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
 
         return new AuctionSnapshotGrain(
             AuctionId: auction.Id.Value,
-            CurrentPrice: auction.CurrentPrice.Amount,
+            CurrentPrice: auction.Pricing.CurrentAmount,
             MinimumNextBid: auction.GetMinimumBidAmount().Amount,
             BidCount: auction.BidCount,
             Status: auction.Status.Id,
-            EndTime: auction.Duration.EndTime,
-            WinnerId: auction.CurrentWinnerId?.Value);
+            EndTime: auction.Info?.EndTime ?? DateTime.MinValue,
+            WinnerId: auction.WinnerId?.Value);
     }
 
     // ==================== Internal Helpers ====================
@@ -240,9 +303,14 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
         _auction = await _dbContext.GetByIdAsync<Auction, AuctionId>(
             AuctionId.From(auctionId),
             query => query
+                .Include(a => a.Item)
                 .Include(a => a.Bids.OrderByDescending(b => b.CreatedAt))
                 .Include(a => a.AutoBids)
-                .Include(a => a.PriceHistories.OrderByDescending(ph => ph.RecordedAt))
+                .Include(a => a.Deposits)
+                .Include(a => a.Participants)
+                .Include(a => a.SealedBids)
+                .Include(a => a.PriceHistories.OrderByDescending(ph => ph.CreatedAt))
+                .Include(a => a.BuyNowReservations)
                 .AsSplitQuery(),
             cancellationToken);
 
@@ -258,7 +326,7 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
 
     /// <summary>
     /// Save auction to DB and invalidate grain cache.
-    /// Domain events in auction → Outbox messages (via interceptor).
+    /// Domain events in auction ? Outbox messages (via interceptor).
     /// </summary>
     private async Task SaveAsync(Auction auction, CancellationToken cancellationToken = default)
     {
@@ -269,3 +337,4 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
         _auction = null;
     }
 }
+

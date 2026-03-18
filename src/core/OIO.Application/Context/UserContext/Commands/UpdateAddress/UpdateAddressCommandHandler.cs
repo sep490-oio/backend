@@ -80,7 +80,7 @@ internal sealed class UpdateAddressCommandHandler
         }
         
         PhoneNumber? phoneNumber = null;
-        if (request.PhoneNumber is not null && request.PhoneNumber != existing.PhoneNumber.Value)
+        if (request.PhoneNumber is not null && request.PhoneNumber != existing.Recipient.Phone.Value)
         {
             var phoneNumberR = PhoneNumber.Create(request.PhoneNumber, request.CountryCode);
 
@@ -94,13 +94,21 @@ internal sealed class UpdateAddressCommandHandler
         
         var addressType = AddressType.FromId(request.Type).GetValueOrDefault(existing.Type);
         
+        var ( _, isFailure, recipient, error) = RecipientInfo.Create(
+            request.RecipientName ?? existing.Recipient.RecipientName,
+            phoneNumber?.Value ?? existing.Recipient.Phone.Value,
+            request.CountryCode ?? existing.Recipient.Phone.CountryCode);
 
+        if (isFailure)
+        {
+            return error;
+        }
+        
         var updateR = user.UpdateAddress(
             addressId,
             now: nowUtc,
             type: addressType,
-            recipientName: request.RecipientName,
-            phoneNumber: phoneNumber,
+            recipient: recipient,
             address: address);
 
         if (updateR.IsFailure)

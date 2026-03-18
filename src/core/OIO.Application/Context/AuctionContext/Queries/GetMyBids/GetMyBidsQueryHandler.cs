@@ -54,18 +54,18 @@ internal sealed class GetMyBidsQueryHandler
             .Select(x => new MyBidDto(
                 x.Id.Value,
                 x.Auction.Id.Value,
-                x.Auction.Item.Title,
+                x.Auction.Item.Title.Value,
                 x.Auction.Item.Media
                     .Where(img => img.IsPrimary)
-                    .Select(img => img.Url)
+                    .Select(img => img.Info.SecureUrl)
                     .FirstOrDefault(),
                 x.Amount.ToDto(),
-                x.Auction.CurrentPrice.ToDto(),
+                x.Auction.Pricing.CurrentPrice.ToDto(),
                 x.Status.Id,
                 x.Auction.Status.Id,
                 x.Status == BidStatus.Winning,
                 x.CreatedAt,
-                x.Auction.Duration.EndTime))
+                x.Auction.Info.EndTime))
             .ToPagedListAsync(totalCount, parameters, cancellationToken);
 
         return myBids;

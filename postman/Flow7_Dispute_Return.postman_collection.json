@@ -1,0 +1,233 @@
+{
+  "info": {
+    "name": "Flow 7: Tranh chấp & Hoàn trả",
+    "description": "Luồng buyer yêu cầu trả hàng hoặc mở dispute trong decision window.\n\n**Actors**: Buyer, Seller, Admin\n**Prerequisite**: Order đã Delivered (từ Flow 6), trong decision window 7 ngày",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "buyerToken", "value": "" },
+    { "key": "sellerToken", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "orderId", "value": "PASTE_ORDER_ID_HERE" },
+    { "key": "returnId", "value": "" },
+    { "key": "reportId", "value": "" },
+    { "key": "disputeId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "0.1 Login as Buyer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"account\": \"buyer1@example.com\",\n  \"password\": \"Test@1234\",\n  \"deviceId\": \"{{$guid}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.accessToken) pm.collectionVariables.set('buyerToken', res.accessToken);"] } }]
+        },
+        {
+          "name": "0.2 Login as Seller",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"account\": \"seller@example.com\",\n  \"password\": \"Test@1234\",\n  \"deviceId\": \"{{$guid}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.accessToken) pm.collectionVariables.set('sellerToken', res.accessToken);"] } }]
+        },
+        {
+          "name": "0.3 Login as Admin",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"account\": \"admin@example.com\",\n  \"password\": \"Admin@1234\",\n  \"deviceId\": \"{{$guid}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.accessToken) pm.collectionVariables.set('adminToken', res.accessToken);"] } }]
+        }
+      ]
+    },
+    {
+      "name": "A. Return Flow",
+      "item": [
+        {
+          "name": "7.1 [Buyer] Request Return",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}/returns", "host": ["{{baseUrl}}"], "path": ["api", "orders", "{{orderId}}", "returns"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reasonCode\": \"ItemNotAsDescribed\",\n  \"description\": \"Sản phẩm không đúng như mô tả, có vết trầy xước lớn không được đề cập.\"\n}"
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.id) pm.collectionVariables.set('returnId', res.id);", "pm.test('Return requested', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "7.2 [Seller] Approve Return",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{sellerToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}/returns/{{returnId}}/approve", "host": ["{{baseUrl}}"], "path": ["api", "orders", "{{orderId}}", "returns", "{{returnId}}", "approve"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Return approved', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "7.3 [Buyer] Ship Return Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}/returns/{{returnId}}/ship", "host": ["{{baseUrl}}"], "path": ["api", "orders", "{{orderId}}", "returns", "{{returnId}}", "ship"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerCode\": \"ghn\",\n  \"trackingNumber\": \"GHN123456789\"\n}"
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Return shipped', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "7.4 [Seller] Confirm Return Received",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{sellerToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}/returns/{{returnId}}/confirm-received", "host": ["{{baseUrl}}"], "path": ["api", "orders", "{{orderId}}", "returns", "{{returnId}}", "confirm-received"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Return received confirmed', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "7.5 [Buyer] Check Wallet (refund)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{buyerToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/me/wallet", "host": ["{{baseUrl}}"], "path": ["api", "me", "wallet"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "console.log('Wallet balance:', res.balanceAmount);"] } }]
+        }
+      ]
+    },
+    {
+      "name": "B. Report & Dispute Flow",
+      "item": [
+        {
+          "name": "7.6 [Buyer] Create Report",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/reports", "host": ["{{baseUrl}}"], "path": ["api", "reports"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entityType\": \"Auction\",\n  \"entityId\": \"PASTE_AUCTION_ID_HERE\",\n  \"reasonCode\": \"Counterfeit\",\n  \"description\": \"Sản phẩm là hàng giả, không phải hàng chính hãng.\"\n}"
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.id) pm.collectionVariables.set('reportId', res.id);", "pm.test('Report created', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "7.7 [Buyer] Get My Reports",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{buyerToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/me/reports", "host": ["{{baseUrl}}"], "path": ["api", "me", "reports"] }
+          }
+        },
+        {
+          "name": "7.8 [Admin] Get All Reports",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/reports", "host": ["{{baseUrl}}"], "path": ["api", "admin", "reports"] }
+          }
+        },
+        {
+          "name": "7.9 [Admin] Assign Report",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/admin/reports/{{reportId}}/assign", "host": ["{{baseUrl}}"], "path": ["api", "admin", "reports", "{{reportId}}", "assign"] },
+            "body": { "mode": "raw", "raw": "{\n  \"adminId\": \"PASTE_ADMIN_USER_ID_HERE\"\n}" }
+          }
+        },
+        {
+          "name": "7.10 [Buyer] Get My Disputes",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{buyerToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/disputes", "host": ["{{baseUrl}}"], "path": ["api", "disputes"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.items && res.items.length > 0) pm.collectionVariables.set('disputeId', res.items[0].id);"] } }]
+        },
+        {
+          "name": "7.11 Get Dispute Details",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{buyerToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/disputes/{{disputeId}}", "host": ["{{baseUrl}}"], "path": ["api", "disputes", "{{disputeId}}"] }
+          }
+        },
+        {
+          "name": "7.12 [Buyer] Send Dispute Message + Evidence",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/disputes/{{disputeId}}/messages", "host": ["{{baseUrl}}"], "path": ["api", "disputes", "{{disputeId}}", "messages"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Đây là bằng chứng sản phẩm giả. Xin hãy xem xét và hoàn tiền.\",\n  \"isInternal\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "7.13 Get Dispute Messages",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{buyerToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/disputes/{{disputeId}}/messages", "host": ["{{baseUrl}}"], "path": ["api", "disputes", "{{disputeId}}", "messages"] }
+          }
+        },
+        {
+          "name": "7.14 [Admin] Resolve Dispute (Refund Full)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/admin/disputes/{{disputeId}}/resolve", "host": ["{{baseUrl}}"], "path": ["api", "admin", "disputes", "{{disputeId}}", "resolve"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resolutionType\": \"RefundFull\",\n  \"notes\": \"Sản phẩm được xác nhận là hàng giả. Hoàn tiền toàn bộ cho buyer.\"\n}"
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Dispute resolved', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "7.15 [Buyer] Check Wallet (refund received)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{buyerToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/me/wallet", "host": ["{{baseUrl}}"], "path": ["api", "me", "wallet"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "console.log('Balance after refund:', res.balanceAmount);"] } }]
+        }
+      ]
+    }
+  ]
+}

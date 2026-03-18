@@ -10,8 +10,8 @@ internal static class UserAddressMappings
         return new UserAddressDto(
             Id: address.Id.Value,
             Type: address.Type.Id,
-            RecipientName: address.RecipientName,
-            PhoneNumber: address.PhoneNumber,
+            RecipientName: address.Recipient.RecipientName,
+            PhoneNumber: address.Recipient.Phone,
             Street: address.Address.Street,
             Ward: address.Address.Ward,
             District: address.Address.District,

@@ -20,6 +20,7 @@ public sealed class UserName : ValueObject
     public static Result<UserName, ViolationsError> Create(string? value)
     {
         var validateResult =  UserName
+            .Check()
             .Field(value, x => x.Value)
             .NotNullOrWhiteSpace()
             .MaxLength(AppDefinitions.App.Constraint.UserName.MaxLength)

@@ -38,6 +38,7 @@ public sealed class UserRefreshToken : BaseEntity<UserRefreshTokenId>, ICreatedA
     public DateTime? UsedAt { get; private set; }
 
     public UserSession? RefreshTokenFamily { get; private set; }
+    public User User { get; private set; }
     
     internal UserRefreshToken(
         UserRefreshTokenId id,

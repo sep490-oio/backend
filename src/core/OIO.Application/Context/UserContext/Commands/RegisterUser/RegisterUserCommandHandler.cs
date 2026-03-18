@@ -6,6 +6,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.DTOs;
 using OIO.Application.Context.UserContext.Mappings;
 using OIO.Domain.AppDefinitions;
+using OIO.Domain.Context.Shared.Enums;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Errors;
 using OIO.Domain.Context.UserContext.Services;
@@ -49,21 +50,22 @@ internal sealed class RegisterUserCommandHandler
         (_, isFailure, var password, error) = Password.Create(request.Password, _passwordHasher);
         if (isFailure)
             return error;
+        
+        var currency = Currency.FromId(request.Currency);
 
-        (_, isFailure, var firstName, error) = FirstName.Create(request.FirstName);
-        if (request.FirstName is not null && isFailure)
-            return error;
+        if (currency.HasNoValue)
+            return Currency.Errors.NotSupported;
+            
+        var personName = PersonName.Create(request.FirstName, request.LastName, request.UserName);
         
-        (_, isFailure, var lastName, error) = LastName.Create(request.LastName);
-        if (request.LastName is not null && isFailure)
-            return error;
-        
-        var existByEmail = await _dbContext.Set<User>().AnyAsync(x => x.Email == email, cancellationToken);
+        var existByEmail = await _dbContext.Set<User>()
+            .AnyAsync(x => x.Email == email, cancellationToken);
         
         if (existByEmail)
             return UserErrors.User.EmailAlreadyExists;
 
-        var existByUserName = await _dbContext.Set<User>().AnyAsync(x => x.UserName == userName, cancellationToken);
+        var existByUserName = await _dbContext.Set<User>()
+            .AnyAsync(x => x.UserName == userName, cancellationToken);
         
         if (existByUserName)
             return UserErrors.User.UserNameAlreadyExists;
@@ -74,9 +76,9 @@ internal sealed class RegisterUserCommandHandler
             userName,
             email,
             nowUtc,
+            personName,
+            currency.Value,
             password);
-
-        user.UpdateProfile(nowUtc, firstName, lastName);
 
         user.AssignRole(App.Roles.Definitions.Bidder.Name, nowUtc);
         user.AssignRole(App.Roles.Definitions.User.Name, nowUtc);

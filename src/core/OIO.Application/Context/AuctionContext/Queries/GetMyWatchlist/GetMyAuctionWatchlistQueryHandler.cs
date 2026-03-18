@@ -57,17 +57,17 @@ internal sealed class GetMyAuctionWatchlistQueryHandler
             .Page(parameters)
             .Select(x => new MyAuctionWatchlistDto(
                 AuctionId: x.Auction.Id.Value,
-                ItemTitle: x.Auction.Item.Title,
+                ItemTitle: x.Auction.Item.Title.Value,
                 PrimaryImageUrl: x.Auction.Item.Media
                     .Where(img => img.IsPrimary)
-                    .Select(img => img.Url)
+                    .Select(img => img.Info.SecureUrl)
                     .FirstOrDefault(),
-                CurrentPrice: x.Auction.CurrentPrice.Amount,
-                Currency: x.Auction.StartingPrice.Currency.Id,
+                CurrentPrice: x.Auction.Pricing.CurrentAmount,
+                Currency: x.Auction.Pricing.Currency.Id,
                 AuctionStatus: x.Auction.Status.Id,
                 BidCount: x.Auction.BidCount,
-                EndTime: x.Auction.Duration.EndTime,
-                RemainingTime: x.Auction.Duration.EndTime - nowUtc,
+                EndTime: x.Auction.Info.EndTime,
+                RemainingTime: x.Auction.Info.EndTime - nowUtc,
                 NotifyOnBid: x.NotifyOnBid,
                 NotifyOnEnd: x.NotifyOnEnd,
                 WatchedAt: x.CreatedAt))

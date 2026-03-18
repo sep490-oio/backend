@@ -4,8 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
-using OIO.Domain.Context.Shared.ValueObjects;
+using OIO.Domain.Context.Shared.Enums;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using ItemId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId;
 
 namespace OIO.Infrastructure.Persistence.Configurations.AuctionContext;
 
@@ -16,10 +17,11 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
         builder.ToTable("auctions", t =>
         {
             t.HasCheckConstraint("chk_end_after_start", "end_time > start_time");
-            t.HasCheckConstraint("chk_reserve_gte_starting", "reserve_price >= starting_price");
-            t.HasCheckConstraint("chk_buy_now_gt_starting", "buy_now_price > starting_price");
+            t.HasCheckConstraint("chk_reserve_gte_starting", "reserve_price IS NULL OR reserve_price >= starting_price");
+            t.HasCheckConstraint("chk_buy_now_gt_starting", "buy_now_price IS NULL OR buy_now_price > starting_price");
             t.HasCheckConstraint("chk_current_gte_starting", "current_price >= starting_price");
             t.HasCheckConstraint("chk_positive_bid_increment", "bid_increment > 0");
+            t.HasCheckConstraint("chk_qualification_window", "qualification_start_at IS NULL OR qualification_end_at IS NULL OR qualification_end_at > qualification_start_at");
         });
 
         builder.HasKey(a => a.Id);
@@ -34,108 +36,92 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
             .IsRequired()
             .HasConversion(x => x.Value, x => ItemId.From(x));
 
-        builder.Property(a => a.SellerId)
-            .HasColumnName("seller_id")
-            .HasConversion(x => x.Value, x => UserId.From(x));
+        builder.Property(auction => auction.AuctionType)
+            .HasColumnName("auction_type")
+            .HasConversion(x => x != null ? x.Id : null, x => x == null ? null : AuctionType.FromId(x).Value);
 
-        // ==================== Money Value Objects ====================
-        builder.ComplexProperty(a => a.StartingPrice, money =>
+        builder.ComplexProperty(a => a.Pricing, pricing =>
         {
-            money.Property(m => m.Amount)
+            pricing.Property(p => p.StartingAmount)
                 .HasColumnName("starting_price")
                 .HasColumnType("numeric(18,2)")
                 .IsRequired();
-            
-            money.ComplexProperty(m => m.Currency, currencyBuilder =>
-            {
-                currencyBuilder.Property(x => x.Id)
-                    .HasColumnName("starting_price_currency")
-                    .HasMaxLength(3)
-                    .HasDefaultValue(Currency.Vnd.Id)
-                    .IsRequired();
-            });
-        });
 
-        builder.ComplexProperty(a => a.ReservePrice, money =>
-        {
-            money.Property(m => m.Amount)
+            pricing.Property(p => p.ReserveAmount)
                 .HasColumnName("reserve_price")
                 .HasColumnType("numeric(18,2)");
-            
-            money.ComplexProperty(m => m.Currency, currencyBuilder =>
-            {
-                currencyBuilder.Property(x => x.Id)
-                    .HasColumnName("reserve_price_currency")
-                    .HasMaxLength(3);
-            });
-        });
 
-        builder.ComplexProperty(a => a.BuyNowPrice, money =>
-        {
-            money.Property(m => m.Amount)
+            pricing.Property(p => p.BuyNowAmount)
                 .HasColumnName("buy_now_price")
                 .HasColumnType("numeric(18,2)");
-            
-            money.ComplexProperty(m => m.Currency, currencyBuilder =>
-            {
-                currencyBuilder.Property(x => x.Id)
-                    .HasColumnName("buy_now_price_currency")
-                    .HasMaxLength(3);
-            });
-        });
 
-        builder.ComplexProperty(a => a.CurrentPrice, money =>
-        {
-            money.Property(m => m.Amount)
+            pricing.Property(p => p.CurrentAmount)
                 .HasColumnName("current_price")
                 .HasColumnType("numeric(18,2)")
                 .IsRequired();
-            
-            money.ComplexProperty(m => m.Currency, currencyBuilder =>
-            {
-                currencyBuilder.Property(x => x.Id)
-                    .HasColumnName("current_price_currency")
-                    .HasMaxLength(3)
-                    .HasDefaultValue(Currency.Vnd.Id)
-                    .IsRequired();
-            });
-        });
 
-        builder.ComplexProperty(a => a.BidIncrement, money =>
-        {
-            money.Property(m => m.Amount)
+            pricing.Property(p => p.BidIncrementAmount)
                 .HasColumnName("bid_increment")
                 .HasColumnType("numeric(18,2)")
-                .HasDefaultValue(1.00m)
                 .IsRequired();
-          
-            money.ComplexProperty(m => m.Currency, currencyBuilder =>
-            {
-                currencyBuilder.Property(x => x.Id)
-                    .HasColumnName("bid_increment_currency")
-                    .HasMaxLength(3)
-                    .HasDefaultValue(Currency.Vnd.Id)
-                    .IsRequired();
-            });
-        });
-           
 
-        // ==================== Duration Value Object ====================
-        builder.ComplexProperty(a => a.Duration, duration =>
+            // pricing.ComplexProperty(p => p.Currency, currency =>
+            // {
+            //     currency.Property(c => c.Id)
+            //         .HasColumnName("currency")
+            //         .HasMaxLength(3)
+            //         .IsRequired();
+            // });
+            
+            pricing.Property(c => c.Currency)
+                .HasColumnName("currency")
+                .HasMaxLength(3)
+                .HasConversion(x => x.Id, x => Currency.FromId(x).Value)
+                .IsRequired();
+               
+
+            pricing.Ignore(p => p.StartingPrice);
+            pricing.Ignore(p => p.ReservePrice);
+            pricing.Ignore(p => p.BuyNowPrice);
+            pricing.Ignore(p => p.CurrentPrice);
+            pricing.Ignore(p => p.BidIncrement);
+
+            pricing.Ignore(p => p.NextMinimumBid);
+            pricing.Ignore(p => p.HasBuyNowPrice);
+            pricing.Ignore(p => p.HasReservePrice);
+            pricing.Ignore(p => p.ReserveMet);
+            pricing.Ignore(p => p.IsBuyNowAvailable);
+        });
+
+        builder.ComplexProperty(a => a.Info, info =>
         {
-            duration.Property(d => d.StartTime)
+            info.Property(i => i.StartTime)
                 .HasColumnName("start_time")
-                .IsRequired()
-                .HasComplexIndex(indexName: "idx_auctions_start_time");
+                .IsRequired();
 
-            duration.Property(d => d.EndTime)
+            info.Property(i => i.EndTime)
                 .HasColumnName("end_time")
-                .IsRequired()
-                .HasComplexIndex(indexName: "idx_auctions_end_time");
-        });
+                .IsRequired();
 
-        builder.Property(a => a.ActualEndTime)
-            .HasColumnName("actual_end_time");
+            info.Property(i => i.AutoExtend)
+                .HasColumnName("auto_extend");
+
+            info.Property(i => i.ExtensionMinutes)
+                .HasColumnName("extension_minutes");
+
+            // Nested VO: QualificationWindow? inside AuctionInfo
+            info.ComplexProperty(i => i.Qualification, qual =>
+            {
+                qual.Property(q => q.StartTime)
+                    .HasColumnName("qualification_start_at");
+
+                qual.Property(q => q.EndTime)
+                    .HasColumnName("qualification_end_at");
+            });
+        }).HasComplexCompositeIndex(
+            a => new { a.Info.StartTime, a.Info.EndTime },
+            filter: "((status)::text = 'active'::text)",
+            indexName: "idx_auctions_active");
 
         // ==================== Status ====================
         builder.ComplexProperty(x => x.Status, statusBuilder =>
@@ -148,24 +134,44 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
                 .HasComplexIndex(indexName: "idx_auctions_status");
         });
 
-        builder.Property(a => a.CurrentWinnerId)
+        builder.ComplexProperty(x => x.Priority, priorityBuilder =>
+        {
+            priorityBuilder.Property(p => p.Score)
+                .HasColumnName("priority")
+                .IsRequired()
+                .HasComplexIndex(indexName: "idx_auctions_priority");
+            
+            priorityBuilder.Property(p => p.Reason)
+                .HasColumnName("priority_reason")
+                .HasColumnType("jsonb")
+                .IsRequired();
+        });
+
+        builder.Property(a => a.WinnerId)
             .HasColumnName("winner_id")
             .HasConversion(x => x.HasValue ? (Guid?)x.Value : null , x => x.HasValue ? UserId.From(x.Value) : null);
 
-        // ==================== Settings ====================
-        builder.Property(a => a.AutoExtend)
-            .HasColumnName("auto_extend")
-            .HasDefaultValue(true);
+        builder.Property(a => a.AssignedAdminId)
+            .HasColumnName("assigned_admin_id")
+            .HasConversion(x => x.HasValue ? (Guid?)x.Value.Value : null, x => x.HasValue ? UserId.From(x.Value) : null);
 
-        builder.Property(a => a.ExtensionMinutes)
-            .HasColumnName("extension_minutes")
-            .HasDefaultValue(5);
+        builder.Property(a => a.AssignedAt)
+            .HasColumnName("assigned_at");
+
+        builder.Property(a => a.VerifyByPlatform)
+            .HasColumnName("verify_by_platform")
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(a => a.RejectionCount)
+            .HasColumnName("rejection_count")
+            .HasDefaultValue(0)
+            .IsRequired();
 
         builder.Property(a => a.IsFeatured)
             .HasColumnName("is_featured")
             .HasDefaultValue(false);
 
-        // ==================== Counters ====================
         builder.Property(a => a.ViewCount)
             .HasColumnName("view_count")
             .HasDefaultValue(0);
@@ -178,7 +184,6 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
             .HasColumnName("watch_count")
             .HasDefaultValue(0);
 
-        // ==================== Audit ====================
         builder.Property(a => a.CreatedAt)
             .HasColumnName("created_at")
             .HasDefaultValueSql("CURRENT_TIMESTAMP")
@@ -190,34 +195,63 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
         // ==================== Relationships ====================
         builder.HasMany(a => a.Bids)
             .WithOne(b => b.Auction)
-            .HasForeignKey(b => b.AuctionId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .HasForeignKey(b => b.AuctionId);
 
         builder.HasMany(a => a.AutoBids)
-            .WithOne()
+            .WithOne(ab => ab.Auction)
             .HasForeignKey(ab => ab.AuctionId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasMany(a => a.Watchers)
-            .WithOne(a => a.Auction)
+            .WithOne(w => w.Auction)
             .HasForeignKey(w => w.AuctionId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasMany(a => a.PriceHistories)
-            .WithOne()
+            .WithOne(ph => ph.Auction)
             .HasForeignKey(ph => ph.AuctionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(a => a.Deposits)
+            .WithOne(d => d.Auction)
+            .HasForeignKey(d => d.AuctionId);
+
+        builder.HasMany(a => a.Participants)
+            .WithOne(ap => ap.Auction)
+            .HasForeignKey(p => p.AuctionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(a => a.SealedBids)
+            .WithOne(sb => sb.Auction)
+            .HasForeignKey(sb => sb.AuctionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(a => a.WinnerOffers)
+            .WithOne(wo => wo.Auction)
+            .HasForeignKey(wo => wo.AuctionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(a => a.RelistHistories)
+            .WithOne(rh => rh.Auction)
+            .HasForeignKey(rh => rh.AuctionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(a => a.Emergencies)
+            .WithOne(ae => ae.Auction)
+            .HasForeignKey(e => e.AuctionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(a => a.BuyNowReservations)
+            .WithOne(r => r.Auction)
+            .HasForeignKey(r => r.AuctionId)
             .OnDelete(DeleteBehavior.Cascade);
         
         builder.HasOne(a => a.Item)
-            .WithMany(x => x.Auctions)
+            .WithMany(i => i.Auctions)
             .HasForeignKey(a => a.ItemId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // ==================== Indexes ====================
-
-        // ==================== Ignore ====================
-        builder.Ignore(a => a.DomainEvents);
-        builder.Ignore(a => a.IsReserveMet);
-        builder.Ignore(a => a.HasBuyNow);
+        builder.HasIndex(a => a.AssignedAdminId)
+            .HasDatabaseName("idx_auctions_assigned_admin_id");
     }
 }

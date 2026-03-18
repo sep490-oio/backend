@@ -8,7 +8,7 @@ public interface ISecureTokenStore
     /// Store a token for a user. Replaces any existing token of the same type.
     /// Returns the plain token (not the hash).
     /// </summary>
-    Task<string> CreateTokenAsync(
+    Task<(string token, TimeSpan ttl)> CreateTokenAsync(
         TokenType type,
         UserId userId,
         TimeSpan? expiration = null,

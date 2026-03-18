@@ -1,0 +1,884 @@
+﻿http:
+  "DELETE api/admin/users/{userId:guid}":
+    purpose: "Xoa Delete User qua DELETE /api/admin/users/{userId:guid}."
+    audience: "admin"
+    notes: ""
+  "DELETE api/admin/users/{userId:guid}/permissions/{permission}":
+    purpose: "Xoa Revoke Permission From User qua DELETE /api/admin/users/{userId:guid}/permissions/{permission}."
+    audience: "admin"
+    notes: ""
+  "DELETE api/admin/users/{userId:guid}/roles/{role}":
+    purpose: "Xoa Revoke Role From User qua DELETE /api/admin/users/{userId:guid}/roles/{role}."
+    audience: "admin"
+    notes: ""
+  "DELETE api/auctions/{auctionId:guid}/watch":
+    purpose: "Xoa Unwatch Auction qua DELETE /api/auctions/{auctionId:guid}/watch."
+    audience: "authenticated"
+    notes: ""
+  "DELETE api/items/{itemId:guid}/media/{mediaId:guid}":
+    purpose: "Xoa Remove Item Media qua DELETE /api/items/{itemId:guid}/media/{mediaId:guid}."
+    audience: "authenticated"
+    notes: ""
+  "DELETE api/me/addresses/{addressId:guid}":
+    purpose: "Xoa Remove Address qua DELETE /api/me/addresses/{addressId:guid}."
+    audience: "authenticated"
+    notes: ""
+  "DELETE api/me/verifications/{verificationId:guid}/documents/{docId:guid}":
+    purpose: "Xoa Delete Verification Document qua DELETE /api/me/verifications/{verificationId:guid}/documents/{docId:guid}."
+    audience: "authenticated"
+    notes: ""
+  "DELETE api/payments/methods/{id:guid}":
+    purpose: "Xoa Delete Payment Method qua DELETE /api/payments/methods/{id:guid}."
+    audience: "authenticated"
+    notes: ""
+  "DELETE api/warehouse/storage-locations/{locationId:guid}":
+    purpose: "Xoa Delete Storage Location qua DELETE /api/warehouse/storage-locations/{locationId:guid}."
+    audience: "authenticated"
+    notes: ""
+  "GET api/admin/items/{itemId:guid}":
+    purpose: "Lay Get Admin Item Detail qua GET /api/admin/items/{itemId:guid}."
+    audience: "admin"
+    notes: ""
+  "GET api/admin/items/{itemId:guid}/reviews":
+    purpose: "Lay Get Item Review History qua GET /api/admin/items/{itemId:guid}/reviews."
+    audience: "admin"
+    notes: ""
+  "GET api/admin/items/review-queue":
+    purpose: "Lay Get Review Queue qua GET /api/admin/items/review-queue."
+    audience: "admin"
+    notes: ""
+  "GET api/admin/monitoring-alerts":
+    purpose: "Lay Get Monitoring Alerts qua GET /api/admin/monitoring-alerts."
+    audience: "admin"
+    notes: ""
+  "GET api/admin/payments/escrows":
+    purpose: "Lay Get Escrows qua GET /api/admin/payments/escrows."
+    audience: "admin"
+    notes: ""
+  "GET api/admin/payments/escrows/{escrowId:guid}":
+    purpose: "Lay Get Escrow By Id qua GET /api/admin/payments/escrows/{escrowId:guid}."
+    audience: "admin"
+    notes: ""
+  "GET api/admin/payments/summary":
+    purpose: "Lay Get Payment Summary qua GET /api/admin/payments/summary."
+    audience: "admin"
+    notes: ""
+  "GET api/admin/payments/transactions":
+    purpose: "Lay Get Transactions qua GET /api/admin/payments/transactions."
+    audience: "admin"
+    notes: ""
+  "GET api/admin/payments/transactions/{transactionId:guid}":
+    purpose: "Lay Get Transaction By Id qua GET /api/admin/payments/transactions/{transactionId:guid}."
+    audience: "admin"
+    notes: ""
+  "GET api/admin/payments/withdrawals":
+    purpose: "Lay Get Withdrawals qua GET /api/admin/payments/withdrawals."
+    audience: "admin"
+    notes: ""
+  "GET api/admin/payments/withdrawals/{withdrawalId:guid}":
+    purpose: "Lay Get Withdrawal By Id qua GET /api/admin/payments/withdrawals/{withdrawalId:guid}."
+    audience: "admin"
+    notes: ""
+  "GET api/admin/permissions":
+    purpose: "Lay Get Permissions qua GET /api/admin/permissions."
+    audience: "admin"
+    notes: ""
+  "GET api/admin/reports":
+    purpose: "Lay Get Reports qua GET /api/admin/reports."
+    audience: "admin"
+    notes: ""
+  "GET api/admin/roles":
+    purpose: "Lay Get All Roles qua GET /api/admin/roles."
+    audience: "admin"
+    notes: ""
+  "GET api/admin/seller-profiles":
+    purpose: "Lay Get Seller Profiles qua GET /api/admin/seller-profiles."
+    audience: "admin"
+    notes: ""
+  "GET api/admin/terms":
+    purpose: "Lay Get All Terms Documents qua GET /api/admin/terms."
+    audience: "admin"
+    notes: ""
+  "GET api/admin/users":
+    purpose: "Lay Get Users qua GET /api/admin/users."
+    audience: "admin"
+    notes: ""
+  "GET api/admin/users/{userId:guid}":
+    purpose: "Lay Get User qua GET /api/admin/users/{userId:guid}."
+    audience: "admin"
+    notes: ""
+  "GET api/admin/verifications":
+    purpose: "Lay Get Pending Verifications qua GET /api/admin/verifications."
+    audience: "admin"
+    notes: ""
+  "GET api/admin/verifications/{verificationId:guid}":
+    purpose: "Lay Get Verification By Id qua GET /api/admin/verifications/{verificationId:guid}."
+    audience: "admin"
+    notes: ""
+  "GET api/auctions":
+    purpose: "Lay Get Auctions qua GET /api/auctions."
+    audience: "anonymous"
+    notes: ""
+  "GET api/auctions/{auctionId:guid}":
+    purpose: "Lay Get Auction By Id qua GET /api/auctions/{auctionId:guid}."
+    audience: "anonymous"
+    notes: ""
+  "GET api/auctions/{auctionId:guid}/auto-bid/my":
+    purpose: "Lay Get My Auto Bid qua GET /api/auctions/{auctionId:guid}/auto-bid/my."
+    audience: "authenticated"
+    notes: ""
+  "GET api/auctions/{auctionId:guid}/bids":
+    purpose: "Lay Get Auction Bids qua GET /api/auctions/{auctionId:guid}/bids."
+    audience: "authenticated"
+    notes: ""
+  "GET api/categories":
+    purpose: "Lay Get All Categories qua GET /api/categories."
+    audience: "anonymous"
+    notes: ""
+  "GET api/categories/{categoryId:guid}":
+    purpose: "Lay Get Category By Id qua GET /api/categories/{categoryId:guid}."
+    audience: "anonymous"
+    notes: ""
+  "GET api/categories/{categoryId:guid}/children":
+    purpose: "Lay Get Category Children qua GET /api/categories/{categoryId:guid}/children."
+    audience: "anonymous"
+    notes: ""
+  "GET api/categories/by-slug/{slug}":
+    purpose: "Lay Get Category By Slug qua GET /api/categories/by-slug/{slug}."
+    audience: "anonymous"
+    notes: ""
+  "GET api/disputes":
+    purpose: "Lay Get Accessible Disputes qua GET /api/disputes."
+    audience: "authenticated"
+    notes: ""
+  "GET api/disputes/{disputeId:guid}":
+    purpose: "Lay Get Dispute Thread qua GET /api/disputes/{disputeId:guid}."
+    audience: "authenticated"
+    notes: ""
+  "GET api/disputes/{disputeId:guid}/messages":
+    purpose: "Lay Get Dispute Messages qua GET /api/disputes/{disputeId:guid}/messages."
+    audience: "authenticated"
+    notes: ""
+  "GET api/items/{itemId:guid}":
+    purpose: "Lay Get Item By Id qua GET /api/items/{itemId:guid}."
+    audience: "anonymous"
+    notes: ""
+  "GET api/items/{itemId:guid}/questions":
+    purpose: "Lay Get Public Item Questions qua GET /api/items/{itemId:guid}/questions."
+    audience: "authenticated"
+    notes: ""
+  "GET api/items/my":
+    purpose: "Lay Get My Items qua GET /api/items/my."
+    audience: "authenticated"
+    notes: ""
+  "GET api/me":
+    purpose: "Lay Get Current User qua GET /api/me."
+    audience: "authenticated"
+    notes: ""
+  "GET api/me/addresses":
+    purpose: "Lay Get Addresses qua GET /api/me/addresses."
+    audience: "authenticated"
+    notes: ""
+  "GET api/me/auctions":
+    purpose: "Lay Get My Auctions qua GET /api/me/auctions."
+    audience: "authenticated"
+    notes: ""
+  "GET api/me/auctions/watch-list":
+    purpose: "Lay Get My Watchlist qua GET /api/me/auctions/watch-list."
+    audience: "authenticated"
+    notes: ""
+  "GET api/me/bids":
+    purpose: "Lay Get My Bids qua GET /api/me/bids."
+    audience: "authenticated"
+    notes: ""
+  "GET api/me/login-history":
+    purpose: "Lay Get Login History qua GET /api/me/login-history."
+    audience: "authenticated"
+    notes: ""
+  "GET api/me/orders":
+    purpose: "Lay Get My Orders qua GET /api/me/orders."
+    audience: "authenticated"
+    notes: ""
+  "GET api/me/profile":
+    purpose: "Lay Get Current User Profile qua GET /api/me/profile."
+    audience: "authenticated"
+    notes: ""
+  "GET api/me/reports":
+    purpose: "Lay Get My Reports qua GET /api/me/reports."
+    audience: "authenticated"
+    notes: ""
+  "GET api/me/seller-profile":
+    purpose: "Lay Get My Seller Profile qua GET /api/me/seller-profile."
+    audience: "authenticated"
+    notes: ""
+  "GET api/me/sessions":
+    purpose: "Lay Get Active Sessions qua GET /api/me/sessions."
+    audience: "authenticated"
+    notes: ""
+  "GET api/me/terms":
+    purpose: "Lay Get My Accepted Terms qua GET /api/me/terms."
+    audience: "authenticated"
+    notes: ""
+  "GET api/me/verifications":
+    purpose: "Lay Get My Verifications qua GET /api/me/verifications."
+    audience: "authenticated"
+    notes: ""
+  "GET api/me/verifications/{verificationId:guid}":
+    purpose: "Lay Get My Verification By Id qua GET /api/me/verifications/{verificationId:guid}."
+    audience: "authenticated"
+    notes: ""
+  "GET api/me/wallet":
+    purpose: "Lay Get My Wallet qua GET /api/me/wallet."
+    audience: "authenticated"
+    notes: ""
+  "GET api/me/wallet/transactions":
+    purpose: "Lay Get My Wallet Transactions qua GET /api/me/wallet/transactions."
+    audience: "authenticated"
+    notes: ""
+  "GET api/me/wallet/transactions/{transactionId:guid}":
+    purpose: "Lay Get My Wallet Transaction By Id qua GET /api/me/wallet/transactions/{transactionId:guid}."
+    audience: "authenticated"
+    notes: ""
+  "GET api/me/wallet/withdrawals":
+    purpose: "Lay Get My Withdrawals qua GET /api/me/wallet/withdrawals."
+    audience: "authenticated"
+    notes: ""
+  "GET api/media/contexts":
+    purpose: "Lay Get Upload Contexts qua GET /api/media/contexts."
+    audience: "authenticated"
+    notes: ""
+  "GET api/notifications":
+    purpose: "Lay Get My Notifications qua GET /api/notifications."
+    audience: "authenticated"
+    notes: ""
+  "GET api/notifications/unread-count":
+    purpose: "Lay Get Unread Count qua GET /api/notifications/unread-count."
+    audience: "authenticated"
+    notes: ""
+  "GET api/orders/{orderId:guid}":
+    purpose: "Lay Get Order By Id qua GET /api/orders/{orderId:guid}."
+    audience: "authenticated"
+    notes: ""
+  "GET api/payments/methods":
+    purpose: "Lay Get Payment Methods qua GET /api/payments/methods."
+    audience: "authenticated"
+    notes: ""
+  "GET api/payments/vnpay/ipn":
+    purpose: "Lay Vn Pay Ipn qua GET /api/payments/vnpay/ipn."
+    audience: "anonymous"
+    notes: "IPN server-to-server tu VNPay."
+  "GET api/payments/vnpay/return":
+    purpose: "Lay Vn Pay Return qua GET /api/payments/vnpay/return."
+    audience: "anonymous"
+    notes: "Return URL cho browser redirect sau thanh toan VNPay."
+  "GET api/sellers/{sellerId:guid}":
+    purpose: "Lay Get Seller By Id qua GET /api/sellers/{sellerId:guid}."
+    audience: "anonymous"
+    notes: ""
+  "GET api/sellers/{sellerId:guid}/items":
+    purpose: "Lay Get Seller Items qua GET /api/sellers/{sellerId:guid}/items."
+    audience: "anonymous"
+    notes: ""
+  "GET api/terms/{type}/active":
+    purpose: "Lay Get Active Terms By Type qua GET /api/terms/{type}/active."
+    audience: "anonymous"
+    notes: ""
+  "GET api/terms/active":
+    purpose: "Lay Get Active Terms qua GET /api/terms/active."
+    audience: "anonymous"
+    notes: ""
+  "GET api/warehouse/inbound-shipments":
+    purpose: "Lay Get Inbound Shipments qua GET /api/warehouse/inbound-shipments."
+    audience: "authenticated"
+    notes: ""
+  "GET api/warehouse/inbound-shipments/{shipmentId:guid}":
+    purpose: "Lay Get Inbound Shipment By Id qua GET /api/warehouse/inbound-shipments/{shipmentId:guid}."
+    audience: "authenticated"
+    notes: ""
+  "GET api/warehouse/inbound-shipments/inspection-queue":
+    purpose: "Lay Get Inspection Queue qua GET /api/warehouse/inbound-shipments/inspection-queue."
+    audience: "authenticated"
+    notes: ""
+  "GET api/warehouse/outbound-shipments":
+    purpose: "Lay Get Outbound Shipments qua GET /api/warehouse/outbound-shipments."
+    audience: "authenticated"
+    notes: ""
+  "GET api/warehouse/outbound-shipments/{shipmentId:guid}":
+    purpose: "Lay Get Outbound Shipment By Id qua GET /api/warehouse/outbound-shipments/{shipmentId:guid}."
+    audience: "authenticated"
+    notes: ""
+  "GET api/warehouse/storage-locations":
+    purpose: "Lay Get Storage Locations qua GET /api/warehouse/storage-locations."
+    audience: "authenticated"
+    notes: ""
+  "GET api/warehouse/warehouse-items":
+    purpose: "Lay Get Warehouse Items qua GET /api/warehouse/warehouse-items."
+    audience: "authenticated"
+    notes: ""
+  "PATCH api/admin/users/{userId:guid}/status":
+    purpose: "Cap nhat Change User Status qua PATCH /api/admin/users/{userId:guid}/status."
+    audience: "admin"
+    notes: ""
+  "PATCH api/admin/users/{userId:guid}/unlock":
+    purpose: "Cap nhat Unlock User qua PATCH /api/admin/users/{userId:guid}/unlock."
+    audience: "admin"
+    notes: ""
+  "PATCH api/me/addresses/{addressId:guid}/default":
+    purpose: "Cap nhat Set Default Address qua PATCH /api/me/addresses/{addressId:guid}/default."
+    audience: "authenticated"
+    notes: ""
+  "PATCH api/notifications/{notificationId:guid}/read":
+    purpose: "Cap nhat Mark As Read qua PATCH /api/notifications/{notificationId:guid}/read."
+    audience: "authenticated"
+    notes: ""
+  "PATCH api/notifications/read-all":
+    purpose: "Cap nhat Mark All As Read qua PATCH /api/notifications/read-all."
+    audience: "authenticated"
+    notes: ""
+  "POST api/admin/auctions/{auctionId:guid}/alerts":
+    purpose: "Thuc hien Flag Auction qua POST /api/admin/auctions/{auctionId:guid}/alerts."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/auctions/{auctionId:guid}/bids/{bidId:guid}/cancel":
+    purpose: "Thuc hien Cancel Invalid Bid qua POST /api/admin/auctions/{auctionId:guid}/bids/{bidId:guid}/cancel."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/auctions/{auctionId:guid}/emergencies":
+    purpose: "Thuc hien Trigger Auction Emergency qua POST /api/admin/auctions/{auctionId:guid}/emergencies."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/auctions/{auctionId:guid}/emergencies/{emergencyId:guid}/resolve":
+    purpose: "Thuc hien Resolve Auction Emergency qua POST /api/admin/auctions/{auctionId:guid}/emergencies/{emergencyId:guid}/resolve."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/auctions/{auctionId:guid}/sealed-bids/{sealedBidId:guid}/reveal":
+    purpose: "Thuc hien Reveal Sealed Bid qua POST /api/admin/auctions/{auctionId:guid}/sealed-bids/{sealedBidId:guid}/reveal."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/disputes/{disputeId:guid}/resolve":
+    purpose: "Thuc hien Resolve Dispute qua POST /api/admin/disputes/{disputeId:guid}/resolve."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/items/{itemId:guid}/approve":
+    purpose: "Thuc hien Approve Item qua POST /api/admin/items/{itemId:guid}/approve."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/items/{itemId:guid}/assign":
+    purpose: "Thuc hien Assign Item Reviewer qua POST /api/admin/items/{itemId:guid}/assign."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/items/{itemId:guid}/reject":
+    purpose: "Thuc hien Reject Item qua POST /api/admin/items/{itemId:guid}/reject."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/monitoring-alerts/{alertId:guid}/acknowledge":
+    purpose: "Thuc hien Acknowledge Monitoring Alert qua POST /api/admin/monitoring-alerts/{alertId:guid}/acknowledge."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/monitoring-alerts/{alertId:guid}/resolve":
+    purpose: "Thuc hien Resolve Monitoring Alert qua POST /api/admin/monitoring-alerts/{alertId:guid}/resolve."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/payments/withdrawals/{withdrawalId:guid}/approve":
+    purpose: "Thuc hien Approve Withdrawal qua POST /api/admin/payments/withdrawals/{withdrawalId:guid}/approve."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/payments/withdrawals/{withdrawalId:guid}/reject":
+    purpose: "Thuc hien Reject Withdrawal qua POST /api/admin/payments/withdrawals/{withdrawalId:guid}/reject."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/reports/{reportId:guid}/assign":
+    purpose: "Thuc hien Assign Report qua POST /api/admin/reports/{reportId:guid}/assign."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/reports/{reportId:guid}/escalate-emergency":
+    purpose: "Thuc hien Escalate Report Emergency qua POST /api/admin/reports/{reportId:guid}/escalate-emergency."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/reports/{reportId:guid}/resolve":
+    purpose: "Thuc hien Resolve Report qua POST /api/admin/reports/{reportId:guid}/resolve."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/seller-profiles/{id:guid}/reject":
+    purpose: "Thuc hien Reject Seller Profile qua POST /api/admin/seller-profiles/{id:guid}/reject."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/seller-profiles/{id:guid}/verify":
+    purpose: "Thuc hien Verify Seller Profile qua POST /api/admin/seller-profiles/{id:guid}/verify."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/terms":
+    purpose: "Thuc hien Create Terms qua POST /api/admin/terms."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/users/{userId:guid}/permissions/{permission}":
+    purpose: "Thuc hien Grant Permission For User qua POST /api/admin/users/{userId:guid}/permissions/{permission}."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/users/{userId:guid}/risk-flags":
+    purpose: "Thuc hien Flag User qua POST /api/admin/users/{userId:guid}/risk-flags."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/users/{userId:guid}/roles/{role}":
+    purpose: "Thuc hien Assign Role To User qua POST /api/admin/users/{userId:guid}/roles/{role}."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/verifications/{verificationId:guid}/approve":
+    purpose: "Thuc hien Approve Verification qua POST /api/admin/verifications/{verificationId:guid}/approve."
+    audience: "admin"
+    notes: ""
+  "POST api/admin/verifications/{verificationId:guid}/reject":
+    purpose: "Thuc hien Reject Verification qua POST /api/admin/verifications/{verificationId:guid}/reject."
+    audience: "admin"
+    notes: ""
+  "POST api/auctions":
+    purpose: "Thuc hien Create Auction qua POST /api/auctions."
+    audience: "authenticated"
+    notes: ""
+  "POST api/auctions/{auctionId:guid}/auto-bid/pause":
+    purpose: "Thuc hien Pause Auto Bid qua POST /api/auctions/{auctionId:guid}/auto-bid/pause."
+    audience: "authenticated"
+    notes: ""
+  "POST api/auctions/{auctionId:guid}/auto-bid/resume":
+    purpose: "Thuc hien Resume Auto Bid qua POST /api/auctions/{auctionId:guid}/auto-bid/resume."
+    audience: "authenticated"
+    notes: ""
+  "POST api/auctions/{auctionId:guid}/bids":
+    purpose: "Thuc hien Place Bid qua POST /api/auctions/{auctionId:guid}/bids."
+    audience: "authenticated"
+    notes: ""
+  "POST api/auctions/{auctionId:guid}/buy-now":
+    purpose: "Thuc hien Buy Now qua POST /api/auctions/{auctionId:guid}/buy-now."
+    audience: "authenticated"
+    notes: ""
+  "POST api/auctions/{auctionId:guid}/cancel":
+    purpose: "Thuc hien Cancel Auction qua POST /api/auctions/{auctionId:guid}/cancel."
+    audience: "authenticated"
+    notes: ""
+  "POST api/auctions/{auctionId:guid}/close":
+    purpose: "Thuc hien Close Auction qua POST /api/auctions/{auctionId:guid}/close."
+    audience: "authenticated"
+    notes: ""
+  "POST api/auctions/{auctionId:guid}/publish":
+    purpose: "Thuc hien Publish Auction qua POST /api/auctions/{auctionId:guid}/publish."
+    audience: "authenticated"
+    notes: ""
+  "POST api/auctions/{auctionId:guid}/relist":
+    purpose: "Thuc hien Relist Auction qua POST /api/auctions/{auctionId:guid}/relist."
+    audience: "authenticated"
+    notes: ""
+  "POST api/auctions/{auctionId:guid}/runner-up-offers":
+    purpose: "Thuc hien Offer Runner Up qua POST /api/auctions/{auctionId:guid}/runner-up-offers."
+    audience: "authenticated"
+    notes: ""
+  "POST api/auctions/{auctionId:guid}/runner-up-offers/respond":
+    purpose: "Thuc hien Respond Runner Up Offer qua POST /api/auctions/{auctionId:guid}/runner-up-offers/respond."
+    audience: "authenticated"
+    notes: ""
+  "POST api/auctions/{auctionId:guid}/sealed-bids":
+    purpose: "Thuc hien Submit Sealed Bid qua POST /api/auctions/{auctionId:guid}/sealed-bids."
+    audience: "authenticated"
+    notes: ""
+  "POST api/auctions/{auctionId:guid}/shipping":
+    purpose: "Thuc hien Choose Auction Shipping qua POST /api/auctions/{auctionId:guid}/shipping."
+    audience: "authenticated"
+    notes: ""
+  "POST api/auctions/{auctionId:guid}/submit":
+    purpose: "Thuc hien Submit Auction qua POST /api/auctions/{auctionId:guid}/submit."
+    audience: "authenticated"
+    notes: ""
+  "POST api/auctions/{auctionId:guid}/watch":
+    purpose: "Thuc hien Watch Auction qua POST /api/auctions/{auctionId:guid}/watch."
+    audience: "authenticated"
+    notes: ""
+  "POST api/auth/confirm-email":
+    purpose: "Thuc hien Confirm Email qua POST /api/auth/confirm-email."
+    audience: "anonymous"
+    notes: ""
+  "POST api/auth/forgot-password":
+    purpose: "Thuc hien Forgot Password qua POST /api/auth/forgot-password."
+    audience: "anonymous"
+    notes: ""
+  "POST api/auth/login":
+    purpose: "Thuc hien Login User qua POST /api/auth/login."
+    audience: "anonymous"
+    notes: ""
+  "POST api/auth/logout":
+    purpose: "Thuc hien Logout User qua POST /api/auth/logout."
+    audience: "authenticated"
+    notes: ""
+  "POST api/auth/refresh":
+    purpose: "Thuc hien Refresh Token qua POST /api/auth/refresh."
+    audience: "authenticated"
+    notes: ""
+  "POST api/auth/register":
+    purpose: "Thuc hien Register User qua POST /api/auth/register."
+    audience: "anonymous"
+    notes: ""
+  "POST api/auth/resend-confirm-email":
+    purpose: "Thuc hien Resend Confirm Email qua POST /api/auth/resend-confirm-email."
+    audience: "anonymous"
+    notes: ""
+  "POST api/auth/reset-password":
+    purpose: "Thuc hien Reset Password qua POST /api/auth/reset-password."
+    audience: "anonymous"
+    notes: ""
+  "POST api/categories":
+    purpose: "Thuc hien Create Category qua POST /api/categories."
+    audience: "authenticated"
+    notes: ""
+  "POST api/disputes/{disputeId:guid}/messages":
+    purpose: "Thuc hien Send Dispute Message qua POST /api/disputes/{disputeId:guid}/messages."
+    audience: "authenticated"
+    notes: ""
+  "POST api/disputes/{disputeId:guid}/read":
+    purpose: "Thuc hien Mark Dispute Read qua POST /api/disputes/{disputeId:guid}/read."
+    audience: "authenticated"
+    notes: ""
+  "POST api/items":
+    purpose: "Thuc hien Create Item qua POST /api/items."
+    audience: "authenticated"
+    notes: ""
+  "POST api/items/{itemId:guid}/activate":
+    purpose: "Thuc hien Activate Item qua POST /api/items/{itemId:guid}/activate."
+    audience: "authenticated"
+    notes: ""
+  "POST api/items/{itemId:guid}/auctions":
+    purpose: "Thuc hien Create Auction From Item qua POST /api/items/{itemId:guid}/auctions."
+    audience: "authenticated"
+    notes: ""
+  "POST api/items/{itemId:guid}/confirm-inspected-condition":
+    purpose: "Thuc hien Confirm Inspected Condition qua POST /api/items/{itemId:guid}/confirm-inspected-condition."
+    audience: "authenticated"
+    notes: ""
+  "POST api/items/{itemId:guid}/media":
+    purpose: "Thuc hien Add Item Image qua POST /api/items/{itemId:guid}/media."
+    audience: "authenticated"
+    notes: ""
+  "POST api/items/{itemId:guid}/media/{mediaId:guid}/primary":
+    purpose: "Thuc hien Set Primary Image qua POST /api/items/{itemId:guid}/media/{mediaId:guid}/primary."
+    audience: "authenticated"
+    notes: ""
+  "POST api/items/{itemId:guid}/questions":
+    purpose: "Thuc hien Ask Question qua POST /api/items/{itemId:guid}/questions."
+    audience: "authenticated"
+    notes: ""
+  "POST api/items/{itemId:guid}/questions/{questionId:guid}/answer":
+    purpose: "Thuc hien Answer Question qua POST /api/items/{itemId:guid}/questions/{questionId:guid}/answer."
+    audience: "authenticated"
+    notes: ""
+  "POST api/items/{itemId:guid}/resubmit":
+    purpose: "Thuc hien Resubmit Item qua POST /api/items/{itemId:guid}/resubmit."
+    audience: "authenticated"
+    notes: ""
+  "POST api/items/{itemId:guid}/shipping":
+    purpose: "Thuc hien Choose Item Shipping qua POST /api/items/{itemId:guid}/shipping."
+    audience: "authenticated"
+    notes: ""
+  "POST api/items/{itemId:guid}/submit":
+    purpose: "Thuc hien Submit Item qua POST /api/items/{itemId:guid}/submit."
+    audience: "authenticated"
+    notes: ""
+  "POST api/me/addresses":
+    purpose: "Thuc hien Add Address qua POST /api/me/addresses."
+    audience: "authenticated"
+    notes: ""
+  "POST api/me/phone/confirm":
+    purpose: "Thuc hien Confirm Phone Number qua POST /api/me/phone/confirm."
+    audience: "authenticated"
+    notes: ""
+  "POST api/me/seller-profile":
+    purpose: "Thuc hien Create Seller Profile qua POST /api/me/seller-profile."
+    audience: "authenticated"
+    notes: ""
+  "POST api/me/terms/{termDocumentId:guid}/accept":
+    purpose: "Thuc hien Accept Term qua POST /api/me/terms/{termDocumentId:guid}/accept."
+    audience: "authenticated"
+    notes: ""
+  "POST api/me/two-factor/disable":
+    purpose: "Thuc hien Disable Two Factor qua POST /api/me/two-factor/disable."
+    audience: "authenticated"
+    notes: ""
+  "POST api/me/two-factor/enable":
+    purpose: "Thuc hien Enable Two Factor qua POST /api/me/two-factor/enable."
+    audience: "authenticated"
+    notes: ""
+  "POST api/me/verifications":
+    purpose: "Thuc hien Create Verification qua POST /api/me/verifications."
+    audience: "authenticated"
+    notes: ""
+  "POST api/me/verifications/{verificationId:guid}/disputes":
+    purpose: "Thuc hien Create Verification Dispute qua POST /api/me/verifications/{verificationId:guid}/disputes."
+    audience: "authenticated"
+    notes: ""
+  "POST api/me/verifications/{verificationId:guid}/documents":
+    purpose: "Thuc hien Upload Verification Document qua POST /api/me/verifications/{verificationId:guid}/documents."
+    audience: "authenticated"
+    notes: ""
+  "POST api/me/verifications/{verificationId:guid}/submit":
+    purpose: "Thuc hien Submit Verification qua POST /api/me/verifications/{verificationId:guid}/submit."
+    audience: "authenticated"
+    notes: ""
+  "POST api/me/wallet/withdrawals":
+    purpose: "Thuc hien Create Withdrawal qua POST /api/me/wallet/withdrawals."
+    audience: "authenticated"
+    notes: ""
+  "POST api/me/wallet/withdrawals/{withdrawalId:guid}/cancel":
+    purpose: "Thuc hien Cancel Withdrawal qua POST /api/me/wallet/withdrawals/{withdrawalId:guid}/cancel."
+    audience: "authenticated"
+    notes: ""
+  "POST api/media/confirm":
+    purpose: "Thuc hien Confirm Upload qua POST /api/media/confirm."
+    audience: "authenticated"
+    notes: ""
+  "POST api/media/upload-signature":
+    purpose: "Thuc hien Request Upload Signature qua POST /api/media/upload-signature."
+    audience: "authenticated"
+    notes: ""
+  "POST api/orders/{orderId:guid}/returns":
+    purpose: "Thuc hien Create Order Return qua POST /api/orders/{orderId:guid}/returns."
+    audience: "authenticated"
+    notes: ""
+  "POST api/orders/{orderId:guid}/returns/{returnId:guid}/approve":
+    purpose: "Thuc hien Approve Order Return qua POST /api/orders/{orderId:guid}/returns/{returnId:guid}/approve."
+    audience: "authenticated"
+    notes: ""
+  "POST api/orders/{orderId:guid}/returns/{returnId:guid}/confirm-received":
+    purpose: "Thuc hien Confirm Order Return Received qua POST /api/orders/{orderId:guid}/returns/{returnId:guid}/confirm-received."
+    audience: "authenticated"
+    notes: ""
+  "POST api/orders/{orderId:guid}/returns/{returnId:guid}/reject":
+    purpose: "Thuc hien Reject Order Return qua POST /api/orders/{orderId:guid}/returns/{returnId:guid}/reject."
+    audience: "authenticated"
+    notes: ""
+  "POST api/orders/{orderId:guid}/returns/{returnId:guid}/ship":
+    purpose: "Thuc hien Ship Order Return qua POST /api/orders/{orderId:guid}/returns/{returnId:guid}/ship."
+    audience: "authenticated"
+    notes: ""
+  "POST api/payments/checkout":
+    purpose: "Thuc hien Checkout Order qua POST /api/payments/checkout."
+    audience: "authenticated"
+    notes: ""
+  "POST api/payments/methods":
+    purpose: "Thuc hien Add Payment Method qua POST /api/payments/methods."
+    audience: "authenticated"
+    notes: ""
+  "POST api/payments/methods/{id:guid}/default":
+    purpose: "Thuc hien Set Default Payment Method qua POST /api/payments/methods/{id:guid}/default."
+    audience: "authenticated"
+    notes: ""
+  "POST api/payments/vnpay/create-url":
+    purpose: "Thuc hien Create Vn Pay Payment Url qua POST /api/payments/vnpay/create-url."
+    audience: "authenticated"
+    notes: ""
+  "POST api/payments/vnpay/refund":
+    purpose: "Thuc hien Refund Vn Pay qua POST /api/payments/vnpay/refund."
+    audience: "admin"
+    notes: ""
+  "POST api/reports":
+    purpose: "Thuc hien Create Report qua POST /api/reports."
+    audience: "authenticated"
+    notes: ""
+  "POST api/warehouse/inbound-shipments":
+    purpose: "Thuc hien Book Inbound Shipment qua POST /api/warehouse/inbound-shipments."
+    audience: "authenticated"
+    notes: ""
+  "POST api/warehouse/inbound-shipments/{shipmentId:guid}/cancel":
+    purpose: "Thuc hien Cancel Inbound Shipment qua POST /api/warehouse/inbound-shipments/{shipmentId:guid}/cancel."
+    audience: "authenticated"
+    notes: ""
+  "POST api/warehouse/inbound-shipments/{shipmentId:guid}/inspect":
+    purpose: "Thuc hien Inspect Warehouse Item qua POST /api/warehouse/inbound-shipments/{shipmentId:guid}/inspect."
+    audience: "authenticated"
+    notes: ""
+  "POST api/warehouse/inbound-shipments/{shipmentId:guid}/review":
+    purpose: "Thuc hien Review Warehouse Inspection qua POST /api/warehouse/inbound-shipments/{shipmentId:guid}/review."
+    audience: "authenticated"
+    notes: ""
+  "POST api/warehouse/outbound-shipments":
+    purpose: "Thuc hien Book Outbound Shipment qua POST /api/warehouse/outbound-shipments."
+    audience: "authenticated"
+    notes: ""
+  "POST api/warehouse/storage-locations":
+    purpose: "Thuc hien Create Storage Location qua POST /api/warehouse/storage-locations."
+    audience: "authenticated"
+    notes: ""
+  "POST api/warehouse/warehouse-items/{warehouseItemId}/store":
+    purpose: "Thuc hien Store Warehouse Item qua POST /api/warehouse/warehouse-items/{warehouseItemId}/store."
+    audience: "authenticated"
+    notes: ""
+  "POST webhooks/ghn":
+    purpose: "Thuc hien Ghn Webhook qua POST /webhooks/ghn."
+    audience: "anonymous"
+    notes: "Webhook carrier tu GHN. Luon tra 200 de tranh retry vo han."
+  "PUT api/admin/auctions/{auctionId:guid}/curation":
+    purpose: "Cap nhat Set Auction Curation qua PUT /api/admin/auctions/{auctionId:guid}/curation."
+    audience: "admin"
+    notes: ""
+  "PUT api/admin/roles/{role}/permissions/{permission}":
+    purpose: "Cap nhat Toggle Permission From Role qua PUT /api/admin/roles/{role}/permissions/{permission}."
+    audience: "admin"
+    notes: ""
+  "PUT api/admin/terms/{id:guid}/activate":
+    purpose: "Cap nhat Activate Terms Document qua PUT /api/admin/terms/{id:guid}/activate."
+    audience: "admin"
+    notes: ""
+  "PUT api/admin/users/{userId:guid}/permissions/{permission}":
+    purpose: "Cap nhat Deny Permission From User qua PUT /api/admin/users/{userId:guid}/permissions/{permission}."
+    audience: "admin"
+    notes: ""
+  "PUT api/auctions/{auctionId:guid}":
+    purpose: "Cap nhat Update Auction qua PUT /api/auctions/{auctionId:guid}."
+    audience: "authenticated"
+    notes: ""
+  "PUT api/auctions/{auctionId:guid}/auto-bid":
+    purpose: "Cap nhat Configure Auto Bid qua PUT /api/auctions/{auctionId:guid}/auto-bid."
+    audience: "authenticated"
+    notes: ""
+  "PUT api/auctions/{auctionId:guid}/timing":
+    purpose: "Cap nhat Set Auction Timing qua PUT /api/auctions/{auctionId:guid}/timing."
+    audience: "authenticated"
+    notes: ""
+  "PUT api/categories/{categoryId:guid}":
+    purpose: "Cap nhat Update Category qua PUT /api/categories/{categoryId:guid}."
+    audience: "authenticated"
+    notes: ""
+  "PUT api/items/{itemId:guid}/media/reorder":
+    purpose: "Cap nhat Reorder Item Media qua PUT /api/items/{itemId:guid}/media/reorder."
+    audience: "authenticated"
+    notes: ""
+  "PUT api/me/addresses/{addressId:guid}":
+    purpose: "Cap nhat Update Address qua PUT /api/me/addresses/{addressId:guid}."
+    audience: "authenticated"
+    notes: ""
+  "PUT api/me/password":
+    purpose: "Cap nhat Change Password qua PUT /api/me/password."
+    audience: "authenticated"
+    notes: ""
+  "PUT api/me/phone":
+    purpose: "Cap nhat Set Phone Number qua PUT /api/me/phone."
+    audience: "authenticated"
+    notes: ""
+  "PUT api/me/profile":
+    purpose: "Cap nhat Update Current User Profile qua PUT /api/me/profile."
+    audience: "authenticated"
+    notes: ""
+  "PUT api/me/seller-profile":
+    purpose: "Cap nhat Update Seller Profile qua PUT /api/me/seller-profile."
+    audience: "authenticated"
+    notes: ""
+  "PUT api/me/verifications/{verificationId:guid}":
+    purpose: "Cap nhat Update Verification qua PUT /api/me/verifications/{verificationId:guid}."
+    audience: "authenticated"
+    notes: ""
+  "PUT api/warehouse/shipping-provider-configs/{configId:guid}":
+    purpose: "Cap nhat Update Shipping Provider Config qua PUT /api/warehouse/shipping-provider-configs/{configId:guid}."
+    audience: "authenticated"
+    notes: ""
+  "PUT api/warehouse/storage-locations/{locationId:guid}":
+    purpose: "Cap nhat Update Storage Location qua PUT /api/warehouse/storage-locations/{locationId:guid}."
+    audience: "authenticated"
+    notes: ""
+signalr_methods:
+  "AuctionHub.BuyNow":
+    purpose: "Goi realtime Buy Now tren AuctionHub."
+    audience: "authenticated"
+    notes: ""
+  "AuctionHub.ConfigureAutoBid":
+    purpose: "Goi realtime Configure Auto Bid tren AuctionHub."
+    audience: "authenticated"
+    notes: ""
+  "AuctionHub.JoinAuction":
+    purpose: "Goi realtime Join Auction tren AuctionHub."
+    audience: "authenticated"
+    notes: ""
+  "AuctionHub.LeaveAuction":
+    purpose: "Goi realtime Leave Auction tren AuctionHub."
+    audience: "authenticated"
+    notes: ""
+  "AuctionHub.PlaceBid":
+    purpose: "Goi realtime Place Bid tren AuctionHub."
+    audience: "authenticated"
+    notes: "Method nay duoc gate boi idempotency hub filter."
+  "AuctionHub.WatchAuction":
+    purpose: "Goi realtime Watch Auction tren AuctionHub."
+    audience: "authenticated"
+    notes: ""
+  "DisputeHub.JoinDispute":
+    purpose: "Goi realtime Join Dispute tren DisputeHub."
+    audience: "authenticated"
+    notes: ""
+  "DisputeHub.LeaveDispute":
+    purpose: "Goi realtime Leave Dispute tren DisputeHub."
+    audience: "authenticated"
+    notes: ""
+signalr_events:
+  "AuctionHub.AuctionCancelled":
+    purpose: "Server push Auction Cancelled tren AuctionHub."
+    audience: "subscribers"
+    notes: ""
+  "AuctionHub.AuctionEnded":
+    purpose: "Server push Auction Ended tren AuctionHub."
+    audience: "subscribers"
+    notes: ""
+  "AuctionHub.AuctionExtended":
+    purpose: "Server push Auction Extended tren AuctionHub."
+    audience: "subscribers"
+    notes: ""
+  "AuctionHub.AuctionStarted":
+    purpose: "Server push Auction Started tren AuctionHub."
+    audience: "subscribers"
+    notes: ""
+  "AuctionHub.BidPlaced":
+    purpose: "Server push Bid Placed tren AuctionHub."
+    audience: "subscribers"
+    notes: ""
+  "AuctionHub.BuyNowExecuted":
+    purpose: "Server push Buy Now Executed tren AuctionHub."
+    audience: "subscribers"
+    notes: ""
+  "AuctionHub.BuyNowReservationReleased":
+    purpose: "Server push Buy Now Reservation Released tren AuctionHub."
+    audience: "subscribers"
+    notes: ""
+  "AuctionHub.BuyNowReserved":
+    purpose: "Server push Buy Now Reserved tren AuctionHub."
+    audience: "subscribers"
+    notes: ""
+  "AuctionHub.Error":
+    purpose: "Server push Error tren AuctionHub."
+    audience: "subscribers"
+    notes: ""
+  "AuctionHub.Outbid":
+    purpose: "Server push Outbid tren AuctionHub."
+    audience: "subscribers"
+    notes: ""
+  "AuctionHub.PriceUpdated":
+    purpose: "Server push Price Updated tren AuctionHub."
+    audience: "subscribers"
+    notes: "Contract da ton tai nhung co the chua duoc publish trong runtime."
+  "DisputeHub.DisputeUnreadUpdated":
+    purpose: "Server push Dispute Unread Updated tren DisputeHub."
+    audience: "subscribers"
+    notes: ""
+  "DisputeHub.DisputeUpdated":
+    purpose: "Server push Dispute Updated tren DisputeHub."
+    audience: "subscribers"
+    notes: ""
+  "DisputeHub.MessageReceived":
+    purpose: "Server push Message Received tren DisputeHub."
+    audience: "subscribers"
+    notes: ""
+  "DisputeHub.ReadStateUpdated":
+    purpose: "Server push Read State Updated tren DisputeHub."
+    audience: "subscribers"
+    notes: ""
+  "NotificationHub.ReceiveNotification":
+    purpose: "Server push Receive Notification tren NotificationHub."
+    audience: "subscribers"
+    notes: ""
+  "NotificationHub.UnreadCountUpdated":
+    purpose: "Server push Unread Count Updated tren NotificationHub."
+    audience: "subscribers"
+    notes: ""
+

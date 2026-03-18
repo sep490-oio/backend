@@ -1,4 +1,4 @@
-﻿using OIO.Domain.Context.UserContext.Aggregates.Roles;
+using OIO.Domain.Context.UserContext.Aggregates.Roles;
 
 namespace OIO.Domain.AppDefinitions;
 
@@ -35,6 +35,16 @@ public static partial class App
                 public const string ReadBids = "me:bids:read";
                 
                 public const string ReadWatchlist = "me:watchlist:read";
+                public const string ReadTerms = "users:me:terms:read";
+                public const string AcceptTerms = "users:me:terms:accept";
+
+                // Verifications
+                public const string ManageVerification = "users:me:verification:manage";
+                public const string ReadVerification = "users:me:verification:read";
+
+                // Seller Profile
+                public const string ManageSellerProfile = "users:me:seller-profile:manage";
+                public const string ReadSellerProfile = "users:me:seller-profile:read";
             }
 
             // ==================== Items ====================
@@ -42,6 +52,7 @@ public static partial class App
             {
                 public const string Create = "items:create";
                 public const string Activate = "items:activate";
+                public const string Resubmit = "items:resubmit";
                 public const string ReadMy = "items:my:read";
                 public const string ManageMedia = "items:media:manage";
                 public const string AskQuestion = "items:questions:ask";
@@ -53,6 +64,7 @@ public static partial class App
             {
                 public const string Create = "auctions:create";
                 public const string Publish = "auctions:publish";
+                public const string Submit = "auctions:submit";
                 public const string Cancel = "auctions:cancel";
                 public const string Bid = "auctions:bid";
                 public const string BuyNow = "auctions:buy-now";
@@ -60,6 +72,18 @@ public static partial class App
                 public const string ReadAutoBid = "auctions:auto-bid:read";
                 public const string Watch = "auctions:watch";
                 public const string Unwatch = "auctions:unwatch";
+            }
+            
+            // ==================== Warehouses ====================
+            public static class Warehouse
+            {
+                public const string BookInbound  = "warehouse:inbound:book";
+                public const string BookOutbound = "warehouse:outbound:book";
+                public const string Inspect = "warehouse:item:inspect";
+                public const string Store   = "warehouse:item:store";
+                public const string ManageLocations = "warehouse:locations:manage";
+                public const string ReadShipments    = "warehouse:shipments:read";
+
             }
 
             // ==================== Media ====================
@@ -93,6 +117,24 @@ public static partial class App
                 public const string ManagePermissions = "admin:permissions:manage";
                 public const string ReadSettings = "admin:settings:read";
                 public const string ManageSettings = "admin:settings:manage";
+                public const string ReadTerms = "admin:terms:read";
+                public const string ManageTerms = "admin:terms:manage";
+
+                // Verifications
+                public const string ReadVerifications = "admin:verifications:read";
+                public const string ManageVerifications = "admin:verifications:manage";
+
+                // Seller Profiles
+                public const string ReadSellerProfiles = "admin:seller-profiles:read";
+                public const string ManageSellerProfiles = "admin:seller-profiles:manage";
+
+                // Item Moderation
+                public const string ReadItems = "admin:items:read";
+                public const string ManageItems = "admin:items:manage";
+
+                // Payment Operations
+                public const string ReadPayments = "admin:payments:read";
+                public const string ManagePayments = "admin:payments:manage";
             }
 
             // ==================== ALL PERMISSIONS ====================
@@ -112,6 +154,12 @@ public static partial class App
                 Me.ReadAuctions,
                 Me.ReadBids,
                 Me.ReadWatchlist,
+                Me.ReadTerms,
+                Me.AcceptTerms,
+                Me.ManageVerification,
+                Me.ReadVerification,
+                Me.ManageSellerProfile,
+                Me.ReadSellerProfile,
 
                 // Admin
                 Admin.ReadUsers,
@@ -126,10 +174,22 @@ public static partial class App
                 Admin.DenyPermission,
                 Admin.ManagePermissions,
                 Admin.ReadSettings,
+                Admin.ReadTerms,
+                Admin.ManageTerms,
+                Admin.ReadVerifications,
+                Admin.ManageVerifications,
+                Admin.ReadSellerProfiles,
+                Admin.ManageSellerProfiles,
+                Admin.ManageSettings,
+                Admin.ReadItems,
+                Admin.ManageItems,
+                Admin.ReadPayments,
+                Admin.ManagePayments,
 
                 // Items
                 Items.Create,
                 Items.Activate,
+                Items.Resubmit,
                 Items.ReadMy,
                 Items.ManageMedia,
                 Items.AskQuestion,
@@ -138,6 +198,7 @@ public static partial class App
                 // Auctions
                 Auctions.Create,
                 Auctions.Publish,
+                Auctions.Submit,
                 Auctions.Cancel,
                 Auctions.Bid,
                 Auctions.BuyNow,
@@ -145,6 +206,14 @@ public static partial class App
                 Auctions.ReadAutoBid,
                 Auctions.Watch,
                 Auctions.Unwatch,
+                
+                //Warehouse
+                Warehouse.BookInbound,
+                Warehouse.BookOutbound,
+                Warehouse.Inspect,
+                Warehouse.Store,
+                Warehouse.ManageLocations,
+                Warehouse.ReadShipments,
 
                 // Categories
                 Categories.Create,
@@ -170,6 +239,16 @@ public static partial class App
                 Admin.ReadRoles,
                 Admin.ReadPermissions,
                 Admin.ReadSettings,
+                Admin.ReadTerms,
+                Admin.ManageTerms,
+                Admin.ReadVerifications,
+                Admin.ManageVerifications,
+                Admin.ReadSellerProfiles,
+                Admin.ManageSellerProfiles,
+                Admin.ReadItems,
+                Admin.ManageItems,
+                Admin.ReadPayments,
+                Admin.ManagePayments,
             ];
         }
 
@@ -200,6 +279,12 @@ public static partial class App
                 public static readonly Permission ReadAuctions = Permission.Create(Catalogs.Me.ReadAuctions);
                 public static readonly Permission ReadBids = Permission.Create(Catalogs.Me.ReadBids);
                 public static readonly Permission ReadWatchlist = Permission.Create(Catalogs.Me.ReadWatchlist);
+                public static readonly Permission ReadTerms = Permission.Create(Catalogs.Me.ReadTerms);
+                public static readonly Permission AcceptTerms = Permission.Create(Catalogs.Me.AcceptTerms);
+                public static readonly Permission ManageVerification = Permission.Create(Catalogs.Me.ManageVerification);
+                public static readonly Permission ReadVerification = Permission.Create(Catalogs.Me.ReadVerification);
+                public static readonly Permission ManageSellerProfile = Permission.Create(Catalogs.Me.ManageSellerProfile);
+                public static readonly Permission ReadSellerProfile = Permission.Create(Catalogs.Me.ReadSellerProfile);
             }
 
             public static class Admin
@@ -222,6 +307,16 @@ public static partial class App
                 // Settings management permissions (2151 - 2200)
                 public static readonly Permission ReadSettings = Permission.Create(Catalogs.Admin.ReadSettings);
                 public static readonly Permission ManageSettings = Permission.Create(Catalogs.Admin.ManageSettings);
+                public static readonly Permission ReadTerms = Permission.Create(Catalogs.Admin.ReadTerms);
+                public static readonly Permission ManageTerms = Permission.Create(Catalogs.Admin.ManageTerms);
+                public static readonly Permission ReadVerifications = Permission.Create(Catalogs.Admin.ReadVerifications);
+                public static readonly Permission ManageVerifications = Permission.Create(Catalogs.Admin.ManageVerifications);
+                public static readonly Permission ReadSellerProfiles = Permission.Create(Catalogs.Admin.ReadSellerProfiles);
+                public static readonly Permission ManageSellerProfiles = Permission.Create(Catalogs.Admin.ManageSellerProfiles);
+                public static readonly Permission ReadItems = Permission.Create(Catalogs.Admin.ReadItems);
+                public static readonly Permission ManageItems = Permission.Create(Catalogs.Admin.ManageItems);
+                public static readonly Permission ReadPayments = Permission.Create(Catalogs.Admin.ReadPayments);
+                public static readonly Permission ManagePayments = Permission.Create(Catalogs.Admin.ManagePayments);
             }
 
             public static class Items
@@ -230,6 +325,7 @@ public static partial class App
                 //Item management permissions (3001 - 3050)
                 public static readonly Permission Create = Permission.Create(Catalogs.Items.Create);
                 public static readonly Permission Activate = Permission.Create(Catalogs.Items.Activate);
+                public static readonly Permission Resubmit = Permission.Create(Catalogs.Items.Resubmit);
                 public static readonly Permission ReadMy = Permission.Create(Catalogs.Items.ReadMy);
                 // Item Media management permissions for items (3051 - 3100)
                 public static readonly Permission ManageMedia = Permission.Create(Catalogs.Items.ManageMedia);
@@ -244,6 +340,7 @@ public static partial class App
                 // Auction management permissions (4001 - 4050)
                 public static readonly Permission Create = Permission.Create(Catalogs.Auctions.Create);
                 public static readonly Permission Publish = Permission.Create(Catalogs.Auctions.Publish);
+                public static readonly Permission Submit = Permission.Create(Catalogs.Auctions.Submit);
                 public static readonly Permission Cancel = Permission.Create(Catalogs.Auctions.Cancel);
                 public static readonly Permission BuyNow = Permission.Create(Catalogs.Auctions.BuyNow);
                 // Bidding permissions (4051 - 4100)
@@ -255,6 +352,17 @@ public static partial class App
                 public static readonly Permission Unwatch = Permission.Create(Catalogs.Auctions.Unwatch);
             }
 
+            public static class Warehouse
+            {
+                // ==================== Warehouse (7001-8000) ====================
+                public static readonly Permission BookInbound  = Permission.Create(Catalogs.Warehouse.BookInbound);
+                public static readonly Permission BookOutbound = Permission.Create(Catalogs.Warehouse.BookOutbound);
+                public static readonly Permission Store   = Permission.Create(Catalogs.Warehouse.Store);
+                public static readonly Permission Inspect = Permission.Create(Catalogs.Warehouse.Inspect);
+                public static readonly Permission ManageLocations = Permission.Create(Catalogs.Warehouse.ManageLocations);
+                public static readonly Permission ReadShipments = Permission.Create(Catalogs.Warehouse.ReadShipments);
+            }
+            
             public static class Categories
             {
                 // ==================== Categories (5001-6000) ====================
@@ -289,10 +397,17 @@ public static partial class App
                 [Catalogs.Me.ReadAuctions] = Me.ReadAuctions,
                 [Catalogs.Me.ReadBids] = Me.ReadBids,
                 [Catalogs.Me.ReadWatchlist] = Me.ReadWatchlist,
+                [Catalogs.Me.ReadTerms] = Me.ReadTerms,
+                [Catalogs.Me.AcceptTerms] = Me.AcceptTerms,
+                [Catalogs.Me.ManageVerification] = Me.ManageVerification,
+                [Catalogs.Me.ReadVerification] = Me.ReadVerification,
+                [Catalogs.Me.ManageSellerProfile] = Me.ManageSellerProfile,
+                [Catalogs.Me.ReadSellerProfile] = Me.ReadSellerProfile,
 
                 // Items
                 [Catalogs.Items.Create] = Items.Create,
                 [Catalogs.Items.Activate] = Items.Activate,
+                [Catalogs.Items.Resubmit] = Items.Resubmit,
                 [Catalogs.Items.ReadMy] = Items.ReadMy,
                 [Catalogs.Items.ManageMedia] = Items.ManageMedia,
                 [Catalogs.Items.AskQuestion] = Items.AskQuestion,
@@ -301,6 +416,7 @@ public static partial class App
                 // Auctions
                 [Catalogs.Auctions.Create] = Auctions.Create,
                 [Catalogs.Auctions.Publish] = Auctions.Publish,
+                [Catalogs.Auctions.Submit] = Auctions.Submit,
                 [Catalogs.Auctions.Cancel] = Auctions.Cancel,
                 [Catalogs.Auctions.Bid] = Auctions.Bid,
                 [Catalogs.Auctions.BuyNow] = Auctions.BuyNow,
@@ -309,6 +425,14 @@ public static partial class App
                 [Catalogs.Auctions.Watch] = Auctions.Watch,
                 [Catalogs.Auctions.Unwatch] = Auctions.Unwatch,
 
+                //Warehouse
+                [Catalogs.Warehouse.BookInbound] = Warehouse.BookInbound,
+                [Catalogs.Warehouse.BookOutbound] = Warehouse.BookOutbound,
+                [Catalogs.Warehouse.Inspect] = Warehouse.Inspect,
+                [Catalogs.Warehouse.Store] = Warehouse.Store,
+                [Catalogs.Warehouse.ManageLocations] = Warehouse.ManageLocations,
+                [Catalogs.Warehouse.ReadShipments] = Warehouse.ReadShipments,
+                
                 // Media
                 [Catalogs.Media.ReadContexts] = Media.ReadContexts,
                 [Catalogs.Media.Upload] = Media.Upload,
@@ -332,6 +456,16 @@ public static partial class App
                 [Catalogs.Admin.ManagePermissions] = Admin.ManagePermissions,
                 [Catalogs.Admin.ReadSettings] = Admin.ReadSettings,
                 [Catalogs.Admin.ManageSettings] = Admin.ManageSettings,
+                [Catalogs.Admin.ReadTerms] = Admin.ReadTerms,
+                [Catalogs.Admin.ManageTerms] = Admin.ManageTerms,
+                [Catalogs.Admin.ReadVerifications] = Admin.ReadVerifications,
+                [Catalogs.Admin.ManageVerifications] = Admin.ManageVerifications,
+                [Catalogs.Admin.ReadSellerProfiles] = Admin.ReadSellerProfiles,
+                [Catalogs.Admin.ManageSellerProfiles] = Admin.ManageSellerProfiles,
+                [Catalogs.Admin.ReadItems] = Admin.ReadItems,
+                [Catalogs.Admin.ManageItems] = Admin.ManageItems,
+                [Catalogs.Admin.ReadPayments] = Admin.ReadPayments,
+                [Catalogs.Admin.ManagePayments] = Admin.ManagePayments,
             };
         }
     }

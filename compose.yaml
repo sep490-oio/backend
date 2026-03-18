@@ -13,6 +13,7 @@
   oio.api:
     image: "ghcr.io/sep490-oio/backend/oio-api:${APP_VERSION:-latest}"
     environment:
+      - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__Database=Host=database;Port=5432;Username=postgres;Password=${DATABASE_PASSWORD};Database=oio-mcbc
       - ConnectionStrings__Cache=redis:6379
       - Jwt__SecretKey=${JWT_SECRET_KEY}
@@ -40,12 +41,26 @@
       - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
       - Cors__AllowedOrigins__0=${CORS_ALLOWED_ORIGINS_0}
       - Cors__AllowedOrigins__1=${CORS_ALLOWED_ORIGINS_1}
-      - Features__EnableScalar=${FEATURES_ENABLE_SCALAR}
       - Hashing__HmacKeyBase64=${HASHING_KEY}
       - Cloudinary__CloudName=${CLOUDINARY_CLOUD_NAME}
       - Cloudinary__ApiKey=${CLOUDINARY_API_KEY}
       - Cloudinary__ApiSecret=${CLOUDINARY_API_SECRET}
       - Cloudinary__BaseUrl=${CLOUDINARY_BASE_URL}
+      - VnptEkyc__BaseUrl=${VNPT_EKYC_BASE_URL}
+      - VnptEkyc__AccessToken=${VNPT_EKYC_ACCESS_TOKEN}
+      - VnptEkyc__TokenId=${VNPT_EKYC_TOKEN_ID}
+      - VnptEkyc__TokenKey=${VNPT_EKYC_TOKEN_KEY}
+      - VnptEkyc__MacAddress=${VNPT_EKYC_MAC_ADDRESS}
+      - VnptEkyc__ApproveThreshold=${VNPT_EKYC_APPROVE_THRESHOLD}
+      - VnptEkyc__RejectThreshold=${VNPT_EKYC_REJECT_THRESHOLD}
+      - VnPay__TmnCode=${VNPAY_TMN_CODE}
+      - VnPay__HashSecret=${VNPAY_HASH_SECRET}
+      - VnPay__PaymentUrl=${VNPAY_PAYMENT_URL}
+      - VnPay__ApiUrl=${VNPAY_API_URL}
+      - VnPay__ReturnUrl=${VNPAY_RETURN_URL}
+      - VnPay__IpnUrl=${VNPAY_IPN_URL}
+    volumes:
+      - ./config/appsettings.Production.json:/app/appsettings.Production.json:ro
     depends_on:
       - database
     restart: unless-stopped

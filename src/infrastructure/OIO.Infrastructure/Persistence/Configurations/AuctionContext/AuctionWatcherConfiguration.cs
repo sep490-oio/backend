@@ -31,11 +31,13 @@ internal sealed class AuctionWatcherConfiguration : IEntityTypeConfiguration<Auc
 
         builder.Property(w => w.NotifyOnBid)
             .HasColumnName("notify_on_bid")
-            .HasDefaultValue(true);
+            .HasDefaultValue(true)
+            .IsRequired();
 
         builder.Property(w => w.NotifyOnEnd)
             .HasColumnName("notify_on_end")
-            .HasDefaultValue(true);
+            .HasDefaultValue(true)
+            .IsRequired();
 
         builder.Property(w => w.CreatedAt)
             .HasColumnName("created_at")

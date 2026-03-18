@@ -1,13 +1,13 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.IdentityModel.JsonWebTokens;
 using OIO.Api.Common;
 using OIO.Api.Extensions;
 using OIO.Application.Context.AuctionContext.Commands.BuyNow;
 using OIO.Application.Context.AuctionContext.Commands.ConfigureAutoBid;
 using OIO.Application.Context.AuctionContext.Commands.PlaceBid;
 using OIO.Application.Context.AuctionContext.Commands.WatchAuction;
+using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Hubs;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.AppDefinitions;
@@ -52,35 +52,28 @@ public sealed class AuctionHub : Hub<IAuctionHubClient>
     // ==================== Bidding ====================
 
     [HasPermission(App.Permissions.Catalogs.Auctions.Bid)]
-    public async Task PlaceBid(Guid auctionId, decimal amount, string currency)
+    public async Task<HubCommandResult<BidDto>> PlaceBid(
+        Guid auctionId,
+        decimal amount,
+        string currency,
+        string? idempotencyKey = null)
     {
         var httpContext = Context.GetHttpContext();
-        
         var command = new PlaceBidCommand(auctionId, amount, currency, httpContext?.GetIpAddress());
-        var result = await _sender.Send(command);
+        var result = await _sender.Send(command, Context.ConnectionAborted);
 
-        if (result.IsFailure)
-        {
-            var error = ToErrorNotification(result.Error);
-            
-            await Clients.Caller.Error(error);
-        }
+        return HubCommandResult<BidDto>.FromResult(result);
     }
 
     [HasPermission(App.Permissions.Catalogs.Auctions.BuyNow)]
-    public async Task BuyNow(Guid auctionId)
+    public async Task<HubCommandResult<BuyNowCheckoutDto>> BuyNow(Guid auctionId)
     {
         var httpContext = Context.GetHttpContext();
-        
+
         var command = new BuyNowCommand(auctionId, httpContext?.GetIpAddress());
         var result = await _sender.Send(command);
 
-        if (result.IsFailure)
-        {
-            var error = ToErrorNotification(result.Error);
-            
-            await Clients.Caller.Error(error);
-        }
+        return HubCommandResult<BuyNowCheckoutDto>.FromResult(result);
     }
 
     [HasPermission(App.Permissions.Catalogs.Auctions.AutoBid)]
@@ -96,14 +89,16 @@ public sealed class AuctionHub : Hub<IAuctionHubClient>
         if (result.IsFailure)
         {
             var error = ToErrorNotification(result.Error);
-            
+
             await Clients.Caller.Error(error);
         }
     }
 
     [HasPermission(App.Permissions.Catalogs.Auctions.Watch)]
     public async Task WatchAuction(
-        Guid auctionId, bool notifyOnBid = true, bool notifyOnEnd = true)
+        Guid auctionId,
+        bool notifyOnBid = true,
+        bool notifyOnEnd = true)
     {
         var command = new WatchAuctionCommand(auctionId, notifyOnBid, notifyOnEnd);
         var result = await _sender.Send(command);
@@ -111,7 +106,7 @@ public sealed class AuctionHub : Hub<IAuctionHubClient>
         if (result.IsFailure)
         {
             var error = ToErrorNotification(result.Error);
-            
+
             await Clients.Caller.Error(error);
         }
     }
@@ -121,7 +116,7 @@ public sealed class AuctionHub : Hub<IAuctionHubClient>
     public override async Task OnConnectedAsync()
     {
         var userId = _currentUser.UserId;
-        
+
         await Groups.AddToGroupAsync(
             Context.ConnectionId,
             UserGroupName(userId.Value));
@@ -144,15 +139,15 @@ public sealed class AuctionHub : Hub<IAuctionHubClient>
 
     private static ErrorNotification ToErrorNotification(Error error)
     {
-        if (error is not ViolationsError violationsError) 
+        if (error is not ViolationsError violationsError)
             return new ErrorNotification(error.Code, error.Message, null);
-        
-        var errorsDict = violationsError.Violations.GroupBy(e => ((ICheckError)e).PropertyName)
-            .ToDictionary(g => g.Key, 
-                g => 
-                    g.Select(e => e.Message).ToArray());
+
+        var errorsDict = violationsError.Violations
+            .GroupBy(e => ((ICheckError)e).PropertyName)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(e => e.Message).ToArray());
 
         return new ErrorNotification(violationsError.Code, violationsError.Message, errorsDict);
-
     }
 }

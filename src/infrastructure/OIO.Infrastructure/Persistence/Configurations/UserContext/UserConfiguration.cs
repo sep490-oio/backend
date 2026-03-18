@@ -7,6 +7,7 @@ using OIO.Domain.Context.UserContext.Enums;
 using OIO.Domain.Context.UserContext.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.AppDefinitions;
+using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
 
 namespace OIO.Infrastructure.Persistence.Configurations.UserContext;
 
@@ -105,14 +106,14 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
                 .IsRequired();
         });
         
-        builder.ComplexProperty(u => u.Status, statusBuilder =>
-        {
-            statusBuilder.Property(s => s.Id)
-                .HasColumnName("status")
-                .HasMaxLength(30)
-                .HasDefaultValue(UserStatus.Inactive.Id)
-                .IsRequired();
-        });
+        builder.Property(s => s.Status)
+            .HasColumnName("status")
+            .HasMaxLength(30)
+            .HasDefaultValue(UserStatus.Inactive)
+            .HasConversion(
+                s => s.Id,
+                value => UserStatus.FromId(value).Value)
+            .IsRequired();
 
         builder.Property(u => u.LockoutEnabled)
             .HasColumnName("lockout_enabled")
@@ -152,6 +153,11 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .WithOne()
             .HasForeignKey<UserProfile>(p => p.Id)
             .OnDelete(DeleteBehavior.Cascade);
+        
+        builder.HasOne(u => u.SellerProfile)
+            .WithOne(sp => sp.User)
+            .HasForeignKey<SellerProfile>(p => p.Id)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasMany(u => u.Addresses)
             .WithOne()
@@ -177,6 +183,17 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .WithOne()
             .HasForeignKey(f => f.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(u =>  u.RefreshTokens)
+            .WithOne(rt => rt.User)
+            .HasForeignKey(f => f.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+        
+        builder.HasOne(u => u.Wallet)
+            .WithOne(w => w.User)
+            .HasForeignKey<Wallet>( w => w.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
 
         // ==================== Query Filters ====================
         builder.HasQueryFilter(u => u.DeletedAt == null);

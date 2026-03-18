@@ -55,8 +55,14 @@ internal sealed class ActivateAuctionCommandHandler
         if (auction is null)
             return AuctionErrors.Auction.NotFound(auctionId);
 
+        if(auction.Info is null)
+            return AuctionErrors.Auction.TimingRequired;
+
+        if (!auction.Info.HasQualification)
+            return AuctionErrors.Auction.QualificationWindowRequired;
+        
         // Idempotent: skip if already activated
-        if (auction.Status != AuctionStatus.Pending)
+        if (auction.Status != AuctionStatus.Scheduled)
             return UnitResult.Success<Error>();
 
         var nowUtc = _clock.UtcNow;
@@ -71,7 +77,7 @@ internal sealed class ActivateAuctionCommandHandler
         // Schedule end job
         await _scheduler.ScheduleEndAsync(
             auction.Id.Value, 
-            auction.Duration.EndTime,
+            auction.Info.EndTime,
             cancellationToken);
 
         return UnitResult.Success<Error>();

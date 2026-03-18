@@ -1,5 +1,8 @@
 ﻿using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
+using OIO.Domain.SeedWork.Errors;
+using OIO.Domain.SeedWork.Exceptions;
 
 namespace OIO.Api.Middleware;
 
@@ -23,6 +26,23 @@ internal sealed class GlobalExceptionHandler
         CancellationToken cancellationToken)
     {
         _logger.LogError(exception, "Unhandled exception occurred");
+
+        if (exception is DomainException domainException)
+        {
+            var error = domainException.Error;
+            var problemDetails = new ProblemDetails()
+            {
+                Title = error.Message,
+                Detail = error.Code,
+                Status = error.GetStatus(),
+            };
+
+            return await _problemDetailsService.TryWriteAsync(new ProblemDetailsContext
+            {
+                HttpContext = httpContext,
+                ProblemDetails = problemDetails
+            });
+        }
 
         httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
         

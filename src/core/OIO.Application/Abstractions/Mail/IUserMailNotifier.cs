@@ -7,12 +7,14 @@ public interface IUserMailNotifier
         string userName,
         string token,
         string userId,
+        DateTime tokenExpiry,
         CancellationToken cancellationToken = default);
 
     Task SendPasswordResetAsync(
         string toEmail, 
         string userName,
         string token,
+        DateTime tokenExpiry,
         CancellationToken cancellationToken = default);
 
     Task SendResendVerifyAsync(
@@ -20,12 +22,39 @@ public interface IUserMailNotifier
         string userName,
         string token,
         string userId,
+        DateTime tokenExpiry,
         CancellationToken cancellationToken = default);
 
     // ==================== Security ====================
     Task SendPasswordChangedAlertAsync(
         string toEmail, 
         string userName,
+        CancellationToken cancellationToken = default);
+
+    Task SendEmailConfirmedAsync(
+        string toEmail,
+        string userName,
+        CancellationToken cancellationToken = default);
+
+    Task SendAccountLockedAlertAsync(
+        string toEmail,
+        string userName,
+        DateTime lockoutEnd,
+        int failedAttempts,
+        CancellationToken cancellationToken = default);
+
+    Task SendSecuritySessionRevokedAlertAsync(
+        string toEmail,
+        string userName,
+        string reason,
+        Guid deviceId,
+        CancellationToken cancellationToken = default);
+
+    Task SendAccountStatusChangedAsync(
+        string toEmail,
+        string userName,
+        string oldStatus,
+        string newStatus,
         CancellationToken cancellationToken = default);
     
     // ==================== Auction Emails ====================

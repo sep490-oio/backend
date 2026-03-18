@@ -43,7 +43,7 @@ public sealed class AuctionPollingFallbackJob : IJob
         var now = _clock.UtcNow;
 
         var overdueStarts = await _dbContext.Set<Auction>()
-            .Where(a => a.Status == AuctionStatus.Pending && a.Duration.StartTime <= now)
+            .Where(a => a.Status == AuctionStatus.Pending && a.Info.StartTime <= now)
             .Select(a => a.Id)
             .ToListAsync(context.CancellationToken);
 
@@ -54,7 +54,7 @@ public sealed class AuctionPollingFallbackJob : IJob
         }
 
         var overdueEnds = await _dbContext.Set<Auction>()
-            .Where(a => a.Status == AuctionStatus.Active && a.Duration.EndTime <= now)
+            .Where(a => a.Status == AuctionStatus.Active && a.Info.EndTime <= now)
             .Select(a => a.Id)
             .ToListAsync(context.CancellationToken);
 

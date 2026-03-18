@@ -1,7 +1,7 @@
-﻿using MediatR;
+using MediatR;
 using OIO.Api.Common;
-using OIO.Application.Abstractions.Clock;
 using OIO.Application.Context.AuctionContext.Commands.CreateAuction;
+using OIO.Application.Context.AuctionContext.Commands.CreateItem;
 using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.AuctionContext.Auctions;
@@ -9,38 +9,45 @@ namespace OIO.Api.Endpoints.AuctionContext.Auctions;
 public sealed class CreateAuctionEndpoint : IEndpoint
 {
     public sealed record Request(
-        Guid ItemId,
-        decimal StartingPrice,
-        decimal BidIncrement,
-        DateTime StartTime,
-        DateTime EndTime,
+        // Item info
+        string Title,
+        string Condition,
+        Guid? CategoryId = null,
+        string? Description = null,
+        int Quantity = 1,
+        string? Attributes = null,
+        IReadOnlyList<MediaAttachment>? Media = null,
+        // Auction pricing
+        decimal StartingPrice = 0,
+        decimal BidIncrement = 0,
         decimal? ReservePrice = null,
         decimal? BuyNowPrice = null,
-        bool AutoExtend = true,
         int ExtensionMinutes = 5,
-        string Currency = "VND");
+        string Currency = "VND",
+        string AuctionType = "regular");
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost(ApiEndpoint.Url.Auctions.Create, async (
                 Request request,
                 ISender sender,
-                IClock clock,
                 CancellationToken ct) =>
             {
-                var nowUtc = clock.UtcNow;
                 var command = new CreateAuctionCommand(
-                    nowUtc,
-                    request.ItemId,
-                    request.StartingPrice,
-                    request.BidIncrement,
-                    request.StartTime,
-                    request.EndTime,
-                    request.ReservePrice,
-                    request.BuyNowPrice,
-                    request.AutoExtend,
-                    request.ExtensionMinutes,
-                    request.Currency);
+                    Title: request.Title,
+                    Condition: request.Condition,
+                    CategoryId: request.CategoryId,
+                    Description: request.Description,
+                    Quantity: request.Quantity,
+                    Attributes: request.Attributes,
+                    Media: request.Media,
+                    StartingPrice: request.StartingPrice,
+                    BidIncrement: request.BidIncrement,
+                    ReservePrice: request.ReservePrice,
+                    BuyNowPrice: request.BuyNowPrice,
+                    ExtensionMinutes: request.ExtensionMinutes,
+                    Currency: request.Currency,
+                    AuctionType: request.AuctionType);
 
                 var result = await sender.Send(command, ct);
 

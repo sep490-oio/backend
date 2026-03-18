@@ -32,22 +32,25 @@ internal sealed class UserAddressConfiguration : IEntityTypeConfiguration<UserAd
             .IsRequired()
             .HasConversion(x => x.Id, value => AddressType.FromId(value).GetValueOrThrow());
 
-        builder.Property(a => a.RecipientName)
-            .HasColumnName("recipient_name")
-            .HasMaxLength(100)
-            .IsRequired();
-
-        builder.ComplexProperty(u => u.PhoneNumber, phoneNumberBuilder =>
+        builder.ComplexProperty(a => a.Recipient, recipientBuilder =>
         {
-            phoneNumberBuilder.Property(u => u.Value)
-                .HasColumnName("phone_number")
-                .HasMaxLength(20)
+            recipientBuilder.Property(x => x.RecipientName)
+                .HasColumnName("recipient_name")
+                .HasMaxLength(100)
                 .IsRequired();
+            
+            recipientBuilder.ComplexProperty(u => u.Phone, phoneNumberBuilder =>
+            {
+                phoneNumberBuilder.Property(u => u.Value)
+                    .HasColumnName("phone_number")
+                    .HasMaxLength(20)
+                    .IsRequired();
 
-            phoneNumberBuilder.Property(u => u.CountryCode)
-                .HasColumnName("phone_number_country_code")
-                .HasMaxLength(10)
-                .IsRequired();
+                phoneNumberBuilder.Property(u => u.CountryCode)
+                    .HasColumnName("phone_number_country_code")
+                    .HasMaxLength(10)
+                    .IsRequired();
+            });
         });
 
         // ==================== Address Value Object ====================

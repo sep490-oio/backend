@@ -1,4 +1,4 @@
-﻿namespace OIO.Api.Common;
+namespace OIO.Api.Common;
 
 public static partial class ApiEndpoint
 {
@@ -12,6 +12,15 @@ public static partial class ApiEndpoint
             public const string Confirm = $"{Base}/confirm";
             public const string Contexts = $"{Base}/contexts";
         }
+        
+        public static class Terms
+        {
+            private const string Base = "api/terms";
+
+            public const string GetActive = $"{Base}/active";
+            public const string GetActiveByType = $"{Base}/{{type}}/active";
+            public const string GetById = $"{Base}/{{termId:guid}}";
+        }
 
         public static class Admins
         {
@@ -21,10 +30,11 @@ public static partial class ApiEndpoint
             public const string GetRoles = $"{Base}/roles";
             public const string GetPermissions = $"{Base}/permissions";
             public const string GetUser = $"{Base}/users/{{userId:guid}}";
-            public const string GetAllSettings = $"{Base}/settings";
-            public const string GetSettingByKey = $"{Base}/settings/{{key}}";
-            public const string UpdateSetting = $"{Base}/settings/{{key}}";
+            public const string GetAllTerms = $"{Base}/terms";
+            public const string CreateTerms = $"{Base}/terms";
+            public const string ActivateTerms = $"{Base}/terms/{{id:guid}}/activate";
 
+            
             public const string RevokeRole = $"{Base}/users/{{userId:guid}}/roles/{{role}}";
             public const string RevokePermission = $"{Base}/users/{{userId:guid}}/permissions/{{permission}}";
             public const string RemoveUser = $"{Base}/users/{{userId:guid}}";
@@ -35,6 +45,42 @@ public static partial class ApiEndpoint
             public const string DenyPermission = $"{Base}/users/{{userId:guid}}/permissions/{{permission}}";
             public const string UnlockUser = $"{Base}/users/{{userId:guid}}/unlock";
             public const string TogglePermission = $"{Base}/roles/{{role}}/permissions/{{permission}}";
+
+            // Verifications
+            public const string GetPendingVerifications = $"{Base}/verifications";
+            public const string GetVerificationById = $"{Base}/verifications/{{verificationId:guid}}";
+            public const string ApproveVerification = $"{Base}/verifications/{{verificationId:guid}}/approve";
+            public const string RejectVerification = $"{Base}/verifications/{{verificationId:guid}}/reject";
+
+            // Seller Profiles
+            public const string GetSellerProfiles = $"{Base}/seller-profiles";
+            public const string VerifySellerProfile = $"{Base}/seller-profiles/{{id:guid}}/verify";
+            public const string RejectSellerProfile = $"{Base}/seller-profiles/{{id:guid}}/reject";
+
+            // Disputes
+            public const string ResolveDispute = $"{Base}/disputes/{{disputeId:guid}}/resolve";
+
+            // Item Moderation
+            public const string GetItemReviewQueue = $"{Base}/items/review-queue";
+            public const string GetAdminItemDetail = $"{Base}/items/{{itemId:guid}}";
+            public const string ApproveItem = $"{Base}/items/{{itemId:guid}}/approve";
+            public const string RejectItem = $"{Base}/items/{{itemId:guid}}/reject";
+            public const string AssignItemReviewer = $"{Base}/items/{{itemId:guid}}/assign";
+            public const string GetItemReviewHistory = $"{Base}/items/{{itemId:guid}}/reviews";
+            public const string SetAuctionCuration = $"{Base}/auctions/{{auctionId:guid}}/curation";
+            public const string RevealSealedBid = $"{Base}/auctions/{{auctionId:guid}}/sealed-bids/{{sealedBidId:guid}}/reveal";
+            public const string TriggerAuctionEmergency = $"{Base}/auctions/{{auctionId:guid}}/emergencies";
+            public const string ResolveAuctionEmergency = $"{Base}/auctions/{{auctionId:guid}}/emergencies/{{emergencyId:guid}}/resolve";
+            public const string GetReports = $"{Base}/reports";
+            public const string AssignReport = $"{Base}/reports/{{reportId:guid}}/assign";
+            public const string ResolveReport = $"{Base}/reports/{{reportId:guid}}/resolve";
+            public const string EscalateReportEmergency = $"{Base}/reports/{{reportId:guid}}/escalate-emergency";
+            public const string GetMonitoringAlerts = $"{Base}/monitoring-alerts";
+            public const string AcknowledgeMonitoringAlert = $"{Base}/monitoring-alerts/{{alertId:guid}}/acknowledge";
+            public const string ResolveMonitoringAlert = $"{Base}/monitoring-alerts/{{alertId:guid}}/resolve";
+            public const string FlagUser = $"{Base}/users/{{userId:guid}}/risk-flags";
+            public const string FlagAuction = $"{Base}/auctions/{{auctionId:guid}}/alerts";
+            public const string CancelInvalidBid = $"{Base}/auctions/{{auctionId:guid}}/bids/{{bidId:guid}}/cancel";
         }
 
         public static class Auth
@@ -56,15 +102,23 @@ public static partial class ApiEndpoint
             private const string Base = "api/items";
 
             public const string Create = Base;
+            public const string GetAll = Base;
             public const string GetById = $"{Base}/{{itemId:guid}}";
+            public const string Submit = $"{Base}/{{itemId:guid}}/submit";
             public const string Activate = $"{Base}/{{itemId:guid}}/activate";
             public const string GetBySeller = $"{Base}/my";
+            public const string Shipping = $"{Base}/{{itemId:guid}}/shipping";
+            public const string CreateAuction = $"{Base}/{{itemId:guid}}/auctions";
 
             // Images
             public const string AddMedia = $"{Base}/{{itemId:guid}}/media";
             public const string RemoveMedia = $"{Base}/{{itemId:guid}}/media/{{mediaId:guid}}";
             public const string SetPrimaryImage = $"{Base}/{{itemId:guid}}/media/{{mediaId:guid}}/primary";
             public const string ReorderMedia = $"{Base}/{{itemId:guid}}/media/reorder";
+
+            // Resubmit
+            public const string Resubmit = $"{Base}/{{itemId:guid}}/resubmit";
+            public const string ConfirmInspectedCondition = $"{Base}/{{itemId:guid}}/confirm-inspected-condition";
 
             // Questions
             public const string AskQuestion = $"{Base}/{{itemId:guid}}/questions";
@@ -76,17 +130,25 @@ public static partial class ApiEndpoint
         {
             private const string Base = "api/auctions";
 
-
             public const string Create = Base;
             public const string GetAll = Base;
             public const string GetById = $"{Base}/{{auctionId:guid}}";
+            public const string Update = $"{Base}/{{auctionId:guid}}";
             public const string GetBids = $"{Base}/{{auctionId:guid}}/bids";
             public const string Cancel = $"{Base}/{{auctionId:guid}}/cancel";
+            public const string Close = $"{Base}/{{auctionId:guid}}/close";
             public const string Publish = $"{Base}/{{auctionId:guid}}/publish";
+            public const string Submit = $"{Base}/{{auctionId:guid}}/submit";
+            public const string SetTiming = $"{Base}/{{auctionId:guid}}/timing";
+            public const string Shipping = $"{Base}/{{auctionId:guid}}/shipping";
+            public const string OfferRunnerUp = $"{Base}/{{auctionId:guid}}/runner-up-offers";
+            public const string RespondRunnerUpOffer = $"{Base}/{{auctionId:guid}}/runner-up-offers/respond";
+            public const string Relist = $"{Base}/{{auctionId:guid}}/relist";
 
             // Bidding (REST fallback — primary via SignalR)
             public const string PlaceBid = $"{Base}/{{auctionId:guid}}/bids";
             public const string BuyNow = $"{Base}/{{auctionId:guid}}/buy-now";
+            public const string SubmitSealedBid = $"{Base}/{{auctionId:guid}}/sealed-bids";
 
             // Auto-Bid
             public const string ConfigureAutoBid = $"{Base}/{{auctionId:guid}}/auto-bid";
@@ -109,6 +171,83 @@ public static partial class ApiEndpoint
             public const string GetBySlug = $"{Base}/by-slug/{{slug}}";
             public const string GetChildren = $"{Base}/{{categoryId:guid}}/children";
             public const string Update = $"{Base}/{{categoryId:guid}}";
+        }
+        
+        public static class Sellers
+        {
+            private const string Base = "api/sellers";
+
+            public const string GetById = $"{Base}/{{sellerId:guid}}";
+            public const string GetItems = $"{Base}/{{sellerId:guid}}/items";
+        }
+
+        public static class Warehouse
+        {
+            private const string Base = "api/warehouse";
+            
+            public const string InspectionQueue = $"{Base}/inbound-shipments/inspection-queue";
+            public const string InspectWarehouseItem = $"{Base}/inbound-shipments/{{shipmentId:guid}}/inspect";
+            public const string ReviewWarehouseInspection = $"{Base}/inbound-shipments/{{shipmentId:guid}}/review";
+            public const string BookInbound  = $"{Base}/inbound-shipments";
+            public const string BookOutbound = $"{Base}/outbound-shipments";
+            public const string StoreItem   = $"{Base}/warehouse-items/{{warehouseItemId}}/store";
+            public const string GhnWebhook   = "webhooks/ghn";
+            public const string StorageLocations = $"{Base}/storage-locations";
+            public const string InboundShipmentById  = $"{Base}/inbound-shipments/{{shipmentId:guid}}";
+            public const string OutboundShipmentById = $"{Base}/outbound-shipments/{{shipmentId:guid}}";
+            public const string WarehouseItems = $"{Base}/warehouse-items";
+            public const string CancelInbound              = $"{Base}/inbound-shipments/{{shipmentId:guid}}/cancel";
+            public const string CancelOutbound             = $"{Base}/outbound-shipments/{{shipmentId:guid}}/cancel";
+            public const string StorageLocationById        = $"{Base}/storage-locations/{{locationId:guid}}";
+            public const string ShippingProviderConfigById = $"{Base}/shipping-provider-configs/{{configId:guid}}";
+        }
+
+        public static class VnPay
+        {
+            private const string Base = "api/payments/vnpay";
+
+            public const string CreatePaymentUrl = $"{Base}/create-url";
+            public const string Return = $"{Base}/return";
+            public const string Ipn = $"{Base}/ipn";
+            public const string Refund = $"{Base}/refund";
+        }
+
+        public static class Payments
+        {
+            private const string Base = "api/payments";
+
+            public const string AddMethod = $"{Base}/methods";
+            public const string GetMethods = $"{Base}/methods";
+            public const string DeleteMethod = $"{Base}/methods/{{id:guid}}";
+            public const string CheckoutOrder = $"{Base}/checkout";
+            public const string SetDefaultMethod = $"{Base}/methods/{{id:guid}}/default";
+        }
+
+        public static class AdminPayments
+        {
+            private const string Base = "api/admin/payments";
+
+            public const string GetWithdrawals = $"{Base}/withdrawals";
+            public const string GetWithdrawalById = $"{Base}/withdrawals/{{withdrawalId:guid}}";
+            public const string ApproveWithdrawal = $"{Base}/withdrawals/{{withdrawalId:guid}}/approve";
+            public const string RejectWithdrawal = $"{Base}/withdrawals/{{withdrawalId:guid}}/reject";
+            public const string GetTransactions = $"{Base}/transactions";
+            public const string GetTransactionById = $"{Base}/transactions/{{transactionId:guid}}";
+            public const string GetEscrows = $"{Base}/escrows";
+            public const string GetEscrowById = $"{Base}/escrows/{{escrowId:guid}}";
+            public const string GetSummary = $"{Base}/summary";
+        }
+
+        public static class Orders
+        {
+            private const string Base = "api/orders";
+
+            public const string GetById = $"{Base}/{{orderId:guid}}";
+            public const string CreateReturn = $"{Base}/{{orderId:guid}}/returns";
+            public const string ShipReturn = $"{Base}/{{orderId:guid}}/returns/{{returnId:guid}}/ship";
+            public const string ApproveReturn = $"{Base}/{{orderId:guid}}/returns/{{returnId:guid}}/approve";
+            public const string RejectReturn = $"{Base}/{{orderId:guid}}/returns/{{returnId:guid}}/reject";
+            public const string ConfirmReturnReceived = $"{Base}/{{orderId:guid}}/returns/{{returnId:guid}}/confirm-received";
         }
 
         public static class Me
@@ -133,6 +272,60 @@ public static partial class ApiEndpoint
             public const string SetPhoneNumber = $"{Base}/phone";
             public const string UpdateAddress = $"{Base}/addresses/{{addressId:guid}}";
             public const string UpdateCurrentUserProfile = $"{Base}/profile";
+            public const string AcceptTerm = $"{Base}/terms/{{termDocumentId:guid}}/accept";
+            public const string GetMyAcceptedTerms = $"{Base}/terms";
+            public const string CheckPendingTerms = $"{Base}/terms/pending";
+            public const string GetMyWallet = $"{Base}/wallet";
+            public const string GetMyWalletTransactions = $"{Base}/wallet/transactions";
+            public const string GetMyWalletTransactionById = $"{Base}/wallet/transactions/{{transactionId:guid}}";
+            public const string CreateWithdrawal = $"{Base}/wallet/withdrawals";
+            public const string GetMyWithdrawals = $"{Base}/wallet/withdrawals";
+            public const string CancelWithdrawal = $"{Base}/wallet/withdrawals/{{withdrawalId:guid}}/cancel";
+            public const string GetMyOrders = $"{Base}/orders";
+
+            // Verifications
+            public const string CreateVerification = $"{Base}/verifications";
+            public const string GetMyVerifications = $"{Base}/verifications";
+            public const string GetMyVerificationById = $"{Base}/verifications/{{verificationId:guid}}";
+            public const string UpdateVerification = $"{Base}/verifications/{{verificationId:guid}}";
+            public const string UploadVerificationDocument = $"{Base}/verifications/{{verificationId:guid}}/documents";
+            public const string DeleteVerificationDocument = $"{Base}/verifications/{{verificationId:guid}}/documents/{{docId:guid}}";
+            public const string SubmitVerification = $"{Base}/verifications/{{verificationId:guid}}/submit";
+            public const string CreateVerificationDispute = $"{Base}/verifications/{{verificationId:guid}}/disputes";
+
+            // Seller Profile
+            public const string CreateSellerProfile = $"{Base}/seller-profile";
+            public const string GetMySellerProfile = $"{Base}/seller-profile";
+            public const string UpdateSellerProfile = $"{Base}/seller-profile";
+        }
+
+        public static class Reports
+        {
+            private const string Base = "api/reports";
+
+            public const string Create = Base;
+            public const string GetMine = "api/me/reports";
+        }
+
+        public static class Disputes
+        {
+            private const string Base = "api/disputes";
+
+            public const string GetMine = Base;
+            public const string GetById = $"{Base}/{{disputeId:guid}}";
+            public const string GetMessages = $"{Base}/{{disputeId:guid}}/messages";
+            public const string SendMessage = $"{Base}/{{disputeId:guid}}/messages";
+            public const string MarkRead = $"{Base}/{{disputeId:guid}}/read";
+        }
+
+        public static class Notifications
+        {
+            private const string Base = "api/notifications";
+
+            public const string GetMyNotifications = Base;
+            public const string GetUnreadCount = $"{Base}/unread-count";
+            public const string MarkAsRead = $"{Base}/{{notificationId:guid}}/read";
+            public const string MarkAllAsRead = $"{Base}/read-all";
         }
     }
 }

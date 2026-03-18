@@ -7,11 +7,12 @@ using OIO.Application.Abstractions.Scheduling;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.AppDefinitions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
-using OIO.Domain.Context.AuctionContext.Aggregates.Items;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
+using ItemId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId;
 
 namespace OIO.Application.Context.AuctionContext.Commands.CancelAuction;
 
@@ -66,6 +67,7 @@ internal sealed class CancelAuctionCommandHandler
                 .Include(a => a.AutoBids)
                 .Include(a => a.PriceHistories)
                 .Include(a => a.Watchers)
+                .Include(a => a.Item)
                 .AsSplitQuery(),
             cancellationToken: cancellationToken
             );
@@ -73,7 +75,7 @@ internal sealed class CancelAuctionCommandHandler
         if (auction is null)
             return AuctionErrors.Auction.NotFound(auctionId);
 
-        if (auction.SellerId != _currentUser.UserId && !_currentUser.IsInRole(App.Roles.Catalogs.Admin))
+        if (auction.Item.SellerId != _currentUser.UserId && !_currentUser.IsInRole(App.Roles.Catalogs.Admin))
             return AuctionErrors.Auction.OnlyOwnerCanCancel;
 
         var nowUtc = _clock.UtcNow;

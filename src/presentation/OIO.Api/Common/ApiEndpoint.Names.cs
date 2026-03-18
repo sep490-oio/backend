@@ -1,9 +1,15 @@
-﻿namespace OIO.Api.Common;
+namespace OIO.Api.Common;
 
 public static partial class ApiEndpoint
 {
     public static class Names
     {
+        public static class Terms
+        {
+            public const string GetActiveTerms = nameof(GetActiveTerms);
+            public const string GetActiveTermsByType = nameof(GetActiveTermsByType);
+            public const string GetTermById = nameof(GetTermById);
+        }
         public static class Me
         {
             public const string GetMyAuctions = nameof(GetMyAuctions);
@@ -24,6 +30,26 @@ public static partial class ApiEndpoint
             public const string SetPhoneNumber = nameof(SetPhoneNumber);
             public const string UpdateMyAddress = nameof(UpdateMyAddress);
             public const string UpdateMyProfile = nameof(UpdateMyProfile);
+            public const string AcceptTerm = nameof(AcceptTerm);
+            public const string GetMyAcceptedTerms = nameof(GetMyAcceptedTerms);
+            public const string CheckPendingTerms = nameof(CheckPendingTerms);
+            public const string GetMyWallet = nameof(GetMyWallet);
+            public const string GetMyOrders = nameof(GetMyOrders);
+
+            // Verifications
+            public const string CreateVerification = nameof(CreateVerification);
+            public const string GetMyVerifications = nameof(GetMyVerifications);
+            public const string GetMyVerificationById = nameof(GetMyVerificationById);
+            public const string UpdateVerification = nameof(UpdateVerification);
+            public const string UploadVerificationDocument = nameof(UploadVerificationDocument);
+            public const string DeleteVerificationDocument = nameof(DeleteVerificationDocument);
+            public const string SubmitVerification = nameof(SubmitVerification);
+            public const string CreateVerificationDispute = nameof(CreateVerificationDispute);
+
+            // Seller Profile
+            public const string CreateSellerProfile = nameof(CreateSellerProfile);
+            public const string GetMySellerProfile = nameof(GetMySellerProfile);
+            public const string UpdateSellerProfile = nameof(UpdateSellerProfile);
         }
 
         public static class Media
@@ -48,9 +74,45 @@ public static partial class ApiEndpoint
             public const string RevokePermission = nameof(RevokePermission);
             public const string TogglePermission = nameof(TogglePermission);
             public const string UnlockUser = nameof(UnlockUser);
-            public const string GetAllSettings = nameof(GetAllSettings);
-            public const string GetSettingByKey = nameof(GetSettingByKey);
-            public const string UpdateSetting = nameof(UpdateSetting);
+            public const string CreateTermsDocument = nameof(CreateTermsDocument);
+            public const string ActivateTermsDocument = nameof(ActivateTermsDocument);
+            public const string GetAllTermsDocuments = nameof(GetAllTermsDocuments);
+
+            // Verifications
+            public const string GetPendingVerifications = nameof(GetPendingVerifications);
+            public const string GetVerificationById = nameof(GetVerificationById);
+            public const string ApproveVerification = nameof(ApproveVerification);
+            public const string RejectVerification = nameof(RejectVerification);
+
+            // Seller Profiles
+            public const string GetSellerProfiles = nameof(GetSellerProfiles);
+            public const string VerifySellerProfile = nameof(VerifySellerProfile);
+            public const string RejectSellerProfile = nameof(RejectSellerProfile);
+
+            // Disputes
+            public const string ResolveDispute = nameof(ResolveDispute);
+
+            // Item Moderation
+            public const string GetItemReviewQueue = nameof(GetItemReviewQueue);
+            public const string GetAdminItemDetail = nameof(GetAdminItemDetail);
+            public const string ApproveItem = nameof(ApproveItem);
+            public const string RejectItem = nameof(RejectItem);
+            public const string AssignItemReviewer = nameof(AssignItemReviewer);
+            public const string GetItemReviewHistory = nameof(GetItemReviewHistory);
+            public const string SetAuctionCuration = nameof(SetAuctionCuration);
+            public const string RevealSealedBid = nameof(RevealSealedBid);
+            public const string TriggerAuctionEmergency = nameof(TriggerAuctionEmergency);
+            public const string ResolveAuctionEmergency = nameof(ResolveAuctionEmergency);
+            public const string GetReports = nameof(GetReports);
+            public const string AssignReport = nameof(AssignReport);
+            public const string ResolveReport = nameof(ResolveReport);
+            public const string EscalateReportEmergency = nameof(EscalateReportEmergency);
+            public const string GetMonitoringAlerts = nameof(GetMonitoringAlerts);
+            public const string AcknowledgeMonitoringAlert = nameof(AcknowledgeMonitoringAlert);
+            public const string ResolveMonitoringAlert = nameof(ResolveMonitoringAlert);
+            public const string FlagUser = nameof(FlagUser);
+            public const string FlagAuction = nameof(FlagAuction);
+            public const string CancelInvalidBid = nameof(CancelInvalidBid);
         }
 
         public static class Auth
@@ -68,9 +130,15 @@ public static partial class ApiEndpoint
         public static class Items
         {
             public const string CreateItem = nameof(CreateItem);
+            public const string GetAllItems = nameof(GetAllItems);
             public const string GetItemById = nameof(GetItemById);
             public const string GetMyItems = nameof(GetMyItems);
+            public const string SubmitItem = nameof(SubmitItem);
             public const string ActivateItem = nameof(ActivateItem);
+            public const string ResubmitItem = nameof(ResubmitItem);
+            public const string ConfirmInspectedCondition = nameof(ConfirmInspectedCondition);
+            public const string ChooseItemShipping = nameof(ChooseItemShipping);
+            public const string CreateAuctionFromItem = nameof(CreateAuctionFromItem);
             public const string AddItemMedia = nameof(AddItemMedia);
             public const string RemoveItemMedia = nameof(RemoveItemMedia);
             public const string SetPrimaryItemImage = nameof(SetPrimaryItemImage);
@@ -85,11 +153,20 @@ public static partial class ApiEndpoint
             public const string GetAllAuctions = nameof(GetAllAuctions);
             public const string CreateAuction = nameof(CreateAuction);
             public const string GetAuctionById = nameof(GetAuctionById);
+            public const string UpdateAuction = nameof(UpdateAuction);
             public const string GetAuctionBids = nameof(GetAuctionBids);
             public const string CancelAuction = nameof(CancelAuction);
+            public const string CloseAuction = nameof(CloseAuction);
             public const string PublishAuction = nameof(PublishAuction);
+            public const string SubmitAuction = nameof(SubmitAuction);
+            public const string SetAuctionTiming = nameof(SetAuctionTiming);
+            public const string ChooseAuctionShipping = nameof(ChooseAuctionShipping);
+            public const string OfferRunnerUp = nameof(OfferRunnerUp);
+            public const string RespondRunnerUpOffer = nameof(RespondRunnerUpOffer);
+            public const string RelistAuction = nameof(RelistAuction);
             public const string PlaceBid = nameof(PlaceBid);
             public const string BuyNow = nameof(BuyNow);
+            public const string SubmitSealedBid = nameof(SubmitSealedBid);
             public const string ConfigureAutoBid = nameof(ConfigureAutoBid);
             public const string PauseAutoBid = nameof(PauseAutoBid);
             public const string ResumeAutoBid = nameof(ResumeAutoBid);
@@ -106,6 +183,108 @@ public static partial class ApiEndpoint
             public const string GetCategoryBySlug = nameof(GetCategoryBySlug);
             public const string GetCategoryChildren = nameof(GetCategoryChildren);
             public const string UpdateCategory = nameof(UpdateCategory);
+        }
+        
+        public static class Sellers
+        {
+            public const string GetSellerById = nameof(GetSellerById);
+            public const string GetSellerItems = nameof(GetSellerItems);
+        }
+
+        public static class Warehouse
+        {
+            public const string BookInboundShipment  = nameof(BookInboundShipment);
+            public const string BookOutboundShipment = nameof(BookOutboundShipment);
+            public const string GhnWebhook           = nameof(GhnWebhook);
+            public const string GetInspectionQueue   = nameof(GetInspectionQueue);
+            public const string InspectWarehouseItem = nameof(InspectWarehouseItem);
+            public const string ReviewWarehouseInspection = nameof(ReviewWarehouseInspection);
+            public const string StoreWarehouseItem   = nameof(StoreWarehouseItem);
+            public const string CreateStorageLocation = nameof(CreateStorageLocation);
+            public const string GetStorageLocations   = nameof(GetStorageLocations);
+            public const string GetInboundShipments      = nameof(GetInboundShipments);
+            public const string GetInboundShipmentById   = nameof(GetInboundShipmentById);
+            public const string GetOutboundShipments     = nameof(GetOutboundShipments);
+            public const string GetOutboundShipmentById  = nameof(GetOutboundShipmentById);
+            public const string GetWarehouseItems = nameof(GetWarehouseItems);
+            public const string CancelInboundShipment          = nameof(CancelInboundShipment);
+            public const string CancelOutboundShipment         = nameof(CancelOutboundShipment);
+            public const string DeleteStorageLocation          = nameof(DeleteStorageLocation);
+            public const string UpdateStorageLocation          = nameof(UpdateStorageLocation);
+            public const string UpdateShippingProviderConfig   = nameof(UpdateShippingProviderConfig);
+        }
+
+        public static class VnPay
+        {
+            public const string CreatePaymentUrl = nameof(CreatePaymentUrl);
+            public const string Return = "VnPayReturn";
+            public const string Ipn = "VnPayIpn";
+            public const string Refund = "VnPayRefund";
+        }
+
+        public static class Payments
+        {
+            public const string AddPaymentMethod = nameof(AddPaymentMethod);
+            public const string GetPaymentMethods = nameof(GetPaymentMethods);
+            public const string DeletePaymentMethod = nameof(DeletePaymentMethod);
+            public const string CheckoutOrder =  nameof(CheckoutOrder);
+            public const string SetDefaultPaymentMethod = nameof(SetDefaultPaymentMethod);
+        }
+
+        public static class AdminPayments
+        {
+            public const string GetWithdrawals = nameof(GetWithdrawals);
+            public const string GetWithdrawalById = nameof(GetWithdrawalById);
+            public const string ApproveWithdrawal = nameof(ApproveWithdrawal);
+            public const string RejectWithdrawal = nameof(RejectWithdrawal);
+            public const string GetTransactions = nameof(GetTransactions);
+            public const string GetTransactionById = nameof(GetTransactionById);
+            public const string GetEscrows = nameof(GetEscrows);
+            public const string GetEscrowById = nameof(GetEscrowById);
+            public const string GetSummary = nameof(GetSummary);
+        }
+
+        public static class Orders
+        {
+            public const string GetOrderById = nameof(GetOrderById);
+            public const string CreateOrderReturn = nameof(CreateOrderReturn);
+            public const string ShipOrderReturn = nameof(ShipOrderReturn);
+            public const string ApproveOrderReturn = nameof(ApproveOrderReturn);
+            public const string RejectOrderReturn = nameof(RejectOrderReturn);
+            public const string ConfirmOrderReturnReceived = nameof(ConfirmOrderReturnReceived);
+        }
+
+        public static class Reports
+        {
+            public const string CreateReport = nameof(CreateReport);
+            public const string GetMyReports = nameof(GetMyReports);
+        }
+
+        public static class Disputes
+        {
+            public const string GetAccessibleDisputes = nameof(GetAccessibleDisputes);
+            public const string GetDisputeThread = nameof(GetDisputeThread);
+            public const string GetDisputeMessages = nameof(GetDisputeMessages);
+            public const string SendDisputeMessage = nameof(SendDisputeMessage);
+            public const string MarkDisputeRead = nameof(MarkDisputeRead);
+        }
+
+        public static class Notifications
+        {
+            public const string GetMyNotifications = nameof(GetMyNotifications);
+            public const string GetUnreadCount = nameof(GetUnreadCount);
+            public const string MarkAsRead = nameof(MarkAsRead);
+            public const string MarkAllAsRead = nameof(MarkAllAsRead);
+        }
+
+        public static class Wallet
+        {
+            public const string GetMyWallet = nameof(GetMyWallet);
+            public const string GetMyWalletTransactions = nameof(GetMyWalletTransactions);
+            public const string GetMyWalletTransactionById = nameof(GetMyWalletTransactionById);
+            public const string CreateWithdrawal = nameof(CreateWithdrawal);
+            public const string GetMyWithdrawals = nameof(GetMyWithdrawals);
+            public const string CancelWithdrawal = nameof(CancelWithdrawal);
         }
     }
 }

@@ -7,10 +7,12 @@ public sealed class UserStatus : EnumValueObject<UserStatus>
     public static readonly UserStatus Active = new("active");
     public static readonly UserStatus Inactive = new("inactive");
     public static readonly UserStatus Locked = new("locked");
+    public static readonly UserStatus Banned = new("banned");
     public static readonly UserStatus Suspended = new("suspended");
 
     public static readonly UserStatus[] RevokedStatus =
     [
+        Banned,
         Inactive,
         Locked,
         Suspended

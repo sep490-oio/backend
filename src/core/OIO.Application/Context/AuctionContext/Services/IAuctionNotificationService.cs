@@ -25,6 +25,16 @@ public interface IAuctionNotificationService
         OutbidNotification notification,
         CancellationToken cancellationToken = default);
 
+    Task NotifyBuyNowReservedAsync(
+        Guid auctionId,
+        BuyNowReservedNotification notification,
+        CancellationToken cancellationToken = default);
+
+    Task NotifyBuyNowReservationReleasedAsync(
+        Guid auctionId,
+        BuyNowReservationReleasedNotification notification,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Broadcast buy now executed to auction group.
     /// </summary>

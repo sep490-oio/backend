@@ -1,14 +1,15 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Data;
-using OIO.Application.Abstractions.Mail;
 using OIO.Application.Context.AuctionContext.Hubs;
 using OIO.Application.Context.AuctionContext.Services;
+using OIO.Application.Context.NotificationContext;
+using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Events;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
-using OIO.Domain.Context.UserContext.Aggregates.Users;
+using OIO.Domain.Context.NotificationContext.Enums;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 
 namespace OIO.Application.Context.AuctionContext.EventHandlers;
@@ -17,18 +18,18 @@ internal sealed class AuctionFailedEventHandler
     : INotificationHandler<AuctionFailedEvent>
 {
     private readonly IDbContext _dbContext;
-    private readonly IUserMailNotifier _mailNotifier;
+    private readonly ISender _sender;
     private readonly IAuctionNotificationService _hubNotifier;
     private readonly ILogger<AuctionFailedEventHandler> _logger;
 
     public AuctionFailedEventHandler(
         IDbContext dbContext,
-        IUserMailNotifier mailNotifier,
+        ISender sender,
         IAuctionNotificationService hubNotifier,
         ILogger<AuctionFailedEventHandler> logger)
     {
         _dbContext = dbContext;
-        _mailNotifier = mailNotifier;
+        _sender = sender;
         _hubNotifier = hubNotifier;
         _logger = logger;
     }
@@ -38,30 +39,18 @@ internal sealed class AuctionFailedEventHandler
         var auctionId = AuctionId.From(Guid.Parse(notification.AuctionId));
         var sellerId = UserId.From(Guid.Parse(notification.SellerId));
 
-        var seller = await _dbContext.GetByIdAsync<User, UserId>(
-            id: sellerId,
-            queryBuilder: query => query.AsNoTracking(),
-            cancellationToken: cancellationToken
-        );
-
-        if (seller is null) 
-            return;
-        
         var auction = await _dbContext.Set<Auction>()
             .AsNoTracking()
             .Include(a => a.Watchers)
             .Include(a => a.Item)
-            .FirstOrDefaultAsync(a => 
-                    a.Id == auctionId && 
-                    a.SellerId == sellerId, 
-                cancellationToken: cancellationToken);
+            .FirstOrDefaultAsync(a =>
+                    a.Id == auctionId &&
+                    a.Item.SellerId == sellerId,
+                cancellationToken);
 
         if (auction is null)
-        {
             return;
-        }
 
-        // 1. SignalR broadcast
         await _hubNotifier.NotifyAuctionEndedAsync(
             auctionId.Value,
             new AuctionEndedNotification(
@@ -71,56 +60,68 @@ internal sealed class AuctionFailedEventHandler
                 FinalPrice: notification.FinalPrice,
                 TotalBids: notification.TotalBids,
                 ReserveMet: false),
-            cancellationToken: cancellationToken
-        );
+            cancellationToken);
 
-        
-        var auctionTitle = $"Auction #{notification.AuctionId[..8]} {auction.Item.Title}"; // Load item title if needed
+        await NotificationDispatch.DispatchAsync(
+            _sender,
+            _logger,
+            new CreateNotificationCommand(
+                UserId: sellerId.Value,
+                NotificationType: "auction",
+                EventType: "auction_failed",
+                Title: "Phien dau gia khong thanh cong",
+                Message:
+                    $"Phien dau gia \"{auction.Item.Title.Value}\" ket thuc khong thanh cong. " +
+                    $"Ly do: {notification.Reason}. Gia cuoi: {NotificationDispatch.FormatAmount(notification.FinalPrice, notification.Currency)}.",
+                Priority: NotificationPriority.High,
+                EntityType: "Auction",
+                EntityId: auctionId.Value,
+                Metadata: NotificationDispatch.SerializeMetadata(new
+                {
+                    auctionId = auctionId.Value,
+                    itemId = auction.ItemId.Value,
+                    reason = notification.Reason,
+                    finalPrice = notification.FinalPrice,
+                    currency = notification.Currency,
+                    totalBids = notification.TotalBids
+                })),
+            cancellationToken);
 
-        // 2. Email seller
-        await _mailNotifier.SendAuctionFailedAsync(
-            toEmail: seller.Email.Value,
-            userName: seller.UserName.Value,
-            auctionId: notification.AuctionId,
-            auctionTitle: auctionTitle,
-            reason: notification.Reason,
-            finalPrice: notification.FinalPrice,
-            totalBids: notification.TotalBids,
-            currency: notification.Currency,
-            cancellationToken: cancellationToken
-        );
-
-        // 3. Notify watchers
         var watcherUserIds = auction.Watchers
             .Where(w => w.NotifyOnEnd && w.UserId != sellerId)
-            .Select(w => w.UserId)
+            .Select(w => w.UserId.Value)
+            .Distinct()
             .ToList();
 
-        if (watcherUserIds.Count > 0)
+        foreach (var watcherUserId in watcherUserIds)
         {
-            var watchers = await _dbContext.Set<User>()
-                .AsNoTracking()
-                .Where(u => watcherUserIds.Contains(u.Id))
-                .ToListAsync(cancellationToken: cancellationToken
-                );
-
-            foreach (var watcher in watchers)
-            {
-                await _mailNotifier.SendAuctionEndedWatcherAsync(
-                    toEmail: watcher.Email.Value,
-                    userName: watcher.UserName.Value,
-                    auctionId: notification.AuctionId,
-                    auctionTitle: auctionTitle,
-                    finalPrice: notification.FinalPrice,
-                    currency: "VND",
-                    hasWinner: false,
-                    cancellationToken: cancellationToken
-                );
-            }
+            await NotificationDispatch.DispatchAsync(
+                _sender,
+                _logger,
+                new CreateNotificationCommand(
+                    UserId: watcherUserId,
+                    NotificationType: "auction",
+                    EventType: "auction_ended",
+                    Title: "Phien dau gia da ket thuc",
+                    Message:
+                        $"Phien dau gia \"{auction.Item.Title.Value}\" da ket thuc nhung khong co nguoi thang. " +
+                        $"Gia cuoi: {NotificationDispatch.FormatAmount(notification.FinalPrice, notification.Currency)}.",
+                    Priority: NotificationPriority.Normal,
+                    EntityType: "Auction",
+                    EntityId: auctionId.Value,
+                    Metadata: NotificationDispatch.SerializeMetadata(new
+                    {
+                        auctionId = auctionId.Value,
+                        itemId = auction.ItemId.Value,
+                        hasWinner = false,
+                        finalPrice = notification.FinalPrice,
+                        currency = notification.Currency
+                    })),
+                cancellationToken);
         }
 
         _logger.LogInformation(
-            "AuctionFailed notifications sent. Auction={AuctionId}, Reason={Reason}.",
-            notification.AuctionId, notification.Reason);
+            "AuctionFailed notifications created. Auction={AuctionId}, Reason={Reason}, Watchers={WatcherCount}.",
+            notification.AuctionId, notification.Reason, watcherUserIds.Count);
     }
 }

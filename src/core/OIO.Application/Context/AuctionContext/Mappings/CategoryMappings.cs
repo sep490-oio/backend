@@ -1,7 +1,7 @@
 ﻿using System.Linq.Expressions;
 using OIO.Application.Abstractions.Sorting;
 using OIO.Application.Context.AuctionContext.DTOs;
-using OIO.Domain.Context.AuctionContext.Aggregates.Categories;
+using OIO.Domain.Context.CatalogContext.Aggregates.Categories;
 
 namespace OIO.Application.Context.AuctionContext.Mappings;
 
@@ -13,9 +13,9 @@ public static class CategoryMappings
             Id: category.Id.Value,
             ParentId: category.ParentId?.Value,
             Name: category.Name,
-            Slug: category.Slug,
+            Slug: category.Slug.Value,
             Description: category.Description,
-            IconUrl: category.IconUrl,
+            IconUrl: category.IconInfo.SecureUrl,
             IsActive: category.IsActive,
             SortOrder: category.SortOrder,
             Path: category.Path.Value,
@@ -29,7 +29,6 @@ public static class CategoryMappings
         .Map(x => x.Name, b => b.Name)
         .Map(x => x.Slug, b => b.Slug)
         .Map(x => x.Description, b => b.Description)
-        .Map(x => x.IconUrl, b => b.IconUrl)
         .Map(x => x.IsActive, b => b.IsActive)
         .Map(x => x.SortOrder, b => b.SortOrder)
         .Map(x => x.Path, b => b.Path)

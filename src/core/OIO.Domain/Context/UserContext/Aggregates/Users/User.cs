@@ -1,5 +1,8 @@
 ﻿using System.Net;
 using CSharpFunctionalExtensions;
+using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
+using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.Shared.Enums;
 using OIO.Domain.Context.UserContext.Aggregates.Roles;
 using OIO.Domain.Context.UserContext.Aggregates.Users.Events;
 using OIO.Domain.Context.UserContext.Enums;
@@ -22,7 +25,10 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
     private readonly List<UserRole> _roles = [];
     private readonly List<UserPermission> _permissions = [];
     private readonly List<UserLoginHistory> _loginHistories = [];
+    private readonly List<UserRefreshToken> _refreshTokens = [];
     private readonly List<UserSession> _sessions = [];
+    private readonly List<AuctionDeposit> _auctionDeposits = [];
+    private readonly List<AuctionEmergency> _emergencies = [];
 
     private User() {}
     
@@ -62,16 +68,21 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
 
     public DateTime? DeletedAt { get; private set; }
     
-    public bool IsDeleted => DeletedAt is not null;
-
     public int Version { get; private set; }
+
+    public bool IsDeleted => DeletedAt is not null;
     
-    public UserProfile? Profile { get; private set; }
-    public IReadOnlyList<UserAddress> Addresses => _addresses;
-    public IReadOnlyList<UserRole> Roles => _roles;
-    public IReadOnlyList<UserPermission> Permissions => _permissions;
-    public IReadOnlyList<UserLoginHistory> LoginHistories => _loginHistories;
-    public IReadOnlyList<UserSession> Sessions => _sessions;
+    public Wallet Wallet { get; private set; }
+    public UserProfile Profile { get; private set; }
+    public SellerProfile? SellerProfile { get; private set; }
+    public IReadOnlyCollection<UserAddress> Addresses => _addresses.AsReadOnly();
+    public IReadOnlyCollection<UserRole> Roles => _roles.AsReadOnly();
+    public IReadOnlyCollection<UserPermission> Permissions => _permissions.AsReadOnly();
+    public IReadOnlyCollection<UserLoginHistory> LoginHistories => _loginHistories.AsReadOnly();
+    public IReadOnlyCollection<UserSession> Sessions => _sessions.AsReadOnly();
+    public IReadOnlyCollection<UserRefreshToken> RefreshTokens => _refreshTokens.AsReadOnly();
+    public IReadOnlyCollection<AuctionDeposit> AuctionDeposits => _auctionDeposits.AsReadOnly();
+    public IReadOnlyCollection<AuctionEmergency> Emergencies => _emergencies.AsReadOnly();
     
     private User(
         UserId userId,
@@ -99,6 +110,8 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         UserName userName, 
         UserEmail email, 
         DateTime now,
+        PersonName personName,
+        Currency currency,
         Password? password = null)
     {
         var user = new User(
@@ -110,6 +123,11 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
 
         // Initialize profile
         user.Profile = new UserProfile(user.Id, now);
+        user.Profile.Update(
+            now: now,
+            name: personName);
+        
+        user.Wallet = Wallet.Create(user.Id, currency, now);
 
         user.RaiseDomainEvent(new UserCreatedEvent(
             user.Id.ToString(),
@@ -226,7 +244,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
             
             return unitResult;
         }
-
+        
         ModifiedAt = now;
 
         RaiseDomainEvent(new UserEmailConfirmedEvent(Id.ToString(), Email, now));
@@ -415,9 +433,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
     
     public UnitResult<Error> UpdateProfile(
         DateTime now,
-        FirstName? firstName = null,
-        LastName? lastName = null,
-        DisplayName? displayName = null,
+        PersonName? name,
         AvatarUrl? avatarUrl = null,
         DateOnly? dateOfBirth = null,
         Gender? gender = null)
@@ -431,7 +447,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         
         Profile ??= new UserProfile(Id, now);
         
-        unitResult = Profile.Update(firstName, lastName, displayName, avatarUrl, dateOfBirth, gender, now);
+        unitResult = Profile.Update(now, name, avatarUrl, dateOfBirth, gender);
         
         if (unitResult.IsFailure)
         {
@@ -441,11 +457,24 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         
         return unitResult;
     }
+
+    public void RefreshAvatarSnapshot(
+        string oldPublicId,
+        AvatarUrl avatarUrl,
+        DateTime nowUtc)
+    {
+        if (Profile is null)
+            return;
+
+        if (!Profile.RefreshAvatarSnapshot(oldPublicId, avatarUrl, nowUtc))
+            return;
+
+        ModifiedAt = nowUtc;
+    }
     
     public Result<UserAddress, Error> AddAddress(
         AddressType type,
-        string recipientName,
-        PhoneNumber phoneNumber,
+        RecipientInfo recipient,
         Address address,
         DateTime now,
         bool isDefault = false)
@@ -468,7 +497,13 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
             isDefault = true;
         }
 
-        var userAddress = new UserAddress(Id, type, recipientName, phoneNumber, address, now, isDefault);
+        var userAddress = new UserAddress(
+            Id,
+            type,
+            recipient,
+            address,
+            now,
+            isDefault);
         _addresses.Add(userAddress);
         ModifiedAt = now;
 
@@ -479,8 +514,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         UserAddressId addressId,
         DateTime now,
         AddressType? type = null,
-        string? recipientName = null,
-        PhoneNumber? phoneNumber = null,
+        RecipientInfo? recipient = null,
         Address? address = null)
     {
         var unitResult = EnsureNotDeleted();
@@ -496,7 +530,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
             return UserErrors.User.AddressNotFound(addressId);
         }
 
-        unitResult = existing.Update(type, recipientName, phoneNumber, address, now);
+        unitResult = existing.Update(type, recipient, address, now);
 
         if (unitResult.IsFailure)
         {

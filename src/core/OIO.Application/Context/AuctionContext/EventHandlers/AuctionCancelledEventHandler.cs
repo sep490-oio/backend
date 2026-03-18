@@ -1,14 +1,15 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Data;
-using OIO.Application.Abstractions.Mail;
 using OIO.Application.Context.AuctionContext.Hubs;
 using OIO.Application.Context.AuctionContext.Services;
+using OIO.Application.Context.NotificationContext;
+using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Events;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
-using OIO.Domain.Context.UserContext.Aggregates.Users;
+using OIO.Domain.Context.NotificationContext.Enums;
 
 namespace OIO.Application.Context.AuctionContext.EventHandlers;
 
@@ -16,18 +17,18 @@ internal sealed class AuctionCancelledEventHandler
     : INotificationHandler<AuctionCancelledEvent>
 {
     private readonly IDbContext _dbContext;
-    private readonly IUserMailNotifier _mailNotifier;
+    private readonly ISender _sender;
     private readonly IAuctionNotificationService _hubNotifier;
     private readonly ILogger<AuctionCancelledEventHandler> _logger;
 
     public AuctionCancelledEventHandler(
         IDbContext dbContext,
-        IUserMailNotifier mailNotifier,
+        ISender sender,
         IAuctionNotificationService hubNotifier,
         ILogger<AuctionCancelledEventHandler> logger)
     {
         _dbContext = dbContext;
-        _mailNotifier = mailNotifier;
+        _sender = sender;
         _hubNotifier = hubNotifier;
         _logger = logger;
     }
@@ -42,16 +43,12 @@ internal sealed class AuctionCancelledEventHandler
                 .AsNoTracking()
                 .Include(a => a.Bids)
                 .Include(a => a.Watchers)
-                .Include(a => a.ItemId),
+                .Include(a => a.Item),
             cancellationToken: cancellationToken);
 
-        if (auction is null) 
+        if (auction is null)
             return;
 
-        // Item title for email (load separately or from auction navigation)
-        var auctionTitle = $"Auction #{notification.AuctionId[..8]}";
-
-        // 1. SignalR broadcast
         await _hubNotifier.NotifyAuctionCancelledAsync(
             auctionId.Value,
             new AuctionCancelledNotification(
@@ -59,44 +56,42 @@ internal sealed class AuctionCancelledEventHandler
                 Reason: notification.Reason),
             cancellationToken);
 
-        // 2. Collect unique user IDs: bidders + watchers (exclude seller)
-        var bidderIds = auction.Bids
+        var allUserIds = auction.Bids
             .Select(b => b.BidderId)
+            .Union(auction.Watchers.Select(w => w.UserId))
+            .Where(id => id != auction.Item.SellerId)
             .Distinct()
+            .Select(id => id.Value)
             .ToList();
 
-        var watcherIds = auction.Watchers
-            .Select(w => w.UserId)
-            .ToList();
-
-        var allUserIds = bidderIds
-            .Union(watcherIds)
-            .Where(id => id != auction.SellerId)
-            .Distinct()
-            .ToList();
-
-        if (allUserIds.Count == 0) 
+        if (allUserIds.Count == 0)
             return;
 
-        var users = await _dbContext.Set<User>()
-            .AsNoTracking()
-            .Where(u => allUserIds.Contains(u.Id))
-            .ToListAsync(cancellationToken);
-
-        // 3. Email each affected user
-        foreach (var user in users)
+        foreach (var userId in allUserIds)
         {
-            await _mailNotifier.SendAuctionCancelledAsync(
-                toEmail: user.Email.Value,
-                userName: user.UserName.Value,
-                auctionId: notification.AuctionId,
-                auctionTitle: auctionTitle,
-                reason: notification.Reason,
+            await NotificationDispatch.DispatchAsync(
+                _sender,
+                _logger,
+                new CreateNotificationCommand(
+                    UserId: userId,
+                    NotificationType: "auction",
+                    EventType: "auction_cancelled",
+                    Title: "Phien dau gia da bi huy",
+                    Message: $"Phien dau gia \"{auction.Item.Title.Value}\" da bi huy. Ly do: {notification.Reason}",
+                    Priority: NotificationPriority.High,
+                    EntityType: "Auction",
+                    EntityId: auctionId.Value,
+                    Metadata: NotificationDispatch.SerializeMetadata(new
+                    {
+                        auctionId = auctionId.Value,
+                        itemId = auction.ItemId.Value,
+                        reason = notification.Reason
+                    })),
                 cancellationToken);
         }
 
         _logger.LogInformation(
-            "Auction cancelled. Id={AuctionId}, Reason={Reason}, Notified={Count} users.",
-            notification.AuctionId, notification.Reason, users.Count);
+            "Auction cancelled. Id={AuctionId}, Reason={Reason}, Notified={Count} users via notification engine.",
+            notification.AuctionId, notification.Reason, allUserIds.Count);
     }
 }

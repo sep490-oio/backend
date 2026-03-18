@@ -40,22 +40,10 @@ internal sealed class GetMyAutoBidQueryHandler
 
         var autoBid = await _dbContext.Set<AutoBid>()
             .AsNoTracking()
-            .Where(ab => ab.AuctionId == request.AuctionId &&
+            .Where(ab => ab.AuctionId == auctionId &&
                          ab.BidderId == _currentUser.UserId)
-            .Select(ab => new AutoBidDto(
-                ab.Id.Value,
-                ab.AuctionId.Value,
-                ab.BidderId.Value,
-                ab.IsEnabled,
-                ab.MaxAmount.ToDto(),
-                ab.CurrentAmount.ToDto(),
-                ab.IncrementAmount != null ? ab.IncrementAmount.ToDto() : null,
-                ab.Status.Id,
-                ab.TotalAutoBids,
-                ab.LastAutoBidAt,
-                ab.CreatedAt))
             .FirstOrDefaultAsync(cancellationToken);
 
-        return autoBid;
+        return autoBid?.ToDto();
     }
 }

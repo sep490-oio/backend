@@ -1,0 +1,402 @@
+{
+  "info": {
+    "name": "Flow 2: Seller Onboarding (eKYC + Seller Profile)",
+    "description": "Luồng xác minh danh tính (eKYC) và tạo hồ sơ bán hàng.\n\n**Actors**: Seller (User đã đăng ký), Admin\n**Prerequisite**: Flow 1 (đã có tài khoản + đăng nhập)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "sellerToken", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "verificationId", "value": "" },
+    { "key": "mediaUploadId", "value": "" },
+    { "key": "sellerProfileId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "0.1 Login as Seller",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account\": \"seller@example.com\",\n  \"password\": \"Test@1234\",\n  \"deviceId\": \"{{$guid}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.accessToken) pm.collectionVariables.set('sellerToken', res.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "0.2 Login as Admin",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account\": \"admin@example.com\",\n  \"password\": \"Admin@1234\",\n  \"deviceId\": \"{{$guid}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.accessToken) pm.collectionVariables.set('adminToken', res.accessToken);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Identity Verification (eKYC)",
+      "item": [
+        {
+          "name": "2.1 Create Verification Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{sellerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/verifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "verifications"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verificationType\": \"GovernmentId\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.id) pm.collectionVariables.set('verificationId', res.id);",
+                  "pm.test('Verification created', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.2 Request Upload Signature (ID Front)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{sellerToken}}" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/media/upload-signature",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "media", "upload-signature"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"context\": \"verification\",\n  \"fileName\": \"cccd_front.jpg\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.mediaUploadId) pm.collectionVariables.set('mediaUploadId', res.mediaUploadId);",
+                  "pm.test('Upload signature obtained', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.3 Confirm Upload",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{sellerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/media/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "media", "confirm"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mediaUploadId\": \"{{mediaUploadId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Upload confirmed', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.4 Attach Document to Verification",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{sellerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/verifications/{{verificationId}}/documents",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "verifications", "{{verificationId}}", "documents"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mediaUploadId\": \"{{mediaUploadId}}\",\n  \"documentType\": \"IdFront\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Document attached', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.5 Submit Verification",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{sellerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/verifications/{{verificationId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "verifications", "{{verificationId}}", "submit"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Verification submitted', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.6 Get Verification Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{sellerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/verifications/{{verificationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "verifications", "{{verificationId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Verification status retrieved', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin Approves Verification",
+      "item": [
+        {
+          "name": "2.7 [Admin] Get Pending Verifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/verifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "verifications"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Verifications list retrieved', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.8 [Admin] Approve Verification",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/verifications/{{verificationId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "verifications", "{{verificationId}}", "approve"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Verification approved', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Seller Profile",
+      "item": [
+        {
+          "name": "2.9 Create Seller Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{sellerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/seller-profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "seller-profile"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storeName\": \"Shop Nguyen Van A\",\n  \"storeDescription\": \"Chuyên đồ cổ và sưu tầm chất lượng cao\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Seller profile created', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.10 [Admin] Get Seller Profiles",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/seller-profiles",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "seller-profiles"]
+            }
+          }
+        },
+        {
+          "name": "2.11 [Admin] Verify Seller Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/seller-profiles/{{sellerProfileId}}/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "seller-profiles", "{{sellerProfileId}}", "verify"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Seller verified', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.12 Verify Seller Profile Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{sellerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/seller-profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "seller-profile"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Seller profile is Verified', () => {",
+                  "  pm.expect(res.status).to.eql('Verified');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

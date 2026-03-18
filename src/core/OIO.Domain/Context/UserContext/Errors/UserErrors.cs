@@ -1,4 +1,4 @@
-﻿using OIO.Domain.Context.UserContext.ValueObjects;
+using OIO.Domain.Context.UserContext.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
@@ -251,6 +251,126 @@ public static class UserErrors
             description: $"Permission with id '{permissionId}' was not found."
         );
 
+    }
+
+    #endregion
+
+    #region Verification
+
+    public static class Verification
+    {
+        public static readonly Func<Enums.IdentityVerificationStatus, Error> CannotUpdateInCurrentStatus = status => Error.Forbidden(
+            code: "Verification.CannotUpdate",
+            description: $"Cannot update verification in '{status}' status. Only 'pending' or 'rejected' status allowed."
+        );
+
+        public static readonly Func<Enums.IdentityVerificationStatus, Error> CannotUploadDocInCurrentStatus = status => Error.Forbidden(
+            code: "Verification.CannotUploadDoc",
+            description: $"Cannot upload document in '{status}' status."
+        );
+
+        public static readonly Func<Enums.IdentityVerificationStatus, Error> CannotDeleteDocInCurrentStatus = status => Error.Forbidden(
+            code: "Verification.CannotDeleteDoc",
+            description: $"Cannot delete document in '{status}' status."
+        );
+
+        public static readonly Func<Enums.IdentityVerificationStatus, Error> CannotSubmitInCurrentStatus = status => Error.Forbidden(
+            code: "Verification.CannotSubmit",
+            description: $"Cannot submit verification in '{status}' status. Only 'pending' status allowed."
+        );
+
+        public static readonly Func<Enums.IdentityVerificationStatus, Error> CannotApproveInCurrentStatus = status => Error.Forbidden(
+            code: "Verification.CannotApprove",
+            description: $"Cannot approve verification in '{status}' status."
+        );
+
+        public static readonly Func<Enums.IdentityVerificationStatus, Error> CannotRejectInCurrentStatus = status => Error.Forbidden(
+            code: "Verification.CannotReject",
+            description: $"Cannot reject verification in '{status}' status."
+        );
+
+        public static readonly Error NoDocumentsToSubmit = Error.Forbidden(
+            code: "Verification.NoDocuments",
+            description: "At least one document must be uploaded before submission."
+        );
+
+        public static readonly Func<int, Error> MaxDocumentsReached = max => Error.Forbidden(
+            code: "Verification.MaxDocuments",
+            description: $"Maximum of {max} documents allowed per verification."
+        );
+
+        public static readonly Func<ValueObjects.Ids.VerificationDocumentId, Error> DocumentNotFound = docId => Error.NotFound(
+            code: "Verification.Document.NotFound",
+            description: $"Verification document with id '{docId}' was not found."
+        );
+
+        public static readonly Func<ValueObjects.Ids.IdentityVerificationId, Error> NotFound = id => Error.NotFound(
+            code: "Verification.NotFound",
+            description: $"Verification with id '{id}' was not found."
+        );
+
+        public static readonly Error HasPendingVerification = Error.Conflict(
+            code: "Verification.AlreadyPending",
+            description: "You already have a pending or submitted verification."
+        );
+        
+        public static readonly Error AlreadyHasApprovedVerification = Error.Conflict(
+            code: "Verification.AlreadyApproved",
+            description: "You already have an approved verification of this type."
+        );
+
+        public static readonly Error DuplicateIdentity = Error.Conflict(
+            code: "Verification.DuplicateIdentity",
+            description: "This identity document is already associated with another account.");
+
+        public static readonly Error CorrectionDisputeRequiresAutoApprovedVerification = Error.Forbidden(
+            code: "Verification.CorrectionDispute.RequiresAutoApproved",
+            description: "Only auto-approved verifications can open a correction dispute.");
+
+        public static readonly Error CorrectionDisputeAlreadyOpen = Error.Conflict(
+            code: "Verification.CorrectionDispute.AlreadyOpen",
+            description: "A correction dispute for this verification is already open.");
+
+        public static readonly Error NoAdminAvailable = Error.Conflict(
+            code: "Verification.CorrectionDispute.NoAdminAvailable",
+            description: "No admin is currently available to handle this verification correction dispute.");
+    }
+
+    #endregion
+
+    #region SellerProfile
+
+    public static class SellerProfile
+    {
+        public static readonly Func<Enums.SellerProfileStatus, Error> CannotVerifyInCurrentStatus = status => Error.Forbidden(
+            code: "SellerProfile.CannotVerify",
+            description: $"Cannot verify seller profile in '{status}' status."
+        );
+
+        public static readonly Func<Enums.SellerProfileStatus, Error> CannotRejectInCurrentStatus = status => Error.Forbidden(
+            code: "SellerProfile.CannotReject",
+            description: $"Cannot reject seller profile in '{status}' status."
+        );
+
+        public static readonly Error AlreadyExists = Error.Conflict(
+            code: "SellerProfile.AlreadyExists",
+            description: "Seller profile already exists."
+        );
+
+        public static readonly Error NotFound = Error.NotFound(
+            code: "SellerProfile.NotFound",
+            description: "Seller profile was not found."
+        );
+
+        public static readonly Error IdentityNotVerified = Error.Forbidden(
+            code: "SellerProfile.IdentityNotVerified",
+            description: "Identity verification must be approved before creating a seller profile."
+        );
+
+        public static readonly Func<ValueObjects.Ids.UserId, Error> NotFoundById = id => Error.NotFound(
+            code: "SellerProfile.NotFound",
+            description: $"Seller profile with id '{id}' was not found."
+        );
     }
 
     #endregion

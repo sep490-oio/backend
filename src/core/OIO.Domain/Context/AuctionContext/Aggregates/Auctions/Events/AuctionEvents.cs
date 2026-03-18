@@ -1,4 +1,4 @@
-﻿using OIO.Domain.SeedWork.DomainEvents;
+using OIO.Domain.SeedWork.DomainEvents;
 
 namespace OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Events;
 
@@ -82,6 +82,25 @@ public sealed record BuyNowExecutedEvent(
     decimal BuyNowPrice,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
+
+public sealed record AuctionBuyNowReservedEvent(
+    string AuctionId,
+    string ReservationId,
+    string BuyerId,
+    decimal BuyNowPrice,
+    decimal DepositAppliedAmount,
+    decimal AmountDue,
+    DateTime ExpiresAt,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
+public sealed record AuctionBuyNowReservationReleasedEvent(
+    string AuctionId,
+    string ReservationId,
+    string BuyerId,
+    string Reason,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
     
 public sealed record AuctionAutoBidConfiguredEvent(
     string AuctionId,
@@ -107,5 +126,74 @@ public sealed record AuctionFailedEvent(
     decimal FinalPrice,
     string Currency,
     int TotalBids,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
+public sealed record AuctionSubmittedEvent(
+    string AuctionId,
+    string ItemId,
+    string SellerId,
+    bool VerifyByPlatform,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
+public sealed record AuctionApprovedEvent(
+    string AuctionId,
+    string ItemId,
+    string ReviewerId,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
+public sealed record AuctionRejectedEvent(
+    string AuctionId,
+    string ItemId,
+    string ReviewerId,
+    string Reason,
+    int RejectionCount,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
+public sealed record AuctionScheduledEvent(
+    string AuctionId,
+    DateTime StartTime,
+    DateTime EndTime,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
+public sealed record AuctionPaymentDefaultedEvent(
+    string AuctionId,
+    string SellerId,
+    string DefaultedWinnerId,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
+public sealed record AuctionRunnerUpOfferedEvent(
+    string AuctionId,
+    string SellerId,
+    string BidderId,
+    int RankNo,
+    DateTime ExpiresAt,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
+public sealed record AuctionRunnerUpOfferRespondedEvent(
+    string AuctionId,
+    string BidderId,
+    string Response,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
+public sealed record AuctionRelistedEvent(
+    string SourceAuctionId,
+    string NewAuctionId,
+    string SellerId,
+    string? Reason,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
+public sealed record AuctionTerminatedEvent(
+    string AuctionId,
+    string SellerId,
+    string Reason,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);

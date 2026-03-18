@@ -1,17 +1,35 @@
-﻿using AppAny.Quartz.EntityFrameworkCore.Migrations;
+using AppAny.Quartz.EntityFrameworkCore.Migrations;
 using AppAny.Quartz.EntityFrameworkCore.Migrations.PostgreSQL;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Data;
+using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
+using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
+using OIO.Domain.Context.ModerationContext.ValueObjects.Ids;
+using OIO.Domain.Context.NotificationContext.ValueObjects.Ids;
+using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
+using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
+using OIO.Domain.Context.ReviewContext.ValueObjects.Ids;
+using OIO.Domain.Context.Shared.ValueObjects.Ids;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
+using OIO.Infrastructure.Persistence.Converters;
 
 namespace OIO.Infrastructure.Persistence;
 
 public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-        : base(options) { }
+    private ILogger<ApplicationDbContext> _logger;
+
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, ILogger<ApplicationDbContext> logger)
+        : base(options)
+    {
+        _logger = logger;
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -68,5 +86,286 @@ public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
     public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
     {
         return Database.BeginTransactionAsync(cancellationToken);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = new CancellationToken())
+    {
+        var entry = ChangeTracker.Entries()
+            .FirstOrDefault(e => e.Entity is Auction);
+
+        if (entry != null)
+        {
+            _logger.LogError($"Entity: {entry.Metadata.Name}, State: {entry.State}");
+
+            _logger.LogError("=== DEBUG VIEW ===\n{view}", entry.DebugView.LongView);
+
+            _logger.LogError("=== SCALAR PROPERTIES ===");
+            foreach (var p in entry.Properties)
+            {
+                _logger.LogError(
+                    "{Name} ({ClrType}) | Current={Current} | Original={Original} | Temp={Temp}",
+                    p.Metadata.Name,
+                    p.Metadata.ClrType.Name,
+                    p.CurrentValue ?? "<null>",
+                    p.OriginalValue ?? "<null>",
+                    p.IsTemporary);
+            }
+
+            _logger.LogError("=== COMPLEX PROPERTIES ===");
+            foreach (var cp in entry.ComplexProperties)
+            {
+                _logger.LogError(
+                    "Complex: {Name} | Current={Current}",
+                    cp.Metadata.Name,
+                    cp.CurrentValue ?? "<null>");
+            }
+
+            _logger.LogError("=== REFERENCES ===");
+            foreach (var r in entry.References)
+            {
+                _logger.LogError(
+                    "Reference: {Name} | Current={Current} | IsLoaded={IsLoaded}",
+                    r.Metadata.Name,
+                    r.CurrentValue?.GetType().Name ?? "<null>",
+                    r.IsLoaded);
+            }
+
+            _logger.LogError("=== COLLECTIONS ===");
+            foreach (var c in entry.Collections)
+            {
+                var current = c.CurrentValue;
+                _logger.LogError(
+                    "Collection: {Name} | CurrentType={Type} | IsLoaded={IsLoaded}",
+                    c.Metadata.Name,
+                    current?.GetType().FullName ?? "<null>",
+                    c.IsLoaded);
+            }
+        }
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        configurationBuilder.Properties<AuctionDepositId>()
+            .HaveConversion<EfCoreConverters.AuctionDepositIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<AuctionBuyNowReservationId>()
+            .HaveConversion<EfCoreConverters.AuctionBuyNowReservationIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<AuctionEmergencyActionId>()
+            .HaveConversion<EfCoreConverters.AuctionEmergencyActionIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<AuctionId>()
+            .HaveConversion<EfCoreConverters.AuctionIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<AuctionParticipantId>()
+            .HaveConversion<EfCoreConverters.AuctionParticipantIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<AuctionPriceHistoryId>()
+            .HaveConversion<EfCoreConverters.AuctionPriceHistoryIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<AuctionRelistHistoryId>()
+            .HaveConversion<EfCoreConverters.AuctionRelistHistoryIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<AuctionWatcherId>()
+            .HaveConversion<EfCoreConverters.AuctionWatcherIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<AuctionWinnerOfferId>()
+            .HaveConversion<EfCoreConverters.AuctionWinnerOfferIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<AutoBidId>()
+            .HaveConversion<EfCoreConverters.AutoBidIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<BidEventId>()
+            .HaveConversion<EfCoreConverters.BidEventIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<BidId>()
+            .HaveConversion<EfCoreConverters.BidIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<SealedBidId>()
+            .HaveConversion<EfCoreConverters.SealedBidIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<CategoryId>()
+            .HaveConversion<EfCoreConverters.CategoryIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<ItemId>()
+            .HaveConversion<EfCoreConverters.ItemIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<ItemMediaId>()
+            .HaveConversion<EfCoreConverters.ItemMediaIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<ItemModerationReviewId>()
+            .HaveConversion<EfCoreConverters.ItemModerationReviewIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<ItemQuestionId>()
+            .HaveConversion<EfCoreConverters.ItemQuestionIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<AdminReviewTaskId>()
+            .HaveConversion<EfCoreConverters.AdminReviewTaskIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<AuditLogId>()
+            .HaveConversion<EfCoreConverters.AuditLogIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<DisputeEvidenceId>()
+            .HaveConversion<EfCoreConverters.DisputeEvidenceIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<DisputeId>()
+            .HaveConversion<EfCoreConverters.DisputeIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<DisputeMessageAttachmentId>()
+            .HaveConversion<EfCoreConverters.DisputeMessageAttachmentIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<DisputeMessageId>()
+            .HaveConversion<EfCoreConverters.DisputeMessageIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<DisputeParticipantStateId>()
+            .HaveConversion<EfCoreConverters.DisputeParticipantStateIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<DisputeRefundId>()
+            .HaveConversion<EfCoreConverters.DisputeRefundIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<DisputeResponseTemplateId>()
+            .HaveConversion<EfCoreConverters.DisputeResponseTemplateIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<DisputeStatusHistoryId>()
+            .HaveConversion<EfCoreConverters.DisputeStatusHistoryIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<MonitoringAlertId>()
+            .HaveConversion<EfCoreConverters.MonitoringAlertIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<ReportId>()
+            .HaveConversion<EfCoreConverters.ReportIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<ReviewQueueId>()
+            .HaveConversion<EfCoreConverters.ReviewQueueIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<NotificationDeliveryId>()
+            .HaveConversion<EfCoreConverters.NotificationDeliveryIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<NotificationId>()
+            .HaveConversion<EfCoreConverters.NotificationIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<OrderId>()
+            .HaveConversion<EfCoreConverters.OrderIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<OrderReturnId>()
+            .HaveConversion<EfCoreConverters.OrderReturnIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<EscrowId>()
+            .HaveConversion<EfCoreConverters.EscrowIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<EscrowReleaseEventId>()
+            .HaveConversion<EfCoreConverters.EscrowReleaseEventIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<InvoiceId>()
+            .HaveConversion<EfCoreConverters.InvoiceIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<PaymentMethodId>()
+            .HaveConversion<EfCoreConverters.PaymentMethodIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<TransactionId>()
+            .HaveConversion<EfCoreConverters.TransactionIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<WalletId>()
+            .HaveConversion<EfCoreConverters.WalletIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<WalletTransactionId>()
+            .HaveConversion<EfCoreConverters.WalletTransactionIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<WithdrawalRequestId>()
+            .HaveConversion<EfCoreConverters.WithdrawalRequestIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<GatewayWebhookEventId>()
+            .HaveConversion<EfCoreConverters.GatewayWebhookEventIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<BuyerReviewId>()
+            .HaveConversion<EfCoreConverters.BuyerReviewIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<ReviewImageId>()
+            .HaveConversion<EfCoreConverters.ReviewImageIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<ReviewReportId>()
+            .HaveConversion<EfCoreConverters.ReviewReportIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<ReviewVoteId>()
+            .HaveConversion<EfCoreConverters.ReviewVoteIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<SellerRatingSummaryId>()
+            .HaveConversion<EfCoreConverters.SellerRatingSummaryIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<SellerReviewId>()
+            .HaveConversion<EfCoreConverters.SellerReviewIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<MediaUploadId>()
+            .HaveConversion<EfCoreConverters.MediaUploadIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<InboundShipmentId>()
+            .HaveConversion<EfCoreConverters.InboundShipmentIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<OutboundShipmentId>()
+            .HaveConversion<EfCoreConverters.OutboundShipmentIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<ShipmentTrackingEventId>()
+            .HaveConversion<EfCoreConverters.ShipmentTrackingEventIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<ShippingProviderConfigId>()
+            .HaveConversion<EfCoreConverters.ShippingProviderConfigIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<WarehouseInspectionId>()
+            .HaveConversion<EfCoreConverters.WarehouseInspectionIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<WarehouseItemId>()
+            .HaveConversion<EfCoreConverters.WarehouseItemIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<WarehouseStorageLocationId>()
+            .HaveConversion<EfCoreConverters.WarehouseStorageLocationIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<IdentityVerificationId>()
+            .HaveConversion<EfCoreConverters.IdentityVerificationIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<SellerKycDocumentId>()
+            .HaveConversion<EfCoreConverters.SellerKycDocumentIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<SellerKycHistoryId>()
+            .HaveConversion<EfCoreConverters.SellerKycHistoryIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<SellerKycId>()
+            .HaveConversion<EfCoreConverters.SellerKycIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<SellerProfileId>()
+            .HaveConversion<EfCoreConverters.SellerProfileIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<TermsAcceptanceId>()
+            .HaveConversion<EfCoreConverters.TermsAcceptanceIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<TermsDocumentId>()
+            .HaveConversion<EfCoreConverters.TermsDocumentIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<UserAddressId>()
+            .HaveConversion<EfCoreConverters.UserAddressIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<UserId>()
+            .HaveConversion<EfCoreConverters.UserIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<UserLoginHistoryId>()
+            .HaveConversion<EfCoreConverters.UserLoginHistoryIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<UserNotificationPreferenceId>()
+            .HaveConversion<EfCoreConverters.UserNotificationPreferenceIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<UserRefreshTokenId>()
+            .HaveConversion<EfCoreConverters.UserRefreshTokenIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<UserRiskFlagId>()
+            .HaveConversion<EfCoreConverters.UserRiskFlagIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<UserSessionId>()
+            .HaveConversion<EfCoreConverters.UserSessionIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<VerificationDocumentId>()
+            .HaveConversion<EfCoreConverters.VerificationDocumentIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<VerificationHistoryId>()
+            .HaveConversion<EfCoreConverters.VerificationHistoryIdEfCoreValueConverter>();
     }
 }

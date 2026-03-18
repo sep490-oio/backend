@@ -2,22 +2,30 @@
 using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.AuctionContext.Errors;
+using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
+using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.ValueObjects;
+using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 
-public sealed class AuctionDeposit : BaseEntity<AuctionDepositId>
+public sealed class AuctionDeposit : BaseEntity<AuctionDepositId>, ICreatedAtEntity
 {
     public AuctionId AuctionId { get; private set; }
-    public UserId UserId { get; private set; }
+    public UserId BidderId { get; private set; }
     public Money Amount { get; private set; }
-    public TransactionId? TransactionId { get; private set; }
+    public TransactionId? TransactionId { get; private set; }  // FK → transactions.id (cross-context ref)
     public DepositStatus Status { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? ReleasedAt { get; private set; }
+
+    // Navigation
+    public Auction Auction { get; private set; } = null!;
+    public Transaction? Transaction { get; private set; }
+    public User Bidder { get; private set; }
 
     private AuctionDeposit() { }
 
@@ -31,7 +39,7 @@ public sealed class AuctionDeposit : BaseEntity<AuctionDepositId>
         : base(id)
     {
         AuctionId = auctionId;
-        UserId = userId;
+        BidderId = userId;
         Amount = amount;
         TransactionId = transactionId;
         Status = DepositStatus.Held;

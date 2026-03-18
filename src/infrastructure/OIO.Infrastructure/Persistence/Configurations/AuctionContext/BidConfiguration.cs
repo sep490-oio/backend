@@ -1,4 +1,4 @@
-﻿using EFCore.ComplexIndexes;
+using EFCore.ComplexIndexes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
@@ -45,24 +45,29 @@ internal sealed class BidConfiguration : IEntityTypeConfiguration<Bid>
                     .HasColumnName("currency")
                     .HasMaxLength(3)
                     .IsRequired();
+
+                currencyBuilder.Ignore(x => x.Symbol);
             });
 
         }).HasComplexCompositeIndex(x => new { x.AuctionId, x.Amount.Amount });
+
+        builder.Property(b => b.AutoBidId)
+            .HasColumnName("auto_bid_id")
+            .HasConversion(x => x.HasValue ? x.Value.Value : default(Guid?), x => x.HasValue ? AutoBidId.From(x.Value) : null);
 
         // is_auto_bid is GENERATED ALWAYS in DB — mark as computed
         builder.Property(b => b.IsAutoBid)
             .HasColumnName("is_auto_bid")
             .HasComputedColumnSql("(auto_bid_id IS NOT NULL)", stored: true);
 
-        builder.Property(b => b.AutoBidId)
-            .HasColumnName("auto_bid_id");
-
-        builder.Property(b => b.Status)
-            .HasColumnName("status")
-            .HasMaxLength(20)
-            .HasDefaultValue(BidStatus.Active)
-            .IsRequired()
-            .HasConversion(x => x.Id, x => BidStatus.FromId(x).GetValueOrThrow());
+        builder.ComplexProperty(b => b.Status, statusBuilder =>
+        {
+            statusBuilder.Property(s => s.Id)
+                .HasColumnName("status")
+                .HasMaxLength(20)
+                .HasDefaultValue(BidStatus.Active.Id)
+                .IsRequired();
+        });
 
         builder.Property(b => b.IpAddress)
             .HasColumnName("ip_address")
@@ -74,10 +79,16 @@ internal sealed class BidConfiguration : IEntityTypeConfiguration<Bid>
             .IsRequired();
 
         // Foreign key to auto_bid
-        builder.HasOne<AutoBid>()
-            .WithMany()
+        builder.HasOne<AutoBid>(bid => bid.AutoBid)
+            .WithMany(ab => ab.Bids)
             .HasForeignKey(b => b.AutoBidId)
             .OnDelete(DeleteBehavior.SetNull);
+        
+        //Relationship
+        builder.HasMany(x => x.BidEvents)
+            .WithOne(be => be.Bid)
+            .HasForeignKey(b => b.BidId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // Indexes
         builder.HasIndex(b => b.AuctionId)
@@ -85,6 +96,12 @@ internal sealed class BidConfiguration : IEntityTypeConfiguration<Bid>
         
         builder.HasIndex(b => new { b.AuctionId, b.CreatedAt})
             .HasDatabaseName("idx_bids_auction_created_at");
+
+        builder.HasIndex(b => new { b.AuctionId, b.BidderId, b.CreatedAt })
+            .HasDatabaseName("idx_bids_auction_bidder_created_at");
+
+        builder.HasIndex(b => new { b.AuctionId, b.IpAddress, b.CreatedAt })
+            .HasDatabaseName("idx_bids_auction_ip_created_at");
 
         builder.HasIndex(b => b.BidderId)
             .HasDatabaseName("idx_bids_bidder");

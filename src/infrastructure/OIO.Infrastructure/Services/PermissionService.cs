@@ -20,6 +20,7 @@ public class PermissionService : IPermissionService
     }
 
     private const string CacheKeyPrefix = "auth:permissions:user:";
+    private const string CacheTag = "auth:permissions:user";
 
     private static readonly HybridCacheEntryOptions HybridCacheEntryOptions = new()
     {
@@ -29,18 +30,27 @@ public class PermissionService : IPermissionService
 
     private static string BuildCacheKey(UserId userId) => $"{CacheKeyPrefix}{userId:N}";
     
-    public async Task<HashSet<string>> GetPermissionsAsync(UserId userId, CancellationToken cancellationToken = default)
+    public async Task<HashSet<string>> GetPermissionsAsync(
+        UserId userId, 
+        CancellationToken cancellationToken = default)
     {
+        var cacheKey = BuildCacheKey(userId);
         return await _cache.GetOrCreateAsync(
-            BuildCacheKey(userId),
+            cacheKey,
             async token => await GetPermissionsByUserIdAsync(userId, token),
             HybridCacheEntryOptions,
+            tags: [CacheTag, cacheKey],
             cancellationToken: cancellationToken
         );
     }
-    
-    public async Task InvalidatePermissionsCacheAsync(UserId userId, CancellationToken cancellationToken = default) =>
-        await _cache.RemoveAsync(BuildCacheKey(userId), cancellationToken);
+
+    public async Task InvalidatePermissionsCacheAsync(
+        UserId? userId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var tag = userId.HasValue ? BuildCacheKey(userId.Value) : CacheTag;
+        await _cache.RemoveByTagAsync(tag, cancellationToken);
+    }
     
     // private async Task<HashSet<string>> GetPermissionsByAccountIdAsync(UserId userId, CancellationToken cancellationToken = default)
     // {

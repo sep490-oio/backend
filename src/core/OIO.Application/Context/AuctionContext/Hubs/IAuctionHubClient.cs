@@ -10,6 +10,8 @@ public interface IAuctionHubClient
     // ==================== Bid Events ====================
     Task BidPlaced(BidNotification notification);
     Task Outbid(OutbidNotification notification);
+    Task BuyNowReserved(BuyNowReservedNotification notification);
+    Task BuyNowReservationReleased(BuyNowReservationReleasedNotification notification);
     Task BuyNowExecuted(BuyNowNotification notification);
 
     // ==================== Auction Lifecycle ====================
@@ -49,6 +51,22 @@ public sealed record BuyNowNotification(
     Guid AuctionId,
     Guid BuyerId,
     decimal Price);
+
+public sealed record BuyNowReservedNotification(
+    Guid AuctionId,
+    Guid ReservationId,
+    Guid BuyerId,
+    decimal BuyNowPrice,
+    decimal DepositAppliedAmount,
+    decimal AmountDue,
+    DateTimeOffset ExpiresAt);
+
+public sealed record BuyNowReservationReleasedNotification(
+    Guid AuctionId,
+    Guid ReservationId,
+    Guid BuyerId,
+    string Reason,
+    DateTimeOffset ReleasedAt);
 
 public sealed record AuctionStartedNotification(
     Guid AuctionId,

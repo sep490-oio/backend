@@ -6,10 +6,11 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
 using OIO.Application.Extensions;
-using OIO.Domain.Context.AuctionContext.Aggregates.Categories;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.CatalogContext.Aggregates.Categories;
 using OIO.Domain.SeedWork.Errors;
+using CategoryId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.CategoryId;
 
 namespace OIO.Application.Context.AuctionContext.Queries.GetCategoryChildren;
 
@@ -47,10 +48,13 @@ internal sealed class GetCategoryChildrenQueryHandler
         
         var totalCount = await query.CountAsync(cancellationToken);
         
-        var children = await query
-            .Select(c => c.ToDto())
+        var pagedChildren = await query
             .ToPagedListAsync(totalCount, parameters, cancellationToken);
 
-        return children;
+        var children = pagedChildren.Items
+            .Select(c => c.ToDto())
+            .ToList();
+
+        return children.ToPagedList(totalCount, parameters);
     }
 }

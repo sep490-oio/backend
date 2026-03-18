@@ -1,6 +1,6 @@
 ﻿using OIO.Application.Abstractions.Sorting;
 using OIO.Application.Context.AuctionContext.DTOs;
-using OIO.Domain.Context.AuctionContext.Aggregates.Items;
+using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 
 namespace OIO.Application.Context.AuctionContext.Mappings;
 
@@ -12,7 +12,7 @@ public static class ItemMappings {
             Id: item.Id.Value,
             SellerId: item.SellerId.Value,
             CategoryId: item.CategoryId?.Value,
-            Title: item.Title,
+            Title: item.Title.Value,
             Description: item.Description,
             Condition: item.Condition.Id,
             Status: item.Status.Id,

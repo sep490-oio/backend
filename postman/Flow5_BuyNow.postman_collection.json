@@ -1,0 +1,94 @@
+{
+  "info": {
+    "name": "Flow 5: Buy Now (Mua ngay)",
+    "description": "Luồng buyer mua ngay với giá BuyNow, bỏ qua đấu giá.\n\n**Actors**: Buyer\n**Prerequisite**: Flow 3 (Auction có BuyNowPrice, đang Scheduled, qualification open)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "buyerToken", "value": "" },
+    { "key": "auctionId", "value": "PASTE_AUCTION_ID_HERE" },
+    { "key": "orderId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "0.1 Login as Buyer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"account\": \"buyer@example.com\",\n  \"password\": \"Test@1234\",\n  \"deviceId\": \"{{$guid}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.accessToken) pm.collectionVariables.set('buyerToken', res.accessToken);"] } }]
+        }
+      ]
+    },
+    {
+      "name": "Buy Now Flow",
+      "item": [
+        {
+          "name": "5.1 Get Auction Details (check BuyNow available)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/auctions/{{auctionId}}", "host": ["{{baseUrl}}"], "path": ["api", "auctions", "{{auctionId}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "console.log('BuyNow Price:', res.pricing?.buyNowAmount);", "console.log('BuyNow Available:', res.pricing?.isBuyNowAvailable);", "pm.test('Auction has BuyNow', () => pm.expect(res.pricing?.buyNowAmount).to.be.above(0));"] } }]
+        },
+        {
+          "name": "5.2 Execute Buy Now",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/buy-now", "host": ["{{baseUrl}}"], "path": ["api", "auctions", "{{auctionId}}", "buy-now"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Buy Now reserved', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "5.3 Get My Orders (find auto-created order)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{buyerToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/me/orders", "host": ["{{baseUrl}}"], "path": ["api", "me", "orders"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.items && res.items.length > 0) {", "  pm.collectionVariables.set('orderId', res.items[0].id);", "  console.log('Order ID:', res.items[0].id);", "}"] } }]
+        },
+        {
+          "name": "5.4 Checkout Order (VNPay)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/payments/checkout", "host": ["{{baseUrl}}"], "path": ["api", "payments", "checkout"] },
+            "body": { "mode": "raw", "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"bankCode\": \"NCB\",\n  \"returnUrl\": \"http://localhost:3000/payment/return\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "console.log('Payment URL:', res.paymentUrl);", "pm.test('Checkout initiated', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "5.5 Get Order Details (verify Paid status)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{buyerToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}", "host": ["{{baseUrl}}"], "path": ["api", "orders", "{{orderId}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "console.log('Order status:', res.status);", "pm.test('Order details retrieved', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "5.6 Verify Auction is Sold",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/auctions/{{auctionId}}", "host": ["{{baseUrl}}"], "path": ["api", "auctions", "{{auctionId}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "console.log('Auction status:', res.status);", "pm.test('Auction is Sold', () => pm.expect(res.status).to.eql('Sold'));"] } }]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+﻿namespace OIO.Application.Context.WarehouseContext.DTOs;
+
+public sealed record InboundShipmentDto(
+    Guid    Id,
+    Guid    ItemId,
+    Guid    SellerId,
+    string  ProviderCode,
+    string  ClientOrderCode,
+    string? CarrierTrackingNumber,
+    string  SenderName,
+    string  SenderPhone,
+    string  SenderAddress,
+    string  SenderWard,
+    string  SenderDistrict,
+    string  SenderProvince,
+    int     WeightGrams,
+    int?    LengthCm,
+    int?    WidthCm,
+    int?    HeightCm,
+    decimal ShippingFee,
+    decimal InsuranceValue,
+    string  Status,
+    string? Notes,
+    DateTime? ExpectedArrivalAt,
+    DateTime? ArrivedAt,
+    DateTime  CreatedAt,
+    DateTime? ModifiedAt,
+    IReadOnlyList<ShipmentTrackingEventDto> TrackingEvents);

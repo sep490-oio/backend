@@ -1,5 +1,6 @@
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Domain.Context.AuctionContext.Grains.GrainValueObjects;
+using OIO.Domain.Context.Shared.Enums;
 using OIO.Domain.Context.Shared.ValueObjects;
 
 namespace OIO.Application.Context.AuctionContext.Mappings;

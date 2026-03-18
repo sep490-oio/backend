@@ -42,17 +42,19 @@ internal sealed class AddAddressCommandHandler
     {
         var nowUtc =  _clock.UtcNow;
 
-        var (_, _, address, addressError) = Address
+        var (_, isFailure, address, error) = Address
             .Create(request.Street, request.Ward, request.District, request.City, request.PostalCode);
         
-        var (_, _, phoneNumber, phoneNumberError) = PhoneNumber
-            .Create(request.PhoneNumber, request.CountryCode);
-        
-        var result = Result.FirstError(addressError, phoneNumberError);
-
-        if (result.IsFailure)
+        if (isFailure)
         {
-            return result.Error;
+            return error;
+        }
+        
+        (_, isFailure, var  recipient, error) = RecipientInfo.Create(request.RecipientName, request.PhoneNumber, request.CountryCode);
+        
+        if (isFailure)
+        {
+            return error;
         }
         
         var user = await _dbContext.GetByIdAsync<User, UserId>(
@@ -67,8 +69,7 @@ internal sealed class AddAddressCommandHandler
 
         var addAddressResult = user.AddAddress(
             AddressType.FromId(request.Type).Value,
-            request.RecipientName,
-            phoneNumber,
+            recipient,
             address,
             nowUtc,
             request.IsDefault);
@@ -78,7 +79,6 @@ internal sealed class AddAddressCommandHandler
             return addAddressResult.Error;
         }
         
-        _dbContext.Update(user);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return addAddressResult.Value.ToDto();

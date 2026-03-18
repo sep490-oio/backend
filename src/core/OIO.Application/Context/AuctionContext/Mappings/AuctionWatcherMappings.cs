@@ -10,10 +10,10 @@ internal static class AuctionWatcherMappings
         SortMappingBuilder<MyAuctionWatchlistDto, AuctionWatcher>.Create()
             .Map(x => x.AuctionId, x => x.AuctionId)
             .Map(x => x.ItemTitle, x => x.Auction.Item.Title)
-            .Map(x => x.CurrentPrice, x => x.Auction.CurrentPrice.Amount)
+            .Map(x => x.CurrentPrice, x => x.Auction.Pricing.CurrentAmount)
             .Map(x => x.AuctionStatus, x => x.Auction.Status.Id)
             .Map(x => x.BidCount, x => x.Auction.BidCount)
-            .Map(x => x.EndTime, x => x.Auction.Duration.EndTime)
+            .Map(x => x.EndTime, x => x.Auction.Info.EndTime)
             .Map(x => x.BidCount, x => x.Auction.BidCount)
             .Map(x => x.WatchedAt, x => x.CreatedAt)
             .Build();

@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using Microsoft.Extensions.Logging;
+using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Mail;
 using OIO.Application.Abstractions.Security;
 using OIO.Application.Context.UserContext.Services;
@@ -14,15 +15,18 @@ internal sealed class UserCreatedEventHandler
     private readonly ILogger<UserCreatedEventHandler> _logger;
     private readonly IUserMailNotifier _mailNotifier;
     private readonly ISecureTokenStore _secureTokenStore;
+    private readonly IClock _clock;
 
     public UserCreatedEventHandler(
         ILogger<UserCreatedEventHandler> logger,
         IUserMailNotifier mailNotifier,
+        IClock clock,
         ISecureTokenStore secureTokenStore)
     {
         _logger = logger;
         _mailNotifier = mailNotifier;
         _secureTokenStore = secureTokenStore;
+        _clock = clock;
     }
 
     public async Task Handle(UserCreatedEvent notification, CancellationToken cancellationToken)
@@ -35,7 +39,7 @@ internal sealed class UserCreatedEventHandler
                 notification.UserName,
                 notification.Email);
 
-            var token = await _secureTokenStore.CreateTokenAsync(
+            var (token, ttl) = await _secureTokenStore.CreateTokenAsync(
                 TokenType.EmailVerification,
                 UserId.Parse(notification.UserId),
                 cancellationToken: cancellationToken);
@@ -44,7 +48,9 @@ internal sealed class UserCreatedEventHandler
                 toEmail: notification.Email,
                 userName: notification.UserName,
                 userId: notification.UserId,
-                token: token, cancellationToken: cancellationToken);
+                token: token,
+                tokenExpiry: _clock.UtcNow.Add(ttl),
+                cancellationToken: cancellationToken);
         }
         catch (Exception e)
         {

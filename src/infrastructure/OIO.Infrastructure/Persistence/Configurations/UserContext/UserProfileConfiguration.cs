@@ -5,6 +5,7 @@ using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Enums;
 using OIO.Domain.Context.UserContext.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Infrastructure.Persistence.Converters;
 
 namespace OIO.Infrastructure.Persistence.Configurations.UserContext;
 
@@ -21,28 +22,21 @@ internal sealed class UserProfileConfiguration : IEntityTypeConfiguration<UserPr
             .HasColumnName("id")
             .HasConversion(x => x.Value, value => UserId.From(value));
 
-        builder.ComplexProperty(x => x.FirstName, firstNameBuilder =>
+         builder.ComplexProperty(p => p.Name, n =>
         {
-            firstNameBuilder.Property(p => p.Value)
-                .HasColumnName("first_name")
-                .HasMaxLength(App.Constraint.FirstName.MaxLength)
-                .IsRequired();
-        });
+            n.Property(x => x.FirstName)
+             .HasColumnName("first_name")
+             .HasMaxLength(App.Constraint.FirstName.MaxLength);
 
-        builder.ComplexProperty(x => x.LastName, lastNameBuilder =>
-        {
-            lastNameBuilder.Property(p => p.Value)
-                .HasColumnName("last_name")
-                .HasMaxLength(App.Constraint.LastName.MaxLength)
-                .IsRequired();
-        });
-        
-        builder.ComplexProperty(x => x.DisplayName, displayNameBuilder =>
-        {
-            displayNameBuilder.Property(p => p.Value)
-                .HasColumnName("display_name")
-                .HasMaxLength(App.Constraint.DisplayName.MaxLength)
-                .IsRequired();
+            n.Property(x => x.LastName)
+             .HasColumnName("last_name")
+             .HasMaxLength(App.Constraint.LastName.MaxLength);
+
+            n.Property(x => x.DisplayName)
+             .HasColumnName("display_name")
+             .HasMaxLength(App.Constraint.DisplayName.MaxLength);
+
+            n.Ignore(x => x.FullName);
         });
         
         builder.ComplexProperty(x => x.AvatarUrl, avatarUrlBuilder =>
@@ -73,6 +67,5 @@ internal sealed class UserProfileConfiguration : IEntityTypeConfiguration<UserPr
             .HasColumnName("modified_at");
 
         // ==================== Ignore ====================
-        builder.Ignore(p => p.FullName);
     }
 }

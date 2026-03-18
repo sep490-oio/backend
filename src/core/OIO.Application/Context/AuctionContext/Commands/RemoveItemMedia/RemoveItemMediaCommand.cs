@@ -5,11 +5,13 @@ using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Media;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.Services;
-using OIO.Domain.Context.AuctionContext.Aggregates.Items;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
+using ItemId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId;
+using ItemMediaId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemMediaId;
 
 namespace OIO.Application.Context.AuctionContext.Commands.RemoveItemMedia;
 
@@ -82,8 +84,6 @@ internal sealed class RemoveItemMediaCommandHandler
         
         if (result.IsFailure)
             return result.Error;
-        
-        _dbContext.Update(item);
         
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
