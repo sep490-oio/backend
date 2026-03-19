@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.AskQuestion;
@@ -7,7 +8,7 @@ namespace OIO.Api.Endpoints.AuctionContext.Items;
 
 public sealed class AskQuestionEndpoint : IEndpoint
 {
-    public sealed record Request(string Question);
+    public sealed record Request([Required] string Question);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

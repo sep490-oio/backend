@@ -11,6 +11,7 @@ using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.Shared.Enums;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
 
@@ -22,12 +23,22 @@ public sealed record RelistAuctionCommand(
     DateTime QualificationEndAt,
     DateTime StartAt,
     DateTime EndAt,
+    decimal? StartingPrice = null,
+    decimal? BidIncrement = null,
+    decimal? ReservePrice = null,
+    decimal? BuyNowPrice = null,
+    string? Currency = null,
     string? Reason = null) : ICommand<AuctionDto>, IHasValidate
 {
     public ViolationsError Validate() =>
         RelistAuctionCommand.Check()
             .WithOwnerName("RelistAuction")
-            .Field(AuctionId).NotEmptyGuid();
+            .Field(AuctionId).NotEmptyGuid()
+            .Field(StartingPrice).WhenHasValue(x => x.NonNegative())
+            .Field(BidIncrement).WhenHasValue(x => x.Positive())
+            .Field(ReservePrice).WhenHasValue(x => x.NonNegative())
+            .Field(BuyNowPrice).WhenHasValue(x => x.Positive())
+            .Field(Currency).WhenHasValue(x => x.ExactLength(3));
 }
 
 internal sealed class RelistAuctionCommandHandler(
@@ -54,7 +65,7 @@ internal sealed class RelistAuctionCommandHandler(
         if (auction.Item.SellerId != currentUser.UserId)
             return AuctionErrors.Auction.OnlyOwnerCanCancel;
 
-        if (auction.Status != OIO.Domain.Context.AuctionContext.Enums.AuctionStatus.PaymentDefaulted)
+        if (auction.Status != Domain.Context.AuctionContext.Enums.AuctionStatus.PaymentDefaulted)
             return AuctionErrors.Auction.InvalidState(auction.Status.Id, "relist");
 
         if (auction.RelistHistories.Any(x => x.NewAuctionId.HasValue))
@@ -67,22 +78,45 @@ internal sealed class RelistAuctionCommandHandler(
         if (qualification.IsFailure)
             return qualification.Error;
 
+        var autoExtend = auction.Info?.AutoExtend ?? true;
+        if (auction.AuctionType == Domain.Context.AuctionContext.Enums.AuctionType.Sealed && autoExtend)
+        {
+            return Error.Validation(
+                "AutoExtend",
+                "Auction.SealedAutoExtendNotSupported",
+                "Sealed auctions do not support auto-extend.");
+        }
+
         var info = AuctionInfo.Create(
             nowUtc: clock.UtcNow,
             startTime: request.StartAt,
             endTime: request.EndAt,
-            autoExtend: auction.Info?.AutoExtend ?? true,
+            autoExtend: autoExtend,
             extensionMinutes: auction.Info?.ExtensionMinutes ?? 5,
             qualification: qualification.Value);
 
         if (info.IsFailure)
             return info.Error;
 
+        var currency = Currency.FromId(request.Currency ?? auction.Pricing.Currency.Id);
+        if (currency.HasNoValue)
+            return Currency.Errors.NotSupported;
+
+        var pricing = AuctionPricing.Create(
+            startingPrice: request.StartingPrice ?? auction.Pricing.StartingAmount,
+            bidIncrement: request.BidIncrement ?? auction.Pricing.BidIncrementAmount,
+            currency: currency.Value,
+            reservePrice: request.ReservePrice ?? auction.Pricing.ReserveAmount,
+            buyNowPrice: request.BuyNowPrice ?? auction.Pricing.BuyNowAmount);
+
+        if (pricing.IsFailure)
+            return pricing.Error;
+
         var createResult = Auction.Create(
             sellerId: auction.Item.SellerId,
             itemId: auction.ItemId,
             auctionType: auction.AuctionType!,
-            pricing: auction.Pricing,
+            pricing: pricing.Value,
             nowUtc: clock.UtcNow,
             info: info.Value);
 
@@ -100,4 +134,3 @@ internal sealed class RelistAuctionCommandHandler(
             runtimeSettings.Auction.ExtensionThreshold);
     }
 }
-

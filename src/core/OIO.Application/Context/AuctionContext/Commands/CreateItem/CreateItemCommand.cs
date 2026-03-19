@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -32,7 +33,7 @@ public sealed record CreateItemCommand(
     Guid? CategoryId = null,
     string? Description = null,
     int Quantity = 1,
-    string? Attributes = null,
+    object? Attributes = null,
     IReadOnlyList<MediaAttachment>? Media = null) : ICommand<ItemDto>, IHasValidate
 {
     public ViolationsError Validate()
@@ -53,8 +54,6 @@ public sealed record CreateItemCommand(
             .Field(Quantity)
             .NotDefault()
             .Positive()
-            .Field(Attributes)
-            .WhenHasValue(x => x.NotWhiteSpace())
             .ToViolationsError();
 
         if (Media is null) 
@@ -173,7 +172,7 @@ internal sealed class CreateItemCommandHandler
             categoryId: categoryId,
             description: request.Description,
             quantity: request.Quantity,
-            attributes: request.Attributes);
+            attributes: JsonSerializer.Serialize(request.Attributes));
         
         // Link images from pending uploads
         if (mediaUploads is not null && request.Media is not null)

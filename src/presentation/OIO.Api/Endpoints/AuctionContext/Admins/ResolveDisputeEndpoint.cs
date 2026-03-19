@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.ModerationContext.Commands.ResolveDispute;
@@ -7,7 +8,10 @@ namespace OIO.Api.Endpoints.AuctionContext.Admins;
 
 public sealed class ResolveDisputeEndpoint : IEndpoint
 {
-    public sealed record Request(string ResolutionType, string? Notes = null, decimal? Amount = null);
+    public sealed record Request(
+        [Required] string ResolutionType,
+        string? Notes = null,
+        decimal? Amount = null);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

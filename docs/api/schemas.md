@@ -705,11 +705,12 @@ File nay gom request/response/DTO duoc tham chieu tu HTTP API va SignalR docs.
 | --- | --- | --- |
 | `Amount` | number | required |
 | `Currency` | string | optional |
-| `Purpose` | string | optional |
-| `Description` | string | optional |
+| `Purpose` | string | `AuctionDeposit`, `OrderPayment`, `AuctionBuyNow`, `WalletTopUp`; alias `Deposit` -> `AuctionDeposit` |
+| `Description` | string | unicode accepted; backend normalizes to VNPay-safe ASCII |
 | `BankCode` | string | default = null |
 | `AuctionId` | guid | default = null |
 | `OrderId` | guid | default = null |
+| `BuyNowReservationId` | guid | default = null |
 
 <a id="schema-createwithdrawalendpoint-request"></a>
 ## CreateWithdrawalEndpoint.Request
@@ -2439,6 +2440,11 @@ File nay gom request/response/DTO duoc tham chieu tu HTTP API va SignalR docs.
 | `QualificationEndAt` | datetime | optional |
 | `StartAt` | datetime | optional |
 | `EndAt` | datetime | optional |
+| `StartingPrice` | number | default = null |
+| `BidIncrement` | number | default = null |
+| `ReservePrice` | number | default = null |
+| `BuyNowPrice` | number | default = null |
+| `Currency` | string | default = null |
 | `Reason` | string | default = null |
 
 <a id="schema-reorderitemmediaendpoint-request"></a>

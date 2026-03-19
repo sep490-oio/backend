@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using System.ComponentModel.DataAnnotations;
+using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.UserContext.Commands.ResetPassword;
 
@@ -7,10 +8,10 @@ namespace OIO.Api.Endpoints.UserContext.Auth;
 public sealed class ResetPasswordEndpoint : IEndpoint
 {
     public sealed record Request(
-        string Email,
-        string Token,
-        string NewPassword,
-        string ConfirmPassword);
+        [Required] string Email,
+        [Required] string Token,
+        [Required] string NewPassword,
+        [Required] string ConfirmPassword);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

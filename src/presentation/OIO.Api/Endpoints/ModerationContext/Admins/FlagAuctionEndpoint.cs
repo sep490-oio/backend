@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.ModerationContext.Commands.CreateAuctionAlert;
@@ -8,7 +9,10 @@ namespace OIO.Api.Endpoints.ModerationContext.Admins;
 
 public sealed class FlagAuctionEndpoint : IEndpoint
 {
-    public sealed record Request(string AlertType, string Severity = "medium", string Payload = "{}");
+    public sealed record Request(
+        [Required] string AlertType,
+        [Required] object Payload,
+        [Required] string Severity = "medium");
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
@@ -19,7 +23,7 @@ public sealed class FlagAuctionEndpoint : IEndpoint
                 CancellationToken ct) =>
             {
                 var result = await sender.Send(
-                    new CreateAuctionAlertCommand(auctionId, request.AlertType, request.Severity, request.Payload),
+                    new CreateAuctionAlertCommand(auctionId, request.AlertType, request.Payload, request.Severity),
                     ct);
 
                 return result.ToOkHttpResult();

@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using System.ComponentModel.DataAnnotations;
+using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.UserContext.Commands.EnableTwoFactor;
 using OIO.Domain.AppDefinitions;
@@ -7,7 +8,7 @@ namespace OIO.Api.Endpoints.UserContext.Me;
 
 public class EnableTwoFactorEndpoint : IEndpoint
 {
-    public sealed record Request(string Provider);
+    public sealed record Request([Required] string Provider);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

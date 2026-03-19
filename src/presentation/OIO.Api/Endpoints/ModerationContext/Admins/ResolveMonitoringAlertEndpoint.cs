@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.ModerationContext.Commands.ResolveMonitoringAlert;
@@ -8,7 +9,9 @@ namespace OIO.Api.Endpoints.ModerationContext.Admins;
 
 public sealed class ResolveMonitoringAlertEndpoint : IEndpoint
 {
-    public sealed record Request(bool Ignored, string? Notes);
+    public sealed record Request(
+        [Required] bool Ignored,
+        string? Notes = null);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

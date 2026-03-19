@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Data;
+using OIO.Application.Context.AuctionContext.Commands.ForfeitAuctionDeposit;
 using OIO.Application.Context.AuctionContext.Hubs;
 using OIO.Application.Context.AuctionContext.Services;
 using OIO.Application.Context.NotificationContext;
@@ -62,6 +63,45 @@ internal sealed class AuctionPaymentDefaultedEventHandler(
                     }
                 })),
             cancellationToken);
+    }
+}
+
+internal sealed class AuctionPaymentDefaultedDepositForfeitEventHandler(
+    IDbContext dbContext,
+    ISender sender,
+    ILogger<AuctionPaymentDefaultedDepositForfeitEventHandler> logger)
+    : INotificationHandler<AuctionPaymentDefaultedEvent>
+{
+    public async Task Handle(AuctionPaymentDefaultedEvent notification, CancellationToken cancellationToken)
+    {
+        var auctionId = AuctionId.From(Guid.Parse(notification.AuctionId));
+        var winnerId = UserId.From(Guid.Parse(notification.DefaultedWinnerId));
+
+        var deposit = await dbContext.Set<AuctionDeposit>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                x => x.AuctionId == auctionId &&
+                     x.BidderId == winnerId &&
+                     x.IsHeld,
+                cancellationToken);
+
+        if (deposit is null)
+            return;
+
+        var result = await sender.Send(
+            new ForfeitAuctionDepositCommand(
+                deposit.Id.Value,
+                "Winner payment defaulted."),
+            cancellationToken);
+
+        if (result.IsFailure)
+        {
+            logger.LogWarning(
+                "Failed to forfeit deposit {DepositId} for defaulted auction {AuctionId}. Error={Error}",
+                deposit.Id.Value,
+                auctionId.Value,
+                result.Error.Message);
+        }
     }
 }
 

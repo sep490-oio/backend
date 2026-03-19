@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.ModerationContext.Commands.MarkDisputeRead;
@@ -7,7 +8,7 @@ namespace OIO.Api.Endpoints.ModerationContext.Disputes;
 
 public sealed class MarkDisputeReadEndpoint : IEndpoint
 {
-    public sealed record Request(Guid LastReadMessageId);
+    public sealed record Request([Required] Guid LastReadMessageId);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

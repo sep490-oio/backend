@@ -51,7 +51,9 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
     public bool TwoFactorEnabled { get; private set; }
 
     public TwoFactorProvider TwoFactorProvider { get; private set; }
-
+    public string? TwoFactorSecret { get; private set; }         
+    public string? PendingTwoFactorSecret { get; private set; } 
+    public long? LastUsedTotpTimeStep { get; private set; } 
     public UserStatus Status { get; private set; }
 
     public bool LockoutEnabled { get; private set; }
@@ -339,9 +341,47 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         
         TwoFactorEnabled = false;
         TwoFactorProvider = TwoFactorProvider.None;
+        TwoFactorSecret = null;
+        PendingTwoFactorSecret = null;
+        LastUsedTotpTimeStep = null;
         ModifiedAt = now;
         
         return unitResult;
+    }
+    
+    public UnitResult<Error> SetupTotp(string base32Secret, DateTime nowUtc)
+    {
+        var unitResult = EnsureNotDeleted();
+
+        if (unitResult.IsFailure)
+        {
+            return unitResult.Error;
+        }
+
+        if (!EmailConfirmed)
+        {
+            return UserErrors.User.EmailNotConfirmed;
+        }
+        
+        PendingTwoFactorSecret = base32Secret;
+        ModifiedAt = nowUtc;
+        
+        return unitResult;
+    }
+
+    public void ConfirmTotpSetup(DateTime nowUtc)
+    {
+        // Move pending → active, enable 2FA
+        TwoFactorSecret = PendingTwoFactorSecret;
+        PendingTwoFactorSecret = null;
+        TwoFactorEnabled = true;
+        TwoFactorProvider = TwoFactorProvider.Totp;
+        ModifiedAt = nowUtc;
+    }
+
+    public void RecordTotpTimeStep(long timeStep)
+    {
+        LastUsedTotpTimeStep = timeStep;
     }
     
     public UnitResult<Error> ChangeStatus(

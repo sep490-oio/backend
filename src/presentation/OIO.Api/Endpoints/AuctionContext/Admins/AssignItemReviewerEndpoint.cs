@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.AssignItemReviewer;
@@ -7,7 +8,7 @@ namespace OIO.Api.Endpoints.AuctionContext.Admins;
 
 public sealed class AssignItemReviewerEndpoint : IEndpoint
 {
-    public sealed record Request(Guid AdminId);
+    public sealed record Request([Required]Guid AdminId);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

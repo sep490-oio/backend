@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using OIO.Api.Common;
@@ -9,7 +10,7 @@ namespace OIO.Api.Endpoints.PaymentContext.PaymentMethods;
 public sealed class AddPaymentMethodEndpoint : IEndpoint
 {
     public sealed record Request(
-        string Type,
+        [Required] string Type,
         string? Provider,
         string? LastFour,
         int? ExpiryMonth,

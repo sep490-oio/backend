@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.ResolveAuctionEmergency;
@@ -7,7 +8,7 @@ namespace OIO.Api.Endpoints.AuctionContext.Admins;
 
 public sealed class ResolveAuctionEmergencyEndpoint : IEndpoint
 {
-    public sealed record Request(string Status, string Payload = "{}");
+    public sealed record Request([Required]string Status, [Required] object Payload);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

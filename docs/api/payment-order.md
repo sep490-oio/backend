@@ -296,6 +296,11 @@ Bao gom Payments, Wallet, VNPay, Orders/Returns va admin payment ops.
 - Success responses:
   - 200 OK: none
 - Error statuses: 400 Bad Request
+- Notes:
+  - `Purpose`: `AuctionDeposit`, `OrderPayment`, `AuctionBuyNow`, `WalletTopUp`. Alias `Deposit` duoc map sang `AuctionDeposit`.
+  - `Description`: co the gui unicode, backend se tu normalize sang ASCII hop le cho `vnp_OrderInfo`.
+  - `BuyNowReservationId`: bat buoc khi `Purpose = AuctionBuyNow`.
+  - `paymentUrl` tra ve se bao gom `vnp_ExpireDate` = `vnp_CreateDate` + 15 phut (GMT+7).
 
 ### GET /api/payments/vnpay/ipn
 
@@ -311,6 +316,7 @@ Bao gom Payments, Wallet, VNPay, Orders/Returns va admin payment ops.
 - Error statuses: none documented
 - Notes:
   - IPN server-to-server tu VNPay.
+  - Callback mapping uu tien transaction references co cau truc (`AuctionId`, `BuyNowReservationId`) thay vi parse description string.
 
 ### POST /api/payments/vnpay/refund
 

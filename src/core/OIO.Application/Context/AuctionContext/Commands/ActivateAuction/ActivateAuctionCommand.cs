@@ -1,8 +1,9 @@
 ﻿using CSharpFunctionalExtensions;
 using OIO.Application.Abstractions.Clock;
+using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
-using OIO.Application.Abstractions.Scheduling;
+using OIO.Application.Context.AuctionContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.Errors;
@@ -27,19 +28,16 @@ internal sealed class ActivateAuctionCommandHandler
     : ICommandHandler<ActivateAuctionCommand>
 {
     private readonly IDbContext _dbContext;
-    private readonly IAuctionScheduler _scheduler;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly AuctionActivationService _auctionActivationService;
     private readonly IClock _clock;
 
     public ActivateAuctionCommandHandler(
         IDbContext dbContext,
-        IAuctionScheduler scheduler,
-        IUnitOfWork unitOfWork,
+        AuctionActivationService auctionActivationService,
         IClock clock)
     {
         _dbContext = dbContext;
-        _scheduler = scheduler;
-        _unitOfWork = unitOfWork;
+        _auctionActivationService = auctionActivationService;
         _clock = clock;
     }
 
@@ -50,6 +48,10 @@ internal sealed class ActivateAuctionCommandHandler
         var auctionId = AuctionId.From(request.AuctionId);
         var auction = await _dbContext.GetByIdAsync<Auction, AuctionId>(
             id: auctionId,
+            queryBuilder: query => query
+                .Include(x => x.Deposits)
+                .Include(x => x.Participants)
+                .AsSplitQuery(),
             cancellationToken: cancellationToken);
 
         if (auction is null)
@@ -66,20 +68,10 @@ internal sealed class ActivateAuctionCommandHandler
             return UnitResult.Success<Error>();
 
         var nowUtc = _clock.UtcNow;
-        
-        var result = auction.Start(nowUtc);
 
-        if (result.IsFailure)
-            return result.Error;
-        
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        // Schedule end job
-        await _scheduler.ScheduleEndAsync(
-            auction.Id.Value, 
-            auction.Info.EndTime,
+        return await _auctionActivationService.ActivateScheduledAuctionAsync(
+            auction,
+            nowUtc,
             cancellationToken);
-
-        return UnitResult.Success<Error>();
     }
 }

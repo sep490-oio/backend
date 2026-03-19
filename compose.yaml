@@ -59,6 +59,10 @@
       - VnPay__ApiUrl=${VNPAY_API_URL}
       - VnPay__ReturnUrl=${VNPAY_RETURN_URL}
       - VnPay__IpnUrl=${VNPAY_IPN_URL}
+      - VnPay__TokenCreateUrl=${VNPAY_TOKEN_CREATE_URL}
+      - VnPay__PayAndCreateUrl=${VNPAY_PAY_AND_CREATE_URL}
+      - VnPay__TokenPayUrl=${VNPAY_TOKEN_PAY_URL}
+      - VnPay__TokenRemoveUrl=${VNPAY_TOKEN_REMOVE_URL}
     volumes:
       - ./config/appsettings.Production.json:/app/appsettings.Production.json:ro
     depends_on:

@@ -116,10 +116,8 @@ public sealed class AutoBid : BaseEntity<AutoBidId>, IAuditableEntity
         StopReason = null;
         StoppedAt = null;
 
-        if (Budget.CurrentAmount < Budget.MaxAmount) 
-            return UnitResult.Success<Error>();
-        
-        MarkAsExhausted(nowUtc);
+        if (Budget.IsExhausted)
+            MarkAsExhausted(nowUtc);
 
         return UnitResult.Success<Error>();
     }
@@ -129,7 +127,9 @@ public sealed class AutoBid : BaseEntity<AutoBidId>, IAuditableEntity
         Money? newIncrementAmount, 
         DateTime nowUtc)
     {
-        if (!IsEnabled && Status != AutoBidStatus.Exhausted)
+        if (!IsEnabled &&
+            Status != AutoBidStatus.Exhausted &&
+            Status != AutoBidStatus.Outbid)
             return AuctionErrors.AutoBid.IsDisabled;
 
         if (Status == AutoBidStatus.Won)
@@ -138,9 +138,6 @@ public sealed class AutoBid : BaseEntity<AutoBidId>, IAuditableEntity
         if (newMaxAmount.Amount < Budget.CurrentAmount)
             return AuctionErrors.AutoBid.NewMaxLessThanCurrent(Budget.CurrentAmount);
         
-        if (Status == AutoBidStatus.Exhausted || Status == AutoBidStatus.Outbid)
-            Status = AutoBidStatus.Active;
-
         var result = Budget.WithConfiguration(newMaxAmount, newIncrementAmount);
         
         if (result.IsFailure)
@@ -149,6 +146,8 @@ public sealed class AutoBid : BaseEntity<AutoBidId>, IAuditableEntity
         }
         
         Budget = result.Value;
+        if (Status == AutoBidStatus.Exhausted || Status == AutoBidStatus.Outbid)
+            Status = AutoBidStatus.Active;
         ModifiedAt = nowUtc;
         IsEnabled = true;
         StopReason = null;
@@ -158,6 +157,11 @@ public sealed class AutoBid : BaseEntity<AutoBidId>, IAuditableEntity
         return UnitResult.Success<Error>();
     }
     
+    /// <summary>
+    /// Pause auto-bid — disables bidding but keeps wallet hold.
+    /// Wallet reservation is retained so Resume can reactivate instantly without re-hold.
+    /// Funds are only released when auction ends (Sold/Failed/Cancelled/Terminated).
+    /// </summary>
     public UnitResult<Error> Pause(DateTime nowUtc)
     {
         if (Status != AutoBidStatus.Active)

@@ -688,6 +688,11 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("auction_id");
 
+                    b.Property<decimal>("BuyNowAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("buy_now_price");
+
                     b.Property<Guid>("BuyerId")
                         .HasColumnType("uuid")
                         .HasColumnName("buyer_id");
@@ -698,6 +703,17 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency");
+
+                    b.Property<decimal>("DepositAppliedAmountValue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("deposit_applied_amount");
+
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
@@ -705,6 +721,11 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.Property<string>("FailureReason")
                         .HasColumnType("text")
                         .HasColumnName("failure_reason");
+
+                    b.Property<decimal>("GatewayAmountDueValue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("gateway_amount_due");
 
                     b.Property<DateTime?>("ModifiedAt")
                         .HasColumnType("timestamp with time zone")
@@ -721,47 +742,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("ReleasedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("released_at");
-
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "BuyNowPrice", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AuctionBuyNowReservation.BuyNowPrice#Money", b1 =>
-                        {
-                            b1.IsRequired();
-
-                            b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)")
-                                .HasColumnName("buy_now_price");
-
-                            b1.ComplexProperty(typeof(Dictionary<string, object>), "Currency", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AuctionBuyNowReservation.BuyNowPrice#Money.Currency#Currency", b2 =>
-                                {
-                                    b2.IsRequired();
-
-                                    b2.Property<string>("Id")
-                                        .IsRequired()
-                                        .HasMaxLength(3)
-                                        .HasColumnType("character varying(3)")
-                                        .HasColumnName("currency");
-                                });
-                        });
-
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "DepositAppliedAmount", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AuctionBuyNowReservation.DepositAppliedAmount#Money", b1 =>
-                        {
-                            b1.IsRequired();
-
-                            b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)")
-                                .HasColumnName("deposit_applied_amount");
-                        });
-
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "GatewayAmountDue", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AuctionBuyNowReservation.GatewayAmountDue#Money", b1 =>
-                        {
-                            b1.IsRequired();
-
-                            b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)")
-                                .HasColumnName("gateway_amount_due");
-                        });
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Status", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AuctionBuyNowReservation.Status#BuyNowReservationStatus", b1 =>
                         {
@@ -1058,6 +1038,12 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("type");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Price", "OIO.Domain.Context.AuctionContext.Aggregates.Auctions.AuctionPriceHistory.Price#Money", b1 =>
                         {
@@ -3768,6 +3754,11 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("BankCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("bank_code");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -3792,6 +3783,11 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_verified");
 
+                    b.Property<string>("MaskedCardNumber")
+                        .HasMaxLength(25)
+                        .HasColumnType("character varying(25)")
+                        .HasColumnName("masked_card_number");
+
                     b.Property<string>("Provider")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
@@ -3805,6 +3801,16 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
+
+                    b.Property<string>("VnPayCardType")
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)")
+                        .HasColumnName("vnpay_card_type");
+
+                    b.Property<string>("VnPayToken")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("vnpay_token");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Card", "OIO.Domain.Context.PaymentContext.Aggregates.PaymentMethods.PaymentMethod.Card#CardInfo", b1 =>
                         {
@@ -3846,6 +3852,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId", "IsActive")
                         .HasDatabaseName("idx_payment_methods_user_active");
 
+                    b.HasIndex("UserId", "VnPayToken")
+                        .HasDatabaseName("idx_payment_methods_user_token")
+                        .HasFilter("vnpay_token IS NOT NULL");
+
                     b.ToTable("payment_methods", (string)null);
                 });
 
@@ -3854,6 +3864,14 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<Guid?>("AuctionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("auction_id");
+
+                    b.Property<Guid?>("BuyNowReservationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("buy_now_reservation_id");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -3992,6 +4010,12 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_transactions");
+
+                    b.HasIndex("AuctionId")
+                        .HasDatabaseName("idx_transactions_auction");
+
+                    b.HasIndex("BuyNowReservationId")
+                        .HasDatabaseName("idx_transactions_buy_now_reservation");
 
                     b.HasIndex("OrderId")
                         .HasDatabaseName("idx_transactions_order");
@@ -5127,6 +5151,48 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.ToTable("user_identity_verifications", (string)null);
                 });
 
+            modelBuilder.Entity("OIO.Domain.Context.UserContext.Aggregates.Users.RecoveryCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("code_hash");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<bool>("IsUsed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_used");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("used_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_recovery_codes");
+
+                    b.HasIndex("UserId", "IsUsed")
+                        .HasDatabaseName("idx_recovery_codes_user_unused")
+                        .HasFilter("is_used = false");
+
+                    b.ToTable("recovery_codes", (string)null);
+                });
+
             modelBuilder.Entity("OIO.Domain.Context.UserContext.Aggregates.Users.SellerProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5369,6 +5435,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("email_confirmed_at");
 
+                    b.Property<long?>("LastUsedTotpTimeStep")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_used_totp_time_step");
+
                     b.Property<bool>("LockoutEnabled")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -5390,6 +5460,11 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.Property<string>("Password")
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
+
+                    b.Property<string>("PendingTwoFactorSecret")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("pending_two_factor_secret");
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .ValueGeneratedOnAdd()
@@ -5414,6 +5489,11 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("two_factor_enabled");
+
+                    b.Property<string>("TwoFactorSecret")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("two_factor_secret");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()

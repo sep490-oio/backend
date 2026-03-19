@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using System.ComponentModel.DataAnnotations;
+using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.WarehouseContext.Commands.UpdateStorageLocation;
 using OIO.Application.Context.WarehouseContext.DTOs;
@@ -8,7 +9,11 @@ namespace OIO.Api.Endpoints.WarehouseContext;
 
 public sealed class UpdateStorageLocationEndpoint : IEndpoint
 {
-    public sealed record Request(string Zone, string Aisle, string Shelf, string Bin);
+    public sealed record Request(
+        [Required] string Zone, 
+        [Required] string Aisle,
+        [Required] string Shelf,
+        [Required] string Bin);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

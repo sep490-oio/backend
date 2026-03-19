@@ -20,6 +20,9 @@ public static partial class ApiEndpoint
             public const string ConfirmPhoneNumber = nameof(ConfirmPhoneNumber);
             public const string DisableTwoFactor = nameof(DisableTwoFactor);
             public const string EnableTwoFactor = nameof(EnableTwoFactor);
+            public const string SetupTotp = nameof(SetupTotp);
+            public const string ConfirmTotpSetup = nameof(ConfirmTotpSetup);
+            public const string RegenerateRecoveryCodes = nameof(RegenerateRecoveryCodes);
             public const string GetActiveSessions = nameof(GetActiveSessions);
             public const string GetAddresses = nameof(GetAddresses);
             public const string GetMe = nameof(GetMe);
@@ -125,6 +128,7 @@ public static partial class ApiEndpoint
             public const string ResendConfirmEmail = nameof(ResendConfirmEmail);
             public const string ForgotPassword = nameof(ForgotPassword);
             public const string ResetPassword = nameof(ResetPassword);
+            public const string VerifyTotpLogin = nameof(VerifyTotpLogin);
         }
 
         public static class Items
@@ -229,6 +233,7 @@ public static partial class ApiEndpoint
             public const string DeletePaymentMethod = nameof(DeletePaymentMethod);
             public const string CheckoutOrder =  nameof(CheckoutOrder);
             public const string SetDefaultPaymentMethod = nameof(SetDefaultPaymentMethod);
+            public const string LinkCardViaVnPay = nameof(LinkCardViaVnPay);
         }
 
         public static class AdminPayments

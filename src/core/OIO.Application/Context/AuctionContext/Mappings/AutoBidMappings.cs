@@ -14,7 +14,7 @@ public static class AutoBidMappings
             IsEnabled: autoBid.IsEnabled,
             MaxAmount: autoBid.Budget.MaxPrice.ToDto(),
             CurrentAmount: autoBid.Budget.CurrentPrice.ToDto(),
-            ReservedAmount: autoBid.Budget.ReservedPrice.ToDto(),
+            RemainingBudget: autoBid.Budget.Remaining.ToDto(),
             IncrementAmount: autoBid.Budget.Increment?.ToDto(),
             Status: autoBid.Status.Id,
             TotalAutoBids: autoBid.TotalAutoBids,

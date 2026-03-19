@@ -4,6 +4,7 @@ using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
+using OIO.Domain.Context.Shared.Enums;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
@@ -15,9 +16,10 @@ public sealed class AuctionBuyNowReservation : BaseEntity<AuctionBuyNowReservati
 {
     public AuctionId AuctionId { get; private set; }
     public UserId BuyerId { get; private set; }
-    public Money BuyNowPrice { get; private set; }
-    public Money DepositAppliedAmount { get; private set; }
-    public Money GatewayAmountDue { get; private set; }
+    public decimal BuyNowAmount { get; private set; }
+    public decimal DepositAppliedAmountValue { get; private set; }
+    public decimal GatewayAmountDueValue { get; private set; }
+    public Currency Currency { get; private set; }
     public TransactionId? PaymentTransactionId { get; private set; }
     public OrderId? OrderId { get; private set; }
     public BuyNowReservationStatus Status { get; private set; }
@@ -29,6 +31,10 @@ public sealed class AuctionBuyNowReservation : BaseEntity<AuctionBuyNowReservati
 
     // Navigation
     public Auction Auction { get; private set; } = null!;
+
+    public Money BuyNowPrice => Money.Of(BuyNowAmount, Currency);
+    public Money DepositAppliedAmount => Money.Of(DepositAppliedAmountValue, Currency);
+    public Money GatewayAmountDue => Money.Of(GatewayAmountDueValue, Currency);
 
     private AuctionBuyNowReservation() { }
 
@@ -45,9 +51,10 @@ public sealed class AuctionBuyNowReservation : BaseEntity<AuctionBuyNowReservati
     {
         AuctionId = auctionId;
         BuyerId = buyerId;
-        BuyNowPrice = buyNowPrice;
-        DepositAppliedAmount = depositAppliedAmount;
-        GatewayAmountDue = gatewayAmountDue;
+        BuyNowAmount = buyNowPrice.Amount;
+        DepositAppliedAmountValue = depositAppliedAmount.Amount;
+        GatewayAmountDueValue = gatewayAmountDue.Amount;
+        Currency = buyNowPrice.Currency;
         Status = BuyNowReservationStatus.PendingPayment;
         ExpiresAt = expiresAt;
         CreatedAt = nowUtc;

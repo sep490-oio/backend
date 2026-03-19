@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
@@ -17,8 +18,8 @@ namespace OIO.Application.Context.ModerationContext.Commands.CreateAuctionAlert;
 public sealed record CreateAuctionAlertCommand(
     Guid AuctionId,
     string AlertType,
-    string Severity = "medium",
-    string Payload = "{}") : ICommand<MonitoringAlertDto>, IHasValidate
+    object Payload,
+    string Severity = "medium") : ICommand<MonitoringAlertDto>, IHasValidate
 {
     public ViolationsError Validate() =>
         CreateAuctionAlertCommand.Check()
@@ -54,7 +55,7 @@ internal sealed class CreateAuctionAlertCommandHandler(
             entityId: request.AuctionId,
             alertType: request.AlertType.Trim(),
             severity: severityResult.Value,
-            payload: string.IsNullOrWhiteSpace(request.Payload) ? "{}" : request.Payload,
+            payload: JsonSerializer.Serialize(request.Payload),
             nowUtc: clock.UtcNow);
 
         dbContext.Insert(alert);

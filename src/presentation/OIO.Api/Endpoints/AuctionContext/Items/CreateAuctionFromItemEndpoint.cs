@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.CreateAuctionFromItem;
@@ -8,8 +9,8 @@ namespace OIO.Api.Endpoints.AuctionContext.Items;
 public sealed class CreateAuctionFromItemEndpoint : IEndpoint
 {
     public sealed record Request(
-        decimal StartingPrice = 0,
-        decimal BidIncrement = 0,
+        [Required] decimal StartingPrice = 0,
+        [Required] decimal BidIncrement = 0,
         decimal? ReservePrice = null,
         decimal? BuyNowPrice = null,
         int ExtensionMinutes = 5,

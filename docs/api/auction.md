@@ -41,6 +41,8 @@ Bao gom Categories, Items, Sellers va Auctions.
 - Success responses:
   - 200 OK: none
 - Error statuses: 404 Not Found
+- Notes:
+  - `priceHistory` trong chi tiet auction se tra them truong `type` de phan biet nguon goc gia nhu `starting_price`, `bid`, `buy_now`, `sealed_bid`, `reset_to_starting_price`, `repriced_after_bid_cancellation`.
 
 ### PUT /api/auctions/{auctionId:guid}
 
@@ -199,6 +201,10 @@ Bao gom Categories, Items, Sellers va Auctions.
 - Success responses:
   - 204 No Content: none
 - Error statuses: 400 Bad Request
+- Notes:
+  - Neu publish khi auction da den `StartAt`, he thong se thu activate ngay trong cung request.
+  - Auction chi duoc bat dau khi co it nhat 1 participant du dieu kien bid: `Qualified`, chua `Withdrawn`, va con deposit `Held`.
+  - Neu khong co participant du dieu kien o thoi diem start, auction se tu `Cancelled` va item duoc tra ve `Active`.
 
 ### POST /api/auctions/{auctionId:guid}/relist
 
@@ -213,6 +219,9 @@ Bao gom Categories, Items, Sellers va Auctions.
 - Success responses:
   - 200 OK: [AuctionDto](./schemas.md#schema-auctiondto)
 - Error statuses: 400 Bad Request, 403 Forbidden, 404 Not Found, 409 Conflict
+- Notes:
+  - Co the override cac gia tri pricing cho lan relist moi: `StartingPrice`, `BidIncrement`, `ReservePrice`, `BuyNowPrice`, `Currency`.
+  - Neu khong truyen pricing override, he thong se copy pricing tu auction cu.
 
 ### POST /api/auctions/{auctionId:guid}/runner-up-offers
 

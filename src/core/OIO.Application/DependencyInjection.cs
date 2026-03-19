@@ -32,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<INotificationRoutingService, NotificationRoutingService>();
         services.AddScoped<ContinueVerifiedAuctionService>();
         services.AddScoped<AuctionDraftCreationService>();
+        services.AddScoped<AuctionActivationService>();
         services.AddScoped<IAuctionCollusionDetectionService, AuctionCollusionDetectionService>();
         services.AddScoped<ItemShippingSelectionService>();
         services.AddScoped<IMediaRelocationService, MediaRelocationService>();

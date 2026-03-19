@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.ModerationContext.Commands.AssignReport;
@@ -8,7 +9,7 @@ namespace OIO.Api.Endpoints.ModerationContext.Admins;
 
 public sealed class AssignReportEndpoint : IEndpoint
 {
-    public sealed record Request(Guid AssignedToUserId);
+    public sealed record Request([Required] Guid AssignedToUserId);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

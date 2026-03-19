@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.RespondRunnerUpOffer;
@@ -8,7 +9,7 @@ namespace OIO.Api.Endpoints.AuctionContext.Auctions;
 
 public sealed class RespondRunnerUpOfferEndpoint : IEndpoint
 {
-    public sealed record Request(bool Accept);
+    public sealed record Request([Required] bool Accept);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

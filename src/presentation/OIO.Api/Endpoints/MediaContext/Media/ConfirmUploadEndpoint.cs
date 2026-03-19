@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Api.Filters;
@@ -9,11 +10,11 @@ namespace OIO.Api.Endpoints.MediaContext.Media;
 public sealed class ConfirmUploadEndpoint : IEndpoint
 {
     public sealed record Request(
-        Guid MediaUploadId,
-        string PublicId,
-        string SecureUrl,
-        long Bytes,
-        string Format,
+        [Required] Guid MediaUploadId,
+        [Required] string PublicId,
+        [Required] string SecureUrl,
+        [Required] long Bytes,
+        [Required] string Format,
         string? FileName,
         int? Width,
         int? Height,

@@ -105,7 +105,18 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
                 .HasDefaultValue(TwoFactorProvider.None.Id)
                 .IsRequired();
         });
-        
+
+        builder.Property(u => u.TwoFactorSecret)
+            .HasColumnName("two_factor_secret")
+            .HasMaxLength(255);
+
+        builder.Property(u => u.PendingTwoFactorSecret)
+            .HasColumnName("pending_two_factor_secret")
+            .HasMaxLength(255);
+
+        builder.Property(u => u.LastUsedTotpTimeStep)
+            .HasColumnName("last_used_totp_time_step");
+
         builder.Property(s => s.Status)
             .HasColumnName("status")
             .HasMaxLength(30)

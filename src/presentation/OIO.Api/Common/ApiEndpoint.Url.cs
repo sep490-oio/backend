@@ -95,6 +95,7 @@ public static partial class ApiEndpoint
             public const string ResendConfirmEmail = $"{Base}/resend-confirm-email";
             public const string ForgotPassword = $"{Base}/forgot-password";
             public const string ResetPassword = $"{Base}/reset-password";
+            public const string VerifyTotpLogin = $"{Base}/two-factor/verify";
         }
 
         public static class Items
@@ -221,6 +222,7 @@ public static partial class ApiEndpoint
             public const string DeleteMethod = $"{Base}/methods/{{id:guid}}";
             public const string CheckoutOrder = $"{Base}/checkout";
             public const string SetDefaultMethod = $"{Base}/methods/{{id:guid}}/default";
+            public const string LinkCard = $"{Base}/methods/link-card";
         }
 
         public static class AdminPayments
@@ -262,6 +264,9 @@ public static partial class ApiEndpoint
             public const string ConfirmPhoneNumber = $"{Base}/phone/confirm";
             public const string DisableTwoFactor = $"{Base}/two-factor/disable";
             public const string EnableTwoFactor = $"{Base}/two-factor/enable";
+            public const string SetupTotp = $"{Base}/two-factor/setup";
+            public const string ConfirmTotpSetup = $"{Base}/two-factor/confirm";
+            public const string RegenerateRecoveryCodes = $"{Base}/two-factor/recovery-codes";
             public const string GetActiveSessions = $"{Base}/sessions";
             public const string GetAddresses = $"{Base}/addresses";
             public const string GetCurrentUser = $"{Base}";

@@ -11,11 +11,15 @@ using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
+using OIO.Domain.Context.PaymentContext.Aggregates.PaymentMethods;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.PaymentContext.ValueObjects;
+using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.ValueObjects;
+using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
+using Currencies = OIO.Domain.Context.Shared.Enums.Currency;
 
 namespace OIO.Application.Context.PaymentContext.Commands.CreateVnPayPaymentUrl;
 
@@ -26,13 +30,32 @@ namespace OIO.Application.Context.PaymentContext.Commands.CreateVnPayPaymentUrl;
 public sealed record CreateVnPayPaymentUrlCommand(
     decimal Amount,
     string Currency,
-    PaymentPurpose Purpose,
+    string Purpose,
     IPAddress IpAddress,
     string Description,
     string? BankCode = null,
     Guid? AuctionId = null,
     Guid? OrderId = null,
-    Guid? BuyNowReservationId = null) : ICommand<CreateVnPayPaymentUrlResponse>;
+    Guid? BuyNowReservationId = null,
+    Guid? PaymentMethodId = null,
+    bool SaveCard = false) : ICommand<CreateVnPayPaymentUrlResponse>, IHasValidate
+{
+    public ViolationsError Validate()
+    {
+        return CreateVnPayPaymentUrlCommand.Check()
+            .WithOwnerName("CreateVnPayPaymentUrl")
+            .Field(Amount)
+            .NonNegative()
+            .Field(Currency)
+            .NotWhiteSpace()
+            .InSet(Currencies.All.Select(x => x.Id))
+            .Field(Description)
+            .NotWhiteSpace()
+            .Field(Purpose)
+            .NotWhiteSpace()
+            .InSet(PaymentPurpose.All.Select(x => x.Id));
+    }
+}
 
 public sealed record CreateVnPayPaymentUrlResponse(
     Guid TransactionId,
@@ -67,8 +90,9 @@ internal sealed class CreateVnPayPaymentUrlCommandHandler
         CancellationToken cancellationToken)
     {
         var now = _clock.UtcNow;
+        var purpose = PaymentPurpose.FromId(request.Purpose).Value;
 
-        if (request.Purpose == PaymentPurpose.AuctionDeposit)
+        if (purpose == PaymentPurpose.AuctionDeposit)
         {
             if (!request.AuctionId.HasValue)
             {
@@ -105,8 +129,11 @@ internal sealed class CreateVnPayPaymentUrlCommandHandler
             if (!auction.Info.HasQualification)
                 return AuctionErrors.Auction.QualificationWindowRequired;
 
-            if (!auction.Info.IsQualificationOpen(now))
+            if (auction.Info.IsQualificationClosed(now))
                 return AuctionErrors.Participant.JoinWindowClosed;
+
+            if (!auction.Info.IsQualificationOpen(now))
+                return AuctionErrors.Participant.JoinWindowNotOpenYet;
 
             if (auction.Deposits.Any(d => d.BidderId == _currentUser.UserId && d.IsHeld))
             {
@@ -148,12 +175,12 @@ internal sealed class CreateVnPayPaymentUrlCommandHandler
             return txnNumError;
 
         // 4. Map PaymentPurpose → TransactionType
-        var transactionType = request.Purpose switch
+        var transactionType = purpose switch
         {
-            PaymentPurpose.AuctionDeposit => TransactionType.Deposit,
-            PaymentPurpose.OrderPayment => TransactionType.Payment,
-            PaymentPurpose.AuctionBuyNow => TransactionType.Payment,
-            PaymentPurpose.WalletTopUp => TransactionType.Deposit,
+            _ when purpose == PaymentPurpose.AuctionDeposit => TransactionType.Deposit,
+            _ when purpose == PaymentPurpose.OrderPayment => TransactionType.Payment,
+            _ when purpose == PaymentPurpose.AuctionBuyNow => TransactionType.Payment,
+            _ when purpose == PaymentPurpose.WalletTopUp => TransactionType.Deposit,
             _ => TransactionType.Payment,
         };
 
@@ -172,28 +199,30 @@ internal sealed class CreateVnPayPaymentUrlCommandHandler
         }
         else if (request.Purpose == PaymentPurpose.AuctionDeposit && request.AuctionId.HasValue)
         {
-            // Fallback checking by Description since AuctionId isn't a direct column on Transaction yet.
-            // In a real production mapping, an AuctionId column might be added to Transaction.
+            var pendingAuctionId = AuctionId.From(request.AuctionId.Value);
             var depositDescPrefix = $"[{PaymentPurpose.AuctionDeposit}]";
             transaction = await _dbContext.Set<Transaction>()
                 .FirstOrDefaultAsync(t => 
                     t.UserId == _currentUser.UserId &&
                     t.Status == TransactionStatus.Pending &&
                     t.Type == TransactionType.Deposit &&
-                    t.Description != null && t.Description.StartsWith(depositDescPrefix) &&
-                    t.Description.Contains(request.AuctionId.Value.ToString()), 
+                    ((t.AuctionId.HasValue && t.AuctionId.Value == pendingAuctionId) ||
+                     (t.Description != null && t.Description.StartsWith(depositDescPrefix) &&
+                      t.Description.Contains(request.AuctionId.Value.ToString()))), 
                     cancellationToken);
         }
         else if (request.Purpose == PaymentPurpose.AuctionBuyNow && request.BuyNowReservationId.HasValue)
         {
+            var pendingReservationId = AuctionBuyNowReservationId.From(request.BuyNowReservationId.Value);
             var buyNowDescPrefix = $"[{PaymentPurpose.AuctionBuyNow}]";
             transaction = await _dbContext.Set<Transaction>()
                 .FirstOrDefaultAsync(t =>
                     t.UserId == _currentUser.UserId &&
                     t.Status == TransactionStatus.Pending &&
                     t.Type == TransactionType.Payment &&
-                    t.Description != null && t.Description.StartsWith(buyNowDescPrefix) &&
-                    t.Description.Contains(request.BuyNowReservationId.Value.ToString()),
+                    ((t.BuyNowReservationId.HasValue && t.BuyNowReservationId.Value == pendingReservationId) ||
+                     (t.Description != null && t.Description.StartsWith(buyNowDescPrefix) &&
+                      t.Description.Contains(request.BuyNowReservationId.Value.ToString()))),
                     cancellationToken);
         }
 
@@ -219,7 +248,11 @@ internal sealed class CreateVnPayPaymentUrlCommandHandler
                 currency: request.Currency,
                 description: description,
                 nowUtc: now,
-                orderId: request.OrderId.HasValue ? OrderId.From(request.OrderId.Value) : null);
+                orderId: request.OrderId.HasValue ? OrderId.From(request.OrderId.Value) : null,
+                auctionId: request.AuctionId.HasValue ? AuctionId.From(request.AuctionId.Value) : null,
+                buyNowReservationId: request.BuyNowReservationId.HasValue
+                    ? AuctionBuyNowReservationId.From(request.BuyNowReservationId.Value)
+                    : null);
 
             if (isTxnFailure)
                 return txnError;
@@ -239,18 +272,69 @@ internal sealed class CreateVnPayPaymentUrlCommandHandler
             txnRef = transaction.TransactionNumber.Value;
         }
 
-        // 6. Tạo URL thanh toán VNPay
+        // 6. Tạo URL thanh toán VNPay — route theo PaymentMethodId / SaveCard
         var amountVnd = (long)request.Amount;
+        var ipStr = request.IpAddress.ToString();
+        var appUserId = _currentUser.UserId.Value.ToString();
 
-        var urlResult = _paymentGateway.CreatePaymentUrl(new CreatePaymentUrlRequest
+        Result<CreatePaymentUrlResult, Error> urlResult;
+
+        if (request.PaymentMethodId.HasValue)
         {
-            TransactionRef = txnRef,
-            Amount = amountVnd,
-            OrderDescription = request.Description,
-            Purpose = request.Purpose,
-            IpAddress = request.IpAddress.ToString(),
-            BankCode = request.BankCode,
-        });
+            // Thanh toán bằng token đã lưu
+            var paymentMethod = await _dbContext.Set<PaymentMethod>()
+                .FirstOrDefaultAsync(
+                    p => p.Id == PaymentMethodId.From(request.PaymentMethodId.Value) &&
+                         p.UserId == _currentUser.UserId &&
+                         p.IsActive &&
+                         p.Type == PaymentMethodType.VnPay,
+                    cancellationToken);
+
+            if (paymentMethod is null)
+                return Error.NotFound("PaymentMethod.NotFound", "Active VNPay payment method not found.");
+
+            if (string.IsNullOrWhiteSpace(paymentMethod.VnPayToken))
+                return Error.Validation("PaymentMethod.NoToken", "PaymentMethod.TokenRequired",
+                    "Selected payment method does not have a VNPay token.");
+
+            transaction.AssociatePaymentMethod(paymentMethod.Id);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            urlResult = _paymentGateway.CreateTokenPayUrl(new TokenPaymentUrlRequest
+            {
+                TransactionRef = txnRef,
+                Amount = amountVnd,
+                OrderDescription = request.Description,
+                AppUserId = appUserId,
+                Token = paymentMethod.VnPayToken,
+                IpAddress = ipStr,
+            });
+        }
+        else if (request.SaveCard)
+        {
+            // Thanh toán lần đầu + lưu token
+            urlResult = _paymentGateway.CreatePayAndCreateTokenUrl(new CreateTokenPaymentUrlRequest
+            {
+                TransactionRef = txnRef,
+                Amount = amountVnd,
+                OrderDescription = request.Description,
+                AppUserId = appUserId,
+                IpAddress = ipStr,
+            });
+        }
+        else
+        {
+            // Flow thanh toán thường (không token)
+            urlResult = _paymentGateway.CreatePaymentUrl(new CreatePaymentUrlRequest
+            {
+                TransactionRef = txnRef,
+                Amount = amountVnd,
+                OrderDescription = request.Description,
+                Purpose = purpose,
+                IpAddress = ipStr,
+                BankCode = request.BankCode,
+            });
+        }
 
         if (urlResult.IsFailure)
             return urlResult.Error;

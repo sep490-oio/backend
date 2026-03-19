@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Api.Filters;
@@ -9,8 +10,8 @@ namespace OIO.Api.Endpoints.MediaContext.Media;
 public sealed class RequestUploadSignatureEndpoint : IEndpoint
 {
     public sealed record Request(
-        string Context,
-        string FileName);
+        [Required] string Context,
+        [Required] string FileName);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

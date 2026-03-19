@@ -6,11 +6,13 @@ using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
+using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.Grains;
 using OIO.Domain.Context.AuctionContext.Grains.GrainModels;
 using OIO.Domain.Context.AuctionContext.Grains.GrainValueObjects;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
@@ -95,6 +97,7 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
             
             if (isFailure)
             {
+                DiscardLoadedAuction();
                 return error;
             }
             await SaveAsync(auction, cancellationToken);
@@ -103,6 +106,7 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
         }
         catch (Exception ex)
         {
+            DiscardLoadedAuction();
             _logger.LogError(ex,
                 "Unexpected error placing bid on auction {AuctionId}", this.GetGrainId());
             throw;
@@ -128,13 +132,17 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 reservationWindow);
 
             if (isFailure)
+            {
+                DiscardLoadedAuction();
                 return error;
+            }
 
             await SaveAsync(auction, cancellationToken);
             return AuctionBuyNowReservationGrain.From(reservation);
         }
         catch (Exception ex)
         {
+            DiscardLoadedAuction();
             _logger.LogError(ex,
                 "Unexpected error initiating buy-now reservation on auction {AuctionId}",
                 this.GetGrainId());
@@ -161,13 +169,17 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 nowUtc);
 
             if (isFailure)
+            {
+                DiscardLoadedAuction();
                 return error;
+            }
 
             await SaveAsync(auction, cancellationToken);
             return AuctionBuyNowReservationGrain.From(reservation);
         }
         catch (Exception ex)
         {
+            DiscardLoadedAuction();
             _logger.LogError(ex,
                 "Unexpected error attaching buy-now payment on auction {AuctionId}",
                 this.GetGrainId());
@@ -194,13 +206,17 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 nowUtc);
 
             if (result.IsFailure)
+            {
+                DiscardLoadedAuction();
                 return result.Error;
+            }
 
             await SaveAsync(auction, cancellationToken);
             return UnitResult.Success<Error>();
         }
         catch (Exception ex)
         {
+            DiscardLoadedAuction();
             _logger.LogError(ex,
                 "Unexpected error failing buy-now reservation on auction {AuctionId}",
                 this.GetGrainId());
@@ -246,21 +262,226 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 }
             }
 
-            (_, isFailure, var autoBid, error) = auction.ConfigureAutoBid(UserId.From(bidderId), maxAmountDomain, nowUtc, incrementAmountDomain);
+            var bidderUserId = UserId.From(bidderId);
+            var validationResult = auction.ValidateAutoBidConfiguration(
+                bidderUserId,
+                maxAmountDomain,
+                nowUtc,
+                incrementAmountDomain);
+
+            if (validationResult.IsFailure)
+            {
+                DiscardLoadedAuction();
+                return validationResult.Error;
+            }
+
+            // Capture previous max before domain update (for wallet holdDelta calculation)
+            var existingAutoBid = auction.AutoBids
+                .FirstOrDefault(ab => ab.BidderId == bidderUserId);
+            var previousMaxAmount = existingAutoBid?.Budget.MaxAmount ?? 0m;
+            var holdDelta = maxAmountDomain.Amount - previousMaxAmount;
+
+            if (holdDelta != 0m)
+            {
+                var wallet = await _dbContext.Set<Wallet>()
+                    .FirstOrDefaultAsync(w => w.UserId == bidderUserId, cancellationToken);
+
+                if (wallet is null)
+                {
+                    DiscardLoadedAuction();
+                    _logger.LogError(
+                        "Wallet not found for auto-bid reservation on auction {AuctionId}. UserId={UserId}",
+                        this.GetGrainId(),
+                        bidderId);
+                    return Error.NotFound("Wallet.NotFound", "User wallet not found.");
+                }
+
+                UnitResult<Error> holdResult = holdDelta > 0
+                    ? wallet.Hold(holdDelta, null, $"Auto-bid reservation for Auction {this.GetGrainId()}", nowUtc)
+                    : wallet.Unhold(Math.Abs(holdDelta), null, $"Auto-bid reservation adjusted for Auction {this.GetGrainId()}", nowUtc);
+
+                if (holdResult.IsFailure)
+                {
+                    DiscardLoadedAuction();
+                    _logger.LogWarning(
+                        "Wallet hold/unhold failed for auto-bid on auction {AuctionId}: {Error}",
+                        this.GetGrainId(),
+                        holdResult.Error.Message);
+                    return Error.Conflict("Wallet.HoldFailed", holdResult.Error.Message);
+                }
+            }
+
+            (_, isFailure, var autoBid, error) = auction.ConfigureAutoBid(
+                bidderUserId,
+                maxAmountDomain,
+                nowUtc,
+                incrementAmountDomain);
 
             if (isFailure)
             {
+                DiscardLoadedAuction();
                 return error;
             }
-            
+
             await SaveAsync(auction, cancellationToken);
 
-            return AutoBidGrain.From(autoBid);
+            var result = AutoBidGrain.From(autoBid);
+            result = result with { PreviousMaxAmount = previousMaxAmount };
+            return result;
         }
         catch (Exception ex)
         {
+            DiscardLoadedAuction();
             _logger.LogError(ex,
                 "Unexpected error configuring auto-bid on auction {AuctionId}",
+                this.GetGrainId());
+            throw;
+        }
+    }
+
+    public async Task<UnitResult<Error>> PauseAutoBidAsync(
+        Guid bidderId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var nowUtc = _clock.UtcNow;
+            var (_, isFailure, auction, error) = await LoadAuctionAsync(cancellationToken);
+
+            if (isFailure)
+                return error;
+
+            var result = auction.PauseAutoBid(UserId.From(bidderId), nowUtc);
+            if (result.IsFailure)
+            {
+                DiscardLoadedAuction();
+                return result.Error;
+            }
+
+            await SaveAsync(auction, cancellationToken);
+            return UnitResult.Success<Error>();
+        }
+        catch (Exception ex)
+        {
+            DiscardLoadedAuction();
+            _logger.LogError(ex,
+                "Unexpected error pausing auto-bid on auction {AuctionId}",
+                this.GetGrainId());
+            throw;
+        }
+    }
+
+    public async Task<UnitResult<Error>> ResumeAutoBidAsync(
+        Guid bidderId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var nowUtc = _clock.UtcNow;
+            var (_, isFailure, auction, error) = await LoadAuctionAsync(cancellationToken);
+
+            if (isFailure)
+                return error;
+
+            var result = auction.ResumeAutoBid(UserId.From(bidderId), nowUtc);
+            if (result.IsFailure)
+            {
+                DiscardLoadedAuction();
+                return result.Error;
+            }
+
+            await SaveAsync(auction, cancellationToken);
+            return UnitResult.Success<Error>();
+        }
+        catch (Exception ex)
+        {
+            DiscardLoadedAuction();
+            _logger.LogError(ex,
+                "Unexpected error resuming auto-bid on auction {AuctionId}",
+                this.GetGrainId());
+            throw;
+        }
+    }
+
+    public async Task<UnitResult<Error>> EndAuctionAsync(
+        Guid? revealerId,
+        IReadOnlyCollection<RevealedSealedBidAmountGrain>? revealedSealedBids,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var nowUtc = _clock.UtcNow;
+            var (_, isFailure, auction, error) = await LoadAuctionAsync(cancellationToken);
+
+            if (isFailure)
+                return error;
+
+            if (auction.Status != AuctionStatus.Active)
+                return UnitResult.Success<Error>();
+
+            if (auction.GetActiveBuyNowReservation(nowUtc) is not null)
+                return UnitResult.Success<Error>();
+
+            if (auction.AuctionType == AuctionType.Sealed)
+            {
+                if (revealedSealedBids is null)
+                {
+                    DiscardLoadedAuction();
+                    return Error.Validation(
+                        "SealedBids",
+                        "Auction.SealedRevealRequired",
+                        "Revealed sealed bids are required to end a sealed auction.");
+                }
+
+                var revealedAmounts = new List<RevealedSealedBidAmount>(revealedSealedBids.Count);
+                foreach (var revealedSealedBid in revealedSealedBids)
+                {
+                    var moneyResult = MoneyGrain.ToMoney(revealedSealedBid.Amount);
+                    if (moneyResult.IsFailure)
+                    {
+                        DiscardLoadedAuction();
+                        return moneyResult.Error;
+                    }
+
+                    revealedAmounts.Add(new RevealedSealedBidAmount(
+                        SealedBidId.From(revealedSealedBid.SealedBidId),
+                        moneyResult.Value));
+                }
+
+                var revealResult = auction.RevealAllSealedBids(
+                    revealedAmounts,
+                    revealerId.HasValue ? UserId.From(revealerId.Value) : null,
+                    nowUtc);
+
+                if (revealResult.IsFailure)
+                {
+                    DiscardLoadedAuction();
+                    return revealResult.Error;
+                }
+            }
+
+            var endResult = auction.End(nowUtc);
+            if (endResult.IsFailure)
+            {
+                DiscardLoadedAuction();
+                return endResult.Error;
+            }
+
+            var resolveResult = auction.Resolve(nowUtc);
+            if (resolveResult.IsFailure)
+            {
+                DiscardLoadedAuction();
+                return resolveResult.Error;
+            }
+
+            await SaveAsync(auction, cancellationToken);
+            return UnitResult.Success<Error>();
+        }
+        catch (Exception ex)
+        {
+            DiscardLoadedAuction();
+            _logger.LogError(ex,
+                "Unexpected error ending auction {AuctionId}",
                 this.GetGrainId());
             throw;
         }
@@ -332,7 +553,15 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
     {
          _dbContext.Update(auction);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        
+
+        DiscardLoadedAuction();
+    }
+
+    private void DiscardLoadedAuction()
+    {
+        if (_dbContext is DbContext efContext)
+            efContext.ChangeTracker.Clear();
+
         _isLoaded = false;
         _auction = null;
     }

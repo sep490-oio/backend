@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.ModerationContext.Commands.AcknowledgeMonitoringAlert;
@@ -8,7 +9,7 @@ namespace OIO.Api.Endpoints.ModerationContext.Admins;
 
 public sealed class AcknowledgeMonitoringAlertEndpoint : IEndpoint
 {
-    public sealed record Request(string? Notes);
+    public sealed record Request([Required] string? Notes);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

@@ -31,7 +31,10 @@ internal static class PaymentReadModelMapper
             HolderName: paymentMethod.Card.HolderName,
             IsDefault: paymentMethod.IsDefault,
             IsActive: paymentMethod.IsActive,
-            CreatedAt: paymentMethod.CreatedAt);
+            CreatedAt: paymentMethod.CreatedAt,
+            MaskedCardNumber: paymentMethod.MaskedCardNumber,
+            VnPayCardType: paymentMethod.VnPayCardType,
+            BankCode: paymentMethod.BankCode);
 
     public static WithdrawalRequestDto ToDto(WithdrawalRequest withdrawal)
         => new(
@@ -142,6 +145,9 @@ internal static class PaymentReadModelMapper
     {
         if (walletTransaction.Transaction?.OrderId is not null)
             return ("order", walletTransaction.Transaction.OrderId.Value.Value);
+
+        if (walletTransaction.Transaction?.AuctionId is not null)
+            return ("deposit", walletTransaction.Transaction.AuctionId.Value.Value);
 
         if (walletTransaction.Description?.Contains("Auction deposit", StringComparison.OrdinalIgnoreCase) == true ||
             walletTransaction.Transaction?.Description?.Contains("[AuctionDeposit]", StringComparison.OrdinalIgnoreCase) == true)

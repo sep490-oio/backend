@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.PaymentContext.Commands.Withdrawals;
@@ -8,7 +9,7 @@ namespace OIO.Api.Endpoints.PaymentContext.Admins;
 
 public sealed class RejectWithdrawalEndpoint : IEndpoint
 {
-    public sealed record Request(string Reason);
+    public sealed record Request([Required] string Reason);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

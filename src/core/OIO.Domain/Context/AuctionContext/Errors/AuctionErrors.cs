@@ -316,6 +316,10 @@ public static class AuctionErrors
         public static readonly Error JoinWindowClosed =
             Error.Conflict("Participant.JoinWindowClosed",
                 "The qualification window is closed for this auction.");
+        
+        public static readonly Error JoinWindowNotOpenYet =
+            Error.Conflict("Participant.JoinWindowNotOpenYet",
+                "The qualification window is not open for this auction yet.");
 
         public static readonly Error NotQualified =
             Error.Forbidden("Participant.NotQualified",

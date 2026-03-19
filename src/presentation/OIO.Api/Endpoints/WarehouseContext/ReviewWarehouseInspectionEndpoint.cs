@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.WarehouseContext.Commands.ReviewWarehouseInspection;
@@ -8,7 +9,7 @@ namespace OIO.Api.Endpoints.WarehouseContext;
 
 public sealed class ReviewWarehouseInspectionEndpoint : IEndpoint
 {
-    public sealed record Request(string Decision, string? Reason = null);
+    public sealed record Request([Required] string Decision, string? Reason = null);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

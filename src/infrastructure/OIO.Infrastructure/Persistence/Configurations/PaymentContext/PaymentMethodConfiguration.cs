@@ -64,13 +64,34 @@ internal sealed class PaymentMethodConfiguration : IEntityTypeConfiguration<Paym
             .HasColumnName("token_reference")
             .HasMaxLength(255);
 
+        // VNPay Token fields
+        builder.Property(p => p.VnPayToken)
+            .HasColumnName("vnpay_token")
+            .HasMaxLength(64);
+
+        builder.Property(p => p.MaskedCardNumber)
+            .HasColumnName("masked_card_number")
+            .HasMaxLength(25);
+
+        builder.Property(p => p.VnPayCardType)
+            .HasColumnName("vnpay_card_type")
+            .HasMaxLength(5);
+
+        builder.Property(p => p.BankCode)
+            .HasColumnName("bank_code")
+            .HasMaxLength(20);
+
         builder.Property(p => p.CreatedAt)
             .HasColumnName("created_at")
             .HasDefaultValueSql("CURRENT_TIMESTAMP")
             .IsRequired();
 
-        // Index
+        // Indexes
         builder.HasIndex(p => new { p.UserId, p.IsActive })
             .HasDatabaseName("idx_payment_methods_user_active");
+
+        builder.HasIndex(p => new { p.UserId, p.VnPayToken })
+            .HasDatabaseName("idx_payment_methods_user_token")
+            .HasFilter("vnpay_token IS NOT NULL");
     }
 }

@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
+using OIO.Application.Abstractions.Auth;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
@@ -38,6 +39,7 @@ using OIO.Infrastructure.Security;
 using OIO.Infrastructure.Settings.Apps;
 using Quartz;
 using StackExchange.Redis;
+using OIO.Infrastructure.Auth;
 using OIO.Infrastructure.Ekyc;
 using OIO.Infrastructure.Shipping;
 using OIO.Infrastructure.Shipping.Ghn;
@@ -176,6 +178,7 @@ public static class DependencyInjection
             // Application Services
             services.AddSingleton<ITokenExpirationSettings, TokenExpirationSettings>();
             services.AddScoped<IJwtTokenProvider, JwtTokenProvider>();
+            services.AddSingleton<ITotpService, TotpService>();
             services.AddScoped<ISessionRevocationStore, SessionRevocationStore>();
             services.AddScoped<ICurrentUser, CurrentUser>();
 

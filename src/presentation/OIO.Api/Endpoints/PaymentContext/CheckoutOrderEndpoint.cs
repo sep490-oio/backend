@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -12,9 +13,8 @@ namespace OIO.Api.Endpoints.PaymentContext;
 public class CheckoutOrderEndpoint : IEndpoint
 {
     public sealed record Request(
-        Guid OrderId,
-        string? BankCode,
-        string? ReturnUrl);
+        [Required] Guid OrderId,
+        string? BankCode);
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost(ApiEndpoint.Url.Payments.CheckoutOrder, async (Request request,
@@ -27,8 +27,7 @@ public class CheckoutOrderEndpoint : IEndpoint
                 var command = new CheckoutOrderCommand(
                     OrderId: request.OrderId,
                     IpAddress: ipAddress,
-                    BankCode: request.BankCode,
-                    ReturnUrl: request.ReturnUrl ?? string.Empty
+                    BankCode: request.BankCode
                 );
 
                 var result = await sender.Send(command, cancellationToken);

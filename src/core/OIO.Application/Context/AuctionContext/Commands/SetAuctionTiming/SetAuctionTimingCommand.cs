@@ -85,6 +85,14 @@ internal sealed class SetAuctionTimingCommandHandler
         if (auction.Status != AuctionStatus.Approved)
             return AuctionErrors.Auction.CannotSetTiming;
 
+        if (auction.AuctionType == AuctionType.Sealed && request.AutoExtend)
+        {
+            return Error.Validation(
+                "AutoExtend",
+                "Auction.SealedAutoExtendNotSupported",
+                "Sealed auctions do not support auto-extend.");
+        }
+
         var qualificationResult = QualificationWindow.Create(
             request.QualificationStartAt,
             request.QualificationEndAt);

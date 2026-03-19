@@ -475,19 +475,22 @@ internal sealed class AuctionCollusionDetectionService(
         var matchedPairs = new List<string>();
         var implicatedUsers = new HashSet<Guid>();
         var priorAuctionIds = new HashSet<Guid>();
+        var recentStrongAlerts = await dbContext.Set<MonitoringAlert>()
+            .AsNoTracking()
+            .Where(x => x.EntityType == "Auction" &&
+                        StrongAlertTypes.Contains(x.AlertType) &&
+                        x.CreatedAt >= occurredAt - config.RepeatedPairWindow &&
+                        x.EntityId != auctionId)
+            .Select(x => new { x.EntityId, x.Payload })
+            .ToListAsync(cancellationToken);
 
         foreach (var pairKey in candidatePairs)
         {
-            var priorAuctions = await dbContext.Set<MonitoringAlert>()
-                .AsNoTracking()
-                .Where(x => x.EntityType == "Auction" &&
-                            StrongAlertTypes.Contains(x.AlertType) &&
-                            x.CreatedAt >= occurredAt - config.RepeatedPairWindow &&
-                            x.EntityId != auctionId &&
-                            x.Payload.Contains(pairKey))
+            var priorAuctions = recentStrongAlerts
+                .Where(x => x.Payload.Contains(pairKey, StringComparison.Ordinal))
                 .Select(x => x.EntityId)
                 .Distinct()
-                .ToListAsync(cancellationToken);
+                .ToList();
 
             if (priorAuctions.Count + 1 < config.RepeatedPairThreshold)
                 continue;

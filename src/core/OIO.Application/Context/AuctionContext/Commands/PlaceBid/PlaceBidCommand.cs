@@ -152,17 +152,22 @@ internal sealed class PlaceBidCommandHandler
 
         if (recentAttempts >= threshold)
         {
-            var hasOpenAlert = await _dbContext.Set<MonitoringAlert>()
+            var openAlertPayloads = await _dbContext.Set<MonitoringAlert>()
                 .AsNoTracking()
-                .AnyAsync(
+                .Where(
                     x => x.EntityType == "Auction" &&
                          x.EntityId == request.AuctionId &&
                          x.AlertType == "invalid_bid_burst" &&
                          x.Status == AlertStatus.Open &&
-                         x.CreatedAt >= windowStart &&
-                         (x.Payload.Contains(_currentUser.UserId.Value.ToString()) ||
-                          (!string.IsNullOrWhiteSpace(ipString) && x.Payload.Contains(ipString))),
-                    cancellationToken);
+                         x.CreatedAt >= windowStart)
+                .Select(x => x.Payload)
+                .ToListAsync(cancellationToken);
+
+            var bidderIdString = _currentUser.UserId.Value.ToString();
+            var hasOpenAlert = openAlertPayloads.Any(payload =>
+                payload.Contains(bidderIdString, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrWhiteSpace(ipString) &&
+                 payload.Contains(ipString, StringComparison.OrdinalIgnoreCase)));
 
             if (!hasOpenAlert)
             {

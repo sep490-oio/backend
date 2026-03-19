@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.SubmitSealedBid;
@@ -8,7 +9,7 @@ namespace OIO.Api.Endpoints.AuctionContext.Auctions;
 
 public sealed class SubmitSealedBidEndpoint : IEndpoint
 {
-    public sealed record Request(decimal Amount);
+    public sealed record Request([Required] decimal Amount);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

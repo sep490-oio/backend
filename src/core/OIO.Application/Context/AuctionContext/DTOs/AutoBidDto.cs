@@ -7,7 +7,7 @@ public sealed record AutoBidDto(
     bool IsEnabled,
     MoneyDto MaxAmount,
     MoneyDto CurrentAmount,
-    MoneyDto ReservedAmount,
+    MoneyDto RemainingBudget,
     MoneyDto? IncrementAmount,
     string Status,
     int TotalAutoBids,

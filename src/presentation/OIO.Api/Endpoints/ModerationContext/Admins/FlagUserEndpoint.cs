@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.ModerationContext.Commands.CreateUserRiskFlag;
@@ -8,7 +9,10 @@ namespace OIO.Api.Endpoints.ModerationContext.Admins;
 
 public sealed class FlagUserEndpoint : IEndpoint
 {
-    public sealed record Request(string FlagType, string? Reason, string Severity = "medium");
+    public sealed record Request(
+        [Required] string FlagType,
+        string? Reason = null,
+        string Severity = "medium");
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

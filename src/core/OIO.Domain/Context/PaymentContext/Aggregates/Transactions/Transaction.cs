@@ -1,4 +1,5 @@
 using CSharpFunctionalExtensions;
+using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.Aggregates.PaymentMethods;
@@ -21,6 +22,8 @@ public sealed class Transaction : AggregateRoot<TransactionId>, ICreatedAtEntity
     
     public TransactionNumber TransactionNumber { get; private set; }
     public OrderId? OrderId { get; private set; }
+    public AuctionId? AuctionId { get; private set; }
+    public AuctionBuyNowReservationId? BuyNowReservationId { get; private set; }
     public UserId UserId { get; private set; }
     public PaymentMethodId? PaymentMethodId { get; private set; }
     public TransactionType Type { get; private set; }
@@ -52,7 +55,9 @@ public sealed class Transaction : AggregateRoot<TransactionId>, ICreatedAtEntity
         string currency,
         string? description,
         DateTime nowUtc,
-        OrderId? orderId = null)
+        OrderId? orderId = null,
+        AuctionId? auctionId = null,
+        AuctionBuyNowReservationId? buyNowReservationId = null)
     {
         var transaction = new Transaction
         {
@@ -69,6 +74,8 @@ public sealed class Transaction : AggregateRoot<TransactionId>, ICreatedAtEntity
             Description = description,
             CreatedAt = nowUtc,
             OrderId = orderId,
+            AuctionId = auctionId,
+            BuyNowReservationId = buyNowReservationId,
         };
 
         return Result.Success<Transaction, Error>(transaction);
@@ -123,6 +130,14 @@ public sealed class Transaction : AggregateRoot<TransactionId>, ICreatedAtEntity
             Id, UserId, Amount.Amount, Currency, Type.Id, processedAt));
 
         return UnitResult.Success<Error>();
+    }
+
+    /// <summary>
+    /// Liên kết transaction với payment method đã dùng.
+    /// </summary>
+    public void AssociatePaymentMethod(PaymentMethodId paymentMethodId)
+    {
+        PaymentMethodId = paymentMethodId;
     }
 
     /// <summary>

@@ -20,11 +20,25 @@ public sealed class VnPayConfig
     public string ApiUrl { get; set; } = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
 
     /// <summary>URL return sau khi thanh toán (frontend redirect)</summary>
-    public string ReturnUrl { get; set; } = string.Empty;
+    public string ReturnPath { get; set; } = string.Empty;
 
     /// <summary>URL IPN callback (server-to-server)</summary>
-    public string IpnUrl { get; set; } = string.Empty;
+    public string IpnPath { get; set; } = string.Empty;
 
     /// <summary>Phiên bản API VNPay</summary>
     public string Version { get; set; } = "2.1.0";
+
+    // ── Token Payment URLs ──────────────────────────────────────────────────
+
+    /// <summary>URL tạo token không thanh toán (vnp_command = token_create)</summary>
+    public string TokenCreateUrl { get; set; } = "https://sandbox.vnpayment.vn/token_ui/create-token.html";
+
+    /// <summary>URL thanh toán + tạo token cùng lúc (vnp_command = pay_and_create)</summary>
+    public string PayAndCreateUrl { get; set; } = "https://sandbox.vnpayment.vn/token_ui/pay-create-token.html";
+
+    /// <summary>URL thanh toán bằng token đã lưu (vnp_command = token_pay)</summary>
+    public string TokenPayUrl { get; set; } = "https://sandbox.vnpayment.vn/token_ui/payment-token.html";
+
+    /// <summary>URL xóa token (vnp_command = token_remove)</summary>
+    public string TokenRemoveUrl { get; set; } = "https://sandbox.vnpayment.vn/token_ui/remove-token.html";
 }

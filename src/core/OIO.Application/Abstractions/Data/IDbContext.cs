@@ -32,4 +32,9 @@ public interface IDbContext
         string sql,
         IEnumerable<SqlParameter> parameters,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Detach tất cả tracked entities — dùng cho retry sau concurrency conflict.
+    /// </summary>
+    void DetachAll();
 }

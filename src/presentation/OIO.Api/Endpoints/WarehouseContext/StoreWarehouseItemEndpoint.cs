@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using System.ComponentModel.DataAnnotations;
+using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.WarehouseContext.Commands.StoreWarehouseItem;
 using OIO.Application.Context.WarehouseContext.DTOs;
@@ -8,7 +9,7 @@ namespace OIO.Api.Endpoints.WarehouseContext;
 
 public sealed class StoreWarehouseItemEndpoint : IEndpoint
 {
-    public sealed record Request(Guid StorageLocationId);
+    public sealed record Request([Required] Guid StorageLocationId);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

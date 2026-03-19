@@ -35,9 +35,7 @@ public sealed class AutoBidBudget : ValueObject
     // ── Computed ──
     public Money Remaining => Money.Of(MaxAmount - CurrentAmount - ReservedAmount, Currency);
     public Money UsedTotal => Money.Of(CurrentAmount + ReservedAmount, Currency);
-    public bool IsExhausted => IncrementAmount.HasValue
-        ? Remaining < Increment!
-        : Remaining.IsZero();
+    public bool IsExhausted => CurrentAmount >= MaxAmount;
     public decimal UsagePercentage => MaxAmount > 0
         ? (CurrentAmount + ReservedAmount) / MaxAmount * 100
         : 0;
@@ -111,7 +109,7 @@ public sealed class AutoBidBudget : ValueObject
             currency: Currency);
     }
 
-    /// <summary>Reserve amount for next potential bid</summary>
+    /// <summary>Reserve amount for next potential bid. Currently unused — kept for future concurrent bidding support.</summary>
     public Result<AutoBidBudget, Error> WithReservation(Money amount)
     {
         var check = AutoBidBudget.Check(isInvariant: true)
@@ -181,7 +179,7 @@ public sealed class AutoBidBudget : ValueObject
             .GreaterThanOrEqual(CurrentPrice)
             .Field(newIncrement, x => x.Increment)
             .WhenHasValue(x => x
-                // .Positive()
+                .GreaterThan(Money.Zero(newMax.Currency))
                 .LessThanOrEqual(newMax))
             .ToUnitResult();
 

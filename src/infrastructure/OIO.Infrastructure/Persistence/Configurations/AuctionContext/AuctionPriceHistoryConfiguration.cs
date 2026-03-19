@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
+using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 
 namespace OIO.Infrastructure.Persistence.Configurations.AuctionContext;
@@ -40,6 +41,14 @@ internal sealed class AuctionPriceHistoryConfiguration : IEntityTypeConfiguratio
                 currencyBuilder.Ignore(x => x.Symbol);
             });
         });
+
+        builder.Property(ph => ph.Type)
+            .HasColumnName("type")
+            .HasMaxLength(64)
+            .IsRequired()
+            .HasConversion(
+                x => x.Id,
+                x => AuctionPriceHistoryType.FromId(x).Value);
 
         builder.Property(ph => ph.BidId)
             .HasColumnName("bid_id")

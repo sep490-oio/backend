@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.RelistAuction;
@@ -9,10 +10,15 @@ namespace OIO.Api.Endpoints.AuctionContext.Auctions;
 public sealed class RelistAuctionEndpoint : IEndpoint
 {
     public sealed record Request(
-        DateTime QualificationStartAt,
-        DateTime QualificationEndAt,
-        DateTime StartAt,
-        DateTime EndAt,
+        [Required] DateTime QualificationStartAt,
+        [Required] DateTime QualificationEndAt,
+        [Required] DateTime StartAt,
+        [Required] DateTime EndAt,
+        decimal? StartingPrice = null,
+        decimal? BidIncrement = null,
+        decimal? ReservePrice = null,
+        decimal? BuyNowPrice = null,
+        string? Currency = null,
         string? Reason = null);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
@@ -30,6 +36,11 @@ public sealed class RelistAuctionEndpoint : IEndpoint
                         request.QualificationEndAt,
                         request.StartAt,
                         request.EndAt,
+                        request.StartingPrice,
+                        request.BidIncrement,
+                        request.ReservePrice,
+                        request.BuyNowPrice,
+                        request.Currency,
                         request.Reason),
                     ct);
 

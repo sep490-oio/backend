@@ -4,7 +4,6 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
-using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Media;
 using OIO.Application.Abstractions.Messaging;
@@ -35,7 +34,7 @@ namespace OIO.Application.Context.WarehouseContext.Commands.InspectWarehouseItem
 
 public sealed record InspectWarehouseItemCommand(
     Guid InboundShipmentId,
-    string ConditionId,
+    string Condition,
     string? InspectionNotes,
     IReadOnlyList<Guid> InspectionMediaUploadIds
 ) : ICommand<WarehouseInspectionDto>, IHasValidate
@@ -46,8 +45,9 @@ public sealed record InspectWarehouseItemCommand(
             .WithOwnerName("InspectWarehouseItem")
             .Field(InboundShipmentId)
             .NotEmptyGuid()
-            .Field(ConditionId)
-            .NotWhiteSpace();
+            .Field(Condition)
+            .NotWhiteSpace()
+            .InSet(WarehouseItemCondition.All.Select(c => c.Id));
     }
 }
 
@@ -94,9 +94,9 @@ internal sealed class InspectWarehouseItemCommandHandler(
         if (item is null)
             return Error.NotFound("Item.NotFound", $"Item '{shipment.ItemId}' was not found.");
 
-        var conditionMaybe = WarehouseItemCondition.FromId(request.ConditionId);
+        var conditionMaybe = WarehouseItemCondition.FromId(request.Condition);
         if (conditionMaybe.HasNoValue)
-            return Error.Conflict("Warehouse.InvalidCondition", $"Unknown condition: '{request.ConditionId}'.");
+            return Error.Conflict("Warehouse.InvalidCondition", $"Unknown condition: '{request.Condition}'.");
 
         var mediaUploadIds = request.InspectionMediaUploadIds
             .Select(MediaUploadId.From)

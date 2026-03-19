@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.CreateAuction;
@@ -10,8 +11,8 @@ public sealed class CreateAuctionEndpoint : IEndpoint
 {
     public sealed record Request(
         // Item info
-        string Title,
-        string Condition,
+        [Required] string Title,
+        [Required] string Condition,
         Guid? CategoryId = null,
         string? Description = null,
         int Quantity = 1,

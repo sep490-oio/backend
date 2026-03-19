@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Api.Extensions;
@@ -12,10 +13,10 @@ namespace OIO.Api.Endpoints.PaymentContext.VnPay;
 public sealed class RefundVnPayEndpoint : IEndpoint
 {
     public sealed record Request(
-        string OriginalTransactionRef,
-        string OriginalVnPayTransactionNo,
-        decimal Amount,
-        string Reason);
+        [Required] string OriginalTransactionRef,
+        [Required] string OriginalVnPayTransactionNo,
+        [Required] decimal Amount,
+        [Required] string Reason);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

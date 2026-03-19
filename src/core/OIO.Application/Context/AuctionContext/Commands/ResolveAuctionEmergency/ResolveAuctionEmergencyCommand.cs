@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
@@ -19,7 +20,7 @@ public sealed record ResolveAuctionEmergencyCommand(
     Guid AuctionId,
     Guid EmergencyId,
     string Status,
-    string Payload = "{}") : ICommand<AuctionEmergencyDto>, IHasValidate
+    object Payload) : ICommand<AuctionEmergencyDto>, IHasValidate
 {
     public ViolationsError Validate()
     {
@@ -72,7 +73,7 @@ internal sealed class ResolveAuctionEmergencyCommandHandler
         var result = auction.ResolveEmergency(
             AuctionEmergencyId.From(request.EmergencyId),
             status.Value,
-            request.Payload,
+            JsonSerializer.Serialize(request.Payload),
             _clock.UtcNow);
 
         if (result.IsFailure)

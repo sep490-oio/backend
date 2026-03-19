@@ -4,6 +4,7 @@ using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
+using OIO.Domain.Context.Shared.Enums;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 
 namespace OIO.Infrastructure.Persistence.Configurations.AuctionContext;
@@ -43,43 +44,30 @@ internal sealed class AuctionBuyNowReservationConfiguration : IEntityTypeConfigu
                 x => x.HasValue ? x.Value.Value : default(Guid?),
                 x => x.HasValue ? OrderId.From(x.Value) : null);
 
-        builder.ComplexProperty(x => x.BuyNowPrice, money =>
-        {
-            money.Property(m => m.Amount)
-                .HasColumnName("buy_now_price")
-                .HasPrecision(18, 2)
-                .IsRequired();
+        builder.Property(x => x.BuyNowAmount)
+            .HasColumnName("buy_now_price")
+            .HasPrecision(18, 2)
+            .IsRequired();
 
-            money.ComplexProperty(m => m.Currency, currency =>
-            {
-                currency.Property(c => c.Id)
-                    .HasColumnName("currency")
-                    .HasMaxLength(3)
-                    .IsRequired();
+        builder.Property(x => x.DepositAppliedAmountValue)
+            .HasColumnName("deposit_applied_amount")
+            .HasPrecision(18, 2)
+            .IsRequired();
 
-                currency.Ignore(x => x.Symbol);
-            });
-        });
+        builder.Property(x => x.GatewayAmountDueValue)
+            .HasColumnName("gateway_amount_due")
+            .HasPrecision(18, 2)
+            .IsRequired();
 
-        builder.ComplexProperty(x => x.DepositAppliedAmount, money =>
-        {
-            money.Property(m => m.Amount)
-                .HasColumnName("deposit_applied_amount")
-                .HasPrecision(18, 2)
-                .IsRequired();
+        builder.Property(x => x.Currency)
+            .HasColumnName("currency")
+            .HasMaxLength(3)
+            .HasConversion(x => x.Id, x => Currency.FromId(x).Value)
+            .IsRequired();
 
-            money.Ignore(m => m.Currency);
-        });
-
-        builder.ComplexProperty(x => x.GatewayAmountDue, money =>
-        {
-            money.Property(m => m.Amount)
-                .HasColumnName("gateway_amount_due")
-                .HasPrecision(18, 2)
-                .IsRequired();
-
-            money.Ignore(m => m.Currency);
-        });
+        builder.Ignore(x => x.BuyNowPrice);
+        builder.Ignore(x => x.DepositAppliedAmount);
+        builder.Ignore(x => x.GatewayAmountDue);
 
         builder.ComplexProperty(x => x.Status, status =>
         {

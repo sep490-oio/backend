@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.DTOs;
@@ -8,7 +9,7 @@ namespace OIO.Api.Endpoints.ModerationContext.Admins;
 
 public sealed class CancelInvalidBidEndpoint : IEndpoint
 {
-    public sealed record Request(string? Reason);
+    public sealed record Request([Required] string? Reason);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

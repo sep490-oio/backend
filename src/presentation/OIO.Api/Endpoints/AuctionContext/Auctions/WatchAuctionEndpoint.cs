@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.WatchAuction;
@@ -8,8 +9,8 @@ namespace OIO.Api.Endpoints.AuctionContext.Auctions;
 public sealed class WatchAuctionEndpoint : IEndpoint
 {
     public sealed record Request(
-        bool NotifyOnBid = true,
-        bool NotifyOnEnd = true);
+        [Required] bool NotifyOnBid = true,
+        [Required] bool NotifyOnEnd = true);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

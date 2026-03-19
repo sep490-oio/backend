@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.ModerationContext.Commands.CreateReport;
@@ -8,11 +9,11 @@ namespace OIO.Api.Endpoints.ModerationContext.Reports;
 public sealed class CreateReportEndpoint : IEndpoint
 {
     public sealed record Request(
-        string EntityType,
-        Guid EntityId,
-        string ReasonCode,
-        string? Description,
-        string? Attachments);
+        [Required] string EntityType,
+        [Required] Guid EntityId,
+        [Required] string ReasonCode,
+        string? Description = null,
+        string? Attachments = null);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

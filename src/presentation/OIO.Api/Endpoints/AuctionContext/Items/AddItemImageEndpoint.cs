@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.AddMediaToItem;
@@ -8,8 +9,8 @@ namespace OIO.Api.Endpoints.AuctionContext.Items;
 public sealed class AddMediaToItemEndpoint : IEndpoint
 {
     public sealed record Request(
-        Guid MediaUploadId,
-        bool IsPrimary = false,
+        [Required] Guid MediaUploadId,
+        [Required] bool IsPrimary = false,
         int? SortOrder = null);
 
     public void MapEndpoint(IEndpointRouteBuilder app)

@@ -25,6 +25,12 @@ internal sealed class TransactionConfiguration : IEntityTypeConfiguration<Transa
         builder.Property(t => t.OrderId)
             .HasColumnName("order_id");
 
+        builder.Property(t => t.AuctionId)
+            .HasColumnName("auction_id");
+
+        builder.Property(t => t.BuyNowReservationId)
+            .HasColumnName("buy_now_reservation_id");
+
         builder.Property(t => t.UserId)
             .HasColumnName("user_id")
             .IsRequired();
@@ -131,5 +137,11 @@ internal sealed class TransactionConfiguration : IEntityTypeConfiguration<Transa
 
         builder.HasIndex(t => t.OrderId)
             .HasDatabaseName("idx_transactions_order");
+
+        builder.HasIndex(t => t.AuctionId)
+            .HasDatabaseName("idx_transactions_auction");
+
+        builder.HasIndex(t => t.BuyNowReservationId)
+            .HasDatabaseName("idx_transactions_buy_now_reservation");
     }
 }

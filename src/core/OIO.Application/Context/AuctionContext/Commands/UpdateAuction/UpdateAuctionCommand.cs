@@ -112,6 +112,16 @@ internal sealed class UpdateAuctionCommandHandler
         if (currency.HasNoValue)
             return Currency.Errors.NotSupported;
 
+        var requestedAutoExtend = request.AutoExtend ?? auction.Info?.AutoExtend ?? true;
+        if (auctionType.Value == OIO.Domain.Context.AuctionContext.Enums.AuctionType.Sealed &&
+            requestedAutoExtend)
+        {
+            return Error.Validation(
+                "AutoExtend",
+                "Auction.SealedAutoExtendNotSupported",
+                "Sealed auctions do not support auto-extend.");
+        }
+
         var pricingResult = AuctionPricing.Create(
             startingPrice: request.StartingPrice ?? auction.Pricing.StartingAmount,
             bidIncrement: request.BidIncrement ?? auction.Pricing.BidIncrementAmount,

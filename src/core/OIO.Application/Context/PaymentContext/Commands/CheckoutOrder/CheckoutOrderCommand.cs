@@ -1,12 +1,10 @@
 using System.Net;
 using CSharpFunctionalExtensions;
-using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.PaymentContext.Commands.CreateVnPayPaymentUrl;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
-// using OIO.Domain.Context.PaymentContext.Enums;  // Not needed here, PaymentPurpose is in CreateVnPayPaymentUrl
 using OIO.Application.Abstractions.Payment;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.Errors;
@@ -17,8 +15,7 @@ namespace OIO.Application.Context.PaymentContext.Commands.CheckoutOrder;
 public sealed record CheckoutOrderCommand(
     Guid OrderId,
     IPAddress IpAddress,
-    string? BankCode = null,
-    string ReturnUrl = "") : ICommand<CheckoutOrderResponse>;
+    string? BankCode = null) : ICommand<CheckoutOrderResponse>;
     
 public sealed record CheckoutOrderResponse(
     Guid TransactionId,
@@ -72,7 +69,7 @@ internal sealed class CheckoutOrderCommandHandler
         var createUrlCommand = new CreateVnPayPaymentUrlCommand(
             Amount: order.Pricing.TotalAmount.Amount,
             Currency: order.Currency,
-            Purpose: PaymentPurpose.OrderPayment,
+            Purpose: PaymentPurpose.OrderPayment.Id,
             IpAddress: request.IpAddress,
             Description: $"OrderPayment - Order #{order.OrderNumber.Value}",
             BankCode: request.BankCode,

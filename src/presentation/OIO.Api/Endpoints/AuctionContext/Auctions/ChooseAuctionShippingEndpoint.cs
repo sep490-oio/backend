@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.ChooseAuctionShipping;
@@ -8,14 +9,14 @@ namespace OIO.Api.Endpoints.AuctionContext.Auctions;
 public sealed class ChooseAuctionShippingEndpoint : IEndpoint
 {
     public sealed record Request(
-        string SenderName,
-        string SenderPhone,
-        string SenderAddress,
-        string SenderWard,
-        string SenderDistrict,
-        string SenderProvince,
-        int WeightGrams,
-        decimal InsuranceValue,
+        [Required] string SenderName,
+        [Required] string SenderPhone,
+        [Required] string SenderAddress,
+        [Required] string SenderWard,
+        [Required] string SenderDistrict,
+        [Required] string SenderProvince,
+        [Required] int WeightGrams,
+        [Required] decimal InsuranceValue,
         string? ProviderCode = null,
         string? SenderCarrierAddressDataJson = null,
         int? LengthCm = null,

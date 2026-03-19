@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.ModerationContext.Commands.ResolveReport;
@@ -8,7 +9,9 @@ namespace OIO.Api.Endpoints.ModerationContext.Admins;
 
 public sealed class ResolveReportEndpoint : IEndpoint
 {
-    public sealed record Request(bool Dismissed, string? ResolutionNotes);
+    public sealed record Request(
+        [Required] bool Dismissed,
+        string? ResolutionNotes = null);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

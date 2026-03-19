@@ -7,6 +7,7 @@ using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.PaymentContext.Aggregates.PaymentMethods;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.PaymentContext.ValueObjects;
+using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.PaymentContext.Commands.PaymentMethods;
@@ -19,7 +20,17 @@ public sealed record AddPaymentMethodCommand(
     int? ExpiryYear,
     string? HolderName,
     string? TokenReference,
-    bool IsDefault) : ICommand<Guid>;
+    bool IsDefault) : ICommand<Guid>, IHasValidate
+{
+    public ViolationsError Validate()
+    {
+        return AddPaymentMethodCommand.Check()
+            .WithOwnerName("AddPaymentMethod")
+            .Field(Type)
+            .NotWhiteSpace()
+            .InSet(PaymentMethodType.All.Select(t => t.Id));
+    }
+}
 
 internal sealed class AddPaymentMethodCommandHandler : ICommandHandler<AddPaymentMethodCommand, Guid>
 {

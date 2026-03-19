@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using System.ComponentModel.DataAnnotations;
+using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.WarehouseContext.Commands.InspectWarehouseItem;
 using OIO.Application.Context.WarehouseContext.DTOs;
@@ -9,7 +10,7 @@ namespace OIO.Api.Endpoints.WarehouseContext;
 public sealed class InspectWarehouseItemEndpoint : IEndpoint
 {
     public sealed record Request(
-        string ConditionId,
+        [Required] string Condition,
         string? InspectionNotes,
         IReadOnlyList<Guid> InspectionMediaUploadIds);
 
@@ -23,7 +24,7 @@ public sealed class InspectWarehouseItemEndpoint : IEndpoint
             {
                 var command = new InspectWarehouseItemCommand(
                     shipmentId,
-                    request.ConditionId,
+                    request.Condition,
                     request.InspectionNotes,
                     request.InspectionMediaUploadIds);
 

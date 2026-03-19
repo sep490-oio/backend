@@ -31,7 +31,13 @@ public struct AutoBidGrain
     public DateTime CreatedAt { get; init; }
     [Id(12)]
     public DateTime? ModifiedAt { get; init; }
-    
+
+    /// <summary>
+    /// MaxAmount trước khi update (0 nếu mới tạo). Dùng để tính wallet holdDelta.
+    /// </summary>
+    [Id(13)]
+    public decimal PreviousMaxAmount { get; init; }
+
     public static AutoBidGrain From(AutoBid autoBid)
     {
         return new AutoBidGrain

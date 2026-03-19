@@ -8,19 +8,21 @@ namespace OIO.Application.Abstractions.Payment;
 /// <summary>
 /// Mục đích thanh toán, dùng để phân loại luồng xử lý khi VNPay callback.
 /// </summary>
-public enum PaymentPurpose
+public sealed class PaymentPurpose : EnumValueObject<PaymentPurpose>
 {
     /// <summary>Đặt cọc đấu giá (VNPay → Wallet → AuctionDeposit)</summary>
-    AuctionDeposit,
+    public static readonly PaymentPurpose AuctionDeposit = new("auction_deposit");
 
     /// <summary>Thanh toán đơn hàng (VNPay → Transaction → Escrow)</summary>
-    OrderPayment,
+    public static readonly PaymentPurpose OrderPayment = new("order_payment");
 
     /// <summary>Thanh toán buy-now đấu giá (VNPay → reservation → sold)</summary>
-    AuctionBuyNow,
+    public static readonly PaymentPurpose AuctionBuyNow = new("auction_buy_now");
 
     /// <summary>Nạp tiền vào ví (VNPay → Wallet)</summary>
-    WalletTopUp,
+    public static readonly PaymentPurpose WalletTopUp = new("wallet_top_up");
+        
+    private PaymentPurpose(string id) : base(id){}
 }
 
 public sealed class CreatePaymentUrlRequest
@@ -82,8 +84,57 @@ public sealed class PaymentCallbackResult
     /// <summary>Thời gian thanh toán (vnp_PayDate)</summary>
     public string? PayDate { get; init; }
 
+    /// <summary>VNPay token (trả về từ pay_and_create / token_create)</summary>
+    public string? VnPayToken { get; init; }
+
+    /// <summary>Số thẻ masked (vnp_card_number, VD: 970419xxxxxxxxx2198)</summary>
+    public string? MaskedCardNumber { get; init; }
+
     /// <summary>Raw data từ VNPay dưới dạng JSON</summary>
     public required string RawResponseJson { get; init; }
+}
+
+// ── Token Payment DTOs ──────────────────────────────────────────────────────
+
+/// <summary>
+/// Request tạo URL thanh toán + tạo token cùng lúc (pay_and_create),
+/// hoặc chỉ tạo token (token_create).
+/// </summary>
+public sealed class CreateTokenPaymentUrlRequest
+{
+    public required string TransactionRef { get; init; }
+    public required long Amount { get; init; }
+    public required string OrderDescription { get; init; }
+    public required string AppUserId { get; init; }
+    public required string IpAddress { get; init; }
+    public string? CardType { get; init; }
+    public string Locale { get; init; } = "vn";
+}
+
+/// <summary>
+/// Request thanh toán bằng token đã lưu (token_pay).
+/// </summary>
+public sealed class TokenPaymentUrlRequest
+{
+    public required string TransactionRef { get; init; }
+    public required long Amount { get; init; }
+    public required string OrderDescription { get; init; }
+    public required string AppUserId { get; init; }
+    public required string Token { get; init; }
+    public required string IpAddress { get; init; }
+    public string Locale { get; init; } = "vn";
+}
+
+/// <summary>
+/// Request xóa token trên VNPay.
+/// </summary>
+public sealed class RemoveTokenRequest
+{
+    public required string AppUserId { get; init; }
+    public required string Token { get; init; }
+    public required string TransactionRef { get; init; }
+    public required string Description { get; init; }
+    public required string IpAddress { get; init; }
 }
 
 public sealed class RefundRequest
@@ -145,4 +196,26 @@ public interface IPaymentGatewayService
     /// Hoàn tiền qua VNPay.
     /// </summary>
     Task<Result<RefundResult, Error>> RefundAsync(RefundRequest request, CancellationToken ct = default);
+
+    // ── Token Payment Methods ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Tạo URL thanh toán + tạo token cùng lúc (vnp_command = pay_and_create).
+    /// </summary>
+    Result<CreatePaymentUrlResult, Error> CreatePayAndCreateTokenUrl(CreateTokenPaymentUrlRequest request);
+
+    /// <summary>
+    /// Tạo URL thanh toán bằng token đã lưu (vnp_command = token_pay).
+    /// </summary>
+    Result<CreatePaymentUrlResult, Error> CreateTokenPayUrl(TokenPaymentUrlRequest request);
+
+    /// <summary>
+    /// Tạo URL chỉ link thẻ, không thanh toán (vnp_command = token_create).
+    /// </summary>
+    Result<CreatePaymentUrlResult, Error> CreateTokenOnlyUrl(CreateTokenPaymentUrlRequest request);
+
+    /// <summary>
+    /// Xóa token trên VNPay (vnp_command = token_remove).
+    /// </summary>
+    Task<Result<RefundResult, Error>> RemoveTokenAsync(RemoveTokenRequest request, CancellationToken ct = default);
 }

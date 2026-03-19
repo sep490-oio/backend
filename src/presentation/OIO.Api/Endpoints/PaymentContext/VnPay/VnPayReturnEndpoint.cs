@@ -22,23 +22,10 @@ public sealed class VnPayReturnEndpoint : IEndpoint
                 var queryParams = VnPayHelper.ParseQueryString(httpContext.Request.QueryString.Value ?? "");
 
                 var command = new ProcessVnPayCallbackCommand(queryParams);
+                
                 var result = await sender.Send(command, ct);
 
-                if (result.IsFailure)
-                {
-                    return Results.BadRequest(new { success = false, message = result.Error.Message });
-                }
-
-                var response = result.Value;
-
-                // Trả về kết quả cho frontend hiển thị
-                return Results.Ok(new
-                {
-                    success = response.IsSuccess,
-                    transactionRef = response.TransactionRef,
-                    responseCode = response.ResponseCode,
-                    message = response.Message,
-                });
+                return result.ToOkHttpResult();
             })
             .WithName(ApiEndpoint.Names.VnPay.Return)
             .WithTags(ApiEndpoint.Tags.Payments)

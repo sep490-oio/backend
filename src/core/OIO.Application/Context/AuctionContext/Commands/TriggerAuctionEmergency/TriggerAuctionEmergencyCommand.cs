@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CSharpFunctionalExtensions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -31,7 +32,7 @@ public sealed record TriggerAuctionEmergencyCommand(
     Guid AuctionId,
     string TriggerSource,
     string Reason,
-    string Payload = "{}") : ICommand<AuctionEmergencyDto>, IHasValidate
+    object Payload) : ICommand<AuctionEmergencyDto>, IHasValidate
 {
     public ViolationsError Validate()
     {
@@ -120,7 +121,7 @@ internal sealed class TriggerAuctionEmergencyCommandHandler
             _currentUser.UserId,
             request.TriggerSource,
             request.Reason,
-            request.Payload,
+            JsonSerializer.Serialize(request.Payload),
             _clock.UtcNow);
 
         if (emergencyResult.IsFailure)

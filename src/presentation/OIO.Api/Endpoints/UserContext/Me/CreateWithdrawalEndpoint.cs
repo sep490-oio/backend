@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.PaymentContext.Commands.Withdrawals;
@@ -8,10 +9,10 @@ namespace OIO.Api.Endpoints.UserContext.Me;
 public sealed class CreateWithdrawalEndpoint : IEndpoint
 {
     public sealed record Request(
-        decimal Amount,
-        string BankName,
-        string AccountNumber,
-        string AccountHolder);
+        [Required] decimal Amount,
+        [Required] string BankName,
+        [Required] string AccountNumber,
+        [Required] string AccountHolder);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

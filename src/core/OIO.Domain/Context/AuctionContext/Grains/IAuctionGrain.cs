@@ -41,5 +41,19 @@ public interface IAuctionGrain : IGrainWithGuidKey
         MoneyGrain maxAmount,
         MoneyGrain? incrementAmount,
         CancellationToken cancellationToken = default);
+
+    Task<UnitResult<Error>> PauseAutoBidAsync(
+        Guid bidderId,
+        CancellationToken cancellationToken = default);
+
+    Task<UnitResult<Error>> ResumeAutoBidAsync(
+        Guid bidderId,
+        CancellationToken cancellationToken = default);
+
+    Task<UnitResult<Error>> EndAuctionAsync(
+        Guid? revealerId,
+        IReadOnlyCollection<RevealedSealedBidAmountGrain>? revealedSealedBids,
+        CancellationToken cancellationToken = default);
+
     Task<Result<AuctionSnapshotGrain, Error>> GetSnapshotAsync(CancellationToken cancellationToken = default);
 }

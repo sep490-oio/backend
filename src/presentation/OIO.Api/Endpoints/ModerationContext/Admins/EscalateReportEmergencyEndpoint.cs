@@ -8,7 +8,7 @@ namespace OIO.Api.Endpoints.ModerationContext.Admins;
 
 public sealed class EscalateReportEmergencyEndpoint : IEndpoint
 {
-    public sealed record Request(string? ReasonOverride);
+    public sealed record Request(string? ReasonOverride = null);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

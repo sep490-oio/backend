@@ -89,10 +89,27 @@ internal sealed class LoginUserCommandHandler
 
         // Successful login
         var successR = user.RecordSuccessfulLogin(request.IpAddress, request.UserAgent, nowUtc);
-        
-        if (successR.IsFailure) 
+
+        if (successR.IsFailure)
             return successR.Error;
-        
+
+        // 2FA check
+        if (user.TwoFactorEnabled && user.TwoFactorProvider == TwoFactorProvider.Totp)
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            // Generate limited 2FA token
+            var twoFactorToken = _tokenProvider.GenerateTwoFactorJwt(user.Id, nowUtc);
+
+            return new AuthTokenDto(
+                AccessToken: twoFactorToken,
+                RefreshToken: string.Empty,
+                AccessTokenExpiresAt: nowUtc.AddMinutes(3),
+                RefreshTokenExpiresAt: DateTime.MinValue,
+                Session: null,
+                RequiresTwoFactor: true);
+        }
+
         // Create token family + refresh token
         (_, isFailure,var session, error) = user.CreateSession(
             deviceId: request.DeviceId, 

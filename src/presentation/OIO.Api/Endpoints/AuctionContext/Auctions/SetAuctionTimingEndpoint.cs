@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.SetAuctionTiming;
@@ -8,12 +9,12 @@ namespace OIO.Api.Endpoints.AuctionContext.Auctions;
 public sealed class SetAuctionTimingEndpoint : IEndpoint
 {
     public sealed record Request(
-        DateTime StartTime,
-        DateTime EndTime,
-        DateTime QualificationStartAt,
-        DateTime QualificationEndAt,
-        bool AutoExtend = true,
-        int ExtensionMinutes = 5);
+        [Required] DateTime StartTime,
+        [Required] DateTime EndTime,
+        [Required] DateTime QualificationStartAt,
+        [Required] DateTime QualificationEndAt,
+        [Required] bool AutoExtend = true,
+        [Required] int ExtensionMinutes = 5);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

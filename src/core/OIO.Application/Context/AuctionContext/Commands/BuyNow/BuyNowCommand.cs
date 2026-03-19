@@ -60,7 +60,7 @@ internal sealed class BuyNowCommandHandler
             new CreateVnPayPaymentUrlCommand(
                 Amount: reservation.GatewayAmountDue.Amount,
                 Currency: reservation.GatewayAmountDue.Currency,
-                Purpose: PaymentPurpose.AuctionBuyNow,
+                Purpose: PaymentPurpose.AuctionBuyNow.Id,
                 IpAddress: request.IpAddress ?? IPAddress.Loopback,
                 Description: $"AuctionBuyNow - Auction #{request.AuctionId}",
                 AuctionId: request.AuctionId,

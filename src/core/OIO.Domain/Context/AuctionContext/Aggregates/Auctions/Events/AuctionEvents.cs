@@ -197,3 +197,10 @@ public sealed record AuctionTerminatedEvent(
     string Reason,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
+
+public sealed record AutoBidCascadeCappedEvent(
+    string AuctionId,
+    int TotalOperations,
+    int RemainingEligibleAutoBids,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);

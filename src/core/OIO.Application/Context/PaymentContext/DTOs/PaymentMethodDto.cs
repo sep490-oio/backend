@@ -10,4 +10,7 @@ public sealed record PaymentMethodDto(
     string? HolderName,
     bool IsDefault,
     bool IsActive,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string? MaskedCardNumber = null,
+    string? VnPayCardType = null,
+    string? BankCode = null);

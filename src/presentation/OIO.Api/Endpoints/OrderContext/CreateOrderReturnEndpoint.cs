@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.OrderContext.Commands.RequestOrderReturn;
@@ -7,7 +8,9 @@ namespace OIO.Api.Endpoints.OrderContext;
 
 public sealed class CreateOrderReturnEndpoint : IEndpoint
 {
-    public sealed record Request(string ReasonCode, string? Description);
+    public sealed record Request(
+        [Required] string ReasonCode,
+        string? Description = null);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

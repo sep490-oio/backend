@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using System.ComponentModel.DataAnnotations;
+using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.CreateCategory;
 using OIO.Domain.AppDefinitions;
@@ -8,8 +9,8 @@ namespace OIO.Api.Endpoints.AuctionContext.Categories;
 public sealed class CreateCategoryEndpoint : IEndpoint
 {
     public sealed record Request(
-        string Name,
-        string Slug,
+        [Required] string Name,
+        [Required] string Slug,
         Guid? ParentId = null,
         string? Description = null,
         Guid? MediaUploadId = null,

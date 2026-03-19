@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.OrderContext.Commands.ShipOrderReturn;
@@ -7,7 +8,9 @@ namespace OIO.Api.Endpoints.OrderContext;
 
 public sealed class ShipOrderReturnEndpoint : IEndpoint
 {
-    public sealed record Request(string ProviderCode, string TrackingNumber);
+    public sealed record Request(
+        [Required] string ProviderCode,
+        [Required] string TrackingNumber);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

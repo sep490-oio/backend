@@ -65,6 +65,29 @@ internal sealed class JwtTokenProvider : IJwtTokenProvider
         var rawToken = Convert.ToBase64String(randomBytes);
         return rawToken;
     }
-    
-    
+
+    public string GenerateTwoFactorJwt(UserId userId, DateTime nowUtc)
+    {
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, userId.ToString()),
+            new(JwtRegisteredClaimNames.Jti, $"{Guid.CreateVersion7()}"),
+            new("purpose", "2fa_verification"),
+            new(JwtRegisteredClaimNames.Iat,
+                new DateTimeOffset(nowUtc).ToUnixTimeSeconds().ToString(),
+                ClaimValueTypes.Integer64)
+        };
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.SecretKey));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var token = new JwtSecurityToken(
+            issuer: _jwtOptions.Issuer,
+            audience: _jwtOptions.Audience,
+            claims: claims,
+            expires: nowUtc.AddMinutes(3), // Short-lived 2FA token
+            signingCredentials: credentials);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
 }

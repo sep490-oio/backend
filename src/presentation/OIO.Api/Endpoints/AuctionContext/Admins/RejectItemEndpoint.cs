@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.RejectItem;
@@ -7,7 +8,7 @@ namespace OIO.Api.Endpoints.AuctionContext.Admins;
 
 public sealed class RejectItemEndpoint : IEndpoint
 {
-    public sealed record Request(string Reason);
+    public sealed record Request([Required]string Reason);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

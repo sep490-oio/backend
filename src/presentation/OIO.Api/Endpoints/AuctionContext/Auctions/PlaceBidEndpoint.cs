@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Api.Extensions;
@@ -10,7 +11,9 @@ namespace OIO.Api.Endpoints.AuctionContext.Auctions;
 
 public sealed class PlaceBidEndpoint : IEndpoint
 {
-    public sealed record Request(decimal Amount, string Currency = "VND");
+    public sealed record Request(
+        [Required] decimal Amount,
+        [Required] string Currency = "VND");
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

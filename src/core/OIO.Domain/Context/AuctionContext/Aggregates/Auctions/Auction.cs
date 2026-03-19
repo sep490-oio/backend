@@ -118,7 +118,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             nowUtc: nowUtc);
 
         auction._priceHistories.Add(
-            AuctionPriceHistory.Create(
+            AuctionPriceHistory.CreateStartingPrice(
                 auctionId: auction.Id,
                 price: pricing.StartingPrice,
                 recordedAt: nowUtc));
@@ -321,11 +321,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             return AuctionErrors.Auction.TimingRequired;
 
         ModifiedAt = nowUtc;
-
-        if (!Info.HasStarted(nowUtc))
-            return UnitResult.Success<Error>();
-
-        return Start(nowUtc);
+        return UnitResult.Success<Error>();
     }
     
     public UnitResult<Error> Start(DateTime nowUtc)
@@ -344,74 +340,53 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         
         return UnitResult.Success<Error>();
     }
+
+    public bool HasBidEligibleParticipants(DateTime nowUtc)
+    {
+        return _participants.Any(participant => IsBidEligibleParticipant(participant, nowUtc));
+    }
     
+    /// <summary>
+    /// Transition auction to Ended state. Does NOT determine winner — that happens in Resolve().
+    /// </summary>
     public UnitResult<Error> End(DateTime nowUtc)
     {
         var result = EnsureCanTransition(AuctionStatus.Ended);
 
         if (result.IsFailure)
-        {
             return result.Error;
-        }
 
         Status = AuctionStatus.Ended;
         ActualEndTime = nowUtc;
-
-        var winningBid = GetCurrentWinningBid();
-
-        if (winningBid is not null)
-        {
-            winningBid.MarkAsWon();
-            WinnerId = winningBid.BidderId;
-
-            // Mark all other active/outbid bids as cancelled
-            foreach (var bid in _bids.Where(b =>
-                         b.Id != winningBid.Id &&
-                         (b.Status == BidStatus.Active || b.Status == BidStatus.Outbid)))
-            {
-                bid.Cancel();
-            }
-
-            // Mark winner's auto-bid as won
-            var winnerAutoBid = _autoBids
-                .FirstOrDefault(ab => ab.BidderId == winningBid.BidderId &&
-                                      ab.Status == AutoBidStatus.Active);
-            winnerAutoBid?.MarkAsWon(nowUtc);
-
-            // Mark other auto-bids as outbid
-            foreach (var ab in _autoBids.Where(ab =>
-                         ab.BidderId != winningBid.BidderId &&
-                         ab.Status == AutoBidStatus.Active))
-            {
-                ab.MarkAsOutbid(nowUtc);
-            }
-        }
-
         ModifiedAt = nowUtc;
 
         RaiseDomainEvent(new AuctionEndedEvent(
-            $"{Id}", 
-            $"{WinnerId}", 
+            $"{Id}",
+            $"{GetCurrentWinningBid()?.BidderId}",
             Pricing.CurrentAmount,
             BidCount,
             Pricing.ReserveMet,
             nowUtc));
-        
+
         return UnitResult.Success<Error>();
     }
-    
-     /// <summary>
-    /// Called after End() to determine final outcome.
-    /// Returns the resolution: Sold, Failed (no bids), Failed (reserve not met).
+
+    /// <summary>
+    /// Called after End() to determine final outcome: Sold, Failed (no bids), or Failed (reserve not met).
+    /// Bid/auto-bid Won/Outbid marking happens HERE — not in End() — to avoid orphaned Won state on failed auctions.
     /// </summary>
     public UnitResult<Error> Resolve(DateTime nowUtc)
     {
         if (Status != AuctionStatus.Ended)
             return AuctionErrors.Auction.InvalidState(Status.Id, "resolve");
 
+        var winningBid = GetCurrentWinningBid();
+
         // Case 1: No bids at all
-        if (BidCount == 0)
+        if (BidCount == 0 || winningBid is null)
         {
+            TerminalizeAllAutoBids(nowUtc);
+
             var failResult = MarkAsFailed(nowUtc);
             if (failResult.IsFailure) return failResult;
 
@@ -430,6 +405,12 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         // Case 2: Has bids but reserve not met
         if (!Pricing.ReserveMet)
         {
+            TerminalizeAllAutoBids(nowUtc);
+
+            // Cancel winning bids since auction failed
+            foreach (var bid in _bids.Where(b => b.Status == BidStatus.Winning))
+                bid.Cancel();
+
             var failResult = MarkAsFailed(nowUtc);
             if (failResult.IsFailure) return failResult;
 
@@ -445,10 +426,21 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             return UnitResult.Success<Error>();
         }
 
-        // Case 3: Has winner + reserve met → Sold
+        // Case 3: Has winner + reserve met → Sold — NOW mark Won
+        winningBid.MarkAsWon();
+        WinnerId = winningBid.BidderId;
+
+        foreach (var bid in _bids.Where(b =>
+                     b.Id != winningBid.Id &&
+                     (b.Status == BidStatus.Active || b.Status == BidStatus.Winning || b.Status == BidStatus.Outbid)))
+        {
+            bid.Cancel();
+        }
+
+        SyncAutoBidStateToWinner(winningBid.BidderId, nowUtc);
+
         var soldResult = MarkAsSold(nowUtc);
-        
-        if (soldResult.IsFailure) 
+        if (soldResult.IsFailure)
             return soldResult;
 
         RaiseDomainEvent(new AuctionSoldEvent(
@@ -507,9 +499,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         if (runnerUp is null)
             return AuctionErrors.Auction.NoRunnerUp;
 
-        // Mark old winner's bid as cancelled
-        var oldWinnerBid = GetCurrentWinningBid();
-        oldWinnerBid?.Cancel();
+        CancelWinnerBidsExcept(runnerUp);
 
         var newPrice = Pricing.WithNewBid(runnerUp.Amount.Amount, Pricing.StartingAmount);
 
@@ -520,8 +510,10 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
         // Mark runner-up as new winner
         WinnerId = runnerUp.BidderId;
-        Pricing = newPrice.Value ;
+        Pricing = newPrice.Value;
         runnerUp.MarkAsWon();
+        SyncAutoBidStateToWinner(runnerUp.BidderId, nowUtc);
+        BidCount = _bids.Count(b => b.Status != Enums.BidStatus.Cancelled);
         ModifiedAt = nowUtc;
 
         // Re-mark as Sold
@@ -590,11 +582,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             bid.Cancel();
         }
 
-        // Mark all auto-bids as outbid
-        foreach (var ab in _autoBids.Where(ab => ab.Status == AutoBidStatus.Active))
-        {
-            ab.MarkAsOutbid(nowUtc);
-        }
+        TerminalizeAllAutoBids(nowUtc);
         
         RaiseDomainEvent(new AuctionCancelledEvent(
             Id.Value.ToString(),
@@ -886,11 +874,6 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             existingBid.Cancel();
         }
 
-        foreach (var ab in _autoBids.Where(ab => ab.Status == AutoBidStatus.Active))
-        {
-            ab.MarkAsOutbid(nowUtc);
-        }
-
         var bid = Bid.Create(Id, reservation.Value.BuyerId, Pricing.BuyNowPrice!, autoBidId: null, ipAddress, nowUtc);
         bid.MarkAsWon();
         _bids.Add(bid);
@@ -905,12 +888,13 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
         Pricing = buyNowResult.Value;
         WinnerId = reservation.Value.BuyerId;
+        SyncAutoBidStateToWinner(reservation.Value.BuyerId, nowUtc);
         BidCount++;
         ActualEndTime = nowUtc;
         Status = AuctionStatus.Sold;
         ModifiedAt = nowUtc;
 
-        _priceHistories.Add(AuctionPriceHistory.Create(Id, Pricing.BuyNowPrice!, nowUtc, bid.Id));
+        _priceHistories.Add(AuctionPriceHistory.CreateBuyNow(Id, Pricing.BuyNowPrice!, nowUtc, bid.Id));
 
         RaiseDomainEvent(new AuctionSoldEvent(
             AuctionId: $"{Id}",
@@ -950,59 +934,89 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
     // ==================================================================================
     //                              AUTO BIDDING
     // ==================================================================================
-    public Result<AutoBid, Error> ConfigureAutoBid(
+    public UnitResult<Error> ValidateAutoBidConfiguration(
         UserId bidderId,
         Money maxAmount,
         DateTime nowUtc,
         Money? incrementAmount = null)
     {
         var result = EnsureAcceptsBids(nowUtc);
-        
+
         if (result.IsFailure)
-        {
             return result.Error;
-        }
 
         result = EnsureNotLockedByBuyNowReservation(nowUtc);
 
         if (result.IsFailure)
-        {
             return result.Error;
-        }
 
         result = EnsureLiveBiddingSupported();
 
         if (result.IsFailure)
-        {
             return result.Error;
-        }
 
         result = EnsureNotSeller(bidderId);
-        
+
         if (result.IsFailure)
-        {
             return result.Error;
-        }
 
         result = EnsureBidderEligible(bidderId, nowUtc);
 
         if (result.IsFailure)
-        {
             return result.Error;
-        }
 
-        var check = AutoBid.Check(isInvariant: true)
+        var validationResult = AutoBid.Check(isInvariant: true)
             .Field(maxAmount, x => x.Budget.MaxAmount)
-            .GreaterThanOrEqual(Pricing.CurrentPrice)
+            .GreaterThanOrEqual(GetMinimumBidAmount())
             .Field(incrementAmount, x => x.Budget.IncrementAmount)
-            .WhenHasValue(x => x.GreaterThan(Money.Zero(maxAmount.Currency)));
-        
-        var validationResult = check.ToResult();
+            .WhenHasValue(x => x.GreaterThan(Money.Zero(maxAmount.Currency)))
+            .ToResult();
 
         if (validationResult.IsFailure)
-        {
             return validationResult.Error;
+
+        var existing = _autoBids.FirstOrDefault(ab => ab.BidderId == bidderId);
+        if (existing is not null)
+        {
+            if (!existing.IsEnabled &&
+                existing.Status != AutoBidStatus.Exhausted &&
+                existing.Status != AutoBidStatus.Outbid)
+            {
+                return AuctionErrors.AutoBid.IsDisabled;
+            }
+
+            if (existing.Status == AutoBidStatus.Won)
+                return AuctionErrors.AutoBid.CannotModifyFinalStatus;
+
+            if (maxAmount.Amount < existing.Budget.CurrentAmount)
+                return AuctionErrors.AutoBid.NewMaxLessThanCurrent(existing.Budget.CurrentAmount);
+
+            var updatePreview = existing.Budget.WithConfiguration(maxAmount, incrementAmount);
+            return updatePreview.IsFailure
+                ? updatePreview.Error
+                : UnitResult.Success<Error>();
         }
+
+        var createPreview = AutoBidBudget.Create(maxAmount.Amount, Pricing.Currency, incrementAmount?.Amount);
+        return createPreview.IsFailure
+            ? createPreview.Error
+            : UnitResult.Success<Error>();
+    }
+
+    public Result<AutoBid, Error> ConfigureAutoBid(
+        UserId bidderId,
+        Money maxAmount,
+        DateTime nowUtc,
+        Money? incrementAmount = null)
+    {
+        var validationResult = ValidateAutoBidConfiguration(
+            bidderId,
+            maxAmount,
+            nowUtc,
+            incrementAmount);
+
+        if (validationResult.IsFailure)
+            return validationResult.Error;
         
         // Check existing auto-bid (UNIQUE constraint: auction_id + bidder_id)
         var existing = _autoBids.FirstOrDefault(ab => ab.BidderId == bidderId);
@@ -1015,7 +1029,11 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             {
                 return resultUpdateExiting.Error;
             }
-            
+
+            var engageExistingResult = EngageAutoBidAgainstCurrentWinner(existing, bidderId, nowUtc);
+            if (engageExistingResult.IsFailure)
+                return engageExistingResult.Error;
+
             return existing;
         }
 
@@ -1039,18 +1057,10 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             $"{bidderId}",
             maxAmount.Amount,
             nowUtc));
-        
-        var currentWinning = GetCurrentWinningBid();
-        
-        if (currentWinning is not null && currentWinning.BidderId != bidderId)
-        {
-            result = ProcessSingleAutoBid(autoBid, nowUtc);
-            
-            if (result.IsFailure)
-            {
-                return result.Error;
-            }
-        }
+
+        var engageNewResult = EngageAutoBidAgainstCurrentWinner(autoBid, bidderId, nowUtc);
+        if (engageNewResult.IsFailure)
+            return engageNewResult.Error;
 
         return autoBid;
     }
@@ -1068,8 +1078,8 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         }
         
         var result = autoBid.Pause(nowUtc);
-        
-        return result.IsFailure ? error : result;
+
+        return result.IsFailure ? result.Error : result;
     }
     
     public UnitResult<Error> ResumeAutoBid(
@@ -1097,22 +1107,25 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             return error;
         }
         
-        autoBid.Resume(nowUtc);
+        var resumeResult = autoBid.Resume(nowUtc);
 
-        // Immediately try to bid if there's a winning bid from someone else
-        var currentWinning = GetCurrentWinningBid();
-        if (currentWinning is null || currentWinning.BidderId == bidderId) 
-            return result;
-        
-        (_,isFailure,_, error) = ProcessSingleAutoBid(autoBid, nowUtc);
-        
-        return isFailure ? error : result;
+        if (resumeResult.IsFailure)
+        {
+            return resumeResult.Error;
+        }
+
+        var engageResult = EngageAutoBidAgainstCurrentWinner(autoBid, bidderId, nowUtc);
+
+        return engageResult.IsFailure ? engageResult.Error : UnitResult.Success<Error>();
     }
     
     private UnitResult<Error> ProcessAutoBids(
         UserId excludeBidderId,
         DateTime nowUtc)
     {
+        var totalOperations = 0;
+        var hasProcessedBattle = false;
+
         // Get eligible auto-bids, ordered by max amount DESC, then by creation time ASC
         var eligibleAutoBids = _autoBids
             .Where(ab => ab.BidderId != excludeBidderId &&
@@ -1122,22 +1135,32 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             .ThenBy(ab => ab.CreatedAt)
             .ToList();
 
-        if (eligibleAutoBids.Count == 0) 
+        if (eligibleAutoBids.Count == 0)
             return UnitResult.Success<Error>();
 
-        // Try the highest auto-bidder first
         foreach (var autoBid in eligibleAutoBids)
         {
-            var processResult = ProcessSingleAutoBid(autoBid, nowUtc);
-            
-            if (processResult.IsFailure)
+            var minimumRequired = GetMinimumBidAmount();
+
+            // Skip auto-bidders that can no longer compete
+            if (!autoBid.CanBid(minimumRequired))
             {
-                return processResult.Error;
+                if (autoBid.Status == AutoBidStatus.Active)
+                    autoBid.MarkAsOutbid(nowUtc);
+                continue;
             }
-            if (processResult.Value)
+
+            var processResult = ProcessSingleAutoBid(autoBid, nowUtc, ref totalOperations);
+
+            if (processResult.IsFailure)
+                return processResult.Error;
+
+            if (!processResult.Value)
+                continue;
+
+            // Battle with original bidder's auto-bid (only once)
+            if (!hasProcessedBattle)
             {
-                // After one auto-bid succeeds, check if the ORIGINAL bidder
-                // also has an auto-bid that should respond
                 var originalBidderAutoBid = _autoBids
                     .FirstOrDefault(ab => ab.BidderId == excludeBidderId &&
                                           ab.IsEnabled &&
@@ -1145,33 +1168,40 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
                 if (originalBidderAutoBid is not null)
                 {
-                    // Recursive auto-bid battle between two auto-bidders
-                    var processAutoResult = ProcessAutoBidBattle(autoBid, originalBidderAutoBid, nowUtc);
-                    
-                    if (processAutoResult.IsFailure)
-                    {
-                        return processAutoResult.Error;
-                    }
+                    var battleResult = ProcessAutoBidBattle(
+                        autoBid, originalBidderAutoBid, nowUtc, ref totalOperations);
+
+                    if (battleResult.IsFailure)
+                        return battleResult.Error;
                 }
 
-                break;
+                hasProcessedBattle = true;
             }
 
-            // This auto-bid can't compete, mark as outbid
-            autoBid.MarkAsOutbid(nowUtc);
+            // Continue loop — remaining auto-bidders get a chance to outbid the current winner
         }
-        
+
         return UnitResult.Success<Error>();
     }
     
     private Result<bool, Error> ProcessSingleAutoBid(
         AutoBid autoBid,
-        DateTime nowUtc)
+        DateTime nowUtc,
+        ref int totalOperations)
     {
+        if (!TryConsumeAutoBidOperation(ref totalOperations))
+        {
+            RaiseCascadeCappedEventOnce(totalOperations, nowUtc);
+            return false;
+        }
+
         var minimumRequired = GetMinimumBidAmount();
 
         if (!autoBid.CanBid(minimumRequired))
+        {
+            autoBid.MarkAsOutbid(nowUtc);
             return false;
+        }
 
         var (_, isFailure, bidAmount, error) = autoBid
             .CalculateNextBidAmount(minimumRequired);
@@ -1195,7 +1225,8 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
     private UnitResult<Error> ProcessAutoBidBattle(
         AutoBid autoBidA,
         AutoBid autoBidB,
-        DateTime nowUtc)
+        DateTime nowUtc,
+        ref int totalOperations)
     {
         const int maxRounds = 100; // Safety: prevent infinite loops
         var round = 0;
@@ -1206,6 +1237,13 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         while (round < maxRounds)
         {
             round++;
+
+            if (!TryConsumeAutoBidOperation(ref totalOperations))
+            {
+                RaiseCascadeCappedEventOnce(totalOperations, nowUtc);
+                break;
+            }
+
             var minimumRequired = GetMinimumBidAmount();
 
             if (!currentAttacker.CanBid(minimumRequired))
@@ -1250,49 +1288,48 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         Money bidAmount,
         DateTime nowUtc)
     {
-        // Mark previous winning as outbid
+        // 1. Validate BEFORE mutating — ensure pricing and budget are valid
+        var pricingCheck = Pricing.WithNewBid(bidAmount.Amount, GetMinimumBidAmount().Amount);
+        if (pricingCheck.IsFailure)
+            return pricingCheck.Error;
+
+        var budgetCheck = autoBid.Budget.WithBidPlaced(bidAmount);
+        if (budgetCheck.IsFailure)
+            return budgetCheck.Error;
+
+        // 2. All checks passed — now mutate state
         var previousWinning = GetCurrentWinningBid();
         var previousBidderId = previousWinning?.BidderId;
         var previousHighestBid = Pricing.CurrentAmount;
         previousWinning?.MarkAsOutbid();
 
-        // Create bid linked to auto-bid
         var bid = Bid.Create(
             Id,
             autoBid.BidderId,
-            bidAmount, 
+            bidAmount,
             autoBid.Id,
             null,
             nowUtc);
-        
+
         bid.MarkAsWinning();
-        
         _bids.Add(bid);
-        
-        var autoBidResult = autoBid.UpdateCurrentAmount(bidAmount, nowUtc);
 
-        if (autoBidResult.IsFailure)
-        {
-            return autoBidResult.Error;
-        }
+        autoBid.UpdateCurrentAmount(bidAmount, nowUtc);
 
-        // Update auction state
-        var updateResult = UpdatePriceAndCount(bidAmount.Amount, bid.Id, nowUtc);
+        Pricing = pricingCheck.Value;
+        BidCount = _bids.Count(b => b.Status != Enums.BidStatus.Cancelled);
+        ModifiedAt = nowUtc;
+        _priceHistories.Add(AuctionPriceHistory.Create(Id, Pricing.CurrentPrice,AuctionPriceHistoryType.AutoBid, nowUtc, bid.Id));
 
-        if (updateResult.IsFailure)
-        {
-            return updateResult.Error;
-        }
-
-        // Events
+        // 3. Events
         RaiseDomainEvent(new BidPlacedEvent(
-            AuctionId: $"{Id}", 
+            AuctionId: $"{Id}",
             BidId: $"{bid.Id}",
             BidderId: $"{autoBid.BidderId}",
-            Amount: bidAmount.Amount, 
+            Amount: bidAmount.Amount,
             PreviousHighestBid: previousHighestBid,
             IsAutoBid: true,
-            PreviousBidderId:  previousBidderId?.ToString(),
+            PreviousBidderId: previousBidderId?.ToString(),
             BidCount: BidCount,
             BidTime: bid.CreatedAt,
             nowUtc));
@@ -1300,8 +1337,8 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         if (previousBidderId.HasValue && previousBidderId.Value != autoBid.BidderId)
         {
             RaiseDomainEvent(new OutbidEvent(
-                AuctionId: $"{Id}", 
-                OutbidBidderId: $"{previousBidderId}", 
+                AuctionId: $"{Id}",
+                OutbidBidderId: $"{previousBidderId}",
                 NewHighBidderId: $"{autoBid.BidderId}",
                 NewHighestBid: bidAmount.Amount,
                 OutbidAmount: Pricing.CurrentAmount,
@@ -1321,6 +1358,12 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
     {
         if (userId == Item.SellerId)
             return AuctionErrors.Auction.SelfBid;
+
+        if (Info is null)
+            return AuctionErrors.Auction.TimingRequired;
+
+        if (!Info.HasQualification || !Info.IsQualificationOpen(nowUtc))
+            return AuctionErrors.Participant.JoinWindowClosed;
 
         var existingParticipant = _participants
             .FirstOrDefault(p => p.UserId == userId && p.JoinStatus != ParticipantJoinStatus.Withdrawn);
@@ -1479,7 +1522,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
         Pricing = pricingResult.Value;
         BidCount += materializedBids.Count;
-        _priceHistories.Add(AuctionPriceHistory.Create(Id, winningBidValue.Amount, nowUtc, winningBidValue.Id));
+        _priceHistories.Add(AuctionPriceHistory.CreateSealedBid(Id, winningBidValue.Amount, nowUtc, winningBidValue.Id));
         ModifiedAt = nowUtc;
 
         return _sealedBids.AsReadOnly();
@@ -1682,7 +1725,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             Pricing = pricingResult.Value;
             WinnerId = null;
             ModifiedAt = nowUtc;
-            _priceHistories.Add(AuctionPriceHistory.Create(Id, Pricing.CurrentPrice, nowUtc));
+            _priceHistories.Add(AuctionPriceHistory.CreateResetToStartingPrice(Id, Pricing.CurrentPrice, nowUtc));
             return bid;
         }
 
@@ -1710,7 +1753,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
         Pricing = repricingResult.Value;
         ModifiedAt = nowUtc;
-        _priceHistories.Add(AuctionPriceHistory.Create(Id, Pricing.CurrentPrice, nowUtc, highestBid.Id));
+        _priceHistories.Add(AuctionPriceHistory.CreateRepricedAfterBidCancellation(Id, Pricing.CurrentPrice, nowUtc, highestBid.Id));
 
         return bid;
     }
@@ -1736,9 +1779,9 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         }
         
         Pricing = result.Value;
-        BidCount++;
+        BidCount = _bids.Count(b => b.Status != BidStatus.Cancelled);
         ModifiedAt = nowUtc;
-        _priceHistories.Add(AuctionPriceHistory.Create(Id, Pricing.CurrentPrice, nowUtc, bidId));
+        _priceHistories.Add(AuctionPriceHistory.CreateBid(Id, Pricing.CurrentPrice, nowUtc, bidId));
 
         return UnitResult.Success<Error>();
     }
@@ -1801,11 +1844,8 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
     {
         var participant = _participants.FirstOrDefault(p => p.UserId == bidderId);
 
-        if (participant is null || !participant.IsQualified)
+        if (participant is null || !IsBidEligibleParticipant(participant, nowUtc))
             return AuctionErrors.Participant.NotQualified;
-
-        if (!_deposits.Any(d => d.BidderId == bidderId && d.IsHeld))
-            return AuctionErrors.Bid.DepositRequired;
 
         return UnitResult.Success<Error>();
     }
@@ -1879,10 +1919,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             bid.Cancel();
         }
 
-        foreach (var autoBid in _autoBids.Where(ab => ab.Status == AutoBidStatus.Active))
-        {
-            autoBid.MarkAsOutbid(nowUtc);
-        }
+        TerminalizeAllAutoBids(nowUtc);
 
         foreach (var offer in _winnerOffers.Where(x => x.OfferStatus == WinnerOfferStatus.Pending))
         {
@@ -2004,8 +2041,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             if (rankedBid is null)
                 return AuctionErrors.Auction.NoRunnerUp;
 
-            var currentWinnerBid = GetCurrentWinningBid();
-            currentWinnerBid?.Cancel();
+            CancelWinnerBidsExcept(rankedBid);
 
             var newPrice = Pricing.WithNewBid(rankedBid.Amount.Amount, Pricing.StartingAmount);
             if (newPrice.IsFailure)
@@ -2014,6 +2050,8 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             WinnerId = bidderId;
             Pricing = newPrice.Value;
             rankedBid.MarkAsWon();
+            SyncAutoBidStateToWinner(bidderId, nowUtc);
+            BidCount = _bids.Count(b => b.Status != Enums.BidStatus.Cancelled);
             Status = AuctionStatus.Sold;
 
             RaiseDomainEvent(new AuctionSoldEvent(
@@ -2087,6 +2125,136 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         return !Status.CanTransitionTo(target) ?
             AuctionErrors.Auction.InvalidState(Status.Id, $"transition to {target.Id}") :
             UnitResult.Success<Error>();
+    }
+
+    private Bid? GetRecordedWinnerBid()
+    {
+        if (WinnerId is null)
+            return null;
+
+        return _bids
+            .Where(b => b.BidderId == WinnerId &&
+                        (b.Status == BidStatus.Winning || b.Status == BidStatus.Won))
+            .OrderByDescending(b => b.Amount.Amount)
+            .ThenBy(b => b.CreatedAt)
+            .FirstOrDefault();
+    }
+
+    private void CancelWinnerBidsExcept(Bid nextWinnerBid)
+    {
+        foreach (var bid in _bids.Where(b =>
+                     b.Id != nextWinnerBid.Id &&
+                     (b.Status == BidStatus.Winning || b.Status == BidStatus.Won)))
+        {
+            bid.Cancel();
+        }
+
+        var previousWinnerBid = GetRecordedWinnerBid();
+        if (previousWinnerBid is not null && previousWinnerBid.Id != nextWinnerBid.Id)
+        {
+            previousWinnerBid.Cancel();
+        }
+    }
+
+    private void SyncAutoBidStateToWinner(UserId newWinnerId, DateTime nowUtc)
+    {
+        foreach (var ab in _autoBids)
+        {
+            if (ab.BidderId == newWinnerId)
+            {
+                if (ab.Status != AutoBidStatus.Won)
+                    ab.MarkAsWon(nowUtc);
+            }
+            else
+            {
+                if (ab.Status == AutoBidStatus.Won ||
+                    ab.Status == AutoBidStatus.Active ||
+                    ab.Status == AutoBidStatus.Paused)
+                    ab.MarkAsOutbid(nowUtc);
+            }
+        }
+    }
+
+    private void TerminalizeAllAutoBids(DateTime nowUtc)
+    {
+        foreach (var ab in _autoBids.Where(ab =>
+                     ab.IsEnabled ||
+                     ab.Status == AutoBidStatus.Active ||
+                     ab.Status == AutoBidStatus.Paused))
+        {
+            ab.MarkAsOutbid(nowUtc);
+        }
+    }
+
+    private UnitResult<Error> EngageAutoBidAgainstCurrentWinner(
+        AutoBid autoBid,
+        UserId bidderId,
+        DateTime nowUtc)
+    {
+        var currentWinning = GetCurrentWinningBid();
+        if (currentWinning is null || currentWinning.BidderId == bidderId)
+            return UnitResult.Success<Error>();
+
+        var totalOperations = 0;
+        var processSingleAutoBidResult = ProcessSingleAutoBid(autoBid, nowUtc, ref totalOperations);
+
+        if (processSingleAutoBidResult.IsFailure)
+            return processSingleAutoBidResult.Error;
+
+        if (!processSingleAutoBidResult.Value)
+            return UnitResult.Success<Error>();
+
+        var winnerAutoBid = _autoBids
+            .FirstOrDefault(ab => ab.BidderId == currentWinning.BidderId &&
+                                  ab.IsEnabled &&
+                                  ab.Status == AutoBidStatus.Active);
+
+        if (winnerAutoBid is null)
+            return UnitResult.Success<Error>();
+
+        var battleResult = ProcessAutoBidBattle(
+            autoBid,
+            winnerAutoBid,
+            nowUtc,
+            ref totalOperations);
+
+        return battleResult.IsFailure ? battleResult.Error : UnitResult.Success<Error>();
+    }
+
+    private bool IsBidEligibleParticipant(AuctionParticipant participant, DateTime nowUtc)
+    {
+        if (!participant.IsQualified)
+            return false;
+
+        return _deposits.Any(d => d.BidderId == participant.UserId && d.IsHeld);
+    }
+
+    private static bool TryConsumeAutoBidOperation(ref int totalOperations)
+    {
+        const int maxAutoBidOperationsPerCascade = 200;
+
+        if (totalOperations >= maxAutoBidOperationsPerCascade)
+            return false;
+
+        totalOperations++;
+        return true;
+    }
+
+    private bool _cascadeCappedEventRaised;
+
+    private void RaiseCascadeCappedEventOnce(int totalOperations, DateTime nowUtc)
+    {
+        if (_cascadeCappedEventRaised) return;
+        _cascadeCappedEventRaised = true;
+
+        var remaining = _autoBids.Count(ab =>
+            ab.IsEnabled && ab.Status == AutoBidStatus.Active);
+
+        RaiseDomainEvent(new AutoBidCascadeCappedEvent(
+            AuctionId: $"{Id}",
+            TotalOperations: totalOperations,
+            RemainingEligibleAutoBids: remaining,
+            OccurredAt: nowUtc));
     }
 
     private Result<AutoBid, Error> FindAutoBid(UserId bidderId)

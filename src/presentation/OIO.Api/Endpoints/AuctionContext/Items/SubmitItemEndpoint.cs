@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.SubmitItem;
@@ -7,7 +8,7 @@ namespace OIO.Api.Endpoints.AuctionContext.Items;
 
 public sealed class SubmitItemEndpoint : IEndpoint
 {
-    public sealed record Request(bool VerifyByPlatform = false);
+    public sealed record Request([Required] bool VerifyByPlatform = false);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
