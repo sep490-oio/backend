@@ -21,6 +21,7 @@ Module quan ly kho hang va van chuyen, bao gom: tiep nhan hang gui den (inbound)
 |---|---|
 | [inbound-shipment.md](./inbound-shipment.md) | Tiep nhan hang gui den |
 | [inspection.md](./inspection.md) | Kiem tra chat luong |
+| [inspector-workflow.md](./inspector-workflow.md) | **Flow end-to-end cua Inspector** (queue → inspect → review → store) |
 | [storage.md](./storage.md) | Luu tru va quan ly vi tri kho |
 | [outbound-shipment.md](./outbound-shipment.md) | Xuat hang gui di |
 | [ghn-tracking.md](./ghn-tracking.md) | Theo doi van chuyen GHN |
@@ -30,11 +31,12 @@ Module quan ly kho hang va van chuyen, bao gom: tiep nhan hang gui den (inbound)
 
 | Permission | Mo ta |
 |---|---|
-| `Warehouse.BookInbound` | Tao inbound shipment |
-| `Warehouse.BookOutbound` | Tao outbound shipment |
-| `Warehouse.Inspect` | Kiem tra hang va review inspection |
-| `Warehouse.Store` | Luu tru hang trong kho |
-| `Warehouse.ReadShipments` | Xem va huy shipment |
+| `warehouse:inbound:book` | Tao inbound shipment |
+| `warehouse:outbound:book` | Tao outbound shipment |
+| `warehouse:item:inspect` | Kiem tra hang va review inspection |
+| `warehouse:item:store` | Luu tru hang trong kho |
+| `warehouse:shipments:read` | Xem inspection queue va shipments |
+| `warehouse:locations:manage` | Quan ly vi tri kho |
 
 ## Endpoints
 

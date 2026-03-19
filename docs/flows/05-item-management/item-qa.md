@@ -101,7 +101,7 @@ Khi item duoc gui den kho OIO (verify by platform), staff kho se kiem tra tinh t
 2. **Kiem tra vat ly:**
    - Doi chieu tinh trang thuc te voi mo ta cua seller
    - Chup anh bang chung
-   - Ghi nhan ket qua: condition (New, LikeNew, Good, Fair, Poor)
+   - Ghi nhan ket qua: condition (`new`, `like_new`, `very_good`, `good`, `acceptable`, `damaged`)
    - Ghi chu bat thuong (neu co)
 3. **Review:** Supervisor xem xet ket qua kiem tra
 4. **Thong bao seller:** Gui notification kem ket qua kiem tra
@@ -118,7 +118,7 @@ Khi item duoc gui den kho OIO (verify by platform), staff kho se kiem tra tinh t
 
 - **Kiem tra vat ly** dam bao san pham dung nhu mo ta - tang do tin cay cho nguoi mua
 - **Neu condition khac voi mo ta cua seller:** Staff ghi nhan condition thuc te. Seller co the thay doi mo ta hoac tu choi
-- **Anh chup bang chung** duoc upload qua luong Media Upload voi context `warehouse-inspection`
+- **Anh chup bang chung** duoc upload qua luong Media Upload voi context `warehouse_inspection_image`
 - **Seller phai xac nhan** de dong y voi ket qua kiem tra truoc khi item co the duoc kich hoat
 - **Neu seller khong dong y:** Co the tao dispute hoac yeu cau gui tra hang
 - **Sau khi xac nhan:** Item chuyen sang `ConditionConfirmed`, seller co the `activate` va tao auction

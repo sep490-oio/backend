@@ -14,16 +14,16 @@ Nhan vien kho kiem tra tinh trang san pham khi nhan hang tu seller. Ket qua kiem
 
 ### Step 1: Xem hang doi kiem tra
 - **Method:** `GET /api/warehouse/inbound-shipments/inspection-queue`
-- **Auth:** Required (Permission: `Warehouse.Inspect`)
+- **Auth:** Required (Permission: `warehouse:item:inspect`)
 - **Response:** `200 OK`
 
 ### Step 2: Kiem tra hang
 - **Method:** `POST /api/warehouse/inbound-shipments/{shipmentId}/inspect`
-- **Auth:** Required (Permission: `Warehouse.Inspect`)
+- **Auth:** Required (Permission: `warehouse:item:inspect`)
 - **Request:**
   ```json
   {
-    "conditionId": "like_new | good | fair | poor",
+    "condition": "new | like_new | very_good | good | acceptable | damaged",
     "inspectionNotes": "Ghi chu kiem tra",
     "inspectionMediaUploadIds": ["guid1", "guid2"]
   }
@@ -33,7 +33,7 @@ Nhan vien kho kiem tra tinh trang san pham khi nhan hang tu seller. Ket qua kiem
 
 ### Step 3: Review ket qua kiem tra
 - **Method:** `POST /api/warehouse/inbound-shipments/{shipmentId}/review`
-- **Auth:** Required (Permission: `Warehouse.Inspect`)
+- **Auth:** Required (Permission: `warehouse:item:inspect`)
 - **Request:**
   ```json
   {
