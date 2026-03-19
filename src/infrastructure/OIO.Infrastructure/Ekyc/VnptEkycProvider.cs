@@ -17,7 +17,7 @@ internal sealed class VnptEkycProvider : IEkycProvider
     private const string SuccessMessage = "IDG-00000000";
 
     private readonly HttpClient _httpClient;
-    private readonly VnptEkycOptions _options;
+    private readonly IOptionsMonitor<VnptEkycOptions> _options;
     private readonly HybridCache _cache;
     private readonly ILogger<VnptEkycProvider> _logger;
     private readonly HybridCacheEntryOptions _hashCacheOptions = new()
@@ -28,12 +28,12 @@ internal sealed class VnptEkycProvider : IEkycProvider
 
     public VnptEkycProvider(
         HttpClient httpClient,
-        IOptions<VnptEkycOptions> options,
+        IOptionsMonitor<VnptEkycOptions> options,
         HybridCache cache,
         ILogger<VnptEkycProvider> logger)
     {
         _httpClient = httpClient;
-        _options = options.Value;
+        _options = options;
         _cache = cache;
         _logger = logger;
     }
@@ -209,10 +209,10 @@ internal sealed class VnptEkycProvider : IEkycProvider
         if (isIdFake || isTampered || !isCardLive || !isFaceLive)
             return EkycDecision.Rejected;
 
-        if (!isFaceMatch || faceMatchScore < (decimal)_options.RejectThreshold)
+        if (!isFaceMatch || faceMatchScore < (decimal)_options.CurrentValue.RejectThreshold)
             return EkycDecision.Rejected;
 
-        if (faceMatchScore >= (decimal)_options.ApproveThreshold && isFaceMatch)
+        if (faceMatchScore >= (decimal)_options.CurrentValue.ApproveThreshold && isFaceMatch)
             return EkycDecision.Approved;
 
         return EkycDecision.NeedsReview;
@@ -275,7 +275,7 @@ internal sealed class VnptEkycProvider : IEkycProvider
         {
             _logger.LogError(ex,
                 "VNPT upload HTTP error for {Title}. BaseUrl={BaseUrl}",
-                title, _options.BaseUrl);
+                title, _options.CurrentValue.BaseUrl);
             return Error.Unavailable("Ekyc.UploadFailed",
                 $"Cannot connect to eKYC provider for {title}: {ex.Message}");
         }
@@ -377,11 +377,11 @@ internal sealed class VnptEkycProvider : IEkycProvider
 
     private HttpRequestMessage CreateRequest(HttpMethod method, string path)
     {
-        var request = new HttpRequestMessage(method, $"{_options.BaseUrl}{path}");
-        request.Headers.Add("Authorization", $"Bearer {_options.AccessToken}");
-        request.Headers.Add("Token-id", _options.TokenId);
-        request.Headers.Add("Token-key", _options.TokenKey);
-        request.Headers.Add("mac-address", _options.MacAddress);
+        var request = new HttpRequestMessage(method, $"{_options.CurrentValue.BaseUrl}{path}");
+        request.Headers.Add("Authorization", $"Bearer {_options.CurrentValue.AccessToken}");
+        request.Headers.Add("Token-id", _options.CurrentValue.TokenId);
+        request.Headers.Add("Token-key", _options.CurrentValue.TokenKey);
+        request.Headers.Add("mac-address", _options.CurrentValue.MacAddress);
         return request;
     }
 
@@ -400,7 +400,7 @@ internal sealed class VnptEkycProvider : IEkycProvider
         {
             _logger.LogError(ex,
                 "VNPT {Operation} HTTP error. Url={Url}",
-                operationName, $"{_options.BaseUrl}{path}");
+                operationName, $"{_options.CurrentValue.BaseUrl}{path}");
             return Error.Unavailable($"Ekyc.{operationName}Failed",
                 $"Cannot connect to eKYC provider for {operationName}: {ex.Message}");
         }

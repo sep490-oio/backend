@@ -14,7 +14,8 @@ public class CheckoutOrderEndpoint : IEndpoint
 {
     public sealed record Request(
         [Required] Guid OrderId,
-        string? BankCode);
+        string? BankCode,
+        string PaymentMethod = "vnpay");
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost(ApiEndpoint.Url.Payments.CheckoutOrder, async (Request request,
@@ -27,7 +28,8 @@ public class CheckoutOrderEndpoint : IEndpoint
                 var command = new CheckoutOrderCommand(
                     OrderId: request.OrderId,
                     IpAddress: ipAddress,
-                    BankCode: request.BankCode
+                    BankCode: request.BankCode,
+                    PaymentMethod: request.PaymentMethod
                 );
 
                 var result = await sender.Send(command, cancellationToken);

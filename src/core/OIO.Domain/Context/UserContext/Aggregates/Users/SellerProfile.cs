@@ -15,6 +15,8 @@ public sealed class SellerProfile : BaseEntity<UserId>, IAuditableEntity
     public DateTime? VerifiedAt { get; private set; }
     public int TotalSalesCount { get; private set; }
     public decimal TotalSalesAmount { get; private set; }
+    public decimal TrustScoreOverall { get; private set; }
+    public DateTime? TrustScoreCalculatedAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? ModifiedAt { get; private set; }
 
@@ -79,6 +81,13 @@ public sealed class SellerProfile : BaseEntity<UserId>, IAuditableEntity
         ModifiedAt = nowUtc;
 
         return UnitResult.Success<Error>();
+    }
+
+    public void UpdateTrustScore(decimal overallScore, DateTime now)
+    {
+        TrustScoreOverall = Math.Clamp(overallScore, 0m, 100m);
+        TrustScoreCalculatedAt = now;
+        ModifiedAt = now;
     }
 
     public UnitResult<Error> Suspend(DateTime nowUtc, string? reason = null)

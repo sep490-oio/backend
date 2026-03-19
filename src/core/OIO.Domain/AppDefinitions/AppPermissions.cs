@@ -45,6 +45,10 @@ public static partial class App
                 // Seller Profile
                 public const string ManageSellerProfile = "users:me:seller-profile:manage";
                 public const string ReadSellerProfile = "users:me:seller-profile:read";
+
+                // Notification Preferences
+                public const string ReadNotificationPreferences = "users:me:notification-preferences:read";
+                public const string ManageNotificationPreferences = "users:me:notification-preferences:manage";
             }
 
             // ==================== Items ====================
@@ -160,6 +164,8 @@ public static partial class App
                 Me.ReadVerification,
                 Me.ManageSellerProfile,
                 Me.ReadSellerProfile,
+                Me.ReadNotificationPreferences,
+                Me.ManageNotificationPreferences,
 
                 // Admin
                 Admin.ReadUsers,
@@ -285,6 +291,8 @@ public static partial class App
                 public static readonly Permission ReadVerification = Permission.Create(Catalogs.Me.ReadVerification);
                 public static readonly Permission ManageSellerProfile = Permission.Create(Catalogs.Me.ManageSellerProfile);
                 public static readonly Permission ReadSellerProfile = Permission.Create(Catalogs.Me.ReadSellerProfile);
+                public static readonly Permission ReadNotificationPreferences = Permission.Create(Catalogs.Me.ReadNotificationPreferences);
+                public static readonly Permission ManageNotificationPreferences = Permission.Create(Catalogs.Me.ManageNotificationPreferences);
             }
 
             public static class Admin
@@ -403,6 +411,8 @@ public static partial class App
                 [Catalogs.Me.ReadVerification] = Me.ReadVerification,
                 [Catalogs.Me.ManageSellerProfile] = Me.ManageSellerProfile,
                 [Catalogs.Me.ReadSellerProfile] = Me.ReadSellerProfile,
+                [Catalogs.Me.ReadNotificationPreferences] = Me.ReadNotificationPreferences,
+                [Catalogs.Me.ManageNotificationPreferences] = Me.ManageNotificationPreferences,
 
                 // Items
                 [Catalogs.Items.Create] = Items.Create,

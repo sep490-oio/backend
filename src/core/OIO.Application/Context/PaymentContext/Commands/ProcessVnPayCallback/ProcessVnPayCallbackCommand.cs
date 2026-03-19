@@ -342,11 +342,53 @@ internal sealed class ProcessVnPayCallbackCommandHandler
                 "OrderId is required for an order payment callback.");
         }
 
-        // 1. Create Escrow to hold the funds
+        // 1. Load Order
+        var order = await _dbContext.Set<OIO.Domain.Context.OrderContext.Aggregates.Orders.Order>()
+            .FirstOrDefaultAsync(o => o.Id == transaction.OrderId.Value, ct);
+
+        if (order is null)
+        {
+            return Error.NotFound("Order.NotFound", "Order was not found for the payment callback.");
+        }
+
+        // 2. Check for hybrid wallet hold — look for a pending hold on the buyer's wallet
+        var wallet = await _dbContext.Set<Wallet>()
+            .Include(w => w.WalletTransactions)
+            .FirstOrDefaultAsync(w => w.UserId == order.BuyerId, ct);
+
+        decimal walletHoldAmount = 0m;
+        if (wallet is not null)
+        {
+            // Detect hybrid hold by checking wallet transactions for a hold with HybridHold marker for this order
+            var hybridHoldTx = wallet.WalletTransactions
+                .Where(wt => wt.Description != null &&
+                             wt.Description.Contains("[HybridHold]") &&
+                             wt.Description.Contains(order.Id.Value.ToString()))
+                .OrderByDescending(wt => wt.CreatedAt)
+                .FirstOrDefault();
+
+            if (hybridHoldTx is not null)
+            {
+                walletHoldAmount = hybridHoldTx.Amount;
+            }
+        }
+
+        // 3. Create Escrow for the full order amount (VNPay portion + wallet portion)
+        var escrowAmount = transaction.Amount;
+        if (walletHoldAmount > 0)
+        {
+            var fullAmountResult = Money.Create(
+                transaction.Amount.Amount + walletHoldAmount,
+                transaction.Currency);
+
+            if (fullAmountResult.IsSuccess)
+                escrowAmount = fullAmountResult.Value;
+        }
+
         var escrowResult = Escrow.Create(
             transaction.OrderId.Value,
             transaction.Id,
-            transaction.Amount,
+            escrowAmount,
             transaction.Currency,
             now);
 
@@ -360,15 +402,24 @@ internal sealed class ProcessVnPayCallbackCommandHandler
             return escrowResult.Error;
         }
 
-        // 2. Load Order and Mark As Paid
-        var order = await _dbContext.Set<OIO.Domain.Context.OrderContext.Aggregates.Orders.Order>()
-            .FirstOrDefaultAsync(o => o.Id == transaction.OrderId.Value, ct);
-
-        if (order is null)
+        // 4. Commit hybrid wallet hold if present
+        if (walletHoldAmount > 0 && wallet is not null)
         {
-            return Error.NotFound("Order.NotFound", "Order was not found for the payment callback.");
+            var debitPendingResult = wallet.DebitPending(
+                walletHoldAmount,
+                transaction.Id,
+                $"[HybridHold] Wallet portion committed for order {order.Id.Value}",
+                now);
+
+            if (debitPendingResult.IsFailure)
+                return debitPendingResult.Error;
+
+            _logger.LogInformation(
+                "Hybrid wallet hold committed for OrderId={OrderId}, WalletPortion={WalletPortion}",
+                order.Id.Value, walletHoldAmount);
         }
 
+        // 5. Handle winner deposit conversion
         var winnerDeposit = await _dbContext.Set<AuctionDeposit>()
             .FirstOrDefaultAsync(
                 d => d.AuctionId == order.AuctionId &&
@@ -378,9 +429,6 @@ internal sealed class ProcessVnPayCallbackCommandHandler
 
         if (winnerDeposit is not null)
         {
-            var wallet = await _dbContext.Set<Wallet>()
-                .FirstOrDefaultAsync(w => w.UserId == order.BuyerId, ct);
-
             if (wallet is null)
                 return Error.NotFound("Wallet.NotFound", "Winner wallet not found for deposit conversion.");
 
@@ -398,6 +446,7 @@ internal sealed class ProcessVnPayCallbackCommandHandler
                 return debitPendingResult.Error;
         }
 
+        // 6. Mark order as paid
         var markPaidResult = order.MarkAsPaid(now);
 
         if (markPaidResult.IsFailure)

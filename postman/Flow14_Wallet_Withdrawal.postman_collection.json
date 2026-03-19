@@ -1,0 +1,195 @@
+{
+  "info": {
+    "name": "Flow 14: Wallet & Withdrawal",
+    "description": "Wallet management: view balance, transactions, top up via VNPay, create/cancel withdrawals, admin approval.\n\n**Actors**: User (Buyer/Seller), Admin\n**Prerequisite**: User account with wallet; admin account with payment permissions",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "userToken", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "transactionId", "value": "" },
+    { "key": "withdrawalId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "0.1 Login as User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"account\": \"seller@example.com\",\n  \"password\": \"Test@1234\",\n  \"deviceId\": \"{{$guid}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.accessToken) pm.collectionVariables.set('userToken', res.accessToken);"] } }]
+        },
+        {
+          "name": "0.2 Login as Admin",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"account\": \"admin@example.com\",\n  \"password\": \"Admin@1234\",\n  \"deviceId\": \"{{$guid}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.accessToken) pm.collectionVariables.set('adminToken', res.accessToken);"] } }]
+        }
+      ]
+    },
+    {
+      "name": "A. Wallet",
+      "item": [
+        {
+          "name": "14.1 Get Wallet",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/me/wallet", "host": ["{{baseUrl}}"], "path": ["api", "me", "wallet"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "console.log('Wallet balance:', res.balanceAmount);"] } }]
+        },
+        {
+          "name": "14.2 Get Wallet Transactions",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/wallet/transactions?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "wallet", "transactions"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.items && res.items.length > 0) pm.collectionVariables.set('transactionId', res.items[0].id);"] } }]
+        },
+        {
+          "name": "14.3 Get Transaction by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/me/wallet/transactions/{{transactionId}}", "host": ["{{baseUrl}}"], "path": ["api", "me", "wallet", "transactions", "{{transactionId}}"] }
+          }
+        },
+        {
+          "name": "14.4 Create VNPay Topup",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/payments/vnpay/create-url", "host": ["{{baseUrl}}"], "path": ["api", "payments", "vnpay", "create-url"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500000,\n  \"currency\": \"VND\",\n  \"purpose\": \"wallet_top_up\",\n  \"description\": \"Top up wallet 500,000 VND\"\n}"
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "console.log('Payment URL:', res.paymentUrl);"] } }]
+        }
+      ]
+    },
+    {
+      "name": "B. Withdrawals",
+      "item": [
+        {
+          "name": "14.5 Create Withdrawal",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/me/wallet/withdrawals", "host": ["{{baseUrl}}"], "path": ["api", "me", "wallet", "withdrawals"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 200000,\n  \"bankName\": \"Vietcombank\",\n  \"accountNumber\": \"0123456789\",\n  \"accountHolder\": \"NGUYEN VAN A\"\n}"
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.id) pm.collectionVariables.set('withdrawalId', res.id);", "pm.test('Withdrawal created', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "14.6 Get My Withdrawals",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/wallet/withdrawals?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "wallet", "withdrawals"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "14.7 Cancel Withdrawal",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/me/wallet/withdrawals/{{withdrawalId}}/cancel", "host": ["{{baseUrl}}"], "path": ["api", "me", "wallet", "withdrawals", "{{withdrawalId}}", "cancel"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "C. Admin Withdrawal Management",
+      "item": [
+        {
+          "name": "14.8 [Admin] Get Withdrawals",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payments/withdrawals?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "payments", "withdrawals"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.items && res.items.length > 0) pm.collectionVariables.set('withdrawalId', res.items[0].id);"] } }]
+        },
+        {
+          "name": "14.9 [Admin] Approve Withdrawal",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/payments/withdrawals/{{withdrawalId}}/approve", "host": ["{{baseUrl}}"], "path": ["api", "admin", "payments", "withdrawals", "{{withdrawalId}}", "approve"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Withdrawal approved', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "14.10 [Admin] Reject Withdrawal",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/admin/payments/withdrawals/{{withdrawalId}}/reject", "host": ["{{baseUrl}}"], "path": ["api", "admin", "payments", "withdrawals", "{{withdrawalId}}", "reject"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Bank account information does not match verified identity.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "14.11 [Admin] Get Platform Wallet",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/payments/platform-wallet", "host": ["{{baseUrl}}"], "path": ["api", "admin", "payments", "platform-wallet"] }
+          }
+        }
+      ]
+    }
+  ]
+}

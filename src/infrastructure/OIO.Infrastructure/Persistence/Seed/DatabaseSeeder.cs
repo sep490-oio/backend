@@ -11,6 +11,8 @@ using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Services;
 using OIO.Domain.Context.UserContext.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.WarehouseContext.Aggregates.ShippingProviders;
 using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.Context.WarehouseContext.ValueObjects;
@@ -36,6 +38,7 @@ public static class DatabaseSeeder
             await AssignPermissionsToRolesAsync(dbContext, logger);
             await SeedAdminUserAsync(dbContext, scope.ServiceProvider, logger);
             await SeedShippingProviderConfigsAsync(scope.ServiceProvider);
+            await SeedPlatformWalletAsync(dbContext, scope.ServiceProvider, logger);
             await CoreFlowFakeDataSeeder.SeedAsync(dbContext, scope.ServiceProvider, logger);
             logger.LogInformation("Database seeding completed successfully.");
         }
@@ -194,6 +197,28 @@ public static class DatabaseSeeder
             logger.LogInformation("Assigned PermissionId={PermissionId} to RoleId={RoleId}.", rp.PermissionCode, rp.RoleName);
     }
     
+    private static async Task SeedPlatformWalletAsync(
+        ApplicationDbContext dbContext,
+        IServiceProvider serviceProvider,
+        ILogger logger)
+    {
+        var clock = serviceProvider.GetRequiredService<IClock>();
+
+        var platformWallet = await dbContext.Set<Wallet>()
+            .FirstOrDefaultAsync(w => w.Type == WalletType.Platform);
+
+        if (platformWallet is not null)
+            return;
+
+        platformWallet = Wallet.CreatePlatformWallet(Currency.Vnd, clock.UtcNow);
+        dbContext.Set<Wallet>().Add(platformWallet);
+        platformWallet.ClearDomainEvents();
+        await dbContext.SaveChangesAsync();
+
+        logger.LogInformation(
+            "Seeded platform wallet (Id={WalletId}).", platformWallet.Id.Value);
+    }
+
     public static async Task SeedShippingProviderConfigsAsync(IServiceProvider services)
     {
         using var scope = services.CreateScope();

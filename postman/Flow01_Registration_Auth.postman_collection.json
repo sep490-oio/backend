@@ -1,0 +1,454 @@
+{
+  "info": {
+    "name": "Flow 01: Registration & Authentication",
+    "description": "Complete authentication flow: register, confirm email, login, token management, 2FA (TOTP), password reset.\n\n**Actors**: New User\n**Prerequisite**: None\n**Mailtrap**: Use the Mailtrap collection to retrieve confirmation/reset URLs from email.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "token", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "deviceId", "value": "{{$guid}}" },
+    { "key": "userEmail", "value": "testuser@example.com" },
+    { "key": "userName", "value": "testuser01" },
+    { "key": "userPassword", "value": "Test@1234" },
+    { "key": "confirmToken", "value": "" },
+    { "key": "resetToken", "value": "" },
+    { "key": "totpCode", "value": "" },
+    { "key": "totpSecret", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01. Register",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "register"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userName\": \"{{userName}}\",\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"currency\": \"VND\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Register success', () => {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+              "});",
+              "const res = pm.response.json();",
+              "if (res.userId) {",
+              "  pm.collectionVariables.set('userId', res.userId);",
+              "  console.log('userId saved:', res.userId);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. (Mailtrap) Get Confirm URL",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://mailtrap.io/api/accounts/{{mailtrapAccountId}}/inboxes/{{mailtrapInboxId}}/messages",
+          "host": ["https://mailtrap.io"],
+          "path": ["api", "accounts", "{{mailtrapAccountId}}", "inboxes", "{{mailtrapInboxId}}", "messages"]
+        },
+        "description": "Reference the Mailtrap_Get_ConfirmUrl collection to retrieve the email confirmation token. Copy userId and token from the confirmation link."
+      }
+    },
+    {
+      "name": "03. Confirm Email",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/confirm-email",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "confirm-email"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"token\": \"{{confirmToken}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Email confirmed', () => {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "login"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"account\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"deviceId\": \"{{deviceId}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Login success', () => pm.response.to.have.status(200));",
+              "const res = pm.response.json();",
+              "if (res.accessToken) {",
+              "  pm.collectionVariables.set('token', res.accessToken);",
+              "  pm.collectionVariables.set('refreshToken', res.refreshToken);",
+              "  console.log('Tokens saved');",
+              "}",
+              "if (res.userId) pm.collectionVariables.set('userId', res.userId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Refresh Token",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/refresh",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "refresh"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\",\n  \"deviceId\": \"{{deviceId}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Token refreshed', () => pm.response.to.have.status(200));",
+              "const res = pm.response.json();",
+              "if (res.accessToken) {",
+              "  pm.collectionVariables.set('token', res.accessToken);",
+              "  pm.collectionVariables.set('refreshToken', res.refreshToken);",
+              "  console.log('Tokens refreshed');",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Logout",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/logout",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "logout"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deviceId\": \"{{deviceId}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Logout success', () => {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. Forgot Password",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/forgot-password",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "forgot-password"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{userEmail}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Forgot password sent', () => {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08. Reset Password",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/reset-password",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "reset-password"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"NewTest@1234\",\n  \"confirmPassword\": \"NewTest@1234\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Password reset success', () => {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09. Setup TOTP",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/me/two-factor/setup",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "me", "two-factor", "setup"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('TOTP setup initiated', () => pm.response.to.have.status(200));",
+              "const res = pm.response.json();",
+              "if (res.sharedKey) {",
+              "  pm.collectionVariables.set('totpSecret', res.sharedKey);",
+              "  console.log('TOTP secret saved');",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Confirm TOTP Setup",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/me/two-factor/confirm",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "me", "two-factor", "confirm"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"{{totpCode}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('TOTP confirmed', () => pm.response.to.have.status(200));",
+              "const res = pm.response.json();",
+              "if (res.recoveryCodes) {",
+              "  console.log('Recovery codes:', JSON.stringify(res.recoveryCodes));",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Login with 2FA (gets limited JWT)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "login"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"account\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"deviceId\": \"{{deviceId}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Login returns 2FA required', () => pm.response.to.have.status(200));",
+              "const res = pm.response.json();",
+              "if (res.accessToken) {",
+              "  pm.collectionVariables.set('token', res.accessToken);",
+              "  console.log('Limited JWT saved for 2FA verification');",
+              "}",
+              "if (res.refreshToken) {",
+              "  pm.collectionVariables.set('refreshToken', res.refreshToken);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. Verify TOTP Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/two-factor/verify",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "two-factor", "verify"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"{{totpCode}}\",\n  \"deviceId\": \"{{deviceId}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('TOTP login verified', () => pm.response.to.have.status(200));",
+              "const res = pm.response.json();",
+              "if (res.accessToken) {",
+              "  pm.collectionVariables.set('token', res.accessToken);",
+              "  pm.collectionVariables.set('refreshToken', res.refreshToken);",
+              "  console.log('Full tokens saved after 2FA');",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13. Disable 2FA",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/me/two-factor/disable",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "me", "two-factor", "disable"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('2FA disabled', () => {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14. Regenerate Recovery Codes",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/me/two-factor/recovery-codes",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "me", "two-factor", "recovery-codes"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"{{totpCode}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Recovery codes regenerated', () => pm.response.to.have.status(200));",
+              "const res = pm.response.json();",
+              "if (res.recoveryCodes) {",
+              "  console.log('New recovery codes:', JSON.stringify(res.recoveryCodes));",
+              "}"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

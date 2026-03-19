@@ -15,7 +15,8 @@ public sealed class Wallet : AggregateRoot<WalletId>, IAuditableEntity, IVersion
 {
     private readonly List<WalletTransaction> _walletTransactions = [];
 
-    public UserId UserId { get; private set; }
+    public UserId? UserId { get; private set; }
+    public WalletType Type { get; private set; }
     public WalletFunds WalletFunds {get; private set; }
     public bool IsActive { get; private set; }
     public int Version { get; private set; }
@@ -37,8 +38,23 @@ public sealed class Wallet : AggregateRoot<WalletId>, IAuditableEntity, IVersion
         {
             Id = WalletId.From(Guid.CreateVersion7()),
             UserId = userId,
+            Type = WalletType.Personal,
             WalletFunds = WalletFunds.Empty(currency),
             IsActive = false,
+            Version = 1,
+            CreatedAt = nowUtc,
+        };
+    }
+
+    public static Wallet CreatePlatformWallet(Currency currency, DateTime nowUtc)
+    {
+        return new Wallet
+        {
+            Id = WalletId.From(Guid.CreateVersion7()),
+            UserId = null,
+            Type = WalletType.Platform,
+            WalletFunds = WalletFunds.Empty(currency),
+            IsActive = true,
             Version = 1,
             CreatedAt = nowUtc,
         };
@@ -73,8 +89,9 @@ public sealed class Wallet : AggregateRoot<WalletId>, IAuditableEntity, IVersion
 
         ModifiedAt = nowUtc;
 
-        RaiseDomainEvent(new WalletCreditedDomainEvent(
-            Id, UserId, amount, WalletFunds.BalanceAmount, description, nowUtc));
+        if (UserId is { } userId)
+            RaiseDomainEvent(new WalletCreditedDomainEvent(
+                Id, userId, amount, WalletFunds.BalanceAmount, description, nowUtc));
 
         return UnitResult.Success<Error>();
     }
@@ -108,8 +125,9 @@ public sealed class Wallet : AggregateRoot<WalletId>, IAuditableEntity, IVersion
 
         ModifiedAt = nowUtc;
 
-        RaiseDomainEvent(new WalletDebitedDomainEvent(
-            Id, UserId, amount, WalletFunds.BalanceAmount, description, nowUtc));
+        if (UserId is { } userId)
+            RaiseDomainEvent(new WalletDebitedDomainEvent(
+                Id, userId, amount, WalletFunds.BalanceAmount, description, nowUtc));
 
         return UnitResult.Success<Error>();
     }
@@ -143,8 +161,9 @@ public sealed class Wallet : AggregateRoot<WalletId>, IAuditableEntity, IVersion
 
         ModifiedAt = nowUtc;
 
-        RaiseDomainEvent(new WalletHeldDomainEvent(
-            Id, UserId, amount, description, nowUtc));
+        if (UserId is { } userId)
+            RaiseDomainEvent(new WalletHeldDomainEvent(
+                Id, userId, amount, description, nowUtc));
 
         return UnitResult.Success<Error>();
     }
@@ -178,8 +197,9 @@ public sealed class Wallet : AggregateRoot<WalletId>, IAuditableEntity, IVersion
 
         ModifiedAt = nowUtc;
 
-        RaiseDomainEvent(new WalletUnheldDomainEvent(
-            Id, UserId, amount, description, nowUtc));
+        if (UserId is { } userId)
+            RaiseDomainEvent(new WalletUnheldDomainEvent(
+                Id, userId, amount, description, nowUtc));
 
         return UnitResult.Success<Error>();
     }

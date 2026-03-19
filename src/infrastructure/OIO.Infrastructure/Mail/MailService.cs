@@ -10,14 +10,14 @@ namespace OIO.Infrastructure.Mail;
 
 internal sealed class MailSender : IMailSender
 {
-    private readonly EmailOptions _options;
+    private readonly IOptionsMonitor<EmailOptions> _options;
     private readonly ILogger<MailSender> _logger;
 
     public MailSender(
-        IOptions<EmailOptions> options,
+        IOptionsMonitor<EmailOptions> options,
         ILogger<MailSender> logger)
     {
-        _options = options.Value;
+        _options = options;
         _logger = logger;
     }
 
@@ -25,7 +25,7 @@ internal sealed class MailSender : IMailSender
     {
         var mimeMessage = new MimeMessage();
 
-        mimeMessage.From.Add(new MailboxAddress(_options.FromName, _options.FromAddress));
+        mimeMessage.From.Add(new MailboxAddress(_options.CurrentValue.FromName, _options.CurrentValue.FromAddress));
         mimeMessage.To.Add(MailboxAddress.Parse(message.To));
         mimeMessage.Subject = message.Subject;
 
@@ -38,15 +38,15 @@ internal sealed class MailSender : IMailSender
 
         try
         {
-            var secureOption = _options.UseStartTls
+            var secureOption = _options.CurrentValue.UseStartTls
                 ? SecureSocketOptions.StartTls
                 : SecureSocketOptions.Auto;
 
-            await client.ConnectAsync(_options.Host, _options.Port, secureOption, ct);
+            await client.ConnectAsync(_options.CurrentValue.Host, _options.CurrentValue.Port, secureOption, ct);
 
-            if (!string.IsNullOrWhiteSpace(_options.Username))
+            if (!string.IsNullOrWhiteSpace(_options.CurrentValue.Username))
             {
-                await client.AuthenticateAsync(_options.Username, _options.Password, ct);
+                await client.AuthenticateAsync(_options.CurrentValue.Username, _options.CurrentValue.Password, ct);
             }
 
             await client.SendAsync(mimeMessage, ct);

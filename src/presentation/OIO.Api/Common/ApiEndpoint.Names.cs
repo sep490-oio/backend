@@ -53,6 +53,10 @@ public static partial class ApiEndpoint
             public const string CreateSellerProfile = nameof(CreateSellerProfile);
             public const string GetMySellerProfile = nameof(GetMySellerProfile);
             public const string UpdateSellerProfile = nameof(UpdateSellerProfile);
+
+            // Notification Preferences
+            public const string GetNotificationPreferences = nameof(GetNotificationPreferences);
+            public const string UpdateNotificationPreferences = nameof(UpdateNotificationPreferences);
         }
 
         public static class Media
@@ -64,6 +68,7 @@ public static partial class ApiEndpoint
 
         public static class Admins
         {
+            public const string CreateUser = nameof(CreateUser);
             public const string GetUserById = nameof(GetUserById);
             public const string GetUsers = nameof(GetUsers);
             public const string GetRoles = nameof(GetRoles);
@@ -247,6 +252,7 @@ public static partial class ApiEndpoint
             public const string GetEscrows = nameof(GetEscrows);
             public const string GetEscrowById = nameof(GetEscrowById);
             public const string GetSummary = nameof(GetSummary);
+            public const string GetPlatformWallet = nameof(GetPlatformWallet);
         }
 
         public static class Orders

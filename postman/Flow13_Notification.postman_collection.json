@@ -1,0 +1,78 @@
+{
+  "info": {
+    "name": "Flow 13: Notifications",
+    "description": "Notification management: list notifications, check unread count, mark as read.\n\n**Actors**: Any authenticated user\n**Prerequisite**: User account with some notifications",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "userToken", "value": "" },
+    { "key": "notificationId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "0.1 Login as User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"account\": \"buyer1@example.com\",\n  \"password\": \"Test@1234\",\n  \"deviceId\": \"{{$guid}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.accessToken) pm.collectionVariables.set('userToken', res.accessToken);"] } }]
+        }
+      ]
+    },
+    {
+      "name": "A. Notifications",
+      "item": [
+        {
+          "name": "13.1 Get Notifications",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.items && res.items.length > 0) pm.collectionVariables.set('notificationId', res.items[0].id);"] } }]
+        },
+        {
+          "name": "13.2 Get Unread Count",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/notifications/unread-count", "host": ["{{baseUrl}}"], "path": ["api", "notifications", "unread-count"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "console.log('Unread count:', res);"] } }]
+        },
+        {
+          "name": "13.3 Mark as Read",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/notifications/{{notificationId}}/read", "host": ["{{baseUrl}}"], "path": ["api", "notifications", "{{notificationId}}", "read"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Notification marked as read', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "13.4 Mark All as Read",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/notifications/read-all", "host": ["{{baseUrl}}"], "path": ["api", "notifications", "read-all"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('All notifications marked as read', () => pm.response.to.have.status(200));"] } }]
+        }
+      ]
+    }
+  ]
+}

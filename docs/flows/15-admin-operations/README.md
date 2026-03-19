@@ -39,6 +39,7 @@ Tat ca admin endpoint bat dau voi `/api/admin/...`
 | Method | URL | Mo ta |
 |---|---|---|
 | `GET` | `/api/admin/users` | Danh sach user |
+| `POST` | `/api/admin/users` | Tao user moi |
 | `GET` | `/api/admin/users/{userId}` | Chi tiet user |
 | `POST` | `/api/admin/users/{userId}/status` | Thay doi trang thai |
 | `DELETE` | `/api/admin/users/{userId}` | Xoa user |

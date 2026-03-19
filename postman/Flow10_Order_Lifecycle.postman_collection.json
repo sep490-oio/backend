@@ -1,0 +1,165 @@
+{
+  "info": {
+    "name": "Flow 10: Order Lifecycle",
+    "description": "Order lifecycle: view orders, checkout, create returns, ship returns, approve/reject returns, confirm received.\n\n**Actors**: Buyer, Seller/Admin\n**Prerequisite**: An order exists (from auction win or buy-now)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "buyerToken", "value": "" },
+    { "key": "sellerToken", "value": "" },
+    { "key": "orderId", "value": "PASTE_ORDER_ID_HERE" },
+    { "key": "returnId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "0.1 Login as Buyer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"account\": \"buyer@example.com\",\n  \"password\": \"Test@1234\",\n  \"deviceId\": \"{{$guid}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.accessToken) pm.collectionVariables.set('buyerToken', res.accessToken);"] } }]
+        },
+        {
+          "name": "0.2 Login as Seller",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"account\": \"seller@example.com\",\n  \"password\": \"Test@1234\",\n  \"deviceId\": \"{{$guid}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.accessToken) pm.collectionVariables.set('sellerToken', res.accessToken);"] } }]
+        }
+      ]
+    },
+    {
+      "name": "View Orders",
+      "item": [
+        {
+          "name": "10.1 Get My Orders",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{buyerToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/me/orders", "host": ["{{baseUrl}}"], "path": ["api", "me", "orders"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.items && res.items.length > 0) {", "  pm.collectionVariables.set('orderId', res.items[0].id);", "  console.log('Order ID:', res.items[0].id);", "}", "pm.test('My orders retrieved', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "10.2 Get Order",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{buyerToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}", "host": ["{{baseUrl}}"], "path": ["api", "orders", "{{orderId}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "console.log('Order status:', res.status);", "pm.test('Order details retrieved', () => pm.response.to.have.status(200));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "Checkout",
+      "item": [
+        {
+          "name": "10.3 Checkout Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/payments/checkout", "host": ["{{baseUrl}}"], "path": ["api", "payments", "checkout"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"paymentMethod\": \"vnpay\",\n  \"bankCode\": \"NCB\"\n}"
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "console.log('Payment URL:', res.paymentUrl);", "pm.test('Checkout initiated', () => pm.response.to.have.status(200));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "Returns",
+      "item": [
+        {
+          "name": "10.4 Create Return",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}/returns", "host": ["{{baseUrl}}"], "path": ["api", "orders", "{{orderId}}", "returns"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reasonCode\": \"ITEM_NOT_AS_DESCRIBED\",\n  \"description\": \"The item condition does not match the listing description\"\n}"
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.id) pm.collectionVariables.set('returnId', res.id);", "pm.test('Return created', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "10.5 Ship Return",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}/returns/{{returnId}}/ship", "host": ["{{baseUrl}}"], "path": ["api", "orders", "{{orderId}}", "returns", "{{returnId}}", "ship"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerCode\": \"GHN\",\n  \"trackingNumber\": \"GHN123456789\"\n}"
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Return shipped', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "10.6 (Admin/Seller) Approve Return",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{sellerToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}/returns/{{returnId}}/approve", "host": ["{{baseUrl}}"], "path": ["api", "orders", "{{orderId}}", "returns", "{{returnId}}", "approve"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Return approved after inspection\"\n}"
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Return approved', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "10.7 (Admin/Seller) Reject Return",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{sellerToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}/returns/{{returnId}}/reject", "host": ["{{baseUrl}}"], "path": ["api", "orders", "{{orderId}}", "returns", "{{returnId}}", "reject"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Item was used and damaged beyond original condition\"\n}"
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Return rejected', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "10.8 Confirm Return Received",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{sellerToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}/returns/{{returnId}}/confirm-received", "host": ["{{baseUrl}}"], "path": ["api", "orders", "{{orderId}}", "returns", "{{returnId}}", "confirm-received"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Return receipt confirmed', () => pm.response.to.have.status(200));"] } }]
+        }
+      ]
+    }
+  ]
+}

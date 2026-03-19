@@ -1,0 +1,634 @@
+{
+  "info": {
+    "name": "Flow 05: Item Management",
+    "description": "Item creation, media management, submission, admin review, activation, shipping, Q&A.\n\n**Actors**: Seller, Admin\n**Prerequisite**: Flow 03 (Seller verified), Flow 04 (media uploaded)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "token", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "itemId", "value": "" },
+    { "key": "mediaId", "value": "" },
+    { "key": "mediaUploadId", "value": "" },
+    { "key": "categoryId", "value": "" },
+    { "key": "questionId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "Login as Seller",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account\": \"seller@example.com\",\n  \"password\": \"Test@1234\",\n  \"deviceId\": \"{{$guid}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.accessToken) {",
+                  "  pm.collectionVariables.set('token', res.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', res.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account\": \"admin@example.com\",\n  \"password\": \"Admin@1234\",\n  \"deviceId\": \"{{$guid}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.accessToken) pm.collectionVariables.set('adminToken', res.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "categories"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Categories retrieved', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "if (Array.isArray(res) && res.length > 0) {",
+                  "  pm.collectionVariables.set('categoryId', res[0].id);",
+                  "  console.log('categoryId saved:', res[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Item CRUD",
+      "item": [
+        {
+          "name": "01. Create Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/items",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Dong ho Rolex Submariner 1960\",\n  \"condition\": \"VeryGood\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"description\": \"Dong ho Rolex Submariner doi 1960, tinh trang rat tot, da duoc kiem dinh.\",\n  \"quantity\": 1,\n  \"attributes\": {\n    \"brand\": \"Rolex\",\n    \"year\": 1960,\n    \"material\": \"Stainless Steel\"\n  },\n  \"images\": [\n    {\n      \"mediaUploadId\": \"{{mediaUploadId}}\",\n      \"isPrimary\": true,\n      \"sortOrder\": 0\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Item created', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "const res = pm.response.json();",
+                  "if (res.id) {",
+                  "  pm.collectionVariables.set('itemId', res.id);",
+                  "  console.log('itemId saved:', res.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02. Get My Items",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/items/my",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "my"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('My items retrieved', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03. Get Item by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Item retrieved', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Item Media",
+      "item": [
+        {
+          "name": "04. Add Item Media",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/media",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "media"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mediaUploadId\": \"{{mediaUploadId}}\",\n  \"isPrimary\": false,\n  \"sortOrder\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Media added to item', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "const res = pm.response.json();",
+                  "if (res.id) {",
+                  "  pm.collectionVariables.set('mediaId', res.id);",
+                  "  console.log('mediaId saved:', res.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05. Set Primary Image",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/media/{{mediaId}}/primary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "media", "{{mediaId}}", "primary"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Primary image set', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06. Reorder Media",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/media/reorder",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "media", "reorder"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderedMediaIds\": [\"{{mediaId}}\"]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Media reordered', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07. Remove Media",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/media/{{mediaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "media", "{{mediaId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Media removed', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Item Submission & Review",
+      "item": [
+        {
+          "name": "08. Submit Item for Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verifyByPlatform\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Item submitted', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09. (Admin) Approve Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/items/{{itemId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "items", "{{itemId}}", "approve"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Item approved', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. (Admin) Reject Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/items/{{itemId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "items", "{{itemId}}", "reject"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Item description does not meet quality standards\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Item rejected', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Item Activation & Shipping",
+      "item": [
+        {
+          "name": "11. Activate Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/activate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "activate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Item activated', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12. Resubmit Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/resubmit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "resubmit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verifyByPlatform\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Item resubmitted', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13. Choose Shipping",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/shipping",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "shipping"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"senderName\": \"Nguyen Van A\",\n  \"senderPhone\": \"+84901234567\",\n  \"senderAddress\": \"123 Nguyen Hue\",\n  \"senderWard\": \"Ben Nghe\",\n  \"senderDistrict\": \"Quan 1\",\n  \"senderProvince\": \"Ho Chi Minh\",\n  \"weightGrams\": 500,\n  \"insuranceValue\": 50000000,\n  \"providerCode\": null,\n  \"lengthCm\": 20,\n  \"widthCm\": 15,\n  \"heightCm\": 10,\n  \"notes\": \"Fragile - handle with care\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Shipping configured', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14. Confirm Inspected Condition",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/confirm-inspected-condition",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "confirm-inspected-condition"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Inspected condition confirmed', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Item Questions",
+      "item": [
+        {
+          "name": "15. Ask Question",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/questions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "questions"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Is this item still in original packaging?\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Question asked', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "const res = pm.response.json();",
+                  "if (res.id) {",
+                  "  pm.collectionVariables.set('questionId', res.id);",
+                  "  console.log('questionId saved:', res.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16. Get Questions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/questions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "questions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Questions retrieved', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "if (Array.isArray(res) && res.length > 0) {",
+                  "  pm.collectionVariables.set('questionId', res[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17. Answer Question",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/questions/{{questionId}}/answer",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "questions", "{{questionId}}", "answer"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answer\": \"Yes, this item comes with original packaging and certificate of authenticity.\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Question answered', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

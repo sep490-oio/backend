@@ -1,0 +1,343 @@
+{
+  "info": {
+    "name": "Flow 15: Admin Operations",
+    "description": "Comprehensive admin operations: user management, roles & permissions, item review, auction curation, terms management, payment admin.\n\n**Actors**: Admin\n**Prerequisite**: Admin account with full admin permissions",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "adminToken", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "itemId", "value": "" },
+    { "key": "auctionId", "value": "PASTE_AUCTION_ID_HERE" },
+    { "key": "termId", "value": "" },
+    { "key": "role", "value": "Seller" },
+    { "key": "permission", "value": "items:create" }
+  ],
+  "item": [
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "0.1 Login as Admin",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"account\": \"admin@example.com\",\n  \"password\": \"Admin@1234\",\n  \"deviceId\": \"{{$guid}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.accessToken) pm.collectionVariables.set('adminToken', res.accessToken);"] } }]
+        }
+      ]
+    },
+    {
+      "name": "A. User Management",
+      "item": [
+        {
+          "name": "15.1 Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/admin/users", "host": ["{{baseUrl}}"], "path": ["api", "admin", "users"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userName\": \"newuser01\",\n  \"email\": \"newuser01@example.com\",\n  \"password\": \"Test@1234\",\n  \"currency\": \"VND\",\n  \"firstName\": \"New\",\n  \"lastName\": \"User\",\n  \"displayName\": \"New User\",\n  \"roles\": [\"Buyer\"],\n  \"emailConfirmed\": true,\n  \"skipNotifications\": false\n}"
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.id) pm.collectionVariables.set('userId', res.id);", "pm.test('User created', () => pm.response.to.have.status(201));"] } }]
+        },
+        {
+          "name": "15.2 Get Users",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "15.3 Get User",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["api", "admin", "users", "{{userId}}"] }
+          }
+        },
+        {
+          "name": "15.4 Change User Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/admin/users/{{userId}}/status", "host": ["{{baseUrl}}"], "path": ["api", "admin", "users", "{{userId}}", "status"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Suspended\"\n}"
+            }
+          }
+        },
+        {
+          "name": "15.5 Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["api", "admin", "users", "{{userId}}"] }
+          }
+        },
+        {
+          "name": "15.6 Unlock User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/users/{{userId}}/unlock", "host": ["{{baseUrl}}"], "path": ["api", "admin", "users", "{{userId}}", "unlock"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "B. Roles & Permissions",
+      "item": [
+        {
+          "name": "15.7 Get Roles",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/roles", "host": ["{{baseUrl}}"], "path": ["api", "admin", "roles"] }
+          }
+        },
+        {
+          "name": "15.8 Get Permissions",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/permissions", "host": ["{{baseUrl}}"], "path": ["api", "admin", "permissions"] }
+          }
+        },
+        {
+          "name": "15.9 Assign Role",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/users/{{userId}}/roles/{{role}}", "host": ["{{baseUrl}}"], "path": ["api", "admin", "users", "{{userId}}", "roles", "{{role}}"] }
+          }
+        },
+        {
+          "name": "15.10 Revoke Role",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/users/{{userId}}/roles/{{role}}", "host": ["{{baseUrl}}"], "path": ["api", "admin", "users", "{{userId}}", "roles", "{{role}}"] }
+          }
+        },
+        {
+          "name": "15.11 Grant Permission",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/users/{{userId}}/permissions/{{permission}}", "host": ["{{baseUrl}}"], "path": ["api", "admin", "users", "{{userId}}", "permissions", "{{permission}}"] }
+          }
+        },
+        {
+          "name": "15.12 Deny Permission",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/users/{{userId}}/permissions/{{permission}}/deny", "host": ["{{baseUrl}}"], "path": ["api", "admin", "users", "{{userId}}", "permissions", "{{permission}}", "deny"] }
+          }
+        },
+        {
+          "name": "15.13 Revoke Permission",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/users/{{userId}}/permissions/{{permission}}", "host": ["{{baseUrl}}"], "path": ["api", "admin", "users", "{{userId}}", "permissions", "{{permission}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "C. Item Review",
+      "item": [
+        {
+          "name": "15.14 Get Review Queue",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/items/review-queue?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "items", "review-queue"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.items && res.items.length > 0) pm.collectionVariables.set('itemId', res.items[0].id);"] } }]
+        },
+        {
+          "name": "15.15 Get Item Detail",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/items/{{itemId}}", "host": ["{{baseUrl}}"], "path": ["api", "admin", "items", "{{itemId}}"] }
+          }
+        },
+        {
+          "name": "15.16 Approve Item",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/items/{{itemId}}/approve", "host": ["{{baseUrl}}"], "path": ["api", "admin", "items", "{{itemId}}", "approve"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Item approved', () => pm.response.to.have.status(204));"] } }]
+        },
+        {
+          "name": "15.17 Reject Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/admin/items/{{itemId}}/reject", "host": ["{{baseUrl}}"], "path": ["api", "admin", "items", "{{itemId}}", "reject"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Item description does not meet quality standards. Please provide more details.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "15.18 Assign Reviewer",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/admin/items/{{itemId}}/assign", "host": ["{{baseUrl}}"], "path": ["api", "admin", "items", "{{itemId}}", "assign"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"adminId\": \"PASTE_ADMIN_USER_ID_HERE\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "D. Auction Curation",
+      "item": [
+        {
+          "name": "15.19 Set Curation",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/admin/auctions/{{auctionId}}/curation", "host": ["{{baseUrl}}"], "path": ["api", "admin", "auctions", "{{auctionId}}", "curation"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignedAdminId\": null,\n  \"clearAssignedAdmin\": false,\n  \"priority\": 90,\n  \"priorityReason\": \"High-value verified item from trusted seller\",\n  \"isFeatured\": true\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "E. Terms Management",
+      "item": [
+        {
+          "name": "15.20 Get Terms",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/terms", "host": ["{{baseUrl}}"], "path": ["api", "admin", "terms"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res && res.length > 0) pm.collectionVariables.set('termId', res[0].id);"] } }]
+        },
+        {
+          "name": "15.21 Create Terms",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/admin/terms", "host": ["{{baseUrl}}"], "path": ["api", "admin", "terms"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"TermsOfService\",\n  \"mediaUploadId\": \"PASTE_MEDIA_UPLOAD_ID_HERE\"\n}"
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.id) pm.collectionVariables.set('termId', res.id);", "pm.test('Terms created', () => pm.response.to.have.status(201));"] } }]
+        },
+        {
+          "name": "15.22 Activate Terms",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/terms/{{termId}}/activate", "host": ["{{baseUrl}}"], "path": ["api", "admin", "terms", "{{termId}}", "activate"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "F. Payment Admin",
+      "item": [
+        {
+          "name": "15.23 Get Payment Summary",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/payments/summary", "host": ["{{baseUrl}}"], "path": ["api", "admin", "payments", "summary"] }
+          }
+        },
+        {
+          "name": "15.24 Get Transactions",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payments/transactions?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "payments", "transactions"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "15.25 Get Escrows",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payments/escrows?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "payments", "escrows"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

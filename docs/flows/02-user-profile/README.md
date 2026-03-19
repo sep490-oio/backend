@@ -13,6 +13,7 @@ Tat ca endpoint thuoc nhom `api/me/*` va yeu cau dang nhap.
 | 2 | Xac thuc so dien thoai | [phone-verification.md](./phone-verification.md) |
 | 3 | Quan ly dia chi | [address-management.md](./address-management.md) |
 | 4 | Ho so nguoi ban | [seller-profile.md](./seller-profile.md) |
+| 5 | Tuy chon thong bao | [notification-preferences.md](./notification-preferences.md) |
 
 ## Endpoint Map
 
@@ -31,6 +32,8 @@ Tat ca endpoint thuoc nhom `api/me/*` va yeu cau dang nhap.
 | `POST` | `/api/me/seller-profile` | Tao ho so ban | `Me.ManageSellerProfile` |
 | `GET` | `/api/me/seller-profile` | Xem ho so ban | `Me.ReadSellerProfile` |
 | `PUT` | `/api/me/seller-profile` | Cap nhat ho so ban | `Me.ManageSellerProfile` |
+| `GET` | `/api/me/notification-preferences` | Lay tuy chon thong bao | - |
+| `PUT` | `/api/me/notification-preferences` | Cap nhat tuy chon thong bao | - |
 
 ## Quan he voi cac module khac
 

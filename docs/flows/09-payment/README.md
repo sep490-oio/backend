@@ -27,6 +27,7 @@ Module thanh toan xu ly toan bo luong tai chinh cua he thong OIO, bao gom tao UR
 |---|---|
 | [create-payment-url.md](./create-payment-url.md) | Tao URL thanh toan VNPay (flow chinh) |
 | [token-payment.md](./token-payment.md) | Thanh toan bang token the da luu |
+| [payment-methods.md](./payment-methods.md) | Quan ly phuong thuc thanh toan (CRUD, lifecycle, token) |
 | [ipn-callback.md](./ipn-callback.md) | Xu ly IPN callback tu VNPay (server-to-server) |
 | [deposit-callback.md](./deposit-callback.md) | Xu ly callback dat coc dau gia |
 | [order-payment-callback.md](./order-payment-callback.md) | Xu ly callback thanh toan don hang |

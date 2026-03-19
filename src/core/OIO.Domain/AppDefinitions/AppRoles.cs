@@ -62,6 +62,10 @@ public static partial class App
                     Permissions.Catalogs.Me.ReadVerification,
                     Permissions.Catalogs.Me.ManageSellerProfile,
                     Permissions.Catalogs.Me.ReadSellerProfile,
+
+                    // Notification Preferences
+                    Permissions.Catalogs.Me.ReadNotificationPreferences,
+                    Permissions.Catalogs.Me.ManageNotificationPreferences,
                 ],
 
                 [Bidder] =
@@ -107,9 +111,13 @@ public static partial class App
                     Permissions.Catalogs.Me.ReadVerification,
                     Permissions.Catalogs.Me.ManageSellerProfile,
                     Permissions.Catalogs.Me.ReadSellerProfile,
+
+                    // Notification Preferences
+                    Permissions.Catalogs.Me.ReadNotificationPreferences,
+                    Permissions.Catalogs.Me.ManageNotificationPreferences,
                 ],
 
-                [Seller] = 
+                [Seller] =
                 [
                     // Profile
                     Permissions.Catalogs.Me.Read,
@@ -159,6 +167,10 @@ public static partial class App
                     Permissions.Catalogs.Me.ReadVerification,
                     Permissions.Catalogs.Me.ManageSellerProfile,
                     Permissions.Catalogs.Me.ReadSellerProfile,
+
+                    // Notification Preferences
+                    Permissions.Catalogs.Me.ReadNotificationPreferences,
+                    Permissions.Catalogs.Me.ManageNotificationPreferences,
                 ],
 
                 [Inspector] =

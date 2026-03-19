@@ -44,6 +44,14 @@ internal sealed class SellerProfileConfiguration : IEntityTypeConfiguration<Sell
             .HasColumnType("numeric(18,2)")
             .HasDefaultValue(0m);
 
+        builder.Property(s => s.TrustScoreOverall)
+            .HasColumnName("trust_score_overall")
+            .HasDefaultValue(0m)
+            .HasPrecision(5, 2);
+
+        builder.Property(s => s.TrustScoreCalculatedAt)
+            .HasColumnName("trust_score_calculated_at");
+
         builder.Property(s => s.CreatedAt)
             .HasColumnName("created_at")
             .HasDefaultValueSql("CURRENT_TIMESTAMP")

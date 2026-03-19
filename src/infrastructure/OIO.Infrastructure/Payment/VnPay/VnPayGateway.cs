@@ -16,7 +16,7 @@ namespace OIO.Infrastructure.Payment.VnPay;
 /// </summary>
 public sealed class VnPayGateway : IPaymentGatewayService
 {
-    private readonly VnPayConfig _vnPayConfig;
+    private readonly IOptionsMonitor<VnPayConfig> _vnPayConfig;
     private readonly HttpClient _httpClient;
     private readonly IAppInfo _appInfo;
     private readonly IClock _clock;
@@ -25,13 +25,13 @@ public sealed class VnPayGateway : IPaymentGatewayService
     public string ProviderCode => "vnpay";
 
     public VnPayGateway(
-        IOptions<VnPayConfig> vnPayConfig,
+        IOptionsMonitor<VnPayConfig> vnPayConfig,
         IAppInfo appInf,
         HttpClient httpClient,
         IClock clock,
         ILogger<VnPayGateway> logger)
     {
-        _vnPayConfig = vnPayConfig.Value;
+        _vnPayConfig = vnPayConfig;
         _appInfo = appInf;
         _httpClient = httpClient;
         _clock = clock;
@@ -41,10 +41,10 @@ public sealed class VnPayGateway : IPaymentGatewayService
     /// <inheritdoc />
     public Result<CreatePaymentUrlResult, Error> CreatePaymentUrl(CreatePaymentUrlRequest request)
     {
-        if (string.IsNullOrWhiteSpace(_vnPayConfig.TmnCode))
+        if (string.IsNullOrWhiteSpace(_vnPayConfig.CurrentValue.TmnCode))
             return Error.Unavailable("VnPay.NotConfigured", "VNPay TmnCode is not configured.");
 
-        if (string.IsNullOrWhiteSpace(_vnPayConfig.HashSecret))
+        if (string.IsNullOrWhiteSpace(_vnPayConfig.CurrentValue.HashSecret))
             return Error.Unavailable("VnPay.NotConfigured", "VNPay HashSecret is not configured.");
 
         var createDate = _clock.UtcNow.AddHours(7);
@@ -56,16 +56,16 @@ public sealed class VnPayGateway : IPaymentGatewayService
 
         var vnpParams = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
-            ["vnp_Version"] = _vnPayConfig.Version,
+            ["vnp_Version"] = _vnPayConfig.CurrentValue.Version,
             ["vnp_Command"] = "pay",
-            ["vnp_TmnCode"] = _vnPayConfig.TmnCode,
+            ["vnp_TmnCode"] = _vnPayConfig.CurrentValue.TmnCode,
             ["vnp_Amount"] = (request.Amount * 100).ToString(CultureInfo.InvariantCulture), // VNPay yêu cầu nhân 100
             ["vnp_CurrCode"] = "VND",
             ["vnp_TxnRef"] = request.TransactionRef,
             ["vnp_OrderInfo"] = orderInfo,
             ["vnp_OrderType"] = "250000",
             ["vnp_Locale"] = request.Locale,
-            ["vnp_ReturnUrl"] = $"{_appInfo.BeUrl}{_vnPayConfig.ReturnPath}",
+            ["vnp_ReturnUrl"] = $"{_appInfo.BeUrl}{_vnPayConfig.CurrentValue.ReturnPath}",
             ["vnp_IpAddr"] = request.IpAddress,
             ["vnp_CreateDate"] = createDate.ToString("yyyyMMddHHmmss"), // GMT+7
             ["vnp_ExpireDate"] = expireDate.ToString("yyyyMMddHHmmss"), // GMT+7 + 15 phút
@@ -75,9 +75,9 @@ public sealed class VnPayGateway : IPaymentGatewayService
             vnpParams["vnp_BankCode"] = request.BankCode;
 
         var queryString = VnPayHelper.BuildQueryString(vnpParams);
-        var secureHash = VnPayHelper.HmacSha512(_vnPayConfig.HashSecret, queryString);
+        var secureHash = VnPayHelper.HmacSha512(_vnPayConfig.CurrentValue.HashSecret, queryString);
 
-        var paymentUrl = $"{_vnPayConfig.PaymentUrl}?{queryString}&vnp_SecureHash={secureHash}";
+        var paymentUrl = $"{_vnPayConfig.CurrentValue.PaymentUrl}?{queryString}&vnp_SecureHash={secureHash}";
 
         _logger.LogInformation(
             "VNPay payment URL created for TxnRef={TxnRef}, Amount={Amount}",
@@ -94,7 +94,7 @@ public sealed class VnPayGateway : IPaymentGatewayService
     public Result<PaymentCallbackResult, Error> ProcessCallback(IDictionary<string, string> queryParams)
     {
         // 1. Validate signature
-        if (!VnPayHelper.ValidateSignature(queryParams, _vnPayConfig.HashSecret))
+        if (!VnPayHelper.ValidateSignature(queryParams, _vnPayConfig.CurrentValue.HashSecret))
         {
             _logger.LogWarning("VNPay callback signature validation failed.");
             return Error.Unauthorized("VnPay.InvalidSignature", "VNPay callback signature is invalid.");
@@ -159,9 +159,9 @@ public sealed class VnPayGateway : IPaymentGatewayService
         var vnpParams = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
             ["vnp_RequestId"] = requestId,
-            ["vnp_Version"] = _vnPayConfig.Version,
+            ["vnp_Version"] = _vnPayConfig.CurrentValue.Version,
             ["vnp_Command"] = "querydr",
-            ["vnp_TmnCode"] = _vnPayConfig.TmnCode,
+            ["vnp_TmnCode"] = _vnPayConfig.CurrentValue.TmnCode,
             ["vnp_TxnRef"] = transactionRef,
             ["vnp_OrderInfo"] = $"Query transaction {transactionRef}",
             ["vnp_TransactionDate"] = createdDate,
@@ -170,10 +170,10 @@ public sealed class VnPayGateway : IPaymentGatewayService
         };
 
         var signData = string.Join("|",
-            requestId, _vnPayConfig.Version, "querydr", _vnPayConfig.TmnCode,
+            requestId, _vnPayConfig.CurrentValue.Version, "querydr", _vnPayConfig.CurrentValue.TmnCode,
             transactionRef, createdDate, createDate, "127.0.0.1", $"Query transaction {transactionRef}");
 
-        vnpParams["vnp_SecureHash"] = VnPayHelper.HmacSha512(_vnPayConfig.HashSecret, signData);
+        vnpParams["vnp_SecureHash"] = VnPayHelper.HmacSha512(_vnPayConfig.CurrentValue.HashSecret, signData);
 
         try
         {
@@ -182,7 +182,7 @@ public sealed class VnPayGateway : IPaymentGatewayService
                 System.Text.Encoding.UTF8,
                 "application/json");
 
-            var response = await _httpClient.PostAsync(_vnPayConfig.ApiUrl, jsonContent, ct);
+            var response = await _httpClient.PostAsync(_vnPayConfig.CurrentValue.ApiUrl, jsonContent, ct);
             var responseBody = await response.Content.ReadAsStringAsync(ct);
 
             _logger.LogInformation(
@@ -221,9 +221,9 @@ public sealed class VnPayGateway : IPaymentGatewayService
         var vnpParams = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
             ["vnp_RequestId"] = requestId,
-            ["vnp_Version"] = _vnPayConfig.Version,
+            ["vnp_Version"] = _vnPayConfig.CurrentValue.Version,
             ["vnp_Command"] = "refund",
-            ["vnp_TmnCode"] = _vnPayConfig.TmnCode,
+            ["vnp_TmnCode"] = _vnPayConfig.CurrentValue.TmnCode,
             ["vnp_TransactionType"] = "02", // Hoàn tiền toàn phần
             ["vnp_TxnRef"] = request.OriginalTransactionRef,
             ["vnp_Amount"] = (request.Amount * 100).ToString(CultureInfo.InvariantCulture),
@@ -237,7 +237,7 @@ public sealed class VnPayGateway : IPaymentGatewayService
 
         // Tạo chuỗi ký: requestId|version|command|tmnCode|transactionType|txnRef|amount|transactionNo|transactionDate|createBy|createDate|ipAddr|orderInfo
         var signData = string.Join("|",
-            requestId, _vnPayConfig.Version, "refund", _vnPayConfig.TmnCode,
+            requestId, _vnPayConfig.CurrentValue.Version, "refund", _vnPayConfig.CurrentValue.TmnCode,
             "02", request.OriginalTransactionRef,
             (request.Amount * 100).ToString(CultureInfo.InvariantCulture),
             request.OriginalVnPayTransactionNo,
@@ -247,7 +247,7 @@ public sealed class VnPayGateway : IPaymentGatewayService
             request.IpAddress,
             request.Reason);
 
-        vnpParams["vnp_SecureHash"] = VnPayHelper.HmacSha512(_vnPayConfig.HashSecret, signData);
+        vnpParams["vnp_SecureHash"] = VnPayHelper.HmacSha512(_vnPayConfig.CurrentValue.HashSecret, signData);
 
         try
         {
@@ -256,7 +256,7 @@ public sealed class VnPayGateway : IPaymentGatewayService
                 System.Text.Encoding.UTF8,
                 "application/json");
 
-            var response = await _httpClient.PostAsync(_vnPayConfig.ApiUrl, jsonContent, ct);
+            var response = await _httpClient.PostAsync(_vnPayConfig.CurrentValue.ApiUrl, jsonContent, ct);
             var responseBody = await response.Content.ReadAsStringAsync(ct);
 
             _logger.LogInformation(
@@ -305,15 +305,15 @@ public sealed class VnPayGateway : IPaymentGatewayService
 
         var vnpParams = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
-            ["vnp_Version"] = _vnPayConfig.Version,
+            ["vnp_Version"] = _vnPayConfig.CurrentValue.Version,
             ["vnp_Command"] = "pay_and_create",
-            ["vnp_TmnCode"] = _vnPayConfig.TmnCode,
+            ["vnp_TmnCode"] = _vnPayConfig.CurrentValue.TmnCode,
             ["vnp_Amount"] = (request.Amount * 100).ToString(CultureInfo.InvariantCulture),
             ["vnp_CurrCode"] = "VND",
             ["vnp_TxnRef"] = request.TransactionRef,
             ["vnp_OrderInfo"] = orderInfo,
             ["vnp_Locale"] = request.Locale,
-            ["vnp_ReturnUrl"] = $"{_appInfo.BeUrl}{_vnPayConfig.ReturnPath}",
+            ["vnp_ReturnUrl"] = $"{_appInfo.BeUrl}{_vnPayConfig.CurrentValue.ReturnPath}",
             ["vnp_IpAddr"] = request.IpAddress,
             ["vnp_CreateDate"] = createDate.ToString("yyyyMMddHHmmss"),
             ["vnp_ExpireDate"] = expireDate.ToString("yyyyMMddHHmmss"),
@@ -324,7 +324,7 @@ public sealed class VnPayGateway : IPaymentGatewayService
         if (!string.IsNullOrWhiteSpace(request.CardType))
             vnpParams["vnp_CardType"] = request.CardType;
 
-        return BuildTokenUrl(_vnPayConfig.PayAndCreateUrl, vnpParams, request.TransactionRef, "pay_and_create");
+        return BuildTokenUrl(_vnPayConfig.CurrentValue.PayAndCreateUrl, vnpParams, request.TransactionRef, "pay_and_create");
     }
 
     /// <inheritdoc />
@@ -342,15 +342,15 @@ public sealed class VnPayGateway : IPaymentGatewayService
 
         var vnpParams = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
-            ["vnp_Version"] = _vnPayConfig.Version,
+            ["vnp_Version"] = _vnPayConfig.CurrentValue.Version,
             ["vnp_Command"] = "token_pay",
-            ["vnp_TmnCode"] = _vnPayConfig.TmnCode,
+            ["vnp_TmnCode"] = _vnPayConfig.CurrentValue.TmnCode,
             ["vnp_Amount"] = (request.Amount * 100).ToString(CultureInfo.InvariantCulture),
             ["vnp_CurrCode"] = "VND",
             ["vnp_TxnRef"] = request.TransactionRef,
             ["vnp_OrderInfo"] = orderInfo,
             ["vnp_Locale"] = request.Locale,
-            ["vnp_ReturnUrl"] = $"{_appInfo.BeUrl}{_vnPayConfig.ReturnPath}",
+            ["vnp_ReturnUrl"] = $"{_appInfo.BeUrl}{_vnPayConfig.CurrentValue.ReturnPath}",
             ["vnp_IpAddr"] = request.IpAddress,
             ["vnp_CreateDate"] = createDate.ToString("yyyyMMddHHmmss"),
             ["vnp_ExpireDate"] = expireDate.ToString("yyyyMMddHHmmss"),
@@ -358,7 +358,7 @@ public sealed class VnPayGateway : IPaymentGatewayService
             ["vnp_Token"] = request.Token,
         };
 
-        return BuildTokenUrl(_vnPayConfig.TokenPayUrl, vnpParams, request.TransactionRef, "token_pay");
+        return BuildTokenUrl(_vnPayConfig.CurrentValue.TokenPayUrl, vnpParams, request.TransactionRef, "token_pay");
     }
 
     /// <inheritdoc />
@@ -375,13 +375,13 @@ public sealed class VnPayGateway : IPaymentGatewayService
 
         var vnpParams = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
-            ["vnp_Version"] = _vnPayConfig.Version,
+            ["vnp_Version"] = _vnPayConfig.CurrentValue.Version,
             ["vnp_Command"] = "token_create",
-            ["vnp_TmnCode"] = _vnPayConfig.TmnCode,
+            ["vnp_TmnCode"] = _vnPayConfig.CurrentValue.TmnCode,
             ["vnp_TxnRef"] = request.TransactionRef,
             ["vnp_OrderInfo"] = orderInfo,
             ["vnp_Locale"] = request.Locale,
-            ["vnp_ReturnUrl"] = $"{_appInfo.BeUrl}{_vnPayConfig.ReturnPath}",
+            ["vnp_ReturnUrl"] = $"{_appInfo.BeUrl}{_vnPayConfig.CurrentValue.ReturnPath}",
             ["vnp_IpAddr"] = request.IpAddress,
             ["vnp_CreateDate"] = createDate.ToString("yyyyMMddHHmmss"),
             ["vnp_AppUserId"] = request.AppUserId,
@@ -390,7 +390,7 @@ public sealed class VnPayGateway : IPaymentGatewayService
         if (!string.IsNullOrWhiteSpace(request.CardType))
             vnpParams["vnp_CardType"] = request.CardType;
 
-        return BuildTokenUrl(_vnPayConfig.TokenCreateUrl, vnpParams, request.TransactionRef, "token_create");
+        return BuildTokenUrl(_vnPayConfig.CurrentValue.TokenCreateUrl, vnpParams, request.TransactionRef, "token_create");
     }
 
     /// <inheritdoc />
@@ -404,9 +404,9 @@ public sealed class VnPayGateway : IPaymentGatewayService
 
         var vnpParams = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
-            ["vnp_Version"] = _vnPayConfig.Version,
+            ["vnp_Version"] = _vnPayConfig.CurrentValue.Version,
             ["vnp_Command"] = "token_remove",
-            ["vnp_TmnCode"] = _vnPayConfig.TmnCode,
+            ["vnp_TmnCode"] = _vnPayConfig.CurrentValue.TmnCode,
             ["vnp_TxnRef"] = request.TransactionRef,
             ["vnp_AppUserId"] = request.AppUserId,
             ["vnp_Token"] = request.Token,
@@ -416,7 +416,7 @@ public sealed class VnPayGateway : IPaymentGatewayService
         };
 
         var queryString = VnPayHelper.BuildQueryString(vnpParams);
-        var secureHash = VnPayHelper.HmacSha512(_vnPayConfig.HashSecret, queryString);
+        var secureHash = VnPayHelper.HmacSha512(_vnPayConfig.CurrentValue.HashSecret, queryString);
         vnpParams["vnp_SecureHash"] = secureHash;
 
         try
@@ -426,7 +426,7 @@ public sealed class VnPayGateway : IPaymentGatewayService
                 System.Text.Encoding.UTF8,
                 "application/json");
 
-            var response = await _httpClient.PostAsync(_vnPayConfig.TokenRemoveUrl, jsonContent, ct);
+            var response = await _httpClient.PostAsync(_vnPayConfig.CurrentValue.TokenRemoveUrl, jsonContent, ct);
             var responseBody = await response.Content.ReadAsStringAsync(ct);
 
             _logger.LogInformation(
@@ -462,10 +462,10 @@ public sealed class VnPayGateway : IPaymentGatewayService
 
     private UnitResult<Error> EnsureConfigured()
     {
-        if (string.IsNullOrWhiteSpace(_vnPayConfig.TmnCode))
+        if (string.IsNullOrWhiteSpace(_vnPayConfig.CurrentValue.TmnCode))
             return Error.Unavailable("VnPay.NotConfigured", "VNPay TmnCode is not configured.");
 
-        if (string.IsNullOrWhiteSpace(_vnPayConfig.HashSecret))
+        if (string.IsNullOrWhiteSpace(_vnPayConfig.CurrentValue.HashSecret))
             return Error.Unavailable("VnPay.NotConfigured", "VNPay HashSecret is not configured.");
 
         return UnitResult.Success<Error>();
@@ -478,7 +478,7 @@ public sealed class VnPayGateway : IPaymentGatewayService
         string command)
     {
         var queryString = VnPayHelper.BuildQueryString(vnpParams);
-        var secureHash = VnPayHelper.HmacSha512(_vnPayConfig.HashSecret, queryString);
+        var secureHash = VnPayHelper.HmacSha512(_vnPayConfig.CurrentValue.HashSecret, queryString);
 
         var paymentUrl = $"{baseUrl}?{queryString}&vnp_SecureHash={secureHash}";
 

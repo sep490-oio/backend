@@ -114,3 +114,47 @@ Nguoi dung tao ho so nguoi ban de co the dang san pham dau gia. Ho so can duoc A
 - **StoreDescription** la mo ta ve cua hang, loai san pham kinh doanh
 - Seller profile la dieu kien tien quyet cho Identity Verification (eKYC)
 - Khi duoc verify, user se duoc gan them role `Seller`
+
+## Trust Score
+
+### Tong quan
+
+Moi seller co mot diem tin cay (`TrustScore`) duoc tinh tu dong boi `SellerTrustScoreCalculator`. Diem nay phan anh muc do tin cay cua seller dua tren nhieu yeu to.
+
+### Cac truong trong SellerProfile
+
+| Truong | Kieu | Mo ta |
+|---|---|---|
+| `TrustScoreOverall` | `decimal` | Diem tin cay tong (0 - 100), duoc clamp trong khoang [0, 100] |
+| `TrustScoreCalculatedAt` | `DateTime?` | Thoi diem tinh lan cuoi |
+
+### Cac truong trong DTO
+
+| DTO | Truong | Mo ta |
+|---|---|---|
+| `SellerProfileDto` | `TrustScore`, `TrustScoreCalculatedAt` | Day du thong tin cho owner/admin |
+| `PublicSellerProfileDto` | `TrustScore` | Chi diem tong, hien thi cong khai |
+
+### Cong thuc tinh diem (5 thanh phan)
+
+| # | Thanh phan | Trong so | Cong thuc |
+|---|---|---|---|
+| 1 | **Rating** | 30% | `AverageRating / 5.0 * 100`. Mac dinh 50 neu chua co review |
+| 2 | **Completion** | 25% | `CompletedOrders / TotalOrders * 100`. Mac dinh 50 neu chua co order |
+| 3 | **Dispute** | 20% | `(1 - OpenDisputes / TotalOrders) * 100`. Mac dinh 50 neu chua co order. Toi thieu 0 |
+| 4 | **Verification** | 15% | Identity Verification Approved = 100, co AutoVerifyScore thi dung gia tri do, con lai = 50 |
+| 5 | **Risk** | 10% | Khong co risk flag = 100, Low = 80, Medium = 50, High = 20, Critical = 0 |
+
+**Cong thuc tong:**
+```
+Overall = Rating * 0.30 + Completion * 0.25 + Dispute * 0.20 + Verification * 0.15 + Risk * 0.10
+```
+
+Ket qua duoc `Math.Clamp(overall, 0, 100)`.
+
+### Lich tinh lai
+
+- **Quartz Job:** `RecalculateSellerTrustScoresJob`
+- **Tan suat:** Moi 6 gio (`[DisallowConcurrentExecution]`)
+- **Doi tuong:** Tat ca seller co `Status = Verified`
+- Loi tinh cho tung seller duoc log warning nhung khong lam dung toan bo job

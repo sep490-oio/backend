@@ -15,6 +15,8 @@ public static class SellerProfileMappings
             VerifiedAt: p.VerifiedAt,
             TotalSalesCount: p.TotalSalesCount,
             TotalSalesAmount: p.TotalSalesAmount,
+            TrustScore: p.TrustScoreOverall,
+            TrustScoreCalculatedAt: p.TrustScoreCalculatedAt,
             CreatedAt: p.CreatedAt,
             ModifiedAt: p.ModifiedAt);
     }
@@ -27,6 +29,7 @@ public static class SellerProfileMappings
             StoreDescription: p.StoreDescription,
             Status: p.Status.Id,
             TotalSalesCount: p.TotalSalesCount,
+            TrustScore: p.TrustScoreOverall,
             CreatedAt: p.CreatedAt);
     }
 }

@@ -10,7 +10,7 @@ namespace OIO.Application.Context.AuctionContext;
 
 internal static class AuctionDepositReleaseDispatch
 {
-    public static async Task ReturnHeldDepositsAsync(
+    public static async Task<IReadOnlyList<Guid>> ReturnHeldDepositsAsync(
         IDbContext dbContext,
         ISender sender,
         ILogger logger,
@@ -32,8 +32,10 @@ internal static class AuctionDepositReleaseDispatch
             logger.LogDebug(
                 "No held auction deposits found to release for auction {AuctionId}.",
                 auctionId);
-            return;
+            return [];
         }
+
+        var releasedBidderIds = new List<Guid>();
 
         foreach (var candidate in releaseCandidates)
         {
@@ -52,7 +54,13 @@ internal static class AuctionDepositReleaseDispatch
                     auctionId,
                     result.Error.Message);
             }
+            else
+            {
+                releasedBidderIds.Add(candidate.BidderId);
+            }
         }
+
+        return releasedBidderIds.Distinct().ToList();
     }
 
     private sealed record AuctionDepositReleaseCandidate(Guid DepositId, Guid BidderId);

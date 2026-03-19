@@ -30,6 +30,45 @@ Admin co the xem, thay doi trang thai, mo khoa, va xoa nguoi dung. Bao gom ca qu
 - **Auth:** Required (Permission: `ManageUsers`)
 - **Ghi chu:** Mo khoa user bi lock do nhap sai mat khau nhieu lan
 
+### Tao user moi (Admin)
+- **Method:** `POST /api/admin/users`
+- **Auth:** Required (Permission: `ManageUsers`)
+- **Request:**
+  ```json
+  {
+    "userName": "string (required)",
+    "email": "string (required)",
+    "password": "string (tuy chon - neu khong truyen, he thong tu tao temporary password 12 ky tu)",
+    "currency": "string (required - VND, USD, ...)",
+    "firstName": "string (required)",
+    "lastName": "string (required)",
+    "displayName": "string (tuy chon - mac dinh = userName)",
+    "roles": ["Bidder", "User", "..."] ,
+    "emailConfirmed": false,
+    "skipNotifications": false
+  }
+  ```
+- **Response:** `201 Created`
+  ```json
+  {
+    "userId": "guid",
+    "userName": "string",
+    "email": "string",
+    "status": "string",
+    "roles": ["Bidder", "User"],
+    "emailConfirmed": false,
+    "temporaryPassword": "string (chi tra ve khi he thong tu generate)"
+  }
+  ```
+- **Business Logic:**
+  - Neu `password` khong truyen: tu dong tao mat khau tam 12 ky tu (bao gom uppercase, lowercase, so, ky tu dac biet)
+  - Neu `roles` khong truyen: mac dinh gan `Bidder` + `User`
+  - **Role escalation prevention:** Admin chi co the gan role co level thap hon level cao nhat cua chinh minh. Neu admin co `maxRoleLevel = 5`, khong the gan role co `level >= 5`
+  - Kiem tra trung `email` va `userName` truoc khi tao
+  - Neu `emailConfirmed = true`: tu dong confirm email, khong can OTP
+  - Neu `skipNotifications = true`: xoa domain events, khong gui email chao mung
+  - `temporaryPassword` chi xuat hien trong response khi he thong tu generate (khong luu plaintext)
+
 ### Xoa user
 - **Method:** `DELETE /api/admin/users/{userId}`
 - **Auth:** Required (Permission: `ManageUsers`)

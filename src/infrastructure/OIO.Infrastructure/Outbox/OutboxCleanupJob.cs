@@ -12,14 +12,14 @@ namespace OIO.Infrastructure.Outbox;
 internal sealed class OutboxCleanupJob(
     NpgsqlDataSource dataSource,
     ILogger<OutboxCleanupJob> logger,
-    IOptions<OutboxSettings> outboxSettingsOptions,
+    IOptionsMonitor<OutboxSettings> outboxSettingsOptions,
     IClock clock
 ) : IJob
 {
     public async Task Execute(IJobExecutionContext context)
     {
         var cancellationToken = context.CancellationToken;
-        var settings = outboxSettingsOptions.Value;
+        var settings = outboxSettingsOptions.CurrentValue;
 
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
 

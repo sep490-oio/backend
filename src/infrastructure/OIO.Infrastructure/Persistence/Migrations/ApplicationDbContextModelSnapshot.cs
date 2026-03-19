@@ -4055,7 +4055,13 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("transaction_id");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("wallet_type");
+
+                    b.Property<Guid?>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
@@ -4095,9 +4101,15 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.HasIndex("TransactionId")
                         .HasDatabaseName("ix_wallets_transaction_id");
 
+                    b.HasIndex("Type")
+                        .IsUnique()
+                        .HasDatabaseName("uq_wallets_platform")
+                        .HasFilter("wallet_type = 'platform'");
+
                     b.HasIndex("UserId")
                         .IsUnique()
-                        .HasDatabaseName("uq_wallets_user_id");
+                        .HasDatabaseName("uq_wallets_user_id")
+                        .HasFilter("wallet_type = 'personal'");
 
                     b.ToTable("wallets", null, t =>
                         {
@@ -5233,6 +5245,17 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0)
                         .HasColumnName("total_sales_count");
+
+                    b.Property<DateTime?>("TrustScoreCalculatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("trust_score_calculated_at");
+
+                    b.Property<decimal>("TrustScoreOverall")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("trust_score_overall");
 
                     b.Property<DateTime?>("VerifiedAt")
                         .HasColumnType("timestamp with time zone")
@@ -7661,7 +7684,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .WithOne("Wallet")
                         .HasForeignKey("OIO.Domain.Context.PaymentContext.Aggregates.Wallets.Wallet", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
                         .HasConstraintName("fk_wallets_user_user_id");
 
                     b.Navigation("User");

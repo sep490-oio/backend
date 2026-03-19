@@ -79,9 +79,49 @@ He thong kiem tra xem da co Transaction `Pending` nao cho cung Order/Auction/Res
 - Khi callback thanh cong: `TransactionCompletedDomainEvent`
 - Khi callback that bai: `TransactionFailedDomainEvent`
 
+## Thanh Toan Qua Wallet (CheckoutOrder)
+
+Ngoai VNPay, he thong con ho tro thanh toan qua Wallet thong qua endpoint `POST /api/payments/checkout`.
+
+### Payment Method
+
+Truong `paymentMethod` trong `CheckoutOrderCommand` ho tro 3 gia tri:
+
+| Gia tri | Mo ta |
+|---|---|
+| `vnpay` | **(Mac dinh)** Thanh toan toan bo qua VNPay gateway |
+| `wallet` | Thanh toan toan bo bang so du Wallet |
+| `wallet_vnpay` | Hybrid: dung Wallet truoc, phan con lai thanh toan qua VNPay |
+
+### Flow `wallet` (Thanh toan toan bo bang Wallet)
+
+1. Lay Order va goi `InitializePayment()`
+2. Lay Wallet cua buyer
+3. Tinh `remainingAmount = orderAmount - depositAmount` (tru tien coc auction winner neu co)
+4. Kiem tra `wallet.BalanceAmount >= remainingAmount`, neu khong du -> loi `Wallet.InsufficientBalance`
+5. Tao Transaction (type = `Payment`), TransactionRef format: `WLT-{yyyyMMddHHmmss}_{Guid}` cat con 36 ky tu
+6. Neu co winner deposit: `winnerDeposit.ConvertToPayment()` + `wallet.DebitPending()`
+7. `wallet.Debit(remainingAmount)` tru so du
+8. Tao Escrow cho order
+9. `transaction.MarkAsCompleted()` + `order.MarkAsPaid()`
+10. Response tra ve `paymentUrl = null` (khong can redirect)
+
+### Flow `wallet_vnpay` (Hybrid Wallet + VNPay)
+
+1. Tinh `walletPortion = min(walletBalance, remainingAmount)` va `vnpayPortion = remainingAmount - walletPortion`
+2. Neu `vnpayPortion <= 0`: fallback ve flow `wallet` (Wallet du tien)
+3. Neu `vnpayPortion > 0`:
+   - `wallet.Hold(walletPortion)` - giu tam phan wallet
+   - Tao VNPay URL cho `vnpayPortion` (chi phan chua du)
+   - Neu tao URL that bai: `wallet.Unhold()` rollback
+4. Response tra ve `paymentUrl` de frontend redirect sang VNPay cho phan con lai
+5. Khi VNPay callback thanh cong: he thong se apply wallet hold + VNPay amount de hoan tat thanh toan
+
 ## Luu y nghiep vu
 
 - TransactionRef co format: `{yyyyMMddHHmmss}_{Guid}` cat con 36 ky tu
 - URL chi co hieu luc trong thoi gian VNPay quy dinh (thuong 15 phut)
 - Mot Transaction Pending co the duoc tai su dung neu user quay lai thanh toan
 - IP address cua user duoc gui kem de VNPay verify
+- Voi `wallet` payment, response `paymentUrl` se la `null` vi khong can redirect
+- Voi `wallet_vnpay`, deposit cua auction winner duoc tru truoc, sau do wallet balance, cuoi cung moi den VNPay

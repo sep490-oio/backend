@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Enums;
 
 namespace OIO.Infrastructure.Persistence.Configurations.PaymentContext;
 
@@ -53,6 +54,6 @@ internal sealed class WalletTransactionConfiguration : IEntityTypeConfiguration<
         // Indexes
         builder.HasIndex(wt => wt.WalletId)
             .HasDatabaseName("idx_wallet_transactions_wallet");
-        builder.HasQueryFilter(wt => wt.Wallet.User.DeletedAt == null);
+        builder.HasQueryFilter(wt => wt.Wallet.Type == WalletType.Platform || wt.Wallet.User!.DeletedAt == null);
     }
 }

@@ -26,6 +26,7 @@ public static partial class ApiEndpoint
         {
             private const string Base = "api/admin";
 
+            public const string CreateUser = $"{Base}/users";
             public const string GetUsers = $"{Base}/users";
             public const string GetRoles = $"{Base}/roles";
             public const string GetPermissions = $"{Base}/permissions";
@@ -238,6 +239,7 @@ public static partial class ApiEndpoint
             public const string GetEscrows = $"{Base}/escrows";
             public const string GetEscrowById = $"{Base}/escrows/{{escrowId:guid}}";
             public const string GetSummary = $"{Base}/summary";
+            public const string GetPlatformWallet = $"{Base}/platform-wallet";
         }
 
         public static class Orders
@@ -302,6 +304,9 @@ public static partial class ApiEndpoint
             public const string CreateSellerProfile = $"{Base}/seller-profile";
             public const string GetMySellerProfile = $"{Base}/seller-profile";
             public const string UpdateSellerProfile = $"{Base}/seller-profile";
+
+            // Notification Preferences
+            public const string NotificationPreferences = $"{Base}/notification-preferences";
         }
 
         public static class Reports

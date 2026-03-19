@@ -1,0 +1,277 @@
+{
+  "info": {
+    "name": "Flow 11: Warehouse & Shipping",
+    "description": "Warehouse management: inbound/outbound shipments, inspection, storage locations, and warehouse items.\n\n**Actors**: Warehouse Staff, Admin\n**Prerequisite**: Item approved and ready for warehouse processing",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "adminToken", "value": "" },
+    { "key": "shipmentId", "value": "" },
+    { "key": "warehouseItemId", "value": "" },
+    { "key": "locationId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "0.1 Login as Admin",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"account\": \"admin@example.com\",\n  \"password\": \"Admin@1234\",\n  \"deviceId\": \"{{$guid}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.accessToken) pm.collectionVariables.set('adminToken', res.accessToken);"] } }]
+        }
+      ]
+    },
+    {
+      "name": "A. Inbound Shipments",
+      "item": [
+        {
+          "name": "11.1 Book Inbound Shipment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/warehouse/inbound-shipments", "host": ["{{baseUrl}}"], "path": ["api", "warehouse", "inbound-shipments"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itemId\": \"PASTE_ITEM_ID_HERE\",\n  \"senderName\": \"Nguyen Van A\",\n  \"senderPhone\": \"0901234567\",\n  \"senderAddress\": \"123 Le Loi\",\n  \"senderWard\": \"Ben Thanh\",\n  \"senderDistrict\": \"Quan 1\",\n  \"senderProvince\": \"Ho Chi Minh\",\n  \"weightGrams\": 500,\n  \"insuranceValue\": 1000000,\n  \"itemName\": \"Vintage Watch\",\n  \"itemPrice\": 5000000,\n  \"lengthCm\": 20,\n  \"widthCm\": 15,\n  \"heightCm\": 10,\n  \"notes\": \"Handle with care\"\n}"
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.id) pm.collectionVariables.set('shipmentId', res.id);", "pm.test('Inbound booked', () => pm.response.to.have.status(201));"] } }]
+        },
+        {
+          "name": "11.2 Get Inbound Shipments",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/inbound-shipments?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "inbound-shipments"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "11.3 Get Inbound by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/{{shipmentId}}", "host": ["{{baseUrl}}"], "path": ["api", "warehouse", "inbound-shipments", "{{shipmentId}}"] }
+          }
+        },
+        {
+          "name": "11.4 Cancel Inbound Shipment",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/{{shipmentId}}/cancel", "host": ["{{baseUrl}}"], "path": ["api", "warehouse", "inbound-shipments", "{{shipmentId}}", "cancel"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "B. Inspection",
+      "item": [
+        {
+          "name": "11.5 Get Inspection Queue",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/inspection-queue?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "inbound-shipments", "inspection-queue"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "11.6 Inspect Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/{{shipmentId}}/inspect", "host": ["{{baseUrl}}"], "path": ["api", "warehouse", "inbound-shipments", "{{shipmentId}}", "inspect"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"condition\": \"Excellent\",\n  \"inspectionNotes\": \"Item in perfect condition, no defects found.\",\n  \"inspectionMediaUploadIds\": []\n}"
+            }
+          }
+        },
+        {
+          "name": "11.7 Review Inspection",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/{{shipmentId}}/review", "host": ["{{baseUrl}}"], "path": ["api", "warehouse", "inbound-shipments", "{{shipmentId}}", "review"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"Approved\",\n  \"reason\": \"Inspection results confirmed, item meets quality standards.\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "C. Warehouse Items",
+      "item": [
+        {
+          "name": "11.8 Get Warehouse Items",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/warehouse-items?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "warehouse-items"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.items && res.items.length > 0) pm.collectionVariables.set('warehouseItemId', res.items[0].id);"] } }]
+        },
+        {
+          "name": "11.9 Store Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/warehouse/warehouse-items/{{warehouseItemId}}/store", "host": ["{{baseUrl}}"], "path": ["api", "warehouse", "warehouse-items", "{{warehouseItemId}}", "store"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storageLocationId\": \"{{locationId}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "D. Storage Locations",
+      "item": [
+        {
+          "name": "11.10 Create Storage Location",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/warehouse/storage-locations", "host": ["{{baseUrl}}"], "path": ["api", "warehouse", "storage-locations"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zone\": \"A\",\n  \"aisle\": \"01\",\n  \"shelf\": \"S1\",\n  \"bin\": \"B1\"\n}"
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.id) pm.collectionVariables.set('locationId', res.id);", "pm.test('Location created', () => pm.response.to.have.status(201));"] } }]
+        },
+        {
+          "name": "11.11 Get Storage Locations",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/storage-locations?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "storage-locations"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "11.12 Update Storage Location",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/warehouse/storage-locations/{{locationId}}", "host": ["{{baseUrl}}"], "path": ["api", "warehouse", "storage-locations", "{{locationId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zone\": \"B\",\n  \"aisle\": \"02\",\n  \"shelf\": \"S2\",\n  \"bin\": \"B2\"\n}"
+            }
+          }
+        },
+        {
+          "name": "11.13 Delete Storage Location",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/warehouse/storage-locations/{{locationId}}", "host": ["{{baseUrl}}"], "path": ["api", "warehouse", "storage-locations", "{{locationId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "E. Outbound Shipments",
+      "item": [
+        {
+          "name": "11.14 Book Outbound Shipment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/warehouse/outbound-shipments", "host": ["{{baseUrl}}"], "path": ["api", "warehouse", "outbound-shipments"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"PASTE_ORDER_ID_HERE\",\n  \"warehouseItemId\": \"{{warehouseItemId}}\",\n  \"recipientName\": \"Tran Van B\",\n  \"recipientPhone\": \"0912345678\",\n  \"recipientAddress\": \"456 Nguyen Hue\",\n  \"recipientWard\": \"Ben Nghe\",\n  \"recipientDistrict\": \"Quan 1\",\n  \"recipientProvince\": \"Ho Chi Minh\",\n  \"weightGrams\": 500,\n  \"insuranceValue\": 1000000,\n  \"codAmount\": 0,\n  \"itemName\": \"Vintage Watch\",\n  \"itemPrice\": 5000000,\n  \"lengthCm\": 20,\n  \"widthCm\": 15,\n  \"heightCm\": 10\n}"
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.id) pm.collectionVariables.set('shipmentId', res.id);", "pm.test('Outbound booked', () => pm.response.to.have.status(201));"] } }]
+        },
+        {
+          "name": "11.15 Get Outbound Shipments",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/outbound-shipments?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "outbound-shipments"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "11.16 Get Outbound by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/warehouse/outbound-shipments/{{shipmentId}}", "host": ["{{baseUrl}}"], "path": ["api", "warehouse", "outbound-shipments", "{{shipmentId}}"] }
+          }
+        }
+      ]
+    }
+  ]
+}

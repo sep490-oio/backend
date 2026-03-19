@@ -14,57 +14,28 @@
     image: "ghcr.io/sep490-oio/backend/oio-api:${APP_VERSION:-latest}"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
+      - DOTNET_USE_POLLING_FILE_WATCHER=true
       - ConnectionStrings__Database=Host=database;Port=5432;Username=postgres;Password=${DATABASE_PASSWORD};Database=oio-mcbc;Include Error Detail=true;
       - ConnectionStrings__Cache=redis:6379
       - Jwt__SecretKey=${JWT_SECRET_KEY}
-      - Jwt__Audience=${JWT_AUDIENCE}
-      - Jwt__Issuer=${JWT_ISSUER}
-      - Jwt__AccessTokenExpiration=${JWT_ACCESS_TOKEN_EXPIRATION}
-      - Jwt__RefreshTokenExpiration=${JWT_REFRESH_TOKEN_EXPIRATION}
-      - Jwt__RefreshTokenFamilySlidingExpiration=${JWT_REFRESH_TOKEN_FAMILY_SLIDING_EXPIRATION}
-      - Jwt__RefreshTokenFamilyAbsoluteExpiration=${JWT_REFRESH_TOKEN_FAMILY_ABSOLUTE_EXPIRATION}
       - MediatR__LicenseKey=${MEDIATR_LICENSE_KEY}
-      - Email__Host=${EMAIL_HOST}
-      - Email__Port=${EMAIL_PORT}
       - Email__Username=${EMAIL_USERNAME}
       - Email__Password=${EMAIL_PASSWORD}
-      - Email__UseStartTls=${EMAIL_USE_START_TLS}
-      - Email__FromAddress=${EMAIL_FROM_ADDRESS}
-      - Email__FromName=${EMAIL_FROM_NAME}
       - DefaultAccount__Email=${DEFAULT_ACCOUNT_EMAIL}
       - DefaultAccount__UserName=${DEFAULT_ACCOUNT_USERNAME}
       - DefaultAccount__Password=${DEFAULT_ACCOUNT_PASSWORD}
-      - DefaultAccount__FirstName=${DEFAULT_ACCOUNT_FIRSTNAME}
-      - DefaultAccount__LastName=${DEFAULT_ACCOUNT_LASTNAME}
-      - DefaultAccount__DisplayName=${DEFAULT_ACCOUNT_DISPLAYNAME}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://seq:5341/ingest/otlp
       - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
-      - Cors__AllowedOrigins__0=${CORS_ALLOWED_ORIGINS_0}
-      - Cors__AllowedOrigins__1=${CORS_ALLOWED_ORIGINS_1}
       - Hashing__HmacKeyBase64=${HASHING_KEY}
-      - Cloudinary__CloudName=${CLOUDINARY_CLOUD_NAME}
       - Cloudinary__ApiKey=${CLOUDINARY_API_KEY}
       - Cloudinary__ApiSecret=${CLOUDINARY_API_SECRET}
-      - Cloudinary__BaseUrl=${CLOUDINARY_BASE_URL}
-      - VnptEkyc__BaseUrl=${VNPT_EKYC_BASE_URL}
       - VnptEkyc__AccessToken=${VNPT_EKYC_ACCESS_TOKEN}
       - VnptEkyc__TokenId=${VNPT_EKYC_TOKEN_ID}
       - VnptEkyc__TokenKey=${VNPT_EKYC_TOKEN_KEY}
-      - VnptEkyc__MacAddress=${VNPT_EKYC_MAC_ADDRESS}
-      - VnptEkyc__ApproveThreshold=${VNPT_EKYC_APPROVE_THRESHOLD}
-      - VnptEkyc__RejectThreshold=${VNPT_EKYC_REJECT_THRESHOLD}
       - VnPay__TmnCode=${VNPAY_TMN_CODE}
       - VnPay__HashSecret=${VNPAY_HASH_SECRET}
-      - VnPay__PaymentUrl=${VNPAY_PAYMENT_URL}
-      - VnPay__ApiUrl=${VNPAY_API_URL}
-      - VnPay__ReturnUrl=${VNPAY_RETURN_URL}
-      - VnPay__IpnUrl=${VNPAY_IPN_URL}
-      - VnPay__TokenCreateUrl=${VNPAY_TOKEN_CREATE_URL}
-      - VnPay__PayAndCreateUrl=${VNPAY_PAY_AND_CREATE_URL}
-      - VnPay__TokenPayUrl=${VNPAY_TOKEN_PAY_URL}
-      - VnPay__TokenRemoveUrl=${VNPAY_TOKEN_REMOVE_URL}
     volumes:
-      - ./config/appsettings.Production.json:/app/appsettings.Production.json:ro
+      - ./config/appsettings.Production.json:/app/appsettings.Production.json
     depends_on:
       - database
     restart: unless-stopped

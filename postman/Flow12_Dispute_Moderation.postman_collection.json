@@ -1,0 +1,334 @@
+{
+  "info": {
+    "name": "Flow 12: Dispute & Moderation",
+    "description": "Complete dispute and moderation flow: reports, disputes, auction emergencies, risk management.\n\n**Actors**: Buyer, Seller, Admin\n**Prerequisite**: Active auctions/orders exist; admin account with moderation permissions",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "buyerToken", "value": "" },
+    { "key": "sellerToken", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "reportId", "value": "" },
+    { "key": "disputeId", "value": "" },
+    { "key": "auctionId", "value": "PASTE_AUCTION_ID_HERE" },
+    { "key": "emergencyId", "value": "" },
+    { "key": "userId", "value": "PASTE_USER_ID_HERE" },
+    { "key": "alertId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "0.1 Login as Buyer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"account\": \"buyer1@example.com\",\n  \"password\": \"Test@1234\",\n  \"deviceId\": \"{{$guid}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.accessToken) pm.collectionVariables.set('buyerToken', res.accessToken);"] } }]
+        },
+        {
+          "name": "0.2 Login as Seller",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"account\": \"seller@example.com\",\n  \"password\": \"Test@1234\",\n  \"deviceId\": \"{{$guid}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.accessToken) pm.collectionVariables.set('sellerToken', res.accessToken);"] } }]
+        },
+        {
+          "name": "0.3 Login as Admin",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"account\": \"admin@example.com\",\n  \"password\": \"Admin@1234\",\n  \"deviceId\": \"{{$guid}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.accessToken) pm.collectionVariables.set('adminToken', res.accessToken);"] } }]
+        }
+      ]
+    },
+    {
+      "name": "A. Reports",
+      "item": [
+        {
+          "name": "12.1 [Buyer] Create Report",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/reports", "host": ["{{baseUrl}}"], "path": ["api", "reports"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entityType\": \"Auction\",\n  \"entityId\": \"{{auctionId}}\",\n  \"reasonCode\": \"Counterfeit\",\n  \"description\": \"This item appears to be counterfeit based on the photos provided.\"\n}"
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.id) pm.collectionVariables.set('reportId', res.id);", "pm.test('Report created', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "12.2 [Buyer] Get My Reports",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{buyerToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/me/reports", "host": ["{{baseUrl}}"], "path": ["api", "me", "reports"] }
+          }
+        },
+        {
+          "name": "12.3 [Admin] Get Reports",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/reports?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "reports"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "12.4 [Admin] Assign Report",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/admin/reports/{{reportId}}/assign", "host": ["{{baseUrl}}"], "path": ["api", "admin", "reports", "{{reportId}}", "assign"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignedToUserId\": \"PASTE_ADMIN_USER_ID_HERE\"\n}"
+            }
+          }
+        },
+        {
+          "name": "12.5 [Admin] Resolve Report",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/admin/reports/{{reportId}}/resolve", "host": ["{{baseUrl}}"], "path": ["api", "admin", "reports", "{{reportId}}", "resolve"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dismissed\": false,\n  \"resolutionNotes\": \"Report verified. Action taken against the seller.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "12.6 [Admin] Escalate to Emergency",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/admin/reports/{{reportId}}/escalate-emergency", "host": ["{{baseUrl}}"], "path": ["api", "admin", "reports", "{{reportId}}", "escalate-emergency"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reasonOverride\": \"Confirmed counterfeit item, immediate action required.\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "B. Disputes",
+      "item": [
+        {
+          "name": "12.7 [Buyer] Get My Disputes",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{buyerToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/disputes", "host": ["{{baseUrl}}"], "path": ["api", "disputes"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.items && res.items.length > 0) pm.collectionVariables.set('disputeId', res.items[0].id);"] } }]
+        },
+        {
+          "name": "12.8 Get Dispute Thread",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{buyerToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/disputes/{{disputeId}}", "host": ["{{baseUrl}}"], "path": ["api", "disputes", "{{disputeId}}"] }
+          }
+        },
+        {
+          "name": "12.9 Get Dispute Messages",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{buyerToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/disputes/{{disputeId}}/messages", "host": ["{{baseUrl}}"], "path": ["api", "disputes", "{{disputeId}}", "messages"] }
+          }
+        },
+        {
+          "name": "12.10 [Buyer] Send Dispute Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/disputes/{{disputeId}}/messages", "host": ["{{baseUrl}}"], "path": ["api", "disputes", "{{disputeId}}", "messages"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Here is evidence that the item is not as described.\",\n  \"mediaUploadIds\": [],\n  \"isInternal\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "12.11 [Buyer] Mark Dispute Read",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{buyerToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/disputes/{{disputeId}}/read", "host": ["{{baseUrl}}"], "path": ["api", "disputes", "{{disputeId}}", "read"] }
+          }
+        },
+        {
+          "name": "12.12 [Admin] Resolve Dispute",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/admin/disputes/{{disputeId}}/resolve", "host": ["{{baseUrl}}"], "path": ["api", "admin", "disputes", "{{disputeId}}", "resolve"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resolutionType\": \"RefundFull\",\n  \"notes\": \"Item confirmed counterfeit. Full refund issued to buyer.\",\n  \"amount\": null\n}"
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Dispute resolved', () => pm.response.to.have.status(204));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "C. Auction Emergency",
+      "item": [
+        {
+          "name": "12.13 [Admin] Trigger Emergency",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/admin/auctions/{{auctionId}}/emergencies", "host": ["{{baseUrl}}"], "path": ["api", "admin", "auctions", "{{auctionId}}", "emergencies"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"triggerSource\": \"manual\",\n  \"reason\": \"Shill bidding detected from seller account\",\n  \"payload\": {\"suspectedUsers\": [\"user1\", \"user2\"]}\n}"
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.id) pm.collectionVariables.set('emergencyId', res.id);", "pm.test('Emergency triggered', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "12.14 [Admin] Resolve Emergency",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/admin/auctions/{{auctionId}}/emergencies/{{emergencyId}}/resolve", "host": ["{{baseUrl}}"], "path": ["api", "admin", "auctions", "{{auctionId}}", "emergencies", "{{emergencyId}}", "resolve"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Resolved\",\n  \"payload\": {\"action\": \"Cancelled fraudulent bids, warned seller\"}\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "D. Risk Management",
+      "item": [
+        {
+          "name": "12.15 [Admin] Flag User",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/admin/users/{{userId}}/risk-flags", "host": ["{{baseUrl}}"], "path": ["api", "admin", "users", "{{userId}}", "risk-flags"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"flagType\": \"ShillBidding\",\n  \"reason\": \"Suspected shill bidding across multiple auctions\",\n  \"severity\": \"high\"\n}"
+            }
+          }
+        },
+        {
+          "name": "12.16 [Admin] Flag Auction",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/admin/auctions/{{auctionId}}/alerts", "host": ["{{baseUrl}}"], "path": ["api", "admin", "auctions", "{{auctionId}}", "alerts"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alertType\": \"SuspiciousBidding\",\n  \"payload\": {\"pattern\": \"rapid_bid_escalation\", \"bidCount\": 15},\n  \"severity\": \"high\"\n}"
+            }
+          }
+        },
+        {
+          "name": "12.17 [Admin] Get Monitoring Alerts",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/monitoring-alerts?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "monitoring-alerts"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json();", "if (res.items && res.items.length > 0) pm.collectionVariables.set('alertId', res.items[0].id);"] } }]
+        },
+        {
+          "name": "12.18 [Admin] Acknowledge Alert",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/admin/monitoring-alerts/{{alertId}}/acknowledge", "host": ["{{baseUrl}}"], "path": ["api", "admin", "monitoring-alerts", "{{alertId}}", "acknowledge"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Investigating suspicious activity pattern.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "12.19 [Admin] Resolve Alert",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/admin/monitoring-alerts/{{alertId}}/resolve", "host": ["{{baseUrl}}"], "path": ["api", "admin", "monitoring-alerts", "{{alertId}}", "resolve"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ignored\": false,\n  \"notes\": \"Confirmed shill bidding. User flagged and bids cancelled.\"\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -330,6 +330,8 @@ public static class DependencyInjection
             services.ConfigureOptions<PendingUploadRelocationJobSetup>();
             services.ConfigureOptions<AuctionJobSetup>();
             services.ConfigureOptions<AuctionAutoCompleteJobSetup>();
+            services.ConfigureOptions<RecalculateSellerTrustScoresJobSetup>();
+            services.AddScoped<SellerTrustScoreCalculator>();
 
             // Notification Delivery Job
             services.ConfigureOptions<OIO.Infrastructure.Notification.BackgroundJobs.ProcessNotificationDeliveriesJobSetup>();
