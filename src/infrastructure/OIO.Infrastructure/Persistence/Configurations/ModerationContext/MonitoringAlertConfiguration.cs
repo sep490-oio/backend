@@ -41,6 +41,21 @@ internal sealed class MonitoringAlertConfiguration : IEntityTypeConfiguration<Mo
             .HasDefaultValueSql("'{}'::jsonb")
             .IsRequired();
 
+        builder.Property(a => a.Notes)
+            .HasColumnName("notes");
+
+        builder.Property(a => a.AcknowledgedBy)
+            .HasColumnName("acknowledged_by");
+
+        builder.Property(a => a.AcknowledgedAt)
+            .HasColumnName("acknowledged_at");
+
+        builder.Property(a => a.ResolvedBy)
+            .HasColumnName("resolved_by");
+
+        builder.Property(a => a.ResolvedAt)
+            .HasColumnName("resolved_at");
+
         builder.ComplexProperty(a => a.Status, statusBuilder =>
         {
             statusBuilder.Property(s => s.Id)
@@ -59,5 +74,8 @@ internal sealed class MonitoringAlertConfiguration : IEntityTypeConfiguration<Mo
         // Indexes
         builder.HasIndex(a => new { a.EntityType, a.EntityId })
             .HasDatabaseName("idx_monitoring_alerts_entity");
+
+        builder.HasIndex(a => new { a.EntityType, a.EntityId, a.AlertType, a.CreatedAt })
+            .HasDatabaseName("idx_monitoring_alerts_entity_type_created_at");
     }
 }

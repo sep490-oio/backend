@@ -37,6 +37,28 @@ internal sealed class AuctionNotificationService : IAuctionNotificationService
             .Outbid(notification);
     }
 
+    public async Task NotifyBuyNowReservedAsync(
+        Guid auctionId,
+        BuyNowReservedNotification notification,
+        CancellationToken cancellationToken = default)
+    {
+        await _hubContext
+            .Clients
+            .Group(AuctionHub.AuctionGroupName(auctionId))
+            .BuyNowReserved(notification);
+    }
+
+    public async Task NotifyBuyNowReservationReleasedAsync(
+        Guid auctionId,
+        BuyNowReservationReleasedNotification notification,
+        CancellationToken cancellationToken = default)
+    {
+        await _hubContext
+            .Clients
+            .Group(AuctionHub.AuctionGroupName(auctionId))
+            .BuyNowReservationReleased(notification);
+    }
+
     public async Task NotifyBuyNowExecutedAsync(
         Guid auctionId, 
         BuyNowNotification notification, 

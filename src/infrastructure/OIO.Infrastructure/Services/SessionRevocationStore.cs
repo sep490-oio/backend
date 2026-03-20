@@ -15,13 +15,13 @@ internal sealed class SessionRevocationStore : ISessionRevocationStore
     
     public SessionRevocationStore(
         HybridCache cache,
-        IOptions<JwtOptions> jwtOptions)
+        IOptionsMonitor<JwtOptions> jwtOptions)
     {
         _cache = cache;
         _cacheOptions = new HybridCacheEntryOptions()
         {
-            Expiration = jwtOptions.Value.AccessTokenExpiration,
-            LocalCacheExpiration = jwtOptions.Value.AccessTokenExpiration
+            Expiration = jwtOptions.CurrentValue.AccessTokenExpiration,
+            LocalCacheExpiration = jwtOptions.CurrentValue.AccessTokenExpiration
         };
     }
 

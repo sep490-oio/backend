@@ -2,12 +2,13 @@ using EFCore.ComplexIndexes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OIO.Domain.Context.NotificationContext.Aggregates;
+using DomainNotification = OIO.Domain.Context.NotificationContext.Aggregates.Notification;
 
 namespace OIO.Infrastructure.Persistence.Configurations.NotificationContext;
 
-internal sealed class NotificationConfiguration : IEntityTypeConfiguration<Notification>
+internal sealed class NotificationConfiguration : IEntityTypeConfiguration<DomainNotification>
 {
-    public void Configure(EntityTypeBuilder<Notification> builder)
+    public void Configure(EntityTypeBuilder<DomainNotification> builder)
     {
         builder.ToTable("notifications");
 

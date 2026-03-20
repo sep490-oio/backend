@@ -1,0 +1,988 @@
+{
+	"info": {
+		"_postman_id": "flow1-registration-auth",
+		"name": "Flow 1 – Registration & Auth",
+		"description": "Tests all 24 Registration & Auth endpoints across 10 folders.\n\nRequires the OIO Auction - Shared Environment to be selected.\n\nManual steps:\n- Set emailToken from Mailtrap before running Confirm Email.\n- Set resetToken from email before running Reset Password.\n- Generate totpCode from sharedKey before running TOTP requests.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "totpSecret", "value": "" },
+		{ "key": "recoveryCode", "value": "" },
+		{ "key": "twoFactorToken", "value": "" },
+		{ "key": "emailToken", "value": "" },
+		{ "key": "resetToken", "value": "" },
+		{ "key": "sessionId", "value": "" }
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"if (!pm.environment.get('deviceId') || pm.environment.get('deviceId') === '') {",
+					"    pm.environment.set('deviceId', pm.variables.replaceIn('{{$guid}}'));",
+					"}"
+				]
+			}
+		}
+	],
+	"item": [
+		{
+			"name": "01-Registration",
+			"item": [
+				{
+					"name": "1. Register User (Happy)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Response contains user id', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.id).to.be.a('string').and.not.empty;",
+									"    pm.environment.set('userId', jsonData.id);",
+									"    console.log('Saved userId:', jsonData.id);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userName\": \"{{userName}}\",\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"currency\": \"VND\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "2. Register User (Duplicate → 422)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 422 for duplicate registration', function () {",
+									"    pm.response.to.have.status(422);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userName\": \"{{userName}}\",\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"currency\": \"VND\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "register"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "02-Email Verification",
+			"item": [
+				{
+					"name": "3. Resend Confirm Email",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{userEmail}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/resend-confirm-email",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "resend-confirm-email"]
+						}
+					}
+				},
+				{
+					"name": "4. Confirm Email (Happy)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"{{userId}}\",\n  \"token\": \"{{emailToken}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/confirm-email",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "confirm-email"]
+						},
+						"description": "Set emailToken manually from Mailtrap or use Mailtrap collection"
+					}
+				},
+				{
+					"name": "5. Confirm Email (Invalid Token → 422)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 422 for invalid token', function () {",
+									"    pm.response.to.have.status(422);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"{{userId}}\",\n  \"token\": \"invalid-token-here\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/confirm-email",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "confirm-email"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "03-Login",
+			"item": [
+				{
+					"name": "6. Login (Happy, No 2FA)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains tokens and requiresTwoFactor is false', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.requiresTwoFactor).to.eql(false);",
+									"    pm.expect(jsonData.accessToken).to.be.a('string').and.not.empty;",
+									"    pm.expect(jsonData.refreshToken).to.be.a('string').and.not.empty;",
+									"    pm.environment.set('accessToken', jsonData.accessToken);",
+									"    pm.environment.set('refreshToken', jsonData.refreshToken);",
+									"    console.log('Saved accessToken and refreshToken to environment');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"account\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"deviceId\": \"{{deviceId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "7. Login (Wrong Password → 401)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 401 for wrong password', function () {",
+									"    pm.response.to.have.status(401);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"account\": \"{{userEmail}}\",\n  \"password\": \"WrongPassword!1\",\n  \"deviceId\": \"{{deviceId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "8. Login (With 2FA → requiresTwoFactor)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Handle 2FA login response', function () {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.requiresTwoFactor === true) {",
+									"        pm.expect(jsonData.accessToken).to.be.a('string').and.not.empty;",
+									"        pm.collectionVariables.set('twoFactorToken', jsonData.accessToken);",
+									"        console.log('2FA required – saved accessToken as twoFactorToken (collection var)');",
+									"    } else {",
+									"        pm.environment.set('accessToken', jsonData.accessToken);",
+									"        pm.environment.set('refreshToken', jsonData.refreshToken);",
+									"        console.log('No 2FA – saved tokens to environment');",
+									"    }",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"account\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"deviceId\": \"{{deviceId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "login"]
+						},
+						"description": "Run this after enabling 2FA. Response will have requiresTwoFactor=true"
+					}
+				}
+			]
+		},
+		{
+			"name": "04-Refresh Token",
+			"item": [
+				{
+					"name": "9. Refresh Token (Happy)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains new tokens', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.accessToken).to.be.a('string').and.not.empty;",
+									"    pm.expect(jsonData.refreshToken).to.be.a('string').and.not.empty;",
+									"    pm.environment.set('accessToken', jsonData.accessToken);",
+									"    pm.environment.set('refreshToken', jsonData.refreshToken);",
+									"    console.log('Refreshed – saved new accessToken and refreshToken');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{accessToken}}", "type": "string" }
+							]
+						},
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"{{refreshToken}}\",\n  \"deviceId\": \"{{deviceId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/refresh",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "refresh"]
+						}
+					}
+				},
+				{
+					"name": "10. Refresh Token (Invalid → 401)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 401 for invalid refresh token', function () {",
+									"    pm.response.to.have.status(401);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{accessToken}}", "type": "string" }
+							]
+						},
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"invalid-refresh-token\",\n  \"deviceId\": \"{{deviceId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/refresh",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "refresh"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "05-Forgot & Reset Password",
+			"item": [
+				{
+					"name": "11. Forgot Password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{userEmail}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/forgot-password",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "forgot-password"]
+						}
+					}
+				},
+				{
+					"name": "12. Reset Password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"NewTest@1234\",\n  \"confirmPassword\": \"NewTest@1234\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/reset-password",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "reset-password"]
+						},
+						"description": "Set resetToken from email first"
+					}
+				}
+			]
+		},
+		{
+			"name": "06-Logout",
+			"item": [
+				{
+					"name": "13. Logout Current Device",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{accessToken}}", "type": "string" }
+							]
+						},
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"deviceId\": \"{{deviceId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/logout",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "logout"]
+						}
+					}
+				},
+				{
+					"name": "14. Logout All Sessions",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{accessToken}}", "type": "string" }
+							]
+						},
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/logout",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "logout"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "07-TOTP 2FA",
+			"item": [
+				{
+					"name": "15. Setup TOTP",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains sharedKey and QR code', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.sharedKey).to.be.a('string').and.not.empty;",
+									"    pm.collectionVariables.set('totpSecret', jsonData.sharedKey);",
+									"    console.log('Saved sharedKey to collection var totpSecret:', jsonData.sharedKey);",
+									"    if (jsonData.qrCodeBase64) {",
+									"        console.log('QR Code Base64:', jsonData.qrCodeBase64);",
+									"    }",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{accessToken}}", "type": "string" }
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/two-factor/setup",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "two-factor", "setup"]
+						}
+					}
+				},
+				{
+					"name": "16. Confirm TOTP Setup",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains recovery codes', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.recoveryCodes).to.be.an('array').and.not.empty;",
+									"    pm.collectionVariables.set('recoveryCode', jsonData.recoveryCodes[0]);",
+									"    console.log('Saved first recovery code to collection var:', jsonData.recoveryCodes[0]);",
+									"    console.log('All recovery codes:', JSON.stringify(jsonData.recoveryCodes));",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{accessToken}}", "type": "string" }
+							]
+						},
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"code\": \"{{totpCode}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/two-factor/confirm",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "two-factor", "confirm"]
+						},
+						"description": "Generate TOTP code from sharedKey using Google Authenticator or totp.danhersam.com"
+					}
+				},
+				{
+					"name": "17. Verify TOTP Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains full tokens after 2FA verification', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.accessToken).to.be.a('string').and.not.empty;",
+									"    pm.expect(jsonData.refreshToken).to.be.a('string').and.not.empty;",
+									"    pm.environment.set('accessToken', jsonData.accessToken);",
+									"    pm.environment.set('refreshToken', jsonData.refreshToken);",
+									"    console.log('2FA verified – saved full accessToken and refreshToken to environment');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{twoFactorToken}}", "type": "string" }
+							]
+						},
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"code\": \"{{totpCode}}\",\n  \"deviceId\": \"{{deviceId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/two-factor/verify",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "two-factor", "verify"]
+						}
+					}
+				},
+				{
+					"name": "18. Regenerate Recovery Codes",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains new recovery codes', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.recoveryCodes).to.be.an('array').and.not.empty;",
+									"    console.log('New recovery codes:', JSON.stringify(jsonData.recoveryCodes));",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{accessToken}}", "type": "string" }
+							]
+						},
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"code\": \"{{totpCode}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/two-factor/recovery-codes",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "two-factor", "recovery-codes"]
+						}
+					}
+				},
+				{
+					"name": "19. Disable 2FA",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{accessToken}}", "type": "string" }
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/two-factor/disable",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "two-factor", "disable"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "08-Session Management",
+			"item": [
+				{
+					"name": "20. Get Active Sessions",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains items array', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.items).to.be.an('array');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{accessToken}}", "type": "string" }
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/sessions?pageNumber=1&pageSize=10&deviceId={{deviceId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "sessions"],
+							"query": [
+								{ "key": "pageNumber", "value": "1" },
+								{ "key": "pageSize", "value": "10" },
+								{ "key": "deviceId", "value": "{{deviceId}}" }
+							]
+						}
+					}
+				},
+				{
+					"name": "21. Get Login History",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains items array', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.items).to.be.an('array');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{accessToken}}", "type": "string" }
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/login-history?pageNumber=1&pageSize=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "login-history"],
+							"query": [
+								{ "key": "pageNumber", "value": "1" },
+								{ "key": "pageSize", "value": "10" }
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "09-Change Password",
+			"item": [
+				{
+					"name": "22. Change Password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"pm.test('Note: all sessions are revoked after password change', function () {",
+									"    console.log('Password changed – all sessions have been revoked. Re-login required.');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{accessToken}}", "type": "string" }
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"currentPassword\": \"{{userPassword}}\",\n  \"newPassword\": \"Changed@1234\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/password",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "password"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "10-Notification Preferences",
+			"item": [
+				{
+					"name": "23. Get Notification Preferences",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{accessToken}}", "type": "string" }
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/notification-preferences",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "notification-preferences"]
+						}
+					}
+				},
+				{
+					"name": "24. Update Notification Preferences",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{accessToken}}", "type": "string" }
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"isEnabled\": true,\n  \"channels\": \"email,signalr\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/notification-preferences",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "notification-preferences"]
+						}
+					}
+				}
+			]
+		}
+	]
+}

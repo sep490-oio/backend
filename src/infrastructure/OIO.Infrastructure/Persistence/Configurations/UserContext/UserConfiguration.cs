@@ -7,6 +7,7 @@ using OIO.Domain.Context.UserContext.Enums;
 using OIO.Domain.Context.UserContext.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.AppDefinitions;
+using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
 
 namespace OIO.Infrastructure.Persistence.Configurations.UserContext;
 
@@ -104,15 +105,26 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
                 .HasDefaultValue(TwoFactorProvider.None.Id)
                 .IsRequired();
         });
-        
-        builder.ComplexProperty(u => u.Status, statusBuilder =>
-        {
-            statusBuilder.Property(s => s.Id)
-                .HasColumnName("status")
-                .HasMaxLength(30)
-                .HasDefaultValue(UserStatus.Inactive.Id)
-                .IsRequired();
-        });
+
+        builder.Property(u => u.TwoFactorSecret)
+            .HasColumnName("two_factor_secret")
+            .HasMaxLength(255);
+
+        builder.Property(u => u.PendingTwoFactorSecret)
+            .HasColumnName("pending_two_factor_secret")
+            .HasMaxLength(255);
+
+        builder.Property(u => u.LastUsedTotpTimeStep)
+            .HasColumnName("last_used_totp_time_step");
+
+        builder.Property(s => s.Status)
+            .HasColumnName("status")
+            .HasMaxLength(30)
+            .HasDefaultValue(UserStatus.Inactive)
+            .HasConversion(
+                s => s.Id,
+                value => UserStatus.FromId(value).Value)
+            .IsRequired();
 
         builder.Property(u => u.LockoutEnabled)
             .HasColumnName("lockout_enabled")
@@ -187,6 +199,12 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .WithOne(rt => rt.User)
             .HasForeignKey(f => f.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+        
+        builder.HasOne(u => u.Wallet)
+            .WithOne(w => w.User)
+            .HasForeignKey<Wallet>( w => w.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
 
         // ==================== Query Filters ====================
         builder.HasQueryFilter(u => u.DeletedAt == null);

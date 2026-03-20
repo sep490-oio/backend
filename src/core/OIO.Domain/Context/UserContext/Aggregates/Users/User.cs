@@ -1,6 +1,8 @@
 ﻿using System.Net;
 using CSharpFunctionalExtensions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
+using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.Shared.Enums;
 using OIO.Domain.Context.UserContext.Aggregates.Roles;
 using OIO.Domain.Context.UserContext.Aggregates.Users.Events;
 using OIO.Domain.Context.UserContext.Enums;
@@ -49,7 +51,9 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
     public bool TwoFactorEnabled { get; private set; }
 
     public TwoFactorProvider TwoFactorProvider { get; private set; }
-
+    public string? TwoFactorSecret { get; private set; }         
+    public string? PendingTwoFactorSecret { get; private set; } 
+    public long? LastUsedTotpTimeStep { get; private set; } 
     public UserStatus Status { get; private set; }
 
     public bool LockoutEnabled { get; private set; }
@@ -70,8 +74,9 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
 
     public bool IsDeleted => DeletedAt is not null;
     
+    public Wallet Wallet { get; private set; }
     public UserProfile Profile { get; private set; }
-    public SellerProfile SellerProfile { get; private set; }
+    public SellerProfile? SellerProfile { get; private set; }
     public IReadOnlyCollection<UserAddress> Addresses => _addresses.AsReadOnly();
     public IReadOnlyCollection<UserRole> Roles => _roles.AsReadOnly();
     public IReadOnlyCollection<UserPermission> Permissions => _permissions.AsReadOnly();
@@ -107,6 +112,8 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         UserName userName, 
         UserEmail email, 
         DateTime now,
+        PersonName personName,
+        Currency currency,
         Password? password = null)
     {
         var user = new User(
@@ -118,6 +125,11 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
 
         // Initialize profile
         user.Profile = new UserProfile(user.Id, now);
+        user.Profile.Update(
+            now: now,
+            name: personName);
+        
+        user.Wallet = Wallet.Create(user.Id, currency, now);
 
         user.RaiseDomainEvent(new UserCreatedEvent(
             user.Id.ToString(),
@@ -234,7 +246,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
             
             return unitResult;
         }
-
+        
         ModifiedAt = now;
 
         RaiseDomainEvent(new UserEmailConfirmedEvent(Id.ToString(), Email, now));
@@ -329,9 +341,47 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         
         TwoFactorEnabled = false;
         TwoFactorProvider = TwoFactorProvider.None;
+        TwoFactorSecret = null;
+        PendingTwoFactorSecret = null;
+        LastUsedTotpTimeStep = null;
         ModifiedAt = now;
         
         return unitResult;
+    }
+    
+    public UnitResult<Error> SetupTotp(string base32Secret, DateTime nowUtc)
+    {
+        var unitResult = EnsureNotDeleted();
+
+        if (unitResult.IsFailure)
+        {
+            return unitResult.Error;
+        }
+
+        if (!EmailConfirmed)
+        {
+            return UserErrors.User.EmailNotConfirmed;
+        }
+        
+        PendingTwoFactorSecret = base32Secret;
+        ModifiedAt = nowUtc;
+        
+        return unitResult;
+    }
+
+    public void ConfirmTotpSetup(DateTime nowUtc)
+    {
+        // Move pending → active, enable 2FA
+        TwoFactorSecret = PendingTwoFactorSecret;
+        PendingTwoFactorSecret = null;
+        TwoFactorEnabled = true;
+        TwoFactorProvider = TwoFactorProvider.Totp;
+        ModifiedAt = nowUtc;
+    }
+
+    public void RecordTotpTimeStep(long timeStep)
+    {
+        LastUsedTotpTimeStep = timeStep;
     }
     
     public UnitResult<Error> ChangeStatus(
@@ -437,7 +487,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         
         Profile ??= new UserProfile(Id, now);
         
-        unitResult = Profile.Update(name, avatarUrl, dateOfBirth, gender, now);
+        unitResult = Profile.Update(now, name, avatarUrl, dateOfBirth, gender);
         
         if (unitResult.IsFailure)
         {
@@ -446,6 +496,20 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
         ModifiedAt = now;
         
         return unitResult;
+    }
+
+    public void RefreshAvatarSnapshot(
+        string oldPublicId,
+        AvatarUrl avatarUrl,
+        DateTime nowUtc)
+    {
+        if (Profile is null)
+            return;
+
+        if (!Profile.RefreshAvatarSnapshot(oldPublicId, avatarUrl, nowUtc))
+            return;
+
+        ModifiedAt = nowUtc;
     }
     
     public Result<UserAddress, Error> AddAddress(

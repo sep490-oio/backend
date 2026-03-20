@@ -16,7 +16,7 @@ internal sealed class ItemMediaConfiguration : IEntityTypeConfiguration<ItemMedi
 
         builder.Property(im => im.Id)
             .HasColumnName("id")
-            .ValueGeneratedOnAdd()
+            .ValueGeneratedNever()
             .IsRequired()
             .HasConversion(
                 x => x.Value,

@@ -1,10 +1,12 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
+using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.CatalogContext.Aggregates.Categories;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items.Events;
 using OIO.Domain.Context.CatalogContext.Enums;
 using OIO.Domain.Context.CatalogContext.ValueObjects;
 using OIO.Domain.Context.Shared.Entities;
+using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Entities;
@@ -19,6 +21,7 @@ public sealed class Item : AggregateRoot<ItemId>, IAuditableEntity
     private readonly List<ItemMedia> _media = [];
     private readonly List<ItemQuestion> _questions = [];
     private readonly List<ItemModerationReview> _moderationReviews = [];
+    private readonly List<Auction> _auctions = [];
     
     public UserId SellerId { get; private set; }
     public CategoryId? CategoryId { get; private set; }
@@ -39,10 +42,10 @@ public sealed class Item : AggregateRoot<ItemId>, IAuditableEntity
 
     // Navigation properties
     public Category? Category { get; private set; }
+    public IReadOnlyCollection<Auction> Auctions => _auctions.AsReadOnly();
     public IReadOnlyCollection<ItemMedia> Media => _media.AsReadOnly();
     public IReadOnlyCollection<ItemQuestion> Questions => _questions.AsReadOnly();
     public IReadOnlyCollection<ItemModerationReview> ModerationReviews => _moderationReviews.AsReadOnly();
-    public WarehouseItem WarehouseItem { get; private set; }
     
 
     private Item() { }
@@ -78,6 +81,224 @@ public sealed class Item : AggregateRoot<ItemId>, IAuditableEntity
             nowUtc));
 
         return item;
+    }
+
+    public UnitResult<Error> Submit(bool verifyByPlatform, DateTime nowUtc)
+    {
+        if (_media.Count == 0)
+            return AuctionErrors.Item.CannotActivate("Item must have at least one image before submission.");
+
+        var targetStatus = verifyByPlatform ? ItemStatus.PendingVerify : ItemStatus.PendingReview;
+        var result = EnsureCanTransition(targetStatus);
+
+        if (result.IsFailure)
+            return result.Error;
+
+        SubmittedAt = nowUtc;
+        ChangeStatus(targetStatus, nowUtc);
+
+        _moderationReviews.Add(ItemModerationReview.Create(
+            itemId: Id,
+            action: ModerationAction.Submitted,
+            reviewerId: SellerId,
+            oldStatus: ItemStatus.Draft.Id,
+            newStatus: targetStatus.Id,
+            nowUtc: nowUtc));
+
+        return UnitResult.Success<Error>();
+    }
+
+    public UnitResult<Error> Approve(UserId adminId, DateTime nowUtc)
+    {
+        var result = EnsureCanTransition(ItemStatus.Approved);
+
+        if (result.IsFailure)
+            return result.Error;
+
+        var oldStatus = Status.Id;
+        ReviewedAt = nowUtc;
+        ReviewedBy = adminId;
+        RejectionReason = null;
+        ChangeStatus(ItemStatus.Approved, nowUtc);
+
+        _moderationReviews.Add(ItemModerationReview.Create(
+            itemId: Id,
+            action: ModerationAction.Approved,
+            reviewerId: adminId,
+            oldStatus: oldStatus,
+            newStatus: ItemStatus.Approved.Id,
+            nowUtc: nowUtc));
+
+        return UnitResult.Success<Error>();
+    }
+
+    public UnitResult<Error> ApproveFromPlatformInspection(UserId inspectorId, DateTime nowUtc)
+    {
+        var result = EnsureCanTransition(ItemStatus.Approved);
+
+        if (result.IsFailure)
+            return result.Error;
+
+        var oldStatus = Status.Id;
+        ReviewedAt = nowUtc;
+        ReviewedBy = inspectorId;
+        RejectionReason = null;
+        ChangeStatus(ItemStatus.Approved, nowUtc);
+
+        _moderationReviews.Add(ItemModerationReview.Create(
+            itemId: Id,
+            action: ModerationAction.PlatformVerified,
+            reviewerId: inspectorId,
+            oldStatus: oldStatus,
+            newStatus: ItemStatus.Approved.Id,
+            nowUtc: nowUtc));
+
+        return UnitResult.Success<Error>();
+    }
+
+    public UnitResult<Error> Reject(UserId adminId, string reason, DateTime nowUtc)
+    {
+        var result = EnsureCanTransition(ItemStatus.Rejected);
+
+        if (result.IsFailure)
+            return result.Error;
+
+        var oldStatus = Status.Id;
+        ReviewedAt = nowUtc;
+        ReviewedBy = adminId;
+        RejectionReason = reason;
+        ChangeStatus(ItemStatus.Rejected, nowUtc);
+
+        _moderationReviews.Add(ItemModerationReview.Create(
+            itemId: Id,
+            action: ModerationAction.Rejected,
+            reviewerId: adminId,
+            oldStatus: oldStatus,
+            newStatus: ItemStatus.Rejected.Id,
+            nowUtc: nowUtc,
+            reason: reason));
+
+        return UnitResult.Success<Error>();
+    }
+
+    public UnitResult<Error> RejectFromPlatformInspection(UserId inspectorId, string reason, DateTime nowUtc)
+    {
+        var result = EnsureCanTransition(ItemStatus.Rejected);
+
+        if (result.IsFailure)
+            return result.Error;
+
+        var oldStatus = Status.Id;
+        ReviewedAt = nowUtc;
+        ReviewedBy = inspectorId;
+        RejectionReason = reason;
+        ChangeStatus(ItemStatus.Rejected, nowUtc);
+
+        _moderationReviews.Add(ItemModerationReview.Create(
+            itemId: Id,
+            action: ModerationAction.PlatformRejected,
+            reviewerId: inspectorId,
+            oldStatus: oldStatus,
+            newStatus: ItemStatus.Rejected.Id,
+            nowUtc: nowUtc,
+            reason: reason));
+
+        return UnitResult.Success<Error>();
+    }
+
+    public UnitResult<Error> RequireConditionConfirmation(UserId inspectorId, DateTime nowUtc)
+    {
+        var result = EnsureCanTransition(ItemStatus.PendingConditionConfirmation);
+
+        if (result.IsFailure)
+            return result.Error;
+
+        var oldStatus = Status.Id;
+        ReviewedAt = nowUtc;
+        ReviewedBy = inspectorId;
+        RejectionReason = null;
+        ChangeStatus(ItemStatus.PendingConditionConfirmation, nowUtc);
+
+        _moderationReviews.Add(ItemModerationReview.Create(
+            itemId: Id,
+            action: ModerationAction.ConditionConfirmationRequested,
+            reviewerId: inspectorId,
+            oldStatus: oldStatus,
+            newStatus: ItemStatus.PendingConditionConfirmation.Id,
+            nowUtc: nowUtc));
+
+        return UnitResult.Success<Error>();
+    }
+
+    public UnitResult<Error> ConfirmInspectedCondition(
+        UserId sellerId,
+        ItemCondition condition,
+        DateTime nowUtc)
+    {
+        var result = EnsureCanTransition(ItemStatus.Approved);
+
+        if (result.IsFailure)
+            return result.Error;
+
+        var oldStatus = Status.Id;
+        Condition = condition;
+        RejectionReason = null;
+        ChangeStatus(ItemStatus.Approved, nowUtc);
+
+        _moderationReviews.Add(ItemModerationReview.Create(
+            itemId: Id,
+            action: ModerationAction.ConditionConfirmed,
+            reviewerId: sellerId,
+            oldStatus: oldStatus,
+            newStatus: ItemStatus.Approved.Id,
+            nowUtc: nowUtc));
+
+        return UnitResult.Success<Error>();
+    }
+
+    public UnitResult<Error> Resubmit(bool verifyByPlatform, DateTime nowUtc)
+    {
+        var targetStatus = verifyByPlatform ? ItemStatus.PendingVerify : ItemStatus.PendingReview;
+        var result = EnsureCanTransition(targetStatus);
+
+        if (result.IsFailure)
+            return result.Error;
+
+        var oldStatus = Status.Id;
+        ResubmissionCount++;
+        SubmittedAt = nowUtc;
+        RejectionReason = null;
+        ChangeStatus(targetStatus, nowUtc);
+
+        _moderationReviews.Add(ItemModerationReview.Create(
+            itemId: Id,
+            action: ModerationAction.Resubmitted,
+            reviewerId: SellerId,
+            oldStatus: oldStatus,
+            newStatus: targetStatus.Id,
+            nowUtc: nowUtc));
+
+        return UnitResult.Success<Error>();
+    }
+
+    public UnitResult<Error> AssignAdmin(UserId adminId, DateTime nowUtc)
+    {
+        if (Status != ItemStatus.Draft &&
+            Status != ItemStatus.PendingReview)
+            return AuctionErrors.Item.InvalidState(Status.Id, "assign admin");
+
+        AssignedAdminId = adminId;
+        ModifiedAt = nowUtc;
+
+        _moderationReviews.Add(ItemModerationReview.Create(
+            itemId: Id,
+            action: ModerationAction.Assigned,
+            reviewerId: adminId,
+            oldStatus: Status.Id,
+            newStatus: Status.Id,
+            nowUtc: nowUtc));
+
+        return UnitResult.Success<Error>();
     }
 
     public UnitResult<Error> Activate(DateTime nowUtc)
@@ -265,9 +486,26 @@ public sealed class Item : AggregateRoot<ItemId>, IAuditableEntity
         
         ModifiedAt = nowUtc;
         
-        upload.LinkToEntity(Id.Value, nowUtc);
+        upload.LinkToEntity(Id, nowUtc);
 
         return image;
+    }
+
+    public UnitResult<Error> RefreshMediaSnapshot(
+        string oldPublicId,
+        StorageRef storageRef,
+        MediaInfo info,
+        DateTime nowUtc)
+    {
+        var media = _media.FirstOrDefault(x => x.StorageRef.PublicId == oldPublicId);
+
+        if (media is null)
+            return Error.NotFound("Media.ItemMediaNotFound", $"Item media not found for public id '{oldPublicId}'.");
+
+        media.RefreshMediaSnapshot(storageRef, info);
+        ModifiedAt = nowUtc;
+
+        return UnitResult.Success<Error>();
     }
     
     public UnitResult<Error> RemoveMedia(
@@ -401,11 +639,11 @@ public sealed class Item : AggregateRoot<ItemId>, IAuditableEntity
     }
     
     public bool IsAvailableForAuction =>
-        Status == ItemStatus.Active && _media.Count > 0;
-    
+        (Status == ItemStatus.Active || Status == ItemStatus.Approved) && _media.Count > 0;
+
     private UnitResult<Error> EnsureEditable()
     {
-        if (Status != ItemStatus.Draft && Status != ItemStatus.Active)
+        if (!Status.IsEditable)
             return AuctionErrors.Item.InvalidState(Status.Id, "edit item");
         
         return UnitResult.Success<Error>();

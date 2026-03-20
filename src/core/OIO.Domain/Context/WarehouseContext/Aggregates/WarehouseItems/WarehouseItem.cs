@@ -3,7 +3,6 @@ using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.Events;
 using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.Context.WarehouseContext.Errors;
-using OIO.Domain.Context.WarehouseContext.ValueObjects;
 using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.Shared.Entities;
@@ -31,16 +30,12 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
         WarehouseItemId id,
         Guid itemId,
         InboundShipmentId inboundShipmentId,
-        WarehouseItemCondition conditionOnArrival,
-        string? inspectionNotes,
         DateTime now)
     {
         Id                  = id;
         ItemId              = itemId;
         InboundShipmentId   = inboundShipmentId;
-        ConditionOnArrival  = conditionOnArrival;
-        InspectionNotes     = inspectionNotes;
-        Status              = WarehouseItemStatus.Received;
+        Status              = WarehouseItemStatus.Pending;
         CreatedAt           = now;
     }
 
@@ -50,17 +45,7 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
     /// <summary>Storage location — null until item is placed on a shelf.</summary>
     public WarehouseStorageLocationId? StorageLocationId { get; private set; }
 
-    /// <summary>
-    /// Condition recorded at inspection time.
-    /// May differ from the catalog listing condition — e.g. listed as like_new but arrived damaged.
-    /// </summary>
-    public WarehouseItemCondition ConditionOnArrival { get; private set; }
-
-    public string? InspectionNotes { get; private set; }
     public WarehouseItemStatus Status { get; private set; }
-
-    public UserId? InspectedBy { get; private set; }
-    public DateTime? InspectedAt { get; private set; }
     public DateTime? ReceivedAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? ModifiedAt { get; private set; }
@@ -68,23 +53,18 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
     public static WarehouseItem Create(
         Guid itemId,
         InboundShipmentId inboundShipmentId,
-        WarehouseItemCondition conditionOnArrival,
-        DateTime now,
-        string? inspectionNotes = null)
+        DateTime now)
     {
         var item = new WarehouseItem(
             WarehouseItemId.From(Guid.CreateVersion7()),
             itemId,
             inboundShipmentId,
-            conditionOnArrival,
-            inspectionNotes,
             now);
 
         item.RaiseDomainEvent(new WarehouseItemCreatedEvent(
             item.Id.ToString(),
             itemId.ToString(),
             inboundShipmentId.ToString(),
-            conditionOnArrival.Id,
             now));
 
         return item;
@@ -99,17 +79,13 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
         return UnitResult.Success<e>();
     }
 
-    /// <summary>Complete inspection — updates condition, notes, images, inspector.</summary>
-    public UnitResult<e> CompleteInspection(
-        WarehouseItemCondition condition,
-        UserId inspectedBy,
-        DateTime now,
-        string? inspectionNotes = null)
+    /// <summary>Mark physical inspection as completed. Inspection details are stored separately.</summary>
+    public UnitResult<e> MarkInspected(DateTime now)
     {
-        ConditionOnArrival = condition;
-        InspectionNotes    = inspectionNotes ?? InspectionNotes;
-        InspectedBy        = inspectedBy;
-        InspectedAt        = now;
+        if (Status != WarehouseItemStatus.Received)
+            return WarehouseErrors.WarehouseItem.NotInspected;
+
+        Status             = WarehouseItemStatus.Inspected;
         ModifiedAt         = now;
 
         return UnitResult.Success<e>();

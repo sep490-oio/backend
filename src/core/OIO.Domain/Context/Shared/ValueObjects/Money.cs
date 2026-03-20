@@ -20,6 +20,7 @@ public class Money : ValueObject, IComparable<Money>
     }
     
     internal static Money Of(decimal amount, Currency currency) => new(amount, currency);
+    internal static Money Of(decimal amount, string currency) => new(amount, new Currency(currency));
     
     public static Result<Money, Error> Create(decimal amount, string currency)
     {

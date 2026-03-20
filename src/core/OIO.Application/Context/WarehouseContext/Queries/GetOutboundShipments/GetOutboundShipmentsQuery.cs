@@ -1,12 +1,12 @@
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
-using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Application.Context.WarehouseContext.Mappings;
-using OIO.Application.Extensions;
+using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments;
+using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.WarehouseContext.Queries.GetOutboundShipments;
@@ -19,26 +19,35 @@ public sealed record GetOutboundShipmentsQuery(
     DateTime? ToDate = null,
     int       Page = 1,
     int       PageSize = 20
-) : IQuery<PagedList<OutboundShipmentDto>>, IPagedParameter
-{
-    int IPagedParameter.PageNumber => Page < 1 ? 1 : Page;
-    int IPagedParameter.PageSize   => PageSize < 1 ? 20 : Math.Min(PageSize, 50);
-}
+) : IQuery<IReadOnlyList<OutboundShipmentDto>>;
 
 internal sealed class GetOutboundShipmentsQueryHandler(IDbContext db)
-    : IQueryHandler<GetOutboundShipmentsQuery, PagedList<OutboundShipmentDto>>
+    : IQueryHandler<GetOutboundShipmentsQuery, IReadOnlyList<OutboundShipmentDto>>
 {
-    public async Task<Result<PagedList<OutboundShipmentDto>, Error>> Handle(
+    public async Task<Result<IReadOnlyList<OutboundShipmentDto>, Error>> Handle(
         GetOutboundShipmentsQuery request,
         CancellationToken cancellationToken)
     {
-        var query = db.Set<OutboundShipment>().AsNoTracking().AsQueryable();
+        var query = db.Set<OutboundShipment>()
+            .AsNoTracking()
+            .Include(s => s.TrackingEvents)
+            .AsSplitQuery()
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(request.Status))
-            query = query.Where(s => s.Status.Id == request.Status);
+        {
+            var status = OutboundShipmentStatus.FromId(request.Status.Trim().ToLowerInvariant());
+            if (status.HasNoValue)
+                return Array.Empty<OutboundShipmentDto>();
+
+            query = query.Where(s => s.Status == status.Value);
+        }
 
         if (request.OrderId.HasValue)
-            query = query.Where(s => s.OrderId == request.OrderId.Value);
+        {
+            var orderId = OrderId.From(request.OrderId.Value);
+            query = query.Where(s => s.OrderId == orderId);
+        }
 
         if (!string.IsNullOrWhiteSpace(request.Search))
             query = query.Where(s =>
@@ -51,13 +60,12 @@ internal sealed class GetOutboundShipmentsQueryHandler(IDbContext db)
         if (request.ToDate.HasValue)
             query = query.Where(s => s.CreatedAt <= request.ToDate.Value);
 
-        var totalCount = await query.CountAsync(cancellationToken);
-
         var shipments = await query
             .OrderByDescending(s => s.CreatedAt)
-            .Select(s => s.ToDto())
-            .ToPagedListAsync(totalCount, request, cancellationToken);
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToListAsync(cancellationToken);
 
-        return shipments;
+        return shipments.Select(s => s.ToDto()).ToList();
     }
-}
+}

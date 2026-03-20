@@ -8,7 +8,6 @@ using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseStorage;
 using OIO.Domain.Context.WarehouseContext.Enums;
-using OIO.Domain.Context.WarehouseContext.ValueObjects;
 using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
 
 namespace OIO.Infrastructure.Persistence.Configurations.WarehouseContext;
@@ -44,16 +43,6 @@ internal sealed class WarehouseItemConfiguration : IEntityTypeConfiguration<Ware
                 x => x.HasValue ? x.Value.Value : (Guid?)null,
                 v => v.HasValue ? WarehouseStorageLocationId.From(v.Value) : null);
 
-        builder.Property(e => e.ConditionOnArrival)
-            .HasColumnName("condition_on_arrival")
-            .HasMaxLength(20)
-            .IsRequired()
-            .HasConversion(x => x.Id, v => WarehouseItemCondition.FromId(v).GetValueOrThrow());
-
-        builder.Property(e => e.InspectionNotes)
-            .HasColumnName("inspection_notes")
-            .HasMaxLength(1000);
-
         var navigation = builder.Metadata.FindNavigation(nameof(WarehouseItem.Media))!;
         navigation.SetPropertyAccessMode(PropertyAccessMode.Field);
 
@@ -62,16 +51,6 @@ internal sealed class WarehouseItemConfiguration : IEntityTypeConfiguration<Ware
             .HasMaxLength(20)
             .IsRequired()
             .HasConversion(x => x.Id, v => WarehouseItemStatus.FromId(v).GetValueOrThrow());
-
-        // Soft FK — no EF navigation to users table
-        builder.Property(e => e.InspectedBy)
-            .HasColumnName("inspected_by")
-            .HasConversion(
-                x => x.HasValue ? x.Value.Value : (Guid?)null,
-                v => v.HasValue ? UserId.From(v.Value) : null);
-
-        builder.Property(e => e.InspectedAt)
-            .HasColumnName("inspected_at");
 
         builder.Property(e => e.ReceivedAt)
             .HasColumnName("received_at");

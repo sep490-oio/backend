@@ -43,6 +43,7 @@ public sealed class AutoBid : BaseEntity<AutoBidId>, IAuditableEntity
     {
         AuctionId = auctionId;
         BidderId = bidderId;
+        IsEnabled = true;
         Budget = budget;
         Status = AutoBidStatus.Active;
         TotalAutoBids = 0;
@@ -68,23 +69,25 @@ public sealed class AutoBid : BaseEntity<AutoBidId>, IAuditableEntity
     public bool CanBid(Money requiredAmount) =>
         IsEnabled &&
         Status == AutoBidStatus.Active &&
-        Budget.MaxAmount.IsGreaterThanOrEqual(requiredAmount);
+        Budget.MaxPrice.IsGreaterThanOrEqual(requiredAmount);
 
     public Result<Money, Error> CalculateNextBidAmount(Money minimumRequired)
     {
+        LastValidationAt = DateTime.UtcNow;
+
         if (!CanBid(minimumRequired))
             return AuctionErrors.AutoBid.CannotBid;
 
-        var desiredAmount = Budget.IncrementAmount is not null
-            ? Budget.CurrentAmount + Budget.IncrementAmount
+        var desiredAmount = Budget.Increment is not null
+            ? Budget.CurrentPrice + Budget.Increment
             : minimumRequired;
 
         if (desiredAmount < minimumRequired)
             desiredAmount = minimumRequired;
 
         // Cap at max amount
-        if (desiredAmount > Budget.MaxAmount)
-            desiredAmount = Budget.MaxAmount;
+        if (desiredAmount > Budget.MaxPrice)
+            desiredAmount = Budget.MaxPrice;
 
         return desiredAmount;
     }
@@ -97,8 +100,8 @@ public sealed class AutoBid : BaseEntity<AutoBidId>, IAuditableEntity
         if (Status == AutoBidStatus.Won || Status == AutoBidStatus.Outbid)
             return AuctionErrors.AutoBid.CannotModifyFinalStatus;
 
-        if (newAmount.Amount > Budget.MaxAmount.Amount)
-            return AuctionErrors.AutoBid.ExceedsMaxAmount(Budget.MaxAmount.Amount);
+        if (newAmount.Amount > Budget.MaxAmount)
+            return AuctionErrors.AutoBid.ExceedsMaxAmount(Budget.MaxAmount);
 
         var result = Budget.WithBidPlaced(newAmount);
         
@@ -108,12 +111,13 @@ public sealed class AutoBid : BaseEntity<AutoBidId>, IAuditableEntity
         Budget = result.Value;
         TotalAutoBids++;
         LastAutoBidAt = nowUtc;
+        LastValidationAt = nowUtc;
         ModifiedAt = nowUtc;
+        StopReason = null;
+        StoppedAt = null;
 
-        if (Budget.CurrentAmount.Amount < Budget.MaxAmount.Amount) 
-            return UnitResult.Success<Error>();
-        
-        MarkAsExhausted(nowUtc);
+        if (Budget.IsExhausted)
+            MarkAsExhausted(nowUtc);
 
         return UnitResult.Success<Error>();
     }
@@ -123,19 +127,18 @@ public sealed class AutoBid : BaseEntity<AutoBidId>, IAuditableEntity
         Money? newIncrementAmount, 
         DateTime nowUtc)
     {
-        if (!IsEnabled && Status != AutoBidStatus.Exhausted)
+        if (!IsEnabled &&
+            Status != AutoBidStatus.Exhausted &&
+            Status != AutoBidStatus.Outbid)
             return AuctionErrors.AutoBid.IsDisabled;
 
         if (Status == AutoBidStatus.Won)
             return AuctionErrors.AutoBid.CannotModifyFinalStatus;
 
-        if (newMaxAmount.Amount < Budget.CurrentAmount.Amount)
-            return AuctionErrors.AutoBid.NewMaxLessThanCurrent(Budget.CurrentAmount.Amount);
+        if (newMaxAmount.Amount < Budget.CurrentAmount)
+            return AuctionErrors.AutoBid.NewMaxLessThanCurrent(Budget.CurrentAmount);
         
-        if (Status == AutoBidStatus.Exhausted || Status == AutoBidStatus.Outbid)
-            Status = AutoBidStatus.Active;
-        
-        var result = Budget.WithMaxAmountUpdated(newMaxAmount);
+        var result = Budget.WithConfiguration(newMaxAmount, newIncrementAmount);
         
         if (result.IsFailure)
         {
@@ -143,12 +146,22 @@ public sealed class AutoBid : BaseEntity<AutoBidId>, IAuditableEntity
         }
         
         Budget = result.Value;
+        if (Status == AutoBidStatus.Exhausted || Status == AutoBidStatus.Outbid)
+            Status = AutoBidStatus.Active;
         ModifiedAt = nowUtc;
         IsEnabled = true;
+        StopReason = null;
+        StoppedAt = null;
+        LastValidationAt = nowUtc;
         
         return UnitResult.Success<Error>();
     }
     
+    /// <summary>
+    /// Pause auto-bid — disables bidding but keeps wallet hold.
+    /// Wallet reservation is retained so Resume can reactivate instantly without re-hold.
+    /// Funds are only released when auction ends (Sold/Failed/Cancelled/Terminated).
+    /// </summary>
     public UnitResult<Error> Pause(DateTime nowUtc)
     {
         if (Status != AutoBidStatus.Active)
@@ -157,6 +170,8 @@ public sealed class AutoBid : BaseEntity<AutoBidId>, IAuditableEntity
         Status = AutoBidStatus.Paused;
         ModifiedAt = nowUtc;
         IsEnabled = false;
+        StopReason = "paused_by_user";
+        StoppedAt = nowUtc;
         
         return UnitResult.Success<Error>();
     }
@@ -169,6 +184,9 @@ public sealed class AutoBid : BaseEntity<AutoBidId>, IAuditableEntity
         Status = AutoBidStatus.Active;
         ModifiedAt = nowUtc;
         IsEnabled = true;
+        StopReason = null;
+        StoppedAt = null;
+        LastValidationAt = nowUtc;
         
         return UnitResult.Success<Error>();
     }
@@ -178,18 +196,26 @@ public sealed class AutoBid : BaseEntity<AutoBidId>, IAuditableEntity
         Status = AutoBidStatus.Won;
         IsEnabled = false;
         ModifiedAt = nowUtc;
+        StopReason = "won";
+        StoppedAt = nowUtc;
     }
 
     public void MarkAsOutbid(DateTime nowUtc)
     {
         Status = AutoBidStatus.Outbid;
+        IsEnabled = false;
         ModifiedAt = nowUtc;
+        StopReason = "outbid";
+        StoppedAt = nowUtc;
     }
     
     public void MarkAsExhausted(DateTime nowUtc)
     {
         Status = AutoBidStatus.Exhausted;
+        IsEnabled = false;
         ModifiedAt = nowUtc;
+        StopReason = "budget_exhausted";
+        StoppedAt = nowUtc;
     }
     
 }

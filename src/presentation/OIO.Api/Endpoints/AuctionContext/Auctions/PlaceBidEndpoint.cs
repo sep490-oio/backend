@@ -1,14 +1,19 @@
-﻿using MediatR;
+using System.ComponentModel.DataAnnotations;
+using MediatR;
 using OIO.Api.Common;
 using OIO.Api.Extensions;
+using OIO.Api.Filters;
 using OIO.Application.Context.AuctionContext.Commands.PlaceBid;
+using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.AuctionContext.Auctions;
 
 public sealed class PlaceBidEndpoint : IEndpoint
 {
-    public sealed record Request(decimal Amount, string Currency = "VND");
+    public sealed record Request(
+        [Required] decimal Amount,
+        [Required] string Currency = "VND");
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
@@ -19,18 +24,23 @@ public sealed class PlaceBidEndpoint : IEndpoint
                 HttpContext httpContext,
                 CancellationToken ct) =>
             {
-                var command = new PlaceBidCommand(auctionId, request.Amount, request.Currency, httpContext.GetIpAddress());
+                var command = new PlaceBidCommand(
+                    auctionId,
+                    request.Amount,
+                    request.Currency,
+                    httpContext.GetIpAddress());
 
-                var result = await sender.Send(command, ct);
-
-                return result.ToCreatedHttpResult();
+                return await sender.Send(command, ct);
             })
+            .AddEndpointFilter(new IdempotencyFilter<BidDto>(
+                IdempotencyHttpPolicies.PlaceBid()))
             .RequireAuthorization(App.Permissions.Catalogs.Auctions.Bid)
             .WithName(ApiEndpoint.Names.Auctions.PlaceBid)
             .WithTags(ApiEndpoint.Tags.Auctions)
             .Produces(StatusCodes.Status201Created)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
     }
 }

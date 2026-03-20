@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using System.ComponentModel.DataAnnotations;
+using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.CreateCategory;
 using OIO.Domain.AppDefinitions;
@@ -8,11 +9,11 @@ namespace OIO.Api.Endpoints.AuctionContext.Categories;
 public sealed class CreateCategoryEndpoint : IEndpoint
 {
     public sealed record Request(
-        string Name,
-        string Slug,
+        [Required] string Name,
+        [Required] string Slug,
         Guid? ParentId = null,
         string? Description = null,
-        string? IconUrl = null,
+        Guid? MediaUploadId = null,
         int SortOrder = 0);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
@@ -27,7 +28,7 @@ public sealed class CreateCategoryEndpoint : IEndpoint
                     request.Slug,
                     request.ParentId,
                     request.Description,
-                    request.IconUrl,
+                    request.MediaUploadId,
                     request.SortOrder);
 
                 var result = await sender.Send(command, ct);

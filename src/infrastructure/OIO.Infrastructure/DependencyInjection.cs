@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
+using OIO.Application.Abstractions.Auth;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
@@ -15,10 +16,11 @@ using OIO.Application.Abstractions.Mail;
 using OIO.Application.Abstractions.Media;
 using OIO.Application.Abstractions.Scheduling;
 using OIO.Application.Abstractions.Security;
-using OIO.Application.Abstractions.Settings;
 using OIO.Application.Abstractions.Shipping;
+using OIO.Application.Context.AuctionContext.Services;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.UserContext.Services;
+using OIO.Application.Abstractions.Ekyc;
 using OIO.Infrastructure.Authorizations;
 using OIO.Infrastructure.Clock;
 using OIO.Infrastructure.Persistence;
@@ -37,6 +39,8 @@ using OIO.Infrastructure.Security;
 using OIO.Infrastructure.Settings.Apps;
 using Quartz;
 using StackExchange.Redis;
+using OIO.Infrastructure.Auth;
+using OIO.Infrastructure.Ekyc;
 using OIO.Infrastructure.Shipping;
 using OIO.Infrastructure.Shipping.Ghn;
 
@@ -55,9 +59,18 @@ public static class DependencyInjection
             
             services.AddSingleton(TimeProvider.System);
             services.AddSingleton<IClock, DatetimeProvider>();
-            services.Configure<AppInfoOptions>(configuration.GetSection(AppInfoOptions.SectionName));
-            services.AddScoped<IAppConfigs, AppConfig>();
-            services.AddScoped<ISystemSettingsService, SystemSettingsService>();
+            services.Configure<AppOptions>(configuration.GetSection(AppOptions.SectionName));
+            services.Configure<FeaturesOptions>(configuration.GetSection(FeaturesOptions.SectionName));
+            services.Configure<AuctionOptions>(configuration.GetSection(AuctionOptions.SectionName));
+            services.Configure<ItemOptions>(configuration.GetSection(ItemOptions.SectionName));
+            services.Configure<MediaOptions>(configuration.GetSection(MediaOptions.SectionName));
+            services.Configure<AuthOptions>(configuration.GetSection(AuthOptions.SectionName));
+            services.Configure<MonitoringOptions>(configuration.GetSection(MonitoringOptions.SectionName));
+            services.Configure<OpsOptions>(configuration.GetSection(OpsOptions.SectionName));
+            services.Configure<OrderOptions>(configuration.GetSection(OrderOptions.SectionName));
+            services.AddSingleton<AppConfig>();
+            services.AddSingleton<IAppInfo>(serviceProvider => serviceProvider.GetRequiredService<AppConfig>());
+            services.AddSingleton<IRuntimeSettings>(serviceProvider => serviceProvider.GetRequiredService<AppConfig>());
 
             services
                 .AddPersistence(configuration, connectionString)
@@ -71,7 +84,9 @@ public static class DependencyInjection
                 .AddOutbox(configuration)
                 .AddMedia(configuration)
                 .AddSecurityServices()
-                .AddShipping();
+                .AddShipping()
+                .AddEkyc(configuration)
+                .AddPayment(configuration);
 
             return services;
         }
@@ -163,6 +178,7 @@ public static class DependencyInjection
             // Application Services
             services.AddSingleton<ITokenExpirationSettings, TokenExpirationSettings>();
             services.AddScoped<IJwtTokenProvider, JwtTokenProvider>();
+            services.AddSingleton<ITotpService, TotpService>();
             services.AddScoped<ISessionRevocationStore, SessionRevocationStore>();
             services.AddScoped<ICurrentUser, CurrentUser>();
 
@@ -221,8 +237,10 @@ public static class DependencyInjection
 
         private IServiceCollection AddSecurityServices()
         {
+            services.AddDataProtection();
             services.AddSingleton<ISecureTokenGenerator, SecureTokenGenerator>();
             services.AddScoped<ISecureTokenStore, SecureTokenStore>();
+            services.AddScoped<ISealedBidEncryptionService, SealedBidEncryptionService>();
 
             return services;
         }
@@ -268,6 +286,11 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
         private IServiceCollection AddBackgroundJobs()
         {
             services.AddHostedService<ExpiredSessionCleanupJob>();
+            services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Orders.CancelExpiredOrdersJob>();
+            services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Orders.ReleaseExpiredDecisionWindowJob>();
+            services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Auctions.ExpireRunnerUpOffersJob>();
+            services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Auctions.ExpireBuyNowReservationsJob>();
+            services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Auctions.ScanActiveAuctionsForCollusionJob>();
             
             return services;
         }
@@ -305,7 +328,15 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
             // Job Setups
             services.ConfigureOptions<OutboxMessagesProcessorJobSetup>();
             services.ConfigureOptions<MediaUploadCleanupJobSetup>();
+            services.ConfigureOptions<PendingUploadRelocationJobSetup>();
             services.ConfigureOptions<AuctionJobSetup>();
+            services.ConfigureOptions<AuctionAutoCompleteJobSetup>();
+            services.ConfigureOptions<RecalculateSellerTrustScoresJobSetup>();
+            services.AddScoped<SellerTrustScoreCalculator>();
+
+            // Notification Delivery Job
+            services.ConfigureOptions<OIO.Infrastructure.Notification.BackgroundJobs.ProcessNotificationDeliveriesJobSetup>();
+            services.AddScoped<OIO.Application.Context.NotificationContext.Services.INotificationProvider, OIO.Infrastructure.Notification.Providers.EmailNotificationProvider>();
 
             return services;
         }
@@ -329,12 +360,36 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
 
             return services;
         }
+
+        private IServiceCollection AddEkyc(IConfiguration configuration)
+        {
+            services.Configure<VnptEkycOptions>(configuration.GetSection(VnptEkycOptions.SectionName));
+            services.AddHttpClient<IEkycProvider, VnptEkycProvider>();
+
+            return services;
+        }
+
         private IServiceCollection AddShipping()
         {
             services.AddHttpClient("GhnClient");
             services.AddTransient<IShippingProvider, GhnShippingProvider>();
             services.AddTransient<IShippingProviderSelector, ShippingProviderSelector>();
             services.AddScoped<IShippingService, ShippingService>();
+            return services;
+        }
+
+        private IServiceCollection AddPayment(IConfiguration configuration)
+        {
+            services.Configure<Payment.VnPay.VnPayConfig>(
+                configuration.GetSection(Payment.VnPay.VnPayConfig.SectionName));
+            services.AddHttpClient<Application.Abstractions.Payment.IPaymentGatewayService,
+                Payment.VnPay.VnPayGateway>();
+
+            services.ConfigureOptions<Payment.Webhooks.ProcessGatewayWebhooksJobSetup>();
+            services.AddScoped<Payment.Webhooks.GatewayWebhookProcessor>();
+
+            services.ConfigureOptions<Payment.Reconciliation.GatewayReconciliationJobSetup>();
+
             return services;
         }
     }

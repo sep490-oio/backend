@@ -3,6 +3,7 @@ using OIO.Application.Context.UserContext.DTOs;
 using OIO.Domain.AppDefinitions;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
+using appCurrency = OIO.Domain.Context.Shared.Enums.Currency;
 
 namespace OIO.Application.Context.UserContext.Commands.RegisterUser;
 
@@ -10,6 +11,7 @@ public sealed record RegisterUserCommand(
     string UserName,
     string Email,
     string Password,
+    string Currency = "VND",
     string? FirstName = null,
     string? LastName = null) : ICommand<UserDto>, IHasValidate
 {
@@ -43,6 +45,8 @@ public sealed record RegisterUserCommand(
             .When(LastName is not null, x => 
                 x.NotNullOrWhiteSpace()
                 .MaxLength(App.Constraint.LastName.MaxLength)
-                .MinLength(App.Constraint.LastName.MinLength)!);
+                .MinLength(App.Constraint.LastName.MinLength)!)
+            .Field(Currency)
+            .InSet(appCurrency.All.Select(g => g.Id), error: appCurrency.Errors.NotSupported);
     }
 }

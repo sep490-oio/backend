@@ -10,7 +10,7 @@ public sealed record UpdateProfileCommand(
     string? FirstName,
     string? LastName,
     string? DisplayName,
-    string? AvatarUrl,
+    Guid? AvatarMediaUploadId,
     DateOnly? DateOfBirth,
     string? Gender) : ICommand<UserProfileDto>, IHasValidate
 {
@@ -22,7 +22,7 @@ public sealed record UpdateProfileCommand(
             .WhenHasValue(x => x
                 .NotWhiteSpace()
                 .MinLength(App.Constraint.FirstName.MinLength)
-                .MinLength(App.Constraint.FirstName.MaxLength)
+                .MaxLength(App.Constraint.FirstName.MaxLength)
             )
             .Field(LastName)
             .WhenHasValue(x => x
@@ -34,11 +34,8 @@ public sealed record UpdateProfileCommand(
                 .NotWhiteSpace()
                 .MinLength(App.Constraint.DisplayName.MinLength)
                 .MaxLength(App.Constraint.DisplayName.MaxLength))
-            .Field(AvatarUrl)
-            .WhenHasValue(x => x
-                .NotWhiteSpace()
-                .MinLength(App.Constraint.AvatarUrl.MinLength)
-                .MaxLength(App.Constraint.AvatarUrl.MaxLength))
+            .Field(AvatarMediaUploadId)
+            .WhenHasValue(x => x.NotEmptyGuid())
             .Field(DateOfBirth)
             .WhenHasValue(x => x.NotDefault())
             .Field(Gender)

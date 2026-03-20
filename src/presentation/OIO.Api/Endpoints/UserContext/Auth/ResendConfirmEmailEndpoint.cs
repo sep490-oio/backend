@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.UserContext.Commands.ResendConfirmEmail;
@@ -6,7 +7,7 @@ namespace OIO.Api.Endpoints.UserContext.Auth;
 
 public sealed class ResendConfirmEmailEndpoint : IEndpoint
 {
-    public sealed record Request(string Email);
+    public sealed record Request([Required] string Email);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

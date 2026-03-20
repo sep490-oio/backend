@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.ReorderItemMedia;
@@ -7,7 +8,7 @@ namespace OIO.Api.Endpoints.AuctionContext.Items;
 
 public sealed class ReorderItemMediaEndpoint : IEndpoint
 {
-    public sealed record Request(List<Guid> OrderedMediaIds);
+    public sealed record Request([Required] List<Guid> OrderedMediaIds);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

@@ -5,4 +5,5 @@ public sealed record AuthTokenDto(
     string RefreshToken,
     DateTime AccessTokenExpiresAt,
     DateTime RefreshTokenExpiresAt,
-    SessionExpirationDto Session);
+    SessionExpirationDto? Session,
+    bool RequiresTwoFactor = false);

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.UserContext.Commands.ChangeUserStatus;
@@ -7,7 +8,7 @@ namespace OIO.Api.Endpoints.UserContext.Admins;
 
 public class ChangeUserStatusEndpoint : IEndpoint
 {
-    public sealed record Request(string Status);
+    public sealed record Request([Required] string Status);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

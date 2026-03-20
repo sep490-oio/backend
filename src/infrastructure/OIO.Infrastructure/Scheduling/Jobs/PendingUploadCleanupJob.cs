@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
@@ -16,7 +16,7 @@ public sealed class PendingUploadCleanupJob : IJob
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMediaSignatureService _mediaSignatureService;
     private readonly IClock _clock;
-    private readonly IAppConfigs _appConfigs;
+    private readonly IRuntimeSettings _runtimeSettings;
     private readonly ILogger<PendingUploadCleanupJob> _logger;
 
     public PendingUploadCleanupJob(
@@ -24,14 +24,14 @@ public sealed class PendingUploadCleanupJob : IJob
         IUnitOfWork unitOfWork,
         IMediaSignatureService mediaSignatureService,
         IClock clock,
-        IAppConfigs appConfigs,
+        IRuntimeSettings runtimeSettings,
         ILogger<PendingUploadCleanupJob> logger)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _mediaSignatureService = mediaSignatureService;
         _clock = clock;
-        _appConfigs = appConfigs;
+        _runtimeSettings = runtimeSettings;
         _logger = logger;
     }
 
@@ -39,8 +39,8 @@ public sealed class PendingUploadCleanupJob : IJob
     {
         var now = _clock.UtcNow;
         var cancellationToken = context.CancellationToken;
-        var orphanThreshold = now.Add(- await _appConfigs.Media.GetOrphanExpirationMinutesAsync(cancellationToken));
-        var linkedRetentionThreshold = now.Add(- await _appConfigs.Media.GetLinkedRecordRetentionDaysAsync(cancellationToken));
+        var orphanThreshold = now.Add(-_runtimeSettings.Media.OrphanExpiration);
+        var linkedRetentionThreshold = now.Add(-_runtimeSettings.Media.LinkedRecordRetention);
 
         var toDelete = new List<MediaUpload>();
 
@@ -73,7 +73,8 @@ public sealed class PendingUploadCleanupJob : IJob
         // Case 3: Old linked records (audit trail cleanup)
         var oldLinked = await _dbContext.Set<MediaUpload>()
             .Where(p => p.IsLinked &&
-                        p.LinkedAt < linkedRetentionThreshold)
+                        p.LinkedAt < linkedRetentionThreshold &&
+                        !p.StorageRef.Folder.Contains("/pending/"))
             .ToListAsync(cancellationToken);
 
         if (oldLinked.Count > 0)
@@ -124,3 +125,4 @@ public sealed class PendingUploadCleanupJob : IJob
             _ => MediaResourceType.Image
         };
 }
+

@@ -11,10 +11,19 @@ public interface IMediaSignatureService
     /// </summary>
     UploadSignatureResult GenerateSignature(
         MediaResourceType resourceType,
-        string publicId,
+        string mediaName,
         string folder,
         string? eager = null,
         string[]? allowedFormats = null);
+
+    /// <summary>
+    /// Rename an existing resource to a final public id/folder.
+    /// </summary>
+    Task<RenameResourceResult?> RenameResourceAsync(
+        string fromPublicId,
+        string toPublicId,
+        MediaResourceType resourceType,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Delete a resource from Cloudinary by publicId and resource type.
@@ -65,48 +74,49 @@ public sealed record UploadSignatureResult(
     long Timestamp,
     string ApiKey,
     string CloudName,
-    string PublicId,
+    string UploadPublicId,
+    string StoragePublicId,
     string Folder,
     string? Eager,
     string ResourceType);
+
+public sealed record RenameResourceResult(
+    string PublicId,
+    string Folder,
+    string SecureUrl);
  
 public sealed class UploadContextRegistry
 {
-    private readonly IAppConfigs _appConfigs;
+    private readonly IRuntimeSettings _runtimeSettings;
 
-    public UploadContextRegistry(IAppConfigs appConfigs)
+    public UploadContextRegistry(IRuntimeSettings runtimeSettings)
     {
-        _appConfigs = appConfigs;
+        _runtimeSettings = runtimeSettings;
     }
 
     // ==================== Context Lookup ====================
 
-    public async Task<UploadContextOption?> GetAsync(string contextName, CancellationToken cancellationToken = default)
-    {
-        var contexts = await _appConfigs.Media.GetUploadContextsAsync(cancellationToken);
-        return contexts.FirstOrDefault(c => c.Name.Equals(contextName, StringComparison.OrdinalIgnoreCase));
-    }
+    public UploadContextOption? Get(string contextName) =>
+        _runtimeSettings.Media.UploadContexts
+            .FirstOrDefault(c => c.Name.Equals(contextName, StringComparison.OrdinalIgnoreCase));
 
 
-    public async Task<string[]> GetAllContextAsync(CancellationToken cancellationToken = default)
-    {
-        var contexts = await _appConfigs.Media.GetUploadContextsAsync(cancellationToken);
-        return contexts.Select(x => x.Name).ToArray();
-    }
+    public string[] GetAllContext() =>
+        _runtimeSettings.Media.UploadContexts
+            .Select(x => x.Name)
+            .ToArray();
 
-    public async Task<bool> IsValidAsync(string contextName, CancellationToken cancellationToken = default)
-    {
-        var contexts = await _appConfigs.Media.GetUploadContextsAsync(cancellationToken);
-        return contexts.Any(c => c.Name.Equals(contextName, StringComparison.OrdinalIgnoreCase));
-    }
+    public bool IsValid(string contextName) =>
+        _runtimeSettings.Media.UploadContexts
+            .Any(c => c.Name.Equals(contextName, StringComparison.OrdinalIgnoreCase));
 
-    public async Task<UnitResult<Error>> ValidateContextAsync(string contextName, CancellationToken cancellationToken = default)
+    public UnitResult<Error> ValidateContext(string contextName)
     {
         if (string.IsNullOrWhiteSpace(contextName))
             return Error.NotEmpty(contextName, false, "Media", "Context");
 
-        if (! await IsValidAsync(contextName, cancellationToken))
-            return Error.InSet(contextName, string.Join(", ", await GetAllContextAsync(cancellationToken)), false,"Media", "Context");
+        if (!IsValid(contextName))
+            return Error.InSet(contextName, string.Join(", ", GetAllContext()), false, "Media", "Context");
 
         return UnitResult.Success<Error>();
     }
@@ -119,31 +129,39 @@ public sealed class UploadContextRegistry
     public bool IsUserContext(string contextName) =>
         contextName.StartsWith("user_", StringComparison.OrdinalIgnoreCase);
 
+    public bool IsUserAvatarContext(string contextName) =>
+        string.Equals(contextName, "user_avatar", StringComparison.OrdinalIgnoreCase);
+    
+    public bool IsTermContext(string contextName) =>
+        contextName.StartsWith("term_", StringComparison.OrdinalIgnoreCase);
+
     public bool IsCategoryContext(string contextName) =>
         contextName.StartsWith("category_", StringComparison.OrdinalIgnoreCase);
 
     public bool IsDisputeContext(string contextName) =>
         contextName.StartsWith("dispute_", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsVerificationContext(string contextName) =>
+        contextName.StartsWith("verification_", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsWarehouseInspectionContext(string contextName) =>
+        contextName.StartsWith("warehouse_inspection_", StringComparison.OrdinalIgnoreCase);
     
     // ==================== Resource Type Limits ====================
 
-    public async Task<int> GetMaxUploadsForContextAsync(string contextName)
+    public int GetMaxUploadsForContext(string contextName)
     {
-        var context = await GetAsync(contextName);
+        var context = Get(contextName);
         return context?.MaxUploadsPerEntity ?? 10;
     }
     
-    public async Task<int> GetMaxForEntityMediaAsync(
-        string entityPrefix, 
-        string resourceType,
-        CancellationToken cancellationToken = default)
+    public int GetMaxForEntityMedia(
+        string entityPrefix,
+        string resourceType)
     {
-        var allContext = await _appConfigs.Media.GetUploadContextsAsync(cancellationToken);
-        
-        var context = allContext.FirstOrDefault(c =>
+        var context = _runtimeSettings.Media.UploadContexts.FirstOrDefault(c =>
             c.Name.StartsWith($"{entityPrefix}_", StringComparison.OrdinalIgnoreCase) &&
             c.ResourceType.Equals(resourceType, StringComparison.OrdinalIgnoreCase));
-            
 
         return context?.MaxUploadsPerEntity ?? 10;
     }
@@ -156,6 +174,7 @@ public sealed class UploadContextRegistry
             "image" => MediaResourceType.Image,
             "video" => MediaResourceType.Video,
             "raw" => MediaResourceType.Raw,
+            "document" => MediaResourceType.Raw,
             _ => throw new ArgumentException($"Unknown resource type: {resourceType}")
         };
 }

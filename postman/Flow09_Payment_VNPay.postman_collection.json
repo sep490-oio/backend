@@ -1,0 +1,1150 @@
+{
+  "info": {
+    "name": "Flow 09 — Payment & VNPay",
+    "_postman_id": "flow09-payment-vnpay",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    { "key": "transactionId", "value": "" },
+    { "key": "transactionRef", "value": "" },
+    { "key": "paymentUrl", "value": "" },
+    { "key": "paymentMethodId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01-Create Payment URL",
+      "item": [
+        {
+          "name": "1. Create URL — Auction Deposit",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500000,\n  \"currency\": \"VND\",\n  \"purpose\": \"auction_deposit\",\n  \"description\": \"Deposit for auction\",\n  \"auctionId\": \"{{auctionId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/vnpay/create-url",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "vnpay", "create-url"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – payment URL created', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.transactionId) {",
+                  "    pm.collectionVariables.set('transactionId', body.transactionId);",
+                  "    console.log('transactionId saved:', body.transactionId);",
+                  "}",
+                  "if (body.transactionRef) {",
+                  "    pm.collectionVariables.set('transactionRef', body.transactionRef);",
+                  "    console.log('transactionRef saved:', body.transactionRef);",
+                  "}",
+                  "if (body.paymentUrl) {",
+                  "    pm.collectionVariables.set('paymentUrl', body.paymentUrl);",
+                  "    console.log('paymentUrl saved:', body.paymentUrl);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Create URL — Order Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000000,\n  \"currency\": \"VND\",\n  \"purpose\": \"order_payment\",\n  \"description\": \"Payment for order\",\n  \"orderId\": \"{{orderId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/vnpay/create-url",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "vnpay", "create-url"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – payment URL created', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.transactionId) {",
+                  "    pm.collectionVariables.set('transactionId', body.transactionId);",
+                  "}",
+                  "if (body.transactionRef) {",
+                  "    pm.collectionVariables.set('transactionRef', body.transactionRef);",
+                  "}",
+                  "if (body.paymentUrl) {",
+                  "    pm.collectionVariables.set('paymentUrl', body.paymentUrl);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Create URL — Buy Now",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 2000000,\n  \"currency\": \"VND\",\n  \"purpose\": \"auction_buy_now\",\n  \"description\": \"Buy now payment\",\n  \"auctionId\": \"{{auctionId}}\",\n  \"buyNowReservationId\": \"{{buyNowReservationId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/vnpay/create-url",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "vnpay", "create-url"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – payment URL created', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.transactionId) {",
+                  "    pm.collectionVariables.set('transactionId', body.transactionId);",
+                  "}",
+                  "if (body.transactionRef) {",
+                  "    pm.collectionVariables.set('transactionRef', body.transactionRef);",
+                  "}",
+                  "if (body.paymentUrl) {",
+                  "    pm.collectionVariables.set('paymentUrl', body.paymentUrl);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Create URL — Wallet TopUp",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500000,\n  \"currency\": \"VND\",\n  \"purpose\": \"wallet_top_up\",\n  \"description\": \"Top up wallet balance\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/vnpay/create-url",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "vnpay", "create-url"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – payment URL created', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.transactionId) {",
+                  "    pm.collectionVariables.set('transactionId', body.transactionId);",
+                  "}",
+                  "if (body.transactionRef) {",
+                  "    pm.collectionVariables.set('transactionRef', body.transactionRef);",
+                  "}",
+                  "if (body.paymentUrl) {",
+                  "    pm.collectionVariables.set('paymentUrl', body.paymentUrl);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02-Token Flows",
+      "item": [
+        {
+          "name": "5. Link Card",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardType\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/methods/link-card",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "methods", "link-card"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – link card URL returned', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.redirectUrl) {",
+                  "    pm.collectionVariables.set('paymentUrl', body.redirectUrl);",
+                  "    console.log('redirectUrl saved to paymentUrl:', body.redirectUrl);",
+                  "}",
+                  "if (body.transactionRef) {",
+                  "    pm.collectionVariables.set('transactionRef', body.transactionRef);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Create URL — Pay & Save Card",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500000,\n  \"currency\": \"VND\",\n  \"purpose\": \"wallet_top_up\",\n  \"description\": \"Pay and save card\",\n  \"saveCard\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/vnpay/create-url",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "vnpay", "create-url"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – pay & save card URL created', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.transactionId) {",
+                  "    pm.collectionVariables.set('transactionId', body.transactionId);",
+                  "}",
+                  "if (body.transactionRef) {",
+                  "    pm.collectionVariables.set('transactionRef', body.transactionRef);",
+                  "}",
+                  "if (body.paymentUrl) {",
+                  "    pm.collectionVariables.set('paymentUrl', body.paymentUrl);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Create URL — Token Pay",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500000,\n  \"currency\": \"VND\",\n  \"purpose\": \"wallet_top_up\",\n  \"description\": \"Token-based payment\",\n  \"paymentMethodId\": \"{{paymentMethodId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/vnpay/create-url",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "vnpay", "create-url"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – token pay URL created', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.transactionId) {",
+                  "    pm.collectionVariables.set('transactionId', body.transactionId);",
+                  "}",
+                  "if (body.transactionRef) {",
+                  "    pm.collectionVariables.set('transactionRef', body.transactionRef);",
+                  "}",
+                  "if (body.paymentUrl) {",
+                  "    pm.collectionVariables.set('paymentUrl', body.paymentUrl);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8. Get Payment Methods",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "methods"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – payment methods listed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (Array.isArray(body) && body.length > 0) {",
+                  "    pm.collectionVariables.set('paymentMethodId', body[0].id);",
+                  "    console.log('paymentMethodId saved:', body[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03-IPN & Return Callbacks",
+      "item": [
+        {
+          "name": "9. [Info] IPN Endpoint",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/vnpay/ipn?vnp_TxnRef={{transactionRef}}&vnp_ResponseCode=00&vnp_TransactionNo=14000000&vnp_Amount=50000000&vnp_SecureHash=TEST_HASH",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "vnpay", "ipn"],
+              "query": [
+                { "key": "vnp_TxnRef", "value": "{{transactionRef}}" },
+                { "key": "vnp_ResponseCode", "value": "00" },
+                { "key": "vnp_TransactionNo", "value": "14000000" },
+                { "key": "vnp_Amount", "value": "50000000" },
+                { "key": "vnp_SecureHash", "value": "TEST_HASH" }
+              ]
+            },
+            "description": "VNPay IPN callback (server-to-server). AllowAnonymous. VNPay calls this to notify payment result. Returns JSON with RspCode. In production, VNPay signs the query string — the TEST_HASH here is a placeholder."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – IPN responded', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('RspCode present', function () {",
+                  "    pm.expect(body).to.have.property('RspCode');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. [Info] Return Endpoint",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/vnpay/return?vnp_TxnRef={{transactionRef}}&vnp_ResponseCode=00&vnp_TransactionNo=14000000&vnp_Amount=50000000&vnp_SecureHash=TEST_HASH",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "vnpay", "return"],
+              "query": [
+                { "key": "vnp_TxnRef", "value": "{{transactionRef}}" },
+                { "key": "vnp_ResponseCode", "value": "00" },
+                { "key": "vnp_TransactionNo", "value": "14000000" },
+                { "key": "vnp_Amount", "value": "50000000" },
+                { "key": "vnp_SecureHash", "value": "TEST_HASH" }
+              ]
+            },
+            "description": "VNPay Return URL. AllowAnonymous. VNPay redirects user here after payment. Frontend uses this to display payment status."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – return processed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11. [Info] ProcessGatewayWebhooksJob",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "methods"]
+            },
+            "description": "INFO ONLY — ProcessGatewayWebhooksJob runs every 10s in background. It processes saved VNPay webhooks asynchronously: updates transaction status, creates escrows, marks orders paid, handles deposits, and creates payment methods from token callbacks. This request is a no-op placeholder — use Get Payment Methods to verify side-effects after IPN."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – info placeholder', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04-Checkout Order",
+      "item": [
+        {
+          "name": "12. Checkout — VNPay",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"paymentMethod\": \"vnpay\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/checkout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "checkout"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – checkout VNPay', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.transactionId) {",
+                  "    pm.collectionVariables.set('transactionId', body.transactionId);",
+                  "}",
+                  "if (body.transactionRef) {",
+                  "    pm.collectionVariables.set('transactionRef', body.transactionRef);",
+                  "}",
+                  "if (body.paymentUrl) {",
+                  "    pm.collectionVariables.set('paymentUrl', body.paymentUrl);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13. Checkout — Full Wallet",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"paymentMethod\": \"wallet\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/checkout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "checkout"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – checkout wallet', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.transactionId) {",
+                  "    pm.collectionVariables.set('transactionId', body.transactionId);",
+                  "}",
+                  "if (body.transactionRef) {",
+                  "    pm.collectionVariables.set('transactionRef', body.transactionRef);",
+                  "}",
+                  "pm.test('paymentUrl is null for wallet-only', function () {",
+                  "    pm.expect(body.paymentUrl).to.be.oneOf([null, undefined]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14. Checkout — Hybrid (wallet_vnpay)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"paymentMethod\": \"wallet_vnpay\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/checkout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "checkout"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – checkout hybrid', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.transactionId) {",
+                  "    pm.collectionVariables.set('transactionId', body.transactionId);",
+                  "}",
+                  "if (body.transactionRef) {",
+                  "    pm.collectionVariables.set('transactionRef', body.transactionRef);",
+                  "}",
+                  "if (body.paymentUrl) {",
+                  "    pm.collectionVariables.set('paymentUrl', body.paymentUrl);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15. Get Order (verify Paid)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{orderId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – order retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('Order payment status present', function () {",
+                  "    pm.expect(body).to.have.any.keys('paymentStatus', 'status');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05-Payment Method Management",
+      "item": [
+        {
+          "name": "16. Get Payment Methods",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "methods"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – payment methods listed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (Array.isArray(body) && body.length > 0) {",
+                  "    pm.collectionVariables.set('paymentMethodId', body[0].id);",
+                  "    console.log('paymentMethodId saved:', body[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17. Set Default Payment Method",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/methods/{{paymentMethodId}}/default",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "methods", "{{paymentMethodId}}", "default"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 – default set', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18. Delete Payment Method",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/methods/{{paymentMethodId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "methods", "{{paymentMethodId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 – payment method deleted', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "19. Get Payment Methods (verify deleted)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "methods"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – payment methods listed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "const deletedId = pm.collectionVariables.get('paymentMethodId');",
+                  "",
+                  "if (Array.isArray(body) && deletedId) {",
+                  "    const found = body.find(m => m.id === deletedId);",
+                  "    pm.test('Deleted method not in list', function () {",
+                  "        pm.expect(found).to.be.undefined;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06-Refund",
+      "item": [
+        {
+          "name": "20. Refund Transaction (admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"originalTransactionRef\": \"{{transactionRef}}\",\n  \"originalVnPayTransactionNo\": \"14000000\",\n  \"amount\": 500000,\n  \"reason\": \"Customer requested refund\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/vnpay/refund",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "vnpay", "refund"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – refund processed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('Response has isSuccess field', function () {",
+                  "    pm.expect(body).to.have.property('isSuccess');",
+                  "});",
+                  "pm.test('Response has responseCode', function () {",
+                  "    pm.expect(body).to.have.property('responseCode');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "21. [Info] VNPay refund API",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"originalTransactionRef\": \"{{transactionRef}}\",\n  \"originalVnPayTransactionNo\": \"14000000\",\n  \"amount\": 100000,\n  \"reason\": \"Partial refund example\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/vnpay/refund",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "vnpay", "refund"]
+            },
+            "description": "INFO — VNPay refund API supports both full and partial refunds. The backend calls VNPay's refund endpoint, then marks the transaction as Refunded on success. Admin-only (ManagePayments permission required)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – refund info', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07-Reconciliation",
+      "item": [
+        {
+          "name": "22. [Info] GatewayReconciliationJob",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "methods"]
+            },
+            "description": "INFO ONLY — GatewayReconciliationJob runs every 15 minutes. It reconciles pending transactions with VNPay gateway status, auto-marking stale pending transactions as failed after timeout. This request is a no-op placeholder."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – info placeholder', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "23. [Info] Webhook retry (1m/5m/15m)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "methods"]
+            },
+            "description": "INFO ONLY — VNPay webhook retry schedule: 1st retry at 1 minute, 2nd at 5 minutes, 3rd at 15 minutes. If all retries fail, the GatewayReconciliationJob catches the transaction on its next run. This request is a no-op placeholder."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – info placeholder', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08-Wallet & Transactions",
+      "item": [
+        {
+          "name": "24. Get My Wallet",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/wallet",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "wallet"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – wallet retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('Wallet has balance info', function () {",
+                  "    pm.expect(body).to.have.any.keys('balance', 'balanceAmount', 'walletFunds');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "25. Get My Wallet Transactions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/wallet/transactions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "wallet", "transactions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – wallet transactions retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26. Get My Wallet (verify balance)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/wallet",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "wallet"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – wallet retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('Balance is a number', function () {",
+                  "    const balance = body.balance || body.balanceAmount || (body.walletFunds && body.walletFunds.balanceAmount);",
+                  "    pm.expect(typeof balance).to.equal('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "09-Error Cases",
+      "item": [
+        {
+          "name": "27. Create URL — Missing AuctionId for deposit",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500000,\n  \"currency\": \"VND\",\n  \"purpose\": \"auction_deposit\",\n  \"description\": \"Deposit without auctionId\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/vnpay/create-url",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "vnpay", "create-url"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 – AuctionId required', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('Error mentions AuctionId', function () {",
+                  "    const text = JSON.stringify(body).toLowerCase();",
+                  "    pm.expect(text).to.include('auctionid');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28. Create URL — Missing BuyNowReservationId",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 2000000,\n  \"currency\": \"VND\",\n  \"purpose\": \"auction_buy_now\",\n  \"description\": \"Buy now without reservationId\",\n  \"auctionId\": \"{{auctionId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/vnpay/create-url",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "vnpay", "create-url"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 – BuyNowReservationId required', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('Error mentions ReservationId', function () {",
+                  "    const text = JSON.stringify(body).toLowerCase();",
+                  "    pm.expect(text).to.include('reservationid');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "29. Token Pay — Invalid PaymentMethodId",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500000,\n  \"currency\": \"VND\",\n  \"purpose\": \"wallet_top_up\",\n  \"description\": \"Token pay with invalid method\",\n  \"paymentMethodId\": \"00000000-0000-0000-0000-000000000000\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/vnpay/create-url",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "vnpay", "create-url"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 – payment method not found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('Error mentions PaymentMethod', function () {",
+                  "    const text = JSON.stringify(body).toLowerCase();",
+                  "    pm.expect(text).to.include('payment method');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "30. Refund — Non-admin (expect 403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"originalTransactionRef\": \"{{transactionRef}}\",\n  \"originalVnPayTransactionNo\": \"14000000\",\n  \"amount\": 500000,\n  \"reason\": \"Unauthorized refund attempt\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/vnpay/refund",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "vnpay", "refund"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403 – forbidden for non-admin', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

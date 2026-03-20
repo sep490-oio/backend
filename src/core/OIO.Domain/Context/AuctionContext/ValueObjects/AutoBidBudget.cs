@@ -18,29 +18,26 @@ namespace OIO.Domain.Context.AuctionContext.ValueObjects;
 public sealed class AutoBidBudget : ValueObject
 {
     // ── Private storage (EF Core maps these) ──
-    private decimal _maxAmount;
-    private decimal _currentAmount;
-    private decimal? _incrementAmount;
-    private decimal _reservedAmount;
-    private string _currency;
+    public decimal MaxAmount { get; private init; }
+    public decimal CurrentAmount { get; private init; }
+    public decimal? IncrementAmount { get; private init; }
+    public decimal ReservedAmount { get; private init; }
+    public Currency Currency { get; private init; }
 
     // ── Public Money API ──
-    public Money MaxAmount => Money.Of(_maxAmount, new Currency(_currency));
-    public Money CurrentAmount => Money.Of(_currentAmount, new Currency(_currency));
-    public Money? IncrementAmount => _incrementAmount.HasValue
-        ? Money.Of(_incrementAmount.Value, new Currency(_currency))
+    public Money MaxPrice => Money.Of(MaxAmount, Currency);
+    public Money CurrentPrice => Money.Of(CurrentAmount, Currency);
+    public Money? Increment => IncrementAmount.HasValue
+        ? Money.Of(IncrementAmount.Value, Currency)
         : null;
-    public Money ReservedAmount => Money.Of(_reservedAmount, new Currency(_currency));
-    public Currency Currency => new Currency(_currency);
+    public Money ReservedPrice => Money.Of(ReservedAmount, Currency);
 
     // ── Computed ──
-    public Money Remaining => Money.Of(_maxAmount - _currentAmount - _reservedAmount, new Currency(_currency));
-    public Money UsedTotal => Money.Of(_currentAmount + _reservedAmount, new Currency(_currency));
-    public bool IsExhausted => _incrementAmount.HasValue
-        ? Remaining < IncrementAmount!
-        : Remaining.IsZero();
-    public decimal UsagePercentage => _maxAmount > 0
-        ? (_currentAmount + _reservedAmount) / _maxAmount * 100
+    public Money Remaining => Money.Of(MaxAmount - CurrentAmount - ReservedAmount, Currency);
+    public Money UsedTotal => Money.Of(CurrentAmount + ReservedAmount, Currency);
+    public bool IsExhausted => CurrentAmount >= MaxAmount;
+    public decimal UsagePercentage => MaxAmount > 0
+        ? (CurrentAmount + ReservedAmount) / MaxAmount * 100
         : 0;
 
     private AutoBidBudget() { }
@@ -50,13 +47,13 @@ public sealed class AutoBidBudget : ValueObject
         decimal currentAmount,
         decimal? incrementAmount,
         decimal reservedAmount,
-        string currency)
+        Currency currency)
     {
-        _maxAmount = maxAmount;
-        _currentAmount = currentAmount;
-        _incrementAmount = incrementAmount;
-        _reservedAmount = reservedAmount;
-        _currency = currency;
+        MaxAmount = maxAmount;
+        CurrentAmount = currentAmount;
+        IncrementAmount = incrementAmount;
+        ReservedAmount = reservedAmount;
+        Currency = currency;
     }
 
     public static Result<AutoBidBudget, Error> Create(
@@ -82,7 +79,7 @@ public sealed class AutoBidBudget : ValueObject
             currentAmount: 0,
             incrementAmount,
             reservedAmount: 0,
-            currency: currency.Id);
+            currency: currency);
     }
 
     // ═════════════════════════════════════════════════════════════════
@@ -94,9 +91,9 @@ public sealed class AutoBidBudget : ValueObject
     {
         var check = AutoBidBudget.Check(isInvariant: true)
             .Field(bidAmount.Currency.Id, x => x.Currency)
-            .EqualTo(_currency, error: Money.Errors.CurrencyMismatch(_currency, bidAmount.Currency.Id))
-            .Field(bidAmount, x => x.CurrentAmount)
-            .LessThanOrEqual(MaxAmount)
+            .EqualTo(Currency.Id, error: Money.Errors.CurrencyMismatch(Currency.Id, bidAmount.Currency.Id))
+            .Field(bidAmount, x => x.CurrentPrice)
+            .LessThanOrEqual(MaxPrice)
             .ToUnitResult();
 
         if (check.IsFailure)
@@ -105,19 +102,19 @@ public sealed class AutoBidBudget : ValueObject
         }
 
         return new AutoBidBudget(
-            maxAmount: _maxAmount,
+            maxAmount: MaxAmount,
             currentAmount: bidAmount.Amount,
-            incrementAmount: _incrementAmount,
-            reservedAmount: _reservedAmount,
-            currency: _currency);
+            incrementAmount: IncrementAmount,
+            reservedAmount: ReservedAmount,
+            currency: Currency);
     }
 
-    /// <summary>Reserve amount for next potential bid</summary>
+    /// <summary>Reserve amount for next potential bid. Currently unused — kept for future concurrent bidding support.</summary>
     public Result<AutoBidBudget, Error> WithReservation(Money amount)
     {
         var check = AutoBidBudget.Check(isInvariant: true)
             .Field(amount.Currency.Id, x => x.Currency)
-            .EqualTo(_currency, error: Money.Errors.CurrencyMismatch(_currency, amount.Currency.Id))
+            .EqualTo(Currency.Id, error: Money.Errors.CurrencyMismatch(Currency.Id, amount.Currency.Id))
             .Field(amount, x => x.ReservedAmount)
             .LessThanOrEqual(Remaining)
             .ToUnitResult();
@@ -127,27 +124,27 @@ public sealed class AutoBidBudget : ValueObject
             return check.Error;
         }
 
-        var newReserved = _reservedAmount + amount.Amount;
+        var newReserved = ReservedAmount + amount.Amount;
 
         return new AutoBidBudget(
-            maxAmount: _maxAmount, 
-            currentAmount: _currentAmount, 
-            incrementAmount: _incrementAmount,
+            maxAmount: MaxAmount, 
+            currentAmount: CurrentAmount, 
+            incrementAmount: IncrementAmount,
             reservedAmount: newReserved,
-            currency: _currency);
+            currency: Currency);
     }
 
  
     public AutoBidBudget WithReservationReleased(Money amount)
     {
-        var newReserved = Math.Max(0, _reservedAmount - amount.Amount);
+        var newReserved = Math.Max(0, ReservedAmount - amount.Amount);
         
         return new AutoBidBudget(
-            maxAmount: _maxAmount, 
-            currentAmount: _currentAmount,
-            incrementAmount: _incrementAmount,
+            maxAmount: MaxAmount, 
+            currentAmount: CurrentAmount,
+            incrementAmount: IncrementAmount,
             reservedAmount: newReserved,
-            currency: _currency);
+            currency: Currency);
     }
 
     /// <summary>Update max amount (user changes budget)</summary>
@@ -155,9 +152,9 @@ public sealed class AutoBidBudget : ValueObject
     {
         var check = AutoBidBudget.Check(isInvariant: true)
             .Field(newMax.Currency.Id, x => x.Currency)
-            .EqualTo(_currency, error: Money.Errors.CurrencyMismatch(_currency, newMax.Currency.Id))
+            .EqualTo(Currency.Id, error: Money.Errors.CurrencyMismatch(Currency.Id, newMax.Currency.Id))
             .Field(newMax, x => x.MaxAmount)
-            .GreaterThanOrEqual(CurrentAmount)
+            .GreaterThanOrEqual(CurrentPrice)
             .ToUnitResult();
         
         if (check.IsFailure)
@@ -167,20 +164,51 @@ public sealed class AutoBidBudget : ValueObject
 
         return new AutoBidBudget(
             maxAmount: newMax.Amount,
-            currentAmount: _currentAmount,
-            incrementAmount: _incrementAmount,
-            reservedAmount: _reservedAmount,
-            currency: _currency);
+            currentAmount: CurrentAmount,
+            incrementAmount: IncrementAmount,
+            reservedAmount: ReservedAmount,
+            currency: Currency);
+    }
+
+    public Result<AutoBidBudget, Error> WithConfiguration(Money newMax, Money? newIncrement)
+    {
+        var check = AutoBidBudget.Check(isInvariant: true)
+            .Field(newMax.Currency.Id, x => x.Currency)
+            .EqualTo(Currency.Id, error: Money.Errors.CurrencyMismatch(Currency.Id, newMax.Currency.Id))
+            .Field(newMax, x => x.MaxAmount)
+            .GreaterThanOrEqual(CurrentPrice)
+            .Field(newIncrement, x => x.Increment)
+            .WhenHasValue(x => x
+                .GreaterThan(Money.Zero(newMax.Currency))
+                .LessThanOrEqual(newMax))
+            .ToUnitResult();
+
+        if (check.IsFailure)
+        {
+            return check.Error;
+        }
+
+        if (newIncrement is not null && newIncrement.Currency != Currency)
+        {
+            return Money.Errors.CurrencyMismatch(Currency.Id, newIncrement.Currency.Id);
+        }
+
+        return new AutoBidBudget(
+            maxAmount: newMax.Amount,
+            currentAmount: CurrentAmount,
+            incrementAmount: newIncrement?.Amount,
+            reservedAmount: ReservedAmount,
+            currency: Currency);
     }
 
     // ═════════════════════════════════════════════════════════════════
 
     protected override IEnumerable<object> GetEqualityComponents()
     {
-        yield return _maxAmount;
-        yield return _currentAmount;
-        yield return _incrementAmount ?? -1m;
-        yield return _reservedAmount;
-        yield return _currency;
+        yield return MaxAmount;
+        yield return CurrentAmount;
+        yield return IncrementAmount ?? -1m;
+        yield return ReservedAmount;
+        yield return Currency.Id;
     }
 }

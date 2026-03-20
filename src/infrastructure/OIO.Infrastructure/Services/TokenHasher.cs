@@ -11,9 +11,9 @@ internal sealed class TokenHasher : ITokenHasher
     
     private readonly byte[] _key;
 
-    public TokenHasher(IOptions<HashingOptions> options)
+    public TokenHasher(IOptionsMonitor<HashingOptions> options)
     {
-        _key = Convert.FromBase64String(options.Value.HmacKeyBase64);
+        _key = Convert.FromBase64String(options.CurrentValue.HmacKeyBase64);
     }
 
     public string Hash(string value)

@@ -27,8 +27,7 @@ internal sealed class IdentityVerificationConfiguration : IEntityTypeConfigurati
 
         builder.Property(v => v.FullName)
             .HasColumnName("full_name")
-            .HasMaxLength(200)
-            .IsRequired();
+            .HasMaxLength(200);
 
         builder.Property(v => v.DateOfBirth)
             .HasColumnName("date_of_birth");
@@ -37,7 +36,8 @@ internal sealed class IdentityVerificationConfiguration : IEntityTypeConfigurati
         {
             genderBuilder.Property(g => g.Id)
                 .HasColumnName("gender")
-                .HasMaxLength(10);
+                .HasMaxLength(10)
+                .IsRequired();
         });
 
         builder.Property(v => v.Nationality)
@@ -57,8 +57,7 @@ internal sealed class IdentityVerificationConfiguration : IEntityTypeConfigurati
 
             doc.Property(d => d.IdNumber)
                 .HasColumnName("id_number")
-                .HasMaxLength(50)
-                .IsRequired();
+                .HasMaxLength(50);
 
             doc.Property(d => d.IssuedDate)
                 .HasColumnName("id_issued_date");

@@ -1,4 +1,4 @@
-﻿using OIO.Domain.SeedWork.DomainEvents;
+using OIO.Domain.SeedWork.DomainEvents;
 
 namespace OIO.Domain.Context.CatalogContext.Aggregates.Items.Events;
 
@@ -35,5 +35,27 @@ public sealed record MediaRemovedFromItemEvent(
     string MediaId,
     string PublicId,
     string ResourceType,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
+public sealed record ItemSubmittedEvent(
+    string ItemId,
+    string AuctionId,
+    bool VerifyByPlatform,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
+public sealed record ItemApprovedEvent(
+    string ItemId,
+    string AuctionId,
+    string ReviewerId,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
+public sealed record ItemRejectedEvent(
+    string ItemId,
+    string AuctionId,
+    string ReviewerId,
+    string Reason,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);

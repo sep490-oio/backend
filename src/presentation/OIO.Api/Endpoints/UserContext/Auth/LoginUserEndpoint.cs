@@ -11,7 +11,7 @@ public class LoginUserEndpoint : IEndpoint
     public sealed record Request(
         [Required] string Account,
         [Required] string Password,
-        Guid DeviceId);
+        [Required] Guid DeviceId);
     
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

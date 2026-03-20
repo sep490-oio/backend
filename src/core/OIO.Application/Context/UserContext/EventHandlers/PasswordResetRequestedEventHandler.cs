@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
@@ -13,20 +13,20 @@ internal sealed class PasswordResetRequestedEventHandler : INotificationHandler<
 {
     private readonly ISecureTokenStore _secureTokenStore;
     private readonly IUserMailNotifier _mailNotifier;
-    private readonly IAppConfigs _appConfigs;
+    private readonly IRuntimeSettings _runtimeSettings;
     private readonly IClock _clock;
     private readonly ILogger<PasswordResetRequestedEventHandler> _logger;
     
     public PasswordResetRequestedEventHandler(
         ISecureTokenStore secureTokenStore,
         IUserMailNotifier mailNotifier,
-        IAppConfigs appConfigs,
+        IRuntimeSettings runtimeSettings,
         IClock clock,
         ILogger<PasswordResetRequestedEventHandler> logger)
     {
         _secureTokenStore = secureTokenStore;
         _mailNotifier = mailNotifier;
-        _appConfigs = appConfigs;
+        _runtimeSettings = runtimeSettings;
         _clock = clock;
         _logger = logger;
     }
@@ -42,12 +42,12 @@ internal sealed class PasswordResetRequestedEventHandler : INotificationHandler<
             UserId.Parse(notification.UserId),
             cancellationToken);
 
-        var totalExpiration = await _appConfigs.Auth.GetPasswordResetTokenExpirationMinutesAsync(cancellationToken);
+        var totalExpiration = _runtimeSettings.Auth.PasswordResetTokenExpiration;
         
         if (ttl.HasValue)
         {
             var elapsed = totalExpiration - ttl.Value;
-            var cooldown = await _appConfigs.Auth.GetResendEmailCooldownSecondsAsync(cancellationToken);
+            var cooldown = _runtimeSettings.Auth.ResendEmailCooldown;
 
             if (elapsed < cooldown)
             {

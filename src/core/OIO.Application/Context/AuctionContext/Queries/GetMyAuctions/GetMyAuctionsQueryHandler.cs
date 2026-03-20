@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
@@ -19,18 +19,18 @@ internal sealed class GetMyAuctionsQueryHandler
 {
     private readonly IDbContext _dbContext;
     private readonly ICurrentUser _currentUser;
-    private readonly IAppConfigs _appConfigs;
+    private readonly IRuntimeSettings _runtimeSettings;
     private readonly IClock _clock;
 
     public GetMyAuctionsQueryHandler(
         IDbContext dbContext,
         ICurrentUser currentUser,
-        IAppConfigs appConfigs,
+        IRuntimeSettings runtimeSettings,
         IClock clock)
     {
         _dbContext = dbContext;
         _currentUser = currentUser;
-        _appConfigs = appConfigs;
+        _runtimeSettings = runtimeSettings;
         _clock = clock;
     }
 
@@ -56,31 +56,20 @@ internal sealed class GetMyAuctionsQueryHandler
 
         var totalCount = await query.CountAsync(cancellationToken);
         
-        var extensionThresholdMinutes = await _appConfigs.Auctions.GetExtensionThresholdMinutesAsync(cancellationToken);
-        
-        var myAuctions = await query
-            .Select(x => new AuctionListItemDto(
-                Id: x.Id.Value,
-                ItemTitle: x.Item.Title.Value,
-                PrimaryImageUrl: x.Item.Media
-                    .Where(img => img.IsPrimary)
-                    .Select(img => img.Info.SecureUrl)
-                    .FirstOrDefault(),
-                CurrentPrice: x.Pricing.CurrentPrice.ToDto(),
-                StartingPrice: x.Pricing.StartingPrice.ToDto(),
-                BuyNowPrice: x.Pricing.BuyNowPrice != null ? x.Pricing.BuyNowPrice.ToDto() : null,
-                Currency:  x.Pricing.Currency.Id,
-                Status: x.Status.Id,
-                BidCount: x.BidCount,
-                WatchCount: x.WatchCount,
-                StartTime: x.Info.StartTime,
-                EndTime: x.Info.EndTime,
-                RemainingTime: x.Info.RemainingTime(nowUtc),
-                IsEndingSoon: x.IsEndingSoon(nowUtc, extensionThresholdMinutes),
-                IsFeatured: x.IsFeatured,
-                SellerId: x.Item.SellerId.Value))
-            .ToPagedListAsync(totalCount,parameters, cancellationToken);
+        var extensionThresholdMinutes = _runtimeSettings.Auction.ExtensionThreshold;
 
-        return myAuctions;
+        var pagedAuctions = await query
+            .Include(x => x.Item)
+                .ThenInclude(x => x.Media)
+            .Include(x => x.BuyNowReservations)
+            .AsSplitQuery()
+            .ToPagedListAsync(totalCount, parameters, cancellationToken);
+
+        var myAuctions = pagedAuctions.Items
+            .Select(x => x.ToListItemDto(nowUtc, extensionThresholdMinutes))
+            .ToList();
+
+        return myAuctions.ToPagedList(totalCount, parameters);
     }
 }
+

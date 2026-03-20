@@ -1,4 +1,4 @@
-﻿using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
+using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
@@ -21,4 +21,28 @@ public sealed class WalletTransaction : BaseEntity<WalletTransactionId>, ICreate
     public Transaction? Transaction {get; private set;} 
 
     private WalletTransaction() { }
+
+    internal static WalletTransaction Create(
+        WalletId walletId,
+        WalletTransactionType type,
+        decimal amount,
+        decimal balanceBefore,
+        decimal balanceAfter,
+        TransactionId? transactionId,
+        string? description,
+        DateTime nowUtc)
+    {
+        return new WalletTransaction
+        {
+            Id = WalletTransactionId.From(Guid.CreateVersion7()),
+            WalletId = walletId,
+            Type = type,
+            Amount = amount,
+            BalanceBefore = balanceBefore,
+            BalanceAfter = balanceAfter,
+            TransactionId = transactionId,
+            Description = description,
+            CreatedAt = nowUtc,
+        };
+    }
 }

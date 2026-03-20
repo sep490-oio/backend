@@ -1,36 +1,55 @@
-﻿using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Options;
 using OIO.Application.Abstractions.Commons;
-using OIO.Application.Abstractions.Settings;
-using OIO.Infrastructure.Settings.Apps.Bride;
 
 namespace OIO.Infrastructure.Settings.Apps;
 
-public sealed class AppConfig : IAppConfigs
+public sealed class AppConfig : IAppInfo, IRuntimeSettings
 {
-    private readonly IOptionsMonitor<AppInfoOptions> _monitor;
-    private readonly ISystemSettingsService _settings;
-
-    private AppInfoOptions Opts => _monitor.CurrentValue;
+    private readonly IOptionsMonitor<AppOptions> _app;
+    private readonly IOptionsMonitor<FeaturesOptions> _features;
+    private readonly IOptionsMonitor<AuctionOptions> _auction;
+    private readonly IOptionsMonitor<ItemOptions> _item;
+    private readonly IOptionsMonitor<MediaOptions> _media;
+    private readonly IOptionsMonitor<AuthOptions> _auth;
+    private readonly IOptionsMonitor<MonitoringOptions> _monitoring;
+    private readonly IOptionsMonitor<OpsOptions> _ops;
+    private readonly IOptionsMonitor<OrderOptions> _order;
 
     public AppConfig(
-        IOptionsMonitor<AppInfoOptions> monitor,
-        ISystemSettingsService settings)
+        IOptionsMonitor<AppOptions> app,
+        IOptionsMonitor<FeaturesOptions> features,
+        IOptionsMonitor<AuctionOptions> auction,
+        IOptionsMonitor<ItemOptions> item,
+        IOptionsMonitor<MediaOptions> media,
+        IOptionsMonitor<AuthOptions> auth,
+        IOptionsMonitor<MonitoringOptions> monitoring,
+        IOptionsMonitor<OpsOptions> ops,
+        IOptionsMonitor<OrderOptions> order)
     {
-        _monitor = monitor;
-        _settings = settings;
+        _app = app;
+        _features = features;
+        _auction = auction;
+        _item = item;
+        _media = media;
+        _auth = auth;
+        _monitoring = monitoring;
+        _ops = ops;
+        _order = order;
     }
 
-    public string AppName => Opts.AppName;
-    public string Version => Opts.Version;
-    public string FeUrl => Opts.FeUrl;
-    public string BeUrl => Opts.BeUrl;
-    public string EmailVerifyPath => Opts.EmailVerifyPath;
-    public string ResetPasswordPath => Opts.ResetPasswordPath;
-    public IFeatureConfigs Features => Opts.Features;
+    public string AppName => _app.CurrentValue.AppName;
+    public string Version => _app.CurrentValue.Version;
+    public string FeUrl => _app.CurrentValue.FeUrl;
+    public string BeUrl => _app.CurrentValue.BeUrl;
+    public string EmailVerifyPath => _app.CurrentValue.EmailVerifyPath;
+    public string ResetPasswordPath => _app.CurrentValue.ResetPasswordPath;
+    public FeaturesOptions Features => _features.CurrentValue;
 
-    // ===== Business (SystemSettings DB + cache) =====
-    public IAuctionConfigs Auctions => new AuctionConfigsBridge(_settings, Opts.AuctionDefaults);
-    public IItemConfigs Items => new ItemConfigsBridge(_settings, Opts.ItemDefaults);
-    public IMediaConfigs Media => new MediaConfigsBridge(_settings, Opts.MediaDefaults);
-    public IAuthConfigs Auth => new AuthConfigsBridge(_settings, Opts.AuthDefaults);
+    public AuctionOptions Auction => _auction.CurrentValue;
+    public ItemOptions Item => _item.CurrentValue;
+    public MediaOptions Media => _media.CurrentValue;
+    public AuthOptions Auth => _auth.CurrentValue;
+    public MonitoringOptions Monitoring => _monitoring.CurrentValue;
+    public OpsOptions Ops => _ops.CurrentValue;
+    public OrderOptions Order => _order.CurrentValue;
 }

@@ -14,4 +14,24 @@ public sealed class UserRiskFlag : BaseEntity<UserRiskFlagId>, ICreatedAtEntity
     public DateTime CreatedAt { get; private set; }
 
     private UserRiskFlag() { }
+
+    public static UserRiskFlag Create(
+        UserId userId,
+        string flagType,
+        string? reason,
+        RiskFlagSeverity severity,
+        UserId? createdBy,
+        DateTime nowUtc)
+    {
+        return new UserRiskFlag
+        {
+            Id = UserRiskFlagId.From(Guid.CreateVersion7()),
+            UserId = userId,
+            FlagType = flagType,
+            Reason = reason,
+            Severity = severity,
+            CreatedBy = createdBy,
+            CreatedAt = nowUtc
+        };
+    }
 }

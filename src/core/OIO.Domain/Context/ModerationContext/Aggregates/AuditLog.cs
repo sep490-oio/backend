@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using OIO.Domain.Context.ModerationContext.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
@@ -18,4 +18,30 @@ public sealed class AuditLog : BaseEntity<AuditLogId>, ICreatedAtEntity
     public DateTime CreatedAt { get; private set; }
 
     private AuditLog() { }
+
+    public static AuditLog Create(
+        UserId? actorUserId,
+        string? actorRole,
+        string action,
+        string entityType,
+        Guid? entityId,
+        string? oldData,
+        string? newData,
+        IPAddress? ipAddress,
+        DateTime nowUtc)
+    {
+        return new AuditLog
+        {
+            Id = AuditLogId.From(Guid.CreateVersion7()),
+            ActorUserId = actorUserId,
+            ActorRole = actorRole,
+            Action = action,
+            EntityType = entityType,
+            EntityId = entityId,
+            OldData = oldData,
+            NewData = newData,
+            IpAddress = ipAddress,
+            CreatedAt = nowUtc
+        };
+    }
 }

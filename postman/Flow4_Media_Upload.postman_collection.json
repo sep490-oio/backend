@@ -1,0 +1,819 @@
+{
+	"info": {
+		"_postman_id": "d4e5f6a7-b8c9-0123-4567-89abcdef0123",
+		"name": "Flow 4 – Media Upload",
+		"description": "Tests 16 endpoints for the Media Upload flow organized in 6 folders: Upload Contexts, Image Upload (item_image), Video Upload (item_video), Avatar Upload (user_avatar), Document Upload (term_document), and Error Cases.\n\nRequires environment variables: baseUrl, accessToken.\nUses collection variables: mediaUploadId, uploadUrl, cloudinarySignature, cloudinaryTimestamp, cloudinaryApiKey, cloudinaryCloudName, cloudinaryPublicId, cloudinaryStoragePublicId, cloudinaryFolder, cloudinaryEager, cloudinaryResourceType, cloudinaryAllowedFormats, confirmedSecureUrl, confirmedBytes, confirmedFormat, confirmedWidth, confirmedHeight.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "mediaUploadId", "value": "" },
+		{ "key": "uploadUrl", "value": "" },
+		{ "key": "cloudinarySignature", "value": "" },
+		{ "key": "cloudinaryTimestamp", "value": "" },
+		{ "key": "cloudinaryApiKey", "value": "" },
+		{ "key": "cloudinaryCloudName", "value": "" },
+		{ "key": "cloudinaryPublicId", "value": "" },
+		{ "key": "cloudinaryStoragePublicId", "value": "" },
+		{ "key": "cloudinaryFolder", "value": "" },
+		{ "key": "cloudinaryEager", "value": "" },
+		{ "key": "cloudinaryResourceType", "value": "" },
+		{ "key": "cloudinaryAllowedFormats", "value": "" },
+		{ "key": "confirmedSecureUrl", "value": "" },
+		{ "key": "confirmedBytes", "value": "0" },
+		{ "key": "confirmedFormat", "value": "" },
+		{ "key": "confirmedWidth", "value": "0" },
+		{ "key": "confirmedHeight", "value": "0" },
+		{ "key": "imageConfirmIdempotencyKey", "value": "" }
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{accessToken}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Ensure accessToken is available",
+					"if (!pm.environment.get('accessToken')) {",
+					"    console.warn('accessToken not set. Run Flow 1 Login first.');",
+					"}"
+				]
+			}
+		}
+	],
+	"item": [
+		{
+			"name": "01 – Upload Contexts",
+			"item": [
+				{
+					"name": "Get Upload Contexts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/media/contexts",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "media", "contexts"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Log all context names', function () {",
+									"    var json = pm.response.json();",
+									"    if (Array.isArray(json)) {",
+									"        json.forEach(function (ctx) {",
+									"            console.log('Context:', ctx.name || ctx.context || JSON.stringify(ctx));",
+									"        });",
+									"    } else if (json.data && Array.isArray(json.data)) {",
+									"        json.data.forEach(function (ctx) {",
+									"            console.log('Context:', ctx.name || ctx.context || JSON.stringify(ctx));",
+									"        });",
+									"    } else {",
+									"        console.log('Response:', JSON.stringify(json));",
+									"    }",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "02 – Image Upload (item_image)",
+			"item": [
+				{
+					"name": "Request Signature (item_image)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Idempotency-Key", "value": "{{$guid}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"context\": \"item_image\",\n  \"fileName\": \"test-photo.jpg\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/media/upload-signature",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "media", "upload-signature"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Save all signature fields to collection vars', function () {",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('mediaUploadId', json.mediaUploadId || json.id || '');",
+									"    pm.collectionVariables.set('uploadUrl', json.uploadUrl || '');",
+									"    pm.collectionVariables.set('cloudinarySignature', json.signature || '');",
+									"    pm.collectionVariables.set('cloudinaryTimestamp', String(json.timestamp || ''));",
+									"    pm.collectionVariables.set('cloudinaryApiKey', json.apiKey || '');",
+									"    pm.collectionVariables.set('cloudinaryCloudName', json.cloudName || '');",
+									"    pm.collectionVariables.set('cloudinaryPublicId', json.publicId || '');",
+									"    pm.collectionVariables.set('cloudinaryStoragePublicId', json.storagePublicId || '');",
+									"    pm.collectionVariables.set('cloudinaryFolder', json.folder || '');",
+									"    pm.collectionVariables.set('cloudinaryEager', json.eager || '');",
+									"    pm.collectionVariables.set('cloudinaryResourceType', json.resourceType || '');",
+									"    pm.collectionVariables.set('cloudinaryAllowedFormats', json.allowedFormats || '');",
+									"    console.log('maxFileSize:', json.maxFileSize);",
+									"    console.log('allowedFormats:', json.allowedFormats);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Upload to Cloudinary (image)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "file", "type": "file", "src": "" },
+								{ "key": "public_id", "value": "{{cloudinaryPublicId}}", "type": "text" },
+								{ "key": "signature", "value": "{{cloudinarySignature}}", "type": "text" },
+								{ "key": "timestamp", "value": "{{cloudinaryTimestamp}}", "type": "text" },
+								{ "key": "api_key", "value": "{{cloudinaryApiKey}}", "type": "text" },
+								{ "key": "folder", "value": "{{cloudinaryFolder}}", "type": "text" },
+								{ "key": "allowed_formats", "value": "{{cloudinaryAllowedFormats}}", "type": "text" },
+								{ "key": "eager", "value": "{{cloudinaryEager}}", "type": "text" }
+							]
+						},
+						"url": {
+							"raw": "{{uploadUrl}}",
+							"host": ["{{uploadUrl}}"]
+						},
+						"description": "Select an actual image file (jpg/png/webp, <10MB). This uploads directly to Cloudinary."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Cloudinary upload successful', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Save upload result to collection vars', function () {",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('confirmedSecureUrl', json.secure_url || '');",
+									"    pm.collectionVariables.set('confirmedWidth', String(json.width || 0));",
+									"    pm.collectionVariables.set('confirmedHeight', String(json.height || 0));",
+									"    pm.collectionVariables.set('confirmedBytes', String(json.bytes || 0));",
+									"    pm.collectionVariables.set('confirmedFormat', json.format || '');",
+									"    console.log('secure_url:', json.secure_url);",
+									"    console.log('width:', json.width, 'height:', json.height);",
+									"    console.log('bytes:', json.bytes, 'format:', json.format);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Confirm Upload (image)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Idempotency-Key", "value": "{{$guid}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"mediaUploadId\": \"{{mediaUploadId}}\",\n  \"publicId\": \"{{cloudinaryPublicId}}\",\n  \"secureUrl\": \"{{confirmedSecureUrl}}\",\n  \"bytes\": {{confirmedBytes}},\n  \"format\": \"{{confirmedFormat}}\",\n  \"width\": {{confirmedWidth}},\n  \"height\": {{confirmedHeight}}\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/media/confirm",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "media", "confirm"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Generate and save idempotency key so the retry request can reuse it",
+									"var key = pm.variables.replaceIn('{{$guid}}');",
+									"pm.collectionVariables.set('imageConfirmIdempotencyKey', key);",
+									"pm.request.headers.upsert({ key: 'Idempotency-Key', value: key });"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Response has mediaUploadId', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.have.property('mediaUploadId');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Confirm Upload (idempotent retry)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Idempotency-Key", "value": "{{imageConfirmIdempotencyKey}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"mediaUploadId\": \"{{mediaUploadId}}\",\n  \"publicId\": \"{{cloudinaryPublicId}}\",\n  \"secureUrl\": \"{{confirmedSecureUrl}}\",\n  \"bytes\": {{confirmedBytes}},\n  \"format\": \"{{confirmedFormat}}\",\n  \"width\": {{confirmedWidth}},\n  \"height\": {{confirmedHeight}}\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/media/confirm",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "media", "confirm"]
+						},
+						"description": "Retry with same key → should return cached 201 response"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201 (idempotent cached response)', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Response has same mediaUploadId', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.have.property('mediaUploadId');",
+									"    pm.expect(json.mediaUploadId).to.eql(pm.collectionVariables.get('mediaUploadId'));",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "03 – Video Upload (item_video)",
+			"item": [
+				{
+					"name": "Request Signature (item_video)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Idempotency-Key", "value": "{{$guid}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"context\": \"item_video\",\n  \"fileName\": \"test-video.mp4\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/media/upload-signature",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "media", "upload-signature"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Save all signature fields and verify resourceType', function () {",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('mediaUploadId', json.mediaUploadId || json.id || '');",
+									"    pm.collectionVariables.set('uploadUrl', json.uploadUrl || '');",
+									"    pm.collectionVariables.set('cloudinarySignature', json.signature || '');",
+									"    pm.collectionVariables.set('cloudinaryTimestamp', String(json.timestamp || ''));",
+									"    pm.collectionVariables.set('cloudinaryApiKey', json.apiKey || '');",
+									"    pm.collectionVariables.set('cloudinaryCloudName', json.cloudName || '');",
+									"    pm.collectionVariables.set('cloudinaryPublicId', json.publicId || '');",
+									"    pm.collectionVariables.set('cloudinaryStoragePublicId', json.storagePublicId || '');",
+									"    pm.collectionVariables.set('cloudinaryFolder', json.folder || '');",
+									"    pm.collectionVariables.set('cloudinaryEager', json.eager || '');",
+									"    pm.collectionVariables.set('cloudinaryResourceType', json.resourceType || '');",
+									"    pm.collectionVariables.set('cloudinaryAllowedFormats', json.allowedFormats || '');",
+									"    pm.expect(json.resourceType).to.eql('video');",
+									"    console.log('maxFileSize:', json.maxFileSize);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Upload to Cloudinary (video)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "file", "type": "file", "src": "" },
+								{ "key": "public_id", "value": "{{cloudinaryPublicId}}", "type": "text" },
+								{ "key": "signature", "value": "{{cloudinarySignature}}", "type": "text" },
+								{ "key": "timestamp", "value": "{{cloudinaryTimestamp}}", "type": "text" },
+								{ "key": "api_key", "value": "{{cloudinaryApiKey}}", "type": "text" },
+								{ "key": "folder", "value": "{{cloudinaryFolder}}", "type": "text" },
+								{ "key": "allowed_formats", "value": "{{cloudinaryAllowedFormats}}", "type": "text" },
+								{ "key": "eager", "value": "{{cloudinaryEager}}", "type": "text" },
+								{ "key": "eager_async", "value": "true", "type": "text" }
+							]
+						},
+						"url": {
+							"raw": "{{uploadUrl}}",
+							"host": ["{{uploadUrl}}"]
+						},
+						"description": "Select a video file (mp4/mov/webm, <100MB). This uploads directly to Cloudinary."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Cloudinary upload successful', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Save upload result to collection vars', function () {",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('confirmedSecureUrl', json.secure_url || '');",
+									"    pm.collectionVariables.set('confirmedWidth', String(json.width || 0));",
+									"    pm.collectionVariables.set('confirmedHeight', String(json.height || 0));",
+									"    pm.collectionVariables.set('confirmedBytes', String(json.bytes || 0));",
+									"    pm.collectionVariables.set('confirmedFormat', json.format || '');",
+									"    console.log('secure_url:', json.secure_url);",
+									"    console.log('duration:', json.duration);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Confirm Upload (video)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Idempotency-Key", "value": "{{$guid}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"mediaUploadId\": \"{{mediaUploadId}}\",\n  \"publicId\": \"{{cloudinaryPublicId}}\",\n  \"secureUrl\": \"{{confirmedSecureUrl}}\",\n  \"bytes\": {{confirmedBytes}},\n  \"format\": \"{{confirmedFormat}}\",\n  \"width\": {{confirmedWidth}},\n  \"height\": {{confirmedHeight}},\n  \"durationSeconds\": 0\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/media/confirm",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "media", "confirm"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "04 – Avatar Upload (user_avatar)",
+			"item": [
+				{
+					"name": "Request Signature (user_avatar)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Idempotency-Key", "value": "{{$guid}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"context\": \"user_avatar\",\n  \"fileName\": \"avatar.jpg\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/media/upload-signature",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "media", "upload-signature"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Save all signature fields and verify maxFileSize', function () {",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('mediaUploadId', json.mediaUploadId || json.id || '');",
+									"    pm.collectionVariables.set('uploadUrl', json.uploadUrl || '');",
+									"    pm.collectionVariables.set('cloudinarySignature', json.signature || '');",
+									"    pm.collectionVariables.set('cloudinaryTimestamp', String(json.timestamp || ''));",
+									"    pm.collectionVariables.set('cloudinaryApiKey', json.apiKey || '');",
+									"    pm.collectionVariables.set('cloudinaryCloudName', json.cloudName || '');",
+									"    pm.collectionVariables.set('cloudinaryPublicId', json.publicId || '');",
+									"    pm.collectionVariables.set('cloudinaryStoragePublicId', json.storagePublicId || '');",
+									"    pm.collectionVariables.set('cloudinaryFolder', json.folder || '');",
+									"    pm.collectionVariables.set('cloudinaryEager', json.eager || '');",
+									"    pm.collectionVariables.set('cloudinaryResourceType', json.resourceType || '');",
+									"    pm.collectionVariables.set('cloudinaryAllowedFormats', json.allowedFormats || '');",
+									"    pm.expect(json.maxFileSize).to.eql(5242880);",
+									"    console.log('maxFileSize:', json.maxFileSize);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Upload to Cloudinary (avatar)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "file", "type": "file", "src": "" },
+								{ "key": "public_id", "value": "{{cloudinaryPublicId}}", "type": "text" },
+								{ "key": "signature", "value": "{{cloudinarySignature}}", "type": "text" },
+								{ "key": "timestamp", "value": "{{cloudinaryTimestamp}}", "type": "text" },
+								{ "key": "api_key", "value": "{{cloudinaryApiKey}}", "type": "text" },
+								{ "key": "folder", "value": "{{cloudinaryFolder}}", "type": "text" },
+								{ "key": "allowed_formats", "value": "{{cloudinaryAllowedFormats}}", "type": "text" },
+								{ "key": "eager", "value": "{{cloudinaryEager}}", "type": "text" }
+							]
+						},
+						"url": {
+							"raw": "{{uploadUrl}}",
+							"host": ["{{uploadUrl}}"]
+						},
+						"description": "Select an avatar image file (jpg/png/webp, <5MB). This uploads directly to Cloudinary."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Cloudinary upload successful', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Save upload result to collection vars', function () {",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('confirmedSecureUrl', json.secure_url || '');",
+									"    pm.collectionVariables.set('confirmedWidth', String(json.width || 0));",
+									"    pm.collectionVariables.set('confirmedHeight', String(json.height || 0));",
+									"    pm.collectionVariables.set('confirmedBytes', String(json.bytes || 0));",
+									"    pm.collectionVariables.set('confirmedFormat', json.format || '');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Confirm Upload (avatar)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Idempotency-Key", "value": "{{$guid}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"mediaUploadId\": \"{{mediaUploadId}}\",\n  \"publicId\": \"{{cloudinaryPublicId}}\",\n  \"secureUrl\": \"{{confirmedSecureUrl}}\",\n  \"bytes\": {{confirmedBytes}},\n  \"format\": \"{{confirmedFormat}}\",\n  \"width\": {{confirmedWidth}},\n  \"height\": {{confirmedHeight}}\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/media/confirm",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "media", "confirm"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "05 – Document Upload (term_document)",
+			"item": [
+				{
+					"name": "Request Signature (term_document)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Idempotency-Key", "value": "{{$guid}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"context\": \"term_document\",\n  \"fileName\": \"terms.pdf\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/media/upload-signature",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "media", "upload-signature"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Save all signature fields and verify resourceType and eager', function () {",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('mediaUploadId', json.mediaUploadId || json.id || '');",
+									"    pm.collectionVariables.set('uploadUrl', json.uploadUrl || '');",
+									"    pm.collectionVariables.set('cloudinarySignature', json.signature || '');",
+									"    pm.collectionVariables.set('cloudinaryTimestamp', String(json.timestamp || ''));",
+									"    pm.collectionVariables.set('cloudinaryApiKey', json.apiKey || '');",
+									"    pm.collectionVariables.set('cloudinaryCloudName', json.cloudName || '');",
+									"    pm.collectionVariables.set('cloudinaryPublicId', json.publicId || '');",
+									"    pm.collectionVariables.set('cloudinaryStoragePublicId', json.storagePublicId || '');",
+									"    pm.collectionVariables.set('cloudinaryFolder', json.folder || '');",
+									"    pm.collectionVariables.set('cloudinaryEager', json.eager || '');",
+									"    pm.collectionVariables.set('cloudinaryResourceType', json.resourceType || '');",
+									"    pm.collectionVariables.set('cloudinaryAllowedFormats', json.allowedFormats || '');",
+									"    pm.expect(json.resourceType).to.be.oneOf(['raw', 'document']);",
+									"    pm.expect(json.eager).to.be.oneOf([null, undefined, '']);",
+									"    console.log('resourceType:', json.resourceType);",
+									"    console.log('eager:', json.eager);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Upload to Cloudinary (PDF)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "file", "type": "file", "src": "" },
+								{ "key": "public_id", "value": "{{cloudinaryPublicId}}", "type": "text" },
+								{ "key": "signature", "value": "{{cloudinarySignature}}", "type": "text" },
+								{ "key": "timestamp", "value": "{{cloudinaryTimestamp}}", "type": "text" },
+								{ "key": "api_key", "value": "{{cloudinaryApiKey}}", "type": "text" },
+								{ "key": "folder", "value": "{{cloudinaryFolder}}", "type": "text" },
+								{ "key": "allowed_formats", "value": "{{cloudinaryAllowedFormats}}", "type": "text" }
+							]
+						},
+						"url": {
+							"raw": "{{uploadUrl}}",
+							"host": ["{{uploadUrl}}"]
+						},
+						"description": "Select a PDF document file. This uploads directly to Cloudinary. No eager transformation for documents."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Cloudinary upload successful', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Save upload result to collection vars', function () {",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('confirmedSecureUrl', json.secure_url || '');",
+									"    pm.collectionVariables.set('confirmedBytes', String(json.bytes || 0));",
+									"    pm.collectionVariables.set('confirmedFormat', json.format || '');",
+									"    // Documents don't have width/height",
+									"    pm.collectionVariables.set('confirmedWidth', '0');",
+									"    pm.collectionVariables.set('confirmedHeight', '0');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Confirm Upload (document)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Idempotency-Key", "value": "{{$guid}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"mediaUploadId\": \"{{mediaUploadId}}\",\n  \"publicId\": \"{{cloudinaryPublicId}}\",\n  \"secureUrl\": \"{{confirmedSecureUrl}}\",\n  \"bytes\": {{confirmedBytes}},\n  \"format\": \"{{confirmedFormat}}\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/media/confirm",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "media", "confirm"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "06 – Error Cases",
+			"item": [
+				{
+					"name": "Confirm (wrong publicId)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Idempotency-Key", "value": "{{$guid}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"mediaUploadId\": \"{{mediaUploadId}}\",\n  \"publicId\": \"wrong_public_id\",\n  \"secureUrl\": \"https://example.com/fake.jpg\",\n  \"bytes\": 1000,\n  \"format\": \"jpg\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/media/confirm",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "media", "confirm"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 409 (PublicIdMismatch)', function () {",
+									"    pm.response.to.have.status(409);",
+									"});",
+									"",
+									"pm.test('Error indicates PublicIdMismatch', function () {",
+									"    var json = pm.response.json();",
+									"    var body = JSON.stringify(json).toLowerCase();",
+									"    pm.expect(body).to.include('publicidmismatch').or.include('public_id').or.include('mismatch');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Confirm (already confirmed)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Idempotency-Key", "value": "{{$guid}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"mediaUploadId\": \"{{mediaUploadId}}\",\n  \"publicId\": \"{{cloudinaryPublicId}}\",\n  \"secureUrl\": \"{{confirmedSecureUrl}}\",\n  \"bytes\": {{confirmedBytes}},\n  \"format\": \"{{confirmedFormat}}\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/media/confirm",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "media", "confirm"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 409 (AlreadyConfirmed)', function () {",
+									"    pm.response.to.have.status(409);",
+									"});",
+									"",
+									"pm.test('Error indicates AlreadyConfirmed', function () {",
+									"    var json = pm.response.json();",
+									"    var body = JSON.stringify(json).toLowerCase();",
+									"    pm.expect(body).to.include('alreadyconfirmed').or.include('already').or.include('confirmed');",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		}
+	]
+}

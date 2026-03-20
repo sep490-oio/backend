@@ -38,6 +38,9 @@ internal sealed class MediaUploadConfiguration
 
         builder.Property(u => u.EntityId)
             .HasColumnName("entity_id");
+        
+        builder.Property(u => u.IdType)
+            .HasColumnName("id_type");
 
         builder.Property(u => u.IsConfirmed)
             .HasColumnName("is_confirmed")
@@ -62,6 +65,20 @@ internal sealed class MediaUploadConfiguration
         builder.Property(u => u.LinkedAt)
             .HasColumnName("linked_at");
 
+        builder.Property(u => u.RelocationAttemptCount)
+            .HasColumnName("relocation_attempt_count")
+            .HasDefaultValue(0);
+
+        builder.Property(u => u.NextRelocationAttemptAt)
+            .HasColumnName("next_relocation_attempt_at");
+
+        builder.Property(u => u.LastRelocationError)
+            .HasColumnName("last_relocation_error")
+            .HasMaxLength(1000);
+
+        builder.Property(u => u.RelocatedAt)
+            .HasColumnName("relocated_at");
+
         builder.ComplexProperty(c => c.StorageRef, storageRefBuilder =>
         {
             storageRefBuilder.Property(s => s.PublicId)
@@ -75,8 +92,7 @@ internal sealed class MediaUploadConfiguration
         builder.ComplexProperty(c => c.Info, iconInfoBuilder =>
         {
             iconInfoBuilder.Property(i => i.SecureUrl)
-                .HasColumnName("secure_url")
-                .IsRequired();
+                .HasColumnName("secure_url");
             
             iconInfoBuilder.Property(i => i.FileName)
                 .HasColumnName("file_name");
@@ -111,6 +127,9 @@ internal sealed class MediaUploadConfiguration
         builder.HasIndex(u => new { u.IsConfirmed, u.IsLinked, u.ConfirmedAt })
             .HasDatabaseName("idx_media_uploads_orphan")
             .HasFilter("is_confirmed = true AND is_linked = false");
+
+        builder.HasIndex(u => u.NextRelocationAttemptAt)
+            .HasDatabaseName("idx_media_uploads_next_relocation_attempt");
 
 
     }

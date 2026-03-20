@@ -6,7 +6,7 @@ using Quartz;
 namespace OIO.Infrastructure.Outbox;
 
 internal sealed class OutboxMessagesProcessorJobSetup(
-    IOptions<OutboxSettings> outboxSettingsOptions) : IConfigureOptions<QuartzOptions>
+    IOptionsMonitor<OutboxSettings> outboxSettingsOptions) : IConfigureOptions<QuartzOptions>
 {
     private const string CleanupJobTriggerIdentity = "outbox-cleanup-trigger";
     private static readonly JobKey CleanupJobKey = new("outbox-cleanup", JobConstants.SystemGroup);
@@ -16,7 +16,7 @@ internal sealed class OutboxMessagesProcessorJobSetup(
 
     public void Configure(QuartzOptions options)
     {
-        var outboxSettings = outboxSettingsOptions.Value;
+        var outboxSettings = outboxSettingsOptions.CurrentValue;
 
         options.AddJob<OutboxMessagesProcessorJob>(jobBuilder => 
                 jobBuilder

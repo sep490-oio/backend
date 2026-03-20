@@ -19,4 +19,40 @@ public sealed class SealedBid : BaseEntity<SealedBidId>, ICreatedAtEntity
     public Auction Auction { get; private set; } = null!;
 
     private SealedBid() { }
+
+    private SealedBid(
+        SealedBidId id,
+        AuctionId auctionId,
+        UserId bidderId,
+        string amountEncrypted,
+        DateTime nowUtc)
+        : base(id)
+    {
+        AuctionId = auctionId;
+        BidderId = bidderId;
+        AmountEncrypted = amountEncrypted;
+        Status = SealedBidStatus.Submitted;
+        CreatedAt = nowUtc;
+    }
+
+    public static SealedBid Submit(
+        AuctionId auctionId,
+        UserId bidderId,
+        string amountEncrypted,
+        DateTime nowUtc)
+    {
+        return new SealedBid(
+            SealedBidId.From(Guid.CreateVersion7()),
+            auctionId,
+            bidderId,
+            amountEncrypted,
+            nowUtc);
+    }
+
+    public void Reveal(UserId? actorId, DateTime nowUtc)
+    {
+        Status = SealedBidStatus.Revealed;
+        RevealedAt = nowUtc;
+        RevealedBy = actorId;
+    }
 }

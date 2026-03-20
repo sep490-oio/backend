@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
@@ -15,7 +15,6 @@ namespace OIO.Application.Context.MediaContext.Commands.RequestUploadSignature;
 
 public sealed record RequestUploadSignatureCommand(
     string Context,
-    Guid? EntityId,
     string FileName) : ICommand<UploadSignatureResponse>, IHasValidate
 {
     public ViolationsError Validate()
@@ -25,9 +24,7 @@ public sealed record RequestUploadSignatureCommand(
             .Field(Context)
             .NotWhiteSpace()
             .Field(FileName)
-            .NotWhiteSpace()
-            .Field(EntityId)
-            .WhenHasValue(x => x.NotEmptyGuid());
+            .NotWhiteSpace();
     }
 }
 
@@ -39,6 +36,7 @@ public sealed record UploadSignatureResponse(
     string ApiKey,
     string CloudName,
     string PublicId,
+    string StoragePublicId,
     string Folder,
     string? Eager,
     string ResourceType,
@@ -53,7 +51,7 @@ internal sealed class RequestUploadSignatureCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
-    private readonly IAppConfigs _appConfigs;
+    private readonly IRuntimeSettings _runtimeSettings;
     private readonly UploadContextRegistry _contextRegistry;
 
     public RequestUploadSignatureCommandHandler(
@@ -62,7 +60,7 @@ internal sealed class RequestUploadSignatureCommandHandler
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
         IClock clock,
-        IAppConfigs appConfigs,
+        IRuntimeSettings runtimeSettings,
         UploadContextRegistry contextRegistry)
     
     {
@@ -71,7 +69,7 @@ internal sealed class RequestUploadSignatureCommandHandler
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
-        _appConfigs = appConfigs;
+        _runtimeSettings = runtimeSettings;
         _contextRegistry = contextRegistry;
     }
 
@@ -79,31 +77,29 @@ internal sealed class RequestUploadSignatureCommandHandler
         RequestUploadSignatureCommand request,
         CancellationToken cancellationToken)
     {
-        var validationError = await _contextRegistry.ValidateContextAsync(request.Context, cancellationToken);
+        var validationError = _contextRegistry.ValidateContext(request.Context);
         
         if (validationError.IsFailure)
             return validationError.Error;
 
-        var contextConfig = await _contextRegistry.GetAsync(request.Context, cancellationToken);
+        var contextConfig = _contextRegistry.Get(request.Context);
         
         var resourceType = UploadContextRegistry.ParseResourceType(contextConfig!.ResourceType);
         
-        // ===== Build folder path =====
-        // If entityId provided: "items/{entityId}"
-        // If not: "items/pending/{userId}" (temporary folder)
-        var folder = request.EntityId.HasValue ? 
-            $"{contextConfig.Folder}/{request.EntityId.Value}" : 
+        
+        //  "items/pending/{userId}" (temporary folder)
+        var folder = 
             $"{contextConfig.Folder}/pending/{_currentUser.UserId}";
 
-        // Build unique publicId
+        // Build upload public_id leaf. Cloudinary prefixes the folder separately.
         var uniqueSuffix = Guid.NewGuid().ToString("N")[..12];
         var prefix = resourceType.ToFilePrefix();
-        var publicId = $"{folder}/{prefix}_{uniqueSuffix}";
+        var mediaName = $"{prefix}_{uniqueSuffix}";
 
         // Generate Cloudinary signature
         var signatureResult = _signatureService.GenerateSignature(
             resourceType: resourceType,
-            publicId: publicId,
+            mediaName: mediaName,
             folder: folder,
             eager: contextConfig.Eager,
             allowedFormats: contextConfig.AllowedFormats);
@@ -112,9 +108,10 @@ internal sealed class RequestUploadSignatureCommandHandler
 
         var mediaInfo = MediaInfo.Create(
             fileName: request.FileName);
+        
         var ( _, isFailure, storage, error) = StorageRef.Create(
-            publicId: publicId,
-            folder: folder);
+            publicId: signatureResult.StoragePublicId,
+            folder: signatureResult.Folder);
 
         if (isFailure)
         {
@@ -126,11 +123,12 @@ internal sealed class RequestUploadSignatureCommandHandler
             userId: _currentUser.UserId,
             context: request.Context,
             resourceType: contextConfig.ResourceType,
-            entityId: request.EntityId,
+            entityId: null,
+            idType: null,
             mediaInfo: mediaInfo,
             storageRef: storage,
             nowUtc: nowUtc,
-            signatureExpirationMinutes: await _appConfigs.Media.GetSignatureExpirationMinutesAsync(cancellationToken));
+            signatureExpirationMinutes: _runtimeSettings.Media.SignatureExpiration);
 
         _dbContext.Insert(mediaUpload);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -142,7 +140,8 @@ internal sealed class RequestUploadSignatureCommandHandler
             Timestamp: signatureResult.Timestamp,
             ApiKey: signatureResult.ApiKey,
             CloudName: signatureResult.CloudName,
-            PublicId: signatureResult.PublicId,
+            PublicId: signatureResult.UploadPublicId,
+            StoragePublicId: signatureResult.StoragePublicId,
             Folder: signatureResult.Folder,
             Eager: signatureResult.Eager,
             ResourceType: signatureResult.ResourceType,
@@ -150,3 +149,5 @@ internal sealed class RequestUploadSignatureCommandHandler
             AllowedFormats: contextConfig.AllowedFormats);
     }
 }
+
+

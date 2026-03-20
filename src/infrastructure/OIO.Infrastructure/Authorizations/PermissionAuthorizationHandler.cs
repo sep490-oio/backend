@@ -23,17 +23,9 @@ internal sealed class PermissionAuthorizationHandler
         if (!_currentUser.IsAuthenticated)
             return;
 
-        if (_currentUser.IsInRole(App.Roles.Catalogs.Admin))
-        {
-            context.Succeed(requirement);
-        }
-        else
-        {
-            var permissions = await _permissionProvider.GetPermissionsAsync(_currentUser.UserId);
+        var permissions = await _permissionProvider.GetPermissionsAsync(_currentUser.UserId);
 
-            if (permissions.Contains(requirement.Permission))
-                context.Succeed(requirement);
-        }
-        
+        if (permissions.Contains(requirement.Permission))
+            context.Succeed(requirement);
     }
 }

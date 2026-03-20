@@ -39,7 +39,8 @@
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
     <PackageVersion Include="Npgsql.OpenTelemetry" Version="10.0.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Quartz" Version="1.15.0-beta.1" />
-    <PackageVersion Include="QRCoder" Version="1.6.0" />
+    <PackageVersion Include="Otp.NET" Version="1.4.1" />
+    <PackageVersion Include="QRCoder" Version="1.7.0" />
     <PackageVersion Include="Quartz.Extensions.DependencyInjection" Version="3.16.1" />
     <PackageVersion Include="Quartz.Extensions.Hosting" Version="3.16.0" />
     <PackageVersion Include="Quartz.Serialization.Json" Version="3.16.1" />

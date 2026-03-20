@@ -40,8 +40,6 @@ public sealed class Category : AggregateRoot<CategoryId>, IAuditableEntity
         CategoryPath? parentPath = null,
         CategoryId? parentId = null,
         string? description = null,
-        MediaInfo? iconInfo = null,
-        StorageRef? iconStorage = null,
         int sortOrder = 0)
     {
         return new Category
@@ -51,8 +49,6 @@ public sealed class Category : AggregateRoot<CategoryId>, IAuditableEntity
             Slug = slug,
             Description = description ?? string.Empty,
             ParentId = parentId,
-            IconInfo =  iconInfo,
-            IconStorageRef = iconStorage,
             SortOrder = sortOrder,
             Path = CategoryPath.FromParent(parentPath, slug),
             IsActive = true,
@@ -62,9 +58,9 @@ public sealed class Category : AggregateRoot<CategoryId>, IAuditableEntity
     
     public void Update(
         DateTime nowUtc,
-        string? name,
-        Slug? slug,
-        string? description, 
+        string? name = null,
+        Slug? slug = null,
+        string? description = null, 
         MediaInfo? iconInfo = null,
         StorageRef? iconStorage = null,
         bool? isActive = null,
@@ -96,6 +92,13 @@ public sealed class Category : AggregateRoot<CategoryId>, IAuditableEntity
     public void Activate(DateTime nowUtc)
     {
         IsActive = true;
+        ModifiedAt = nowUtc;
+    }
+
+    public void RefreshIconMedia(StorageRef storageRef, MediaInfo info, DateTime nowUtc)
+    {
+        IconStorageRef = storageRef;
+        IconInfo = info;
         ModifiedAt = nowUtc;
     }
 }

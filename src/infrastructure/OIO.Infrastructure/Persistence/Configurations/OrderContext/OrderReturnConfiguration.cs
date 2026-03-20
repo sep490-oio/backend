@@ -47,6 +47,26 @@ internal sealed class OrderReturnConfiguration : IEntityTypeConfiguration<OrderR
         builder.Property(r => r.RejectedAt)
             .HasColumnName("rejected_at");
 
+        builder.Property(r => r.DecisionReason)
+            .HasColumnName("decision_reason");
+
+        builder.Property(r => r.ProviderCode)
+            .HasColumnName("provider_code")
+            .HasMaxLength(50);
+
+        builder.Property(r => r.TrackingNumber)
+            .HasColumnName("tracking_number")
+            .HasMaxLength(100);
+
+        builder.Property(r => r.ShippedAt)
+            .HasColumnName("shipped_at");
+
+        builder.Property(r => r.ReturnedAt)
+            .HasColumnName("returned_at");
+
+        builder.Property(r => r.SellerReceivedAt)
+            .HasColumnName("seller_received_at");
+
         builder.Property(r => r.SellerConfirmedReceivedAt)
             .HasColumnName("seller_confirmed_received_at");
 
@@ -60,5 +80,8 @@ internal sealed class OrderReturnConfiguration : IEntityTypeConfiguration<OrderR
 
         builder.HasIndex(r => r.BuyerId)
             .HasDatabaseName("idx_order_returns_buyer");
+
+        builder.HasIndex(r => r.TrackingNumber)
+            .HasDatabaseName("idx_order_returns_tracking_number");
     }
 }

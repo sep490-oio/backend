@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using System.ComponentModel.DataAnnotations;
+using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.ConfigureAutoBid;
 using OIO.Domain.AppDefinitions;
@@ -8,8 +9,8 @@ namespace OIO.Api.Endpoints.AuctionContext.Auctions;
 public sealed class ConfigureAutoBidEndpoint : IEndpoint
 {
     public sealed record Request(
-        decimal MaxAmount,
-        string Currency = "VND",
+        [Required] decimal MaxAmount,
+        [Required] string Currency = "VND",
         decimal? IncrementAmount = null);
 
     public void MapEndpoint(IEndpointRouteBuilder app)

@@ -39,28 +39,32 @@ internal sealed class AutoBidConfiguration : IEntityTypeConfiguration<AutoBid>
         // Money value objects mapped as owned types
         builder.ComplexProperty(ab => ab.Budget, budget =>
         {
-            budget.Property("_maxAmount")
+            budget.Property(b => b.MaxAmount)
                 .HasColumnName("max_amount")
                 .HasPrecision(18, 2)
                 .IsRequired();
 
-            budget.Property("_currentAmount")
+            budget.Property(b => b.CurrentAmount)
                 .HasColumnName("current_amount")
                 .HasPrecision(18, 2)
                 .IsRequired();
 
-            budget.Property("_incrementAmount")
+            budget.Property(b => b.IncrementAmount)
                 .HasColumnName("increment_amount")
                 .HasPrecision(18, 2);
 
-            budget.Property("_reservedAmount")
+            budget.Property(b => b.ReservedAmount)
                 .HasColumnName("reserved_amount")
                 .HasPrecision(18, 2)
                 .IsRequired();
 
-            budget.Property("_currency")
-                .HasColumnName("currency")
-                .HasMaxLength(3);
+            budget.ComplexProperty(b => b.Currency, currency =>
+            {
+                currency.Property(c => c.Id)
+                    .HasColumnName("currency")
+                    .HasMaxLength(3)
+                    .IsRequired(); 
+            });
         });
         
         builder.ComplexProperty(x => x.Status, statusBuilder =>

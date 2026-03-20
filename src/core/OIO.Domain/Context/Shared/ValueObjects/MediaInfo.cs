@@ -4,7 +4,7 @@ namespace OIO.Domain.Context.Shared.ValueObjects;
 
 public sealed class MediaInfo : ValueObject
 {
-    public string SecureUrl { get; }
+    public string? SecureUrl { get; }
     public string? FileName { get; }
     public long? Bytes { get; }
     public string? Format { get; }
@@ -51,6 +51,16 @@ public sealed class MediaInfo : ValueObject
             width,
             height,
             durationSeconds);
+
+    public MediaInfo WithSecureUrl(string secureUrl)
+        => new(
+            secureUrl,
+            FileName,
+            Bytes,
+            Format,
+            Width,
+            Height,
+            DurationSeconds);
 
     public bool IsVideo => DurationSeconds.HasValue;
     public bool IsImage => Width.HasValue && Height.HasValue && !DurationSeconds.HasValue;

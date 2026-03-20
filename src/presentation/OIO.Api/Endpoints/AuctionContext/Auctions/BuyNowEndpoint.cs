@@ -1,7 +1,9 @@
-﻿using MediatR;
+using MediatR;
 using OIO.Api.Common;
 using OIO.Api.Extensions;
+using OIO.Api.Filters;
 using OIO.Application.Context.AuctionContext.Commands.BuyNow;
+using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.AuctionContext.Auctions;
@@ -17,15 +19,16 @@ public sealed class BuyNowEndpoint : IEndpoint
                 CancellationToken ct) =>
             {
                 var command = new BuyNowCommand(auctionId, httpContext.GetIpAddress());
-
                 var result = await sender.Send(command, ct);
 
-                return result.ToCreatedHttpResult();
+                return result;
             })
+            .AddEndpointFilter(new IdempotencyFilter<BuyNowCheckoutDto>(IdempotencyHttpPolicies.BuyNow()))
             .RequireAuthorization(App.Permissions.Catalogs.Auctions.BuyNow)
             .WithName(ApiEndpoint.Names.Auctions.BuyNow)
             .WithTags(ApiEndpoint.Tags.Auctions)
             .Produces(StatusCodes.Status201Created)
-            .ProducesProblem(StatusCodes.Status400BadRequest);
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict);
     }
 }

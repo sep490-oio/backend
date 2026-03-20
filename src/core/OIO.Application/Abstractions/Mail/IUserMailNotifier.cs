@@ -30,6 +30,32 @@ public interface IUserMailNotifier
         string toEmail, 
         string userName,
         CancellationToken cancellationToken = default);
+
+    Task SendEmailConfirmedAsync(
+        string toEmail,
+        string userName,
+        CancellationToken cancellationToken = default);
+
+    Task SendAccountLockedAlertAsync(
+        string toEmail,
+        string userName,
+        DateTime lockoutEnd,
+        int failedAttempts,
+        CancellationToken cancellationToken = default);
+
+    Task SendSecuritySessionRevokedAlertAsync(
+        string toEmail,
+        string userName,
+        string reason,
+        Guid deviceId,
+        CancellationToken cancellationToken = default);
+
+    Task SendAccountStatusChangedAsync(
+        string toEmail,
+        string userName,
+        string oldStatus,
+        string newStatus,
+        CancellationToken cancellationToken = default);
     
     // ==================== Auction Emails ====================
 

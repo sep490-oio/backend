@@ -6,14 +6,14 @@ namespace OIO.Infrastructure.Services;
 
 internal sealed class TokenExpirationSettings : ITokenExpirationSettings
 {
-    private readonly JwtOptions _settings;
+    private readonly IOptionsMonitor<JwtOptions> _settings;
 
-    public TokenExpirationSettings(IOptions<JwtOptions> settings)
+    public TokenExpirationSettings(IOptionsMonitor<JwtOptions> settings)
     {
-        _settings = settings.Value;
+        _settings = settings;
     }
-    public TimeSpan AccessTokenExpiration => _settings.AccessTokenExpiration;
-    public TimeSpan RefreshTokenExpiration => _settings.RefreshTokenExpiration;
-    public TimeSpan FamilySlidingExpiration => _settings.RefreshTokenFamilySlidingExpiration;
-    public TimeSpan FamilyAbsoluteExpiration => _settings.RefreshTokenFamilyAbsoluteExpiration;
+    public TimeSpan AccessTokenExpiration => _settings.CurrentValue.AccessTokenExpiration;
+    public TimeSpan RefreshTokenExpiration => _settings.CurrentValue.RefreshTokenExpiration;
+    public TimeSpan FamilySlidingExpiration => _settings.CurrentValue.RefreshTokenFamilySlidingExpiration;
+    public TimeSpan FamilyAbsoluteExpiration => _settings.CurrentValue.RefreshTokenFamilyAbsoluteExpiration;
 }

@@ -1,0 +1,1448 @@
+{
+	"info": {
+		"_postman_id": "a3b4c5d6-e7f8-9012-3456-789abcdef012",
+		"name": "Flow 3 – Seller Verification",
+		"description": "Tests 40 endpoints for the Seller Verification flow organized in 7 folders: Create & Update Verification, Upload Documents, Submit & eKYC, Admin Verification Review, Seller Profile, Seller Admin Review, and Terms Acceptance.\n\nRequires environment variables: baseUrl, accessToken, adminAccessToken, verificationId, sellerId, cloudinaryCloudName.\nUses collection variables: verificationDocId, idFrontUploadId, idBackUploadId, selfieUploadId, cloudinaryApiKey, cloudinaryTimestamp, cloudinaryFolder, cloudinarySignature, cloudinaryPublicId, termDocumentId.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "verificationDocId", "value": "" },
+		{ "key": "idFrontUploadId", "value": "" },
+		{ "key": "idBackUploadId", "value": "" },
+		{ "key": "selfieUploadId", "value": "" },
+		{ "key": "cloudinaryApiKey", "value": "" },
+		{ "key": "cloudinaryTimestamp", "value": "" },
+		{ "key": "cloudinaryFolder", "value": "" },
+		{ "key": "cloudinarySignature", "value": "" },
+		{ "key": "cloudinaryPublicId", "value": "" },
+		{ "key": "termDocumentId", "value": "" }
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{accessToken}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Ensure accessToken is available",
+					"if (!pm.environment.get('accessToken')) {",
+					"    console.warn('accessToken not set. Run Flow 1 Login first.');",
+					"}"
+				]
+			}
+		}
+	],
+	"item": [
+		{
+			"name": "01 – Create & Update Verification",
+			"item": [
+				{
+					"name": "Create Verification",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"verificationType\": \"government_id\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/verifications",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "verifications"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Save verificationId', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.have.property('id');",
+									"    pm.environment.set('verificationId', json.id);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Update Verification Details",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Nguyen Van A\",\n  \"dateOfBirth\": \"1990-01-15\",\n  \"gender\": \"male\",\n  \"idType\": \"national_id\",\n  \"idNumber\": \"079090012345\",\n  \"issuedDate\": \"2020-01-01\",\n  \"expiredDate\": \"2035-01-01\",\n  \"issuedPlace\": \"TP.HCM\",\n  \"fullAddress\": \"123 Le Loi, P. Ben Thanh\",\n  \"province\": \"Ho Chi Minh\",\n  \"district\": \"Quan 1\",\n  \"ward\": \"Ben Thanh\",\n  \"nationality\": \"Vietnamese\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/verifications/{{verificationId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "verifications", "{{verificationId}}"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Verification by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/verifications/{{verificationId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "verifications", "{{verificationId}}"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Status is pending', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.status).to.eql('pending');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "List My Verifications",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/verifications",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "verifications"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response is an array', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array');",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "02 – Upload Documents",
+			"item": [
+				{
+					"name": "Request Signature (id_front)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"context\": \"verification_document\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/media/upload-signature",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "media", "upload-signature"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Save signature params', function () {",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('cloudinaryApiKey', json.apiKey);",
+									"    pm.collectionVariables.set('cloudinaryTimestamp', json.timestamp);",
+									"    pm.collectionVariables.set('cloudinaryFolder', json.folder);",
+									"    pm.collectionVariables.set('cloudinarySignature', json.signature);",
+									"    pm.collectionVariables.set('cloudinaryPublicId', json.publicId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Upload to Cloudinary (id_front)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "file", "type": "file", "src": "" },
+								{ "key": "api_key", "value": "{{cloudinaryApiKey}}", "type": "text" },
+								{ "key": "timestamp", "value": "{{cloudinaryTimestamp}}", "type": "text" },
+								{ "key": "folder", "value": "{{cloudinaryFolder}}", "type": "text" },
+								{ "key": "signature", "value": "{{cloudinarySignature}}", "type": "text" },
+								{ "key": "public_id", "value": "{{cloudinaryPublicId}}", "type": "text" }
+							]
+						},
+						"url": {
+							"raw": "https://api.cloudinary.com/v1_1/{{cloudinaryCloudName}}/image/upload",
+							"protocol": "https",
+							"host": ["api", "cloudinary", "com"],
+							"path": ["v1_1", "{{cloudinaryCloudName}}", "image", "upload"]
+						},
+						"auth": { "type": "noauth" },
+						"description": "Manual step: upload actual image file to Cloudinary"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Save Cloudinary response', function () {",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('cloudinaryPublicId', json.public_id);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Confirm Upload (id_front)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"publicId\": \"{{cloudinaryPublicId}}\",\n  \"secureUrl\": \"https://res.cloudinary.com/demo/image/upload/sample.jpg\",\n  \"bytes\": 12345,\n  \"format\": \"jpg\",\n  \"width\": 800,\n  \"height\": 600\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/media/confirm",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "media", "confirm"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Save idFrontUploadId', function () {",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('idFrontUploadId', json.mediaUploadId || json.id);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Attach Document (id_front)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"mediaUploadId\": \"{{idFrontUploadId}}\",\n  \"documentType\": \"id_front\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/verifications/{{verificationId}}/documents",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "verifications", "{{verificationId}}", "documents"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Request Signature (id_back)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"context\": \"verification_document\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/media/upload-signature",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "media", "upload-signature"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Save signature params', function () {",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('cloudinaryApiKey', json.apiKey);",
+									"    pm.collectionVariables.set('cloudinaryTimestamp', json.timestamp);",
+									"    pm.collectionVariables.set('cloudinaryFolder', json.folder);",
+									"    pm.collectionVariables.set('cloudinarySignature', json.signature);",
+									"    pm.collectionVariables.set('cloudinaryPublicId', json.publicId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Upload to Cloudinary (id_back)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "file", "type": "file", "src": "" },
+								{ "key": "api_key", "value": "{{cloudinaryApiKey}}", "type": "text" },
+								{ "key": "timestamp", "value": "{{cloudinaryTimestamp}}", "type": "text" },
+								{ "key": "folder", "value": "{{cloudinaryFolder}}", "type": "text" },
+								{ "key": "signature", "value": "{{cloudinarySignature}}", "type": "text" },
+								{ "key": "public_id", "value": "{{cloudinaryPublicId}}", "type": "text" }
+							]
+						},
+						"url": {
+							"raw": "https://api.cloudinary.com/v1_1/{{cloudinaryCloudName}}/image/upload",
+							"protocol": "https",
+							"host": ["api", "cloudinary", "com"],
+							"path": ["v1_1", "{{cloudinaryCloudName}}", "image", "upload"]
+						},
+						"auth": { "type": "noauth" },
+						"description": "Manual step: upload actual image file to Cloudinary"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Save Cloudinary response', function () {",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('cloudinaryPublicId', json.public_id);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Confirm Upload (id_back)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"publicId\": \"{{cloudinaryPublicId}}\",\n  \"secureUrl\": \"https://res.cloudinary.com/demo/image/upload/sample.jpg\",\n  \"bytes\": 12345,\n  \"format\": \"jpg\",\n  \"width\": 800,\n  \"height\": 600\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/media/confirm",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "media", "confirm"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Save idBackUploadId', function () {",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('idBackUploadId', json.mediaUploadId || json.id);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Attach Document (id_back)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"mediaUploadId\": \"{{idBackUploadId}}\",\n  \"documentType\": \"id_back\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/verifications/{{verificationId}}/documents",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "verifications", "{{verificationId}}", "documents"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Request Signature (selfie)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"context\": \"verification_image\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/media/upload-signature",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "media", "upload-signature"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Save signature params', function () {",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('cloudinaryApiKey', json.apiKey);",
+									"    pm.collectionVariables.set('cloudinaryTimestamp', json.timestamp);",
+									"    pm.collectionVariables.set('cloudinaryFolder', json.folder);",
+									"    pm.collectionVariables.set('cloudinarySignature', json.signature);",
+									"    pm.collectionVariables.set('cloudinaryPublicId', json.publicId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Upload to Cloudinary (selfie)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "file", "type": "file", "src": "" },
+								{ "key": "api_key", "value": "{{cloudinaryApiKey}}", "type": "text" },
+								{ "key": "timestamp", "value": "{{cloudinaryTimestamp}}", "type": "text" },
+								{ "key": "folder", "value": "{{cloudinaryFolder}}", "type": "text" },
+								{ "key": "signature", "value": "{{cloudinarySignature}}", "type": "text" },
+								{ "key": "public_id", "value": "{{cloudinaryPublicId}}", "type": "text" }
+							]
+						},
+						"url": {
+							"raw": "https://api.cloudinary.com/v1_1/{{cloudinaryCloudName}}/image/upload",
+							"protocol": "https",
+							"host": ["api", "cloudinary", "com"],
+							"path": ["v1_1", "{{cloudinaryCloudName}}", "image", "upload"]
+						},
+						"auth": { "type": "noauth" },
+						"description": "Manual step: upload actual image file to Cloudinary"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Save Cloudinary response', function () {",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('cloudinaryPublicId', json.public_id);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Confirm Upload (selfie)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"publicId\": \"{{cloudinaryPublicId}}\",\n  \"secureUrl\": \"https://res.cloudinary.com/demo/image/upload/sample.jpg\",\n  \"bytes\": 12345,\n  \"format\": \"jpg\",\n  \"width\": 800,\n  \"height\": 600\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/media/confirm",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "media", "confirm"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Save selfieUploadId', function () {",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('selfieUploadId', json.mediaUploadId || json.id);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Attach Document (selfie)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"mediaUploadId\": \"{{selfieUploadId}}\",\n  \"documentType\": \"selfie\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/verifications/{{verificationId}}/documents",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "verifications", "{{verificationId}}", "documents"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Verification – Verify 3 Documents",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/verifications/{{verificationId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "verifications", "{{verificationId}}"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Has 3 documents', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.documents).to.have.lengthOf(3);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Delete Document",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/verifications/{{verificationId}}/documents/{{verificationDocId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "verifications", "{{verificationId}}", "documents", "{{verificationDocId}}"]
+						},
+						"description": "Delete id_back to test re-upload later. Set verificationDocId first."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "03 – Submit & eKYC",
+			"item": [
+				{
+					"name": "Re-upload id_back Document",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"mediaUploadId\": \"{{idBackUploadId}}\",\n  \"documentType\": \"id_back\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/verifications/{{verificationId}}/documents",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "verifications", "{{verificationId}}", "documents"]
+						},
+						"description": "Uses previously confirmed upload or need new upload"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Submit Verification",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/verifications/{{verificationId}}/submit",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "verifications", "{{verificationId}}", "submit"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Verification – Check Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/verifications/{{verificationId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "verifications", "{{verificationId}}"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Log verification status', function () {",
+									"    var json = pm.response.json();",
+									"    console.log('Verification status: ' + json.status);",
+									"    pm.expect(['submitted', 'approved', 'rejected', 'under_review']).to.include(json.status);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "04 – Admin Verification Review",
+			"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+						"key": "token",
+						"value": "{{adminAccessToken}}",
+						"type": "string"
+					}
+				]
+			},
+			"item": [
+				{
+					"name": "Admin List Verifications",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/verifications",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "verifications"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Admin Get Verification by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/verifications/{{verificationId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "verifications", "{{verificationId}}"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Admin Reject Verification",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"ID image unclear\",\n  \"rejectionCode\": \"UNCLEAR_IMAGE\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/verifications/{{verificationId}}/reject",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "verifications", "{{verificationId}}", "reject"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "User Re-update Verification After Rejection",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Nguyen Van A\",\n  \"dateOfBirth\": \"1990-01-15\",\n  \"gender\": \"male\",\n  \"idType\": \"national_id\",\n  \"idNumber\": \"079090012345\",\n  \"issuedDate\": \"2020-01-01\",\n  \"expiredDate\": \"2035-01-01\",\n  \"issuedPlace\": \"TP.HCM\",\n  \"fullAddress\": \"123 Le Loi, P. Ben Thanh\",\n  \"province\": \"Ho Chi Minh\",\n  \"district\": \"Quan 1\",\n  \"ward\": \"Ben Thanh\",\n  \"nationality\": \"Vietnamese\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/verifications/{{verificationId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "verifications", "{{verificationId}}"]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Status is pending', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.status).to.eql('pending');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "User Re-submit Verification",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/verifications/{{verificationId}}/submit",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "verifications", "{{verificationId}}", "submit"]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Admin Approve Verification",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/verifications/{{verificationId}}/approve",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "verifications", "{{verificationId}}", "approve"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "05 – Seller Profile",
+			"item": [
+				{
+					"name": "Create Seller Profile",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"storeName\": \"Test Store\",\n  \"storeDescription\": \"A test seller store\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/seller-profile",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "seller-profile"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Save sellerId', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.have.property('id');",
+									"    pm.environment.set('sellerId', json.id);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Get My Seller Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/seller-profile",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "seller-profile"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Status is pending', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.status).to.eql('pending');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Update Seller Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"storeName\": \"Updated Store\",\n  \"storeDescription\": \"Updated description\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/seller-profile",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "seller-profile"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Seller Public Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sellers/{{sellerId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sellers", "{{sellerId}}"]
+						},
+						"auth": { "type": "noauth" }
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Seller Items",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sellers/{{sellerId}}/items",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sellers", "{{sellerId}}", "items"]
+						},
+						"auth": { "type": "noauth" }
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "06 – Seller Admin Review",
+			"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+						"key": "token",
+						"value": "{{adminAccessToken}}",
+						"type": "string"
+					}
+				]
+			},
+			"item": [
+				{
+					"name": "Admin List Seller Profiles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/seller-profiles",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "seller-profiles"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Admin Reject Seller Profile",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/seller-profiles/{{sellerId}}/reject",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "seller-profiles", "{{sellerId}}", "reject"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "User Update Seller Profile After Rejection",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"storeName\": \"Improved Store\",\n  \"storeDescription\": \"After rejection improvement\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/seller-profile",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "seller-profile"]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Status is pending', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.status).to.eql('pending');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Admin Verify Seller Profile",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/seller-profiles/{{sellerId}}/verify",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "seller-profiles", "{{sellerId}}", "verify"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "07 – Terms Acceptance",
+			"item": [
+				{
+					"name": "Get Active Terms",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/terms/active",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "terms", "active"]
+						},
+						"auth": { "type": "noauth" }
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Save termDocumentId', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array').that.is.not.empty;",
+									"    pm.collectionVariables.set('termDocumentId', json[0].id);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Accept Terms",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/terms/{{termDocumentId}}/accept",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "terms", "{{termDocumentId}}", "accept"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Get My Accepted Terms",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/terms",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "terms"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Accept Terms – Duplicate",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/terms/{{termDocumentId}}/accept",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me", "terms", "{{termDocumentId}}", "accept"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 409 (duplicate)', function () {",
+									"    pm.response.to.have.status(409);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		}
+	]
+}

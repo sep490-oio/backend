@@ -1,0 +1,730 @@
+{
+  "info": {
+    "name": "Flow 7 — Bidding",
+    "_postman_id": "flow7-bidding",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    { "key": "bidAmount", "value": "100000" },
+    { "key": "sealedBidId", "value": "" },
+    { "key": "autoBidMaxAmount", "value": "500000" },
+    { "key": "paymentUrl", "value": "" },
+    { "key": "watchAuctionId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 Manual Bid",
+      "item": [
+        {
+          "name": "Place Bid",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/bids",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "bids"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100000,\n  \"currency\": \"VND\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 – bid placed', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.id) {",
+                  "    pm.environment.set('bidId', body.id);",
+                  "    console.log('bidId saved:', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Place Higher Bid",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/bids",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "bids"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 150000,\n  \"currency\": \"VND\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 – higher bid placed', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Bids",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/bids?pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "bids"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – bids listed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains items', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.items).to.be.an('array');",
+                  "    pm.expect(body.items.length).to.be.greaterThan(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Place Bid Below Minimum (expect error)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/bids",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "bids"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000,\n  \"currency\": \"VND\"\n}"
+            },
+            "description": "Below minimum → expect error"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx – bid below minimum rejected', function () {",
+                  "    pm.expect(pm.response.code).to.be.within(400, 499);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 Auto-Bid",
+      "item": [
+        {
+          "name": "Configure Auto-Bid",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/auto-bid",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "auto-bid"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"maxAmount\": 500000,\n  \"currency\": \"VND\",\n  \"incrementAmount\": 10000\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – auto-bid configured', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get My Auto-Bid",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/auto-bid/my",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "auto-bid", "my"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – auto-bid retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Verify maxAmount and status', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.maxAmount).to.be.a('number');",
+                  "    pm.expect(body.status).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pause Auto-Bid",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/auto-bid/pause",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "auto-bid", "pause"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 – auto-bid paused', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resume Auto-Bid",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/auto-bid/resume",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "auto-bid", "resume"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 – auto-bid resumed', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Auto-Bid Max Amount",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/auto-bid",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "auto-bid"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"maxAmount\": 800000,\n  \"currency\": \"VND\"\n}"
+            },
+            "description": "Update max amount"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – auto-bid updated', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 Sealed Bid",
+      "item": [
+        {
+          "name": "Submit Sealed Bid",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/sealed-bids",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "sealed-bids"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 300000\n}"
+            },
+            "description": "Submit sealed bid (for sealed auction type)"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – sealed bid submitted', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.id) {",
+                  "    pm.collectionVariables.set('sealedBidId', body.id);",
+                  "    console.log('sealedBidId saved:', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Auction Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – auction details retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 Buy Now",
+      "item": [
+        {
+          "name": "Buy Now",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/buy-now",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "buy-now"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 – buy-now reservation created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.reservationId) {",
+                  "    pm.environment.set('buyNowReservationId', body.reservationId);",
+                  "    console.log('buyNowReservationId saved:', body.reservationId);",
+                  "}",
+                  "if (body.paymentUrl) {",
+                  "    pm.collectionVariables.set('paymentUrl', body.paymentUrl);",
+                  "    console.log('paymentUrl saved:', body.paymentUrl);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Auction – Verify Locked by Reservation",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            },
+            "description": "Verify auction locked by reservation"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – auction retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Auction – After Reservation Expires/Payment",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            },
+            "description": "Check after reservation expires/payment"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – auction retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 Watch Auction",
+      "item": [
+        {
+          "name": "Watch Auction",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/watch",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "watch"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notifyOnBid\": true,\n  \"notifyOnEnd\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 – auction watched', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Watch Auction – Duplicate (expect 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/watch",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "watch"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notifyOnBid\": true,\n  \"notifyOnEnd\": true\n}"
+            },
+            "description": "Duplicate watch → expect 409"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409 – duplicate watch rejected', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unwatch Auction",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/watch",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "watch"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 – auction unwatched', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 SignalR Reference",
+      "item": [
+        {
+          "name": "SignalR – Connection Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            },
+            "description": "## SignalR Connection\n\n**URL:** `wss://{{baseUrl}}/hubs/auction?access_token={{accessToken}}`\n\n### Connect Steps:\n1. Open WebSocket to `/hubs/auction` with JWT\n2. Send: `{\"type\":1,\"target\":\"JoinAuction\",\"arguments\":[\"{{auctionId}}\"]}`\n3. Receive events: BidPlaced, Outbid, PriceUpdated, etc."
+          }
+        },
+        {
+          "name": "SignalR – PlaceBid via Hub",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            },
+            "description": "## PlaceBid via Hub\n\nSend: `{\"type\":1,\"target\":\"PlaceBid\",\"arguments\":[\"{{auctionId}}\",100000,\"VND\",null]}`\n\nReceive: HubCommandResult<BidDto>"
+          }
+        },
+        {
+          "name": "SignalR – ConfigureAutoBid via Hub",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            },
+            "description": "## ConfigureAutoBid via Hub\n\nSend: `{\"type\":1,\"target\":\"ConfigureAutoBid\",\"arguments\":[\"{{auctionId}}\",500000,\"VND\",10000]}`"
+          }
+        },
+        {
+          "name": "SignalR – BuyNow via Hub",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            },
+            "description": "## BuyNow via Hub\n\nSend: `{\"type\":1,\"target\":\"BuyNow\",\"arguments\":[\"{{auctionId}}\"]}`\n\nReceive: HubCommandResult<BuyNowCheckoutDto>"
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Bid History & Views",
+      "item": [
+        {
+          "name": "Full Bid History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/bids?pageNumber=1&pageSize=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "bids"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "50" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – bid history retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.items) {",
+                  "    console.log('Total bids:', body.items.length);",
+                  "    body.items.forEach(function (bid, i) {",
+                  "        console.log((i + 1) + '. Amount:', bid.amount, '| Bidder:', bid.bidderId || bid.bidderName || 'N/A', '| Time:', bid.createdAt || bid.placedAt);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My Watch List",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/auctions/watch-list?pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "auctions", "watch-list"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – watch list retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My Bids",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/bids?pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "bids"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – my bids retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

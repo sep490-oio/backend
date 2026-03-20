@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using System.ComponentModel.DataAnnotations;
+using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.WarehouseContext.Commands.UpdateShippingProviderConfig;
 using OIO.Domain.AppDefinitions;
@@ -8,14 +9,14 @@ namespace OIO.Api.Endpoints.WarehouseContext;
 public sealed class UpdateShippingProviderConfigEndpoint : IEndpoint
 {
     public sealed record Request(
-        string  DisplayName,
-        string  ApiBaseUrl,
-        string  PickName,
-        string  PickPhone,
-        string  PickAddress,
-        string  PickWard,
-        string  PickDistrict,
-        string  PickProvince,
+        [Required] string  DisplayName,
+        [Required] string  ApiBaseUrl,
+        [Required] string  PickName,
+        [Required] string  PickPhone,
+        [Required] string  PickAddress,
+        [Required] string  PickWard,
+        [Required] string  PickDistrict,
+        [Required] string  PickProvince,
         string? PickCarrierAddressDataJson,
         string? WebhookSecret,
         string? CredentialsJson);

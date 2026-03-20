@@ -1,4 +1,5 @@
 ﻿using CSharpFunctionalExtensions;
+using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
 
@@ -39,6 +40,9 @@ public sealed class AuctionInfo : ValueObject
         int extensionMinutes = 5,
         QualificationWindow? qualification = null)
     {
+        if (qualification is null)
+            return AuctionErrors.Auction.QualificationWindowRequired;
+
         var check = AuctionInfo
             .Check(isInvariant: true)
             .Field(startTime, x => x.StartTime)

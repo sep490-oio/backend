@@ -5,15 +5,11 @@ public sealed record WarehouseItemDto(
     Guid    ItemId,
     Guid    InboundShipmentId,
     Guid?   StorageLocationId,
-    string  ConditionOnArrival,
-    string? InspectionNotes,
     string  Status,
-    Guid?   InspectedBy,
-    DateTime? InspectedAt,
     DateTime? ReceivedAt,
     DateTime  CreatedAt,
     DateTime? ModifiedAt,
-    List<WarehouseItemMediaDto> Media);
+    List<WarehouseItemMediaDto>? Media = null);
 
 public sealed record WarehouseItemMediaDto(
     Guid   Id,

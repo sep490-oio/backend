@@ -39,7 +39,7 @@ internal sealed class AuctionWinnerOfferConfiguration : IEntityTypeConfiguration
         {
             statusBuilder.Property(s => s.Id)
                 .HasColumnName("offer_status")
-                .HasDefaultValue(WinnerOfferStatus.Offered.Id)
+                .HasDefaultValue(WinnerOfferStatus.Pending.Id)
                 .IsRequired();
         }).HasComplexCompositeIndex(wo => new { wo.OfferStatus.Id, wo.ExpiresAt }, indexName: "idx_auction_winner_offers_status_expires");
 

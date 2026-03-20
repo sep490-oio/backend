@@ -1,4 +1,4 @@
-﻿using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
@@ -58,6 +58,18 @@ public static class AuctionErrors
         public static readonly Error ItemAlreadyInAuction = 
             Error.Conflict("Auction.ItemAlreadyInAuction", 
                 "This item is already in an active auction and cannot be used for another auction.");
+
+        public static readonly Error ItemAlreadyHasAuction =
+            Error.Conflict("Auction.ItemAlreadyHasAuction",
+                "This item already has an auction in a commercial state and cannot be used to create another auction.");
+
+        public static readonly Error PaymentDefaultedRequiresRelist =
+            Error.Conflict("Auction.PaymentDefaultedRequiresRelist",
+                "This item has a payment-defaulted auction. Use relist instead of creating a new auction.");
+
+        public static readonly Error ItemRequiresMedia =
+            Error.Conflict("Auction.ItemRequiresMedia",
+                "Item must have at least one image before creating an auction.");
         
         public static readonly Error OnlyOwnerOfItem = 
             Error.Forbidden("Auction.OnlyOwnerOfItem", 
@@ -78,6 +90,74 @@ public static class AuctionErrors
         public static readonly Error AlreadyResolved =
             Error.Conflict("Auction.AlreadyResolved",
                 "Auction has already been resolved.");
+
+        public static readonly Error TimingRequired =
+            Error.Validation("Timing", "Auction.TimingRequired",
+                "Auction timing (start/end time) must be set before scheduling.");
+
+        public static readonly Error TimingAlreadySet =
+            Error.Conflict("Auction.TimingAlreadySet",
+                "Auction timing has already been set.");
+
+        public static readonly Error CannotEdit =
+            Error.Conflict("Auction.CannotEdit",
+                "Auction cannot be edited in its current state.");
+
+        public static readonly Error InvalidAuctionType =
+            Error.Validation("AuctionType", "Auction.InvalidAuctionType",
+                "Auction type is not supported.");
+
+        public static readonly Error CannotSubmit =
+            Error.Conflict("Auction.CannotSubmit",
+                "Auction cannot be submitted in its current state. It must be in draft.");
+
+        public static readonly Error CannotSetTiming =
+            Error.Conflict("Auction.CannotSetTiming",
+                "Auction timing can only be set when the auction is approved.");
+
+        public static Error MaxRejectionsReached(int max) =>
+            Error.Conflict("Auction.MaxRejectionsReached",
+                $"This auction has been rejected {max} times and cannot be resubmitted.");
+
+        public static readonly Error QualificationWindowRequired =
+            Error.Validation("Qualification", "Auction.QualificationWindowRequired",
+                "This auction requires a qualification window.");
+
+        public static readonly Error PaymentDefaultRequiresWinner =
+            Error.Conflict("Auction.PaymentDefaultRequiresWinner",
+                "Auction payment default can only be applied when there is an existing winner.");
+
+        public static readonly Error WinnerOfferAlreadyActive =
+            Error.Conflict("Auction.WinnerOfferAlreadyActive",
+                "An active runner-up offer already exists for this auction.");
+
+        public static readonly Error InvalidWinnerOfferState =
+            Error.Conflict("Auction.InvalidWinnerOfferState",
+                "Runner-up offer is not in a state that allows this action.");
+
+        public static readonly Error WinnerOfferExpired =
+            Error.Conflict("Auction.WinnerOfferExpired",
+                "Runner-up offer has already expired.");
+
+        public static readonly Error NoMoreRunnerUps =
+            Error.NotFound("Auction.NoMoreRunnerUps",
+                "No additional eligible runner-up bidder is available.");
+
+        public static readonly Error EmergencyBlockedByShipment =
+            Error.Conflict("Auction.EmergencyBlockedByShipment",
+                "Auction emergency cannot auto-terminate after shipment pickup. Use dispute flow instead.");
+
+        public static readonly Error AlreadyRelisted =
+            Error.Conflict("Auction.AlreadyRelisted",
+                "This auction has already been relisted from the current payment-defaulted state.");
+
+        public static readonly Error BuyNowReservationActive =
+            Error.Conflict("Auction.BuyNowReservationActive",
+                "This auction is temporarily reserved for a buy-now checkout.");
+
+        public static readonly Error BuyNowUnavailableForScheduledAuction =
+            Error.Conflict("Auction.BuyNowUnavailableForScheduledAuction",
+                "Buy now is only available while qualification is open before the auction starts.");
     }
 
     public static class Bid
@@ -97,6 +177,10 @@ public static class AuctionErrors
 
         public static readonly Error BidAlreadyOutbid = 
             Error.Conflict("Bid.Outbid", "This bid has already been outbid.");
+
+        public static readonly Error LiveBiddingUnavailableForSealedAuction =
+            Error.Conflict("Bid.SealedAuctionOnly",
+                "This auction only accepts sealed bids.");
     }
 
     public static class AutoBid
@@ -190,6 +274,86 @@ public static class AuctionErrors
         public static readonly Error CannotConvert = 
             Error.Conflict("Deposit.CannotConvert", 
                 "Only held deposits can be converted to payment.");
+    }
+
+    public static class BuyNowReservation
+    {
+        public static Error NotFound(AuctionBuyNowReservationId id) =>
+            Error.NotFound("AuctionBuyNowReservation.NotFound",
+                $"Buy-now reservation '{id}' was not found.");
+
+        public static Error InvalidInput(string details) =>
+            Error.Validation("BuyNowReservation", "AuctionBuyNowReservation.InvalidInput", details);
+
+        public static readonly Error InvalidFundingSplit =
+            Error.Validation("BuyNowReservation", "AuctionBuyNowReservation.InvalidFundingSplit",
+                "Deposit-applied amount and gateway amount must match the buy-now price.");
+
+        public static readonly Error InvalidExpiration =
+            Error.Validation("ExpiresAt", "AuctionBuyNowReservation.InvalidExpiration",
+                "Buy-now reservation expiration must be in the future.");
+
+        public static Error InvalidState(string currentState, string attemptedAction) =>
+            Error.Conflict(
+                "AuctionBuyNowReservation.InvalidState",
+                $"Cannot perform '{attemptedAction}' when reservation status is '{currentState}'.");
+
+        public static readonly Error Expired =
+            Error.Conflict("AuctionBuyNowReservation.Expired",
+                "Buy-now reservation has already expired.");
+    }
+
+    public static class Participant
+    {
+        public static readonly Error AlreadyJoined =
+            Error.Conflict("Participant.AlreadyJoined",
+                "User is already participating in this auction.");
+
+        public static readonly Error NotFound =
+            Error.NotFound("Participant.NotFound",
+                "Auction participant was not found.");
+
+        public static readonly Error JoinWindowClosed =
+            Error.Conflict("Participant.JoinWindowClosed",
+                "The qualification window is closed for this auction.");
+        
+        public static readonly Error JoinWindowNotOpenYet =
+            Error.Conflict("Participant.JoinWindowNotOpenYet",
+                "The qualification window is not open for this auction yet.");
+
+        public static readonly Error NotQualified =
+            Error.Forbidden("Participant.NotQualified",
+                "Bidder is not qualified to participate in this auction.");
+    }
+
+    public static class SealedBid
+    {
+        public static readonly Error OnlySupportedForSealedAuction =
+            Error.Conflict("SealedBid.UnsupportedAuctionType",
+                "Sealed bids are only supported for sealed-bid auctions.");
+
+        public static readonly Error AlreadySubmitted =
+            Error.Conflict("SealedBid.AlreadySubmitted",
+                "Bidder has already submitted a sealed bid for this auction.");
+
+        public static readonly Error NotFound =
+            Error.NotFound("SealedBid.NotFound",
+                "Sealed bid was not found.");
+
+        public static readonly Error RevealNotAllowed =
+            Error.Conflict("SealedBid.RevealNotAllowed",
+                "Sealed bid cannot be revealed before the auction has ended.");
+    }
+
+    public static class Emergency
+    {
+        public static readonly Error NotFound =
+            Error.NotFound("AuctionEmergency.NotFound",
+                "Auction emergency record was not found.");
+
+        public static readonly Error AlreadyTriggered =
+            Error.Conflict("AuctionEmergency.AlreadyTriggered",
+                "Auction emergency is already active.");
     }
 
     public static class Watcher

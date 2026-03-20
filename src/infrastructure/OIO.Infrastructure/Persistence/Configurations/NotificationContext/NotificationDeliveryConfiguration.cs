@@ -1,3 +1,4 @@
+using EFCore.ComplexIndexes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OIO.Domain.Context.NotificationContext.Aggregates;
@@ -20,15 +21,26 @@ internal sealed class NotificationDeliveryConfiguration : IEntityTypeConfigurati
             .HasColumnName("user_id")
             .IsRequired();
 
-        builder.Property(d => d.Channel)
-            .HasColumnName("channel")
-            .HasMaxLength(20)
-            .IsRequired();
+        builder.ComplexProperty(d => d.Channel, channelBuilder =>
+        {
+            channelBuilder.Property(c => c.Id)
+                .HasColumnName("channel")
+                .HasMaxLength(20)
+                .IsRequired();
+        }).HasComplexCompositeIndex(
+            d => new { d.UserId, d.Channel.Id },
+            indexName: "idx_delivery_user_channel");
 
-        builder.Property(d => d.Status)
-            .HasColumnName("status")
-            .HasMaxLength(20)
-            .HasDefaultValue("pending");
+        builder.ComplexProperty(d => d.Status, statusBuilder =>
+        {
+            statusBuilder.Property(s => s.Id)
+                .HasColumnName("status")
+                .HasMaxLength(20)
+                .HasDefaultValue("Pending");
+        }).HasComplexCompositeIndex(
+            d => new { d.Status.Id, d.ScheduledAt },
+            indexName: "idx_delivery_status_scheduled",
+            filter: "status = 'Pending'");
 
         builder.Property(d => d.AttemptCount)
             .HasColumnName("attempt_count")
@@ -75,15 +87,8 @@ internal sealed class NotificationDeliveryConfiguration : IEntityTypeConfigurati
         builder.HasIndex(d => d.NotificationId)
             .HasDatabaseName("idx_delivery_notification");
 
-        builder.HasIndex(d => new { d.UserId, d.Channel })
-            .HasDatabaseName("idx_delivery_user_channel");
-
-        builder.HasIndex(d => new { d.Status, d.ScheduledAt })
-            .HasDatabaseName("idx_delivery_status_scheduled")
-            .HasFilter("status = 'pending'");
-
         builder.HasIndex(d => d.NextRetryAt)
             .HasDatabaseName("idx_delivery_retry")
-            .HasFilter("status = 'failed' AND next_retry_at IS NOT NULL");
+            .HasFilter("status = 'Failed' AND next_retry_at IS NOT NULL");
     }
 }

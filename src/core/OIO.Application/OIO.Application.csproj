@@ -20,6 +20,7 @@
       <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
       <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
       <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+      <PackageReference Include="Otp.NET" />
       <PackageReference Include="Serilog" />
       <PackageReference Include="System.Linq.Dynamic.Core" />
     </ItemGroup>

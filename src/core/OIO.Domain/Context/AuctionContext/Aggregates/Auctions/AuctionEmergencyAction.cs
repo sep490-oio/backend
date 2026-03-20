@@ -14,4 +14,32 @@ public sealed class AuctionEmergencyAction : BaseEntity<AuctionEmergencyActionId
     public AuctionEmergency Emergency { get; private set; } = null!;
 
     private AuctionEmergencyAction() { }
+
+    private AuctionEmergencyAction(
+        AuctionEmergencyActionId id,
+        AuctionEmergencyId emergencyId,
+        string actionType,
+        string payload,
+        DateTime nowUtc)
+        : base(id)
+    {
+        EmergencyId = emergencyId;
+        ActionType = actionType;
+        Payload = payload;
+        CreatedAt = nowUtc;
+    }
+
+    public static AuctionEmergencyAction Create(
+        AuctionEmergencyId emergencyId,
+        string actionType,
+        string payload,
+        DateTime nowUtc)
+    {
+        return new AuctionEmergencyAction(
+            AuctionEmergencyActionId.From(Guid.CreateVersion7()),
+            emergencyId,
+            actionType,
+            payload,
+            nowUtc);
+    }
 }

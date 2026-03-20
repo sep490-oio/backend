@@ -1,4 +1,5 @@
-﻿using CSharpFunctionalExtensions;
+using System.Text.Json;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
@@ -8,11 +9,10 @@ using OIO.Application.Abstractions.Media;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
+using OIO.Application.Context.MediaContext.Services;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.AppDefinitions;
-using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.Errors;
-using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.CatalogContext.Aggregates.Categories;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.CatalogContext.Enums;
@@ -33,7 +33,7 @@ public sealed record CreateItemCommand(
     Guid? CategoryId = null,
     string? Description = null,
     int Quantity = 1,
-    string? Attributes = null,
+    object? Attributes = null,
     IReadOnlyList<MediaAttachment>? Media = null) : ICommand<ItemDto>, IHasValidate
 {
     public ViolationsError Validate()
@@ -54,8 +54,6 @@ public sealed record CreateItemCommand(
             .Field(Quantity)
             .NotDefault()
             .Positive()
-            .Field(Attributes)
-            .WhenHasValue(x => x.NotWhiteSpace())
             .ToViolationsError();
 
         if (Media is null) 
@@ -97,6 +95,7 @@ internal sealed class CreateItemCommandHandler
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
     private readonly UploadContextRegistry _contextRegistry;
+    private readonly IMediaRelocationService _mediaRelocationService;
     private readonly ILogger<CreateItemCommandHandler> _logger;
 
     public CreateItemCommandHandler(
@@ -104,8 +103,8 @@ internal sealed class CreateItemCommandHandler
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
         IClock clock,
-        IAppConfigs appConfigs,
         UploadContextRegistry contextRegistry,
+        IMediaRelocationService mediaRelocationService,
         ILogger<CreateItemCommandHandler> logger)
     {
         _dbContext = dbContext;
@@ -113,6 +112,7 @@ internal sealed class CreateItemCommandHandler
         _currentUser = currentUser;
         _clock = clock;
         _contextRegistry = contextRegistry;
+        _mediaRelocationService = mediaRelocationService;
         _logger = logger;
     }
 
@@ -172,7 +172,7 @@ internal sealed class CreateItemCommandHandler
             categoryId: categoryId,
             description: request.Description,
             quantity: request.Quantity,
-            attributes: request.Attributes);
+            attributes: JsonSerializer.Serialize(request.Attributes));
         
         // Link images from pending uploads
         if (mediaUploads is not null && request.Media is not null)
@@ -183,7 +183,7 @@ internal sealed class CreateItemCommandHandler
                 
                 var upload = mediaUploads.First(p => p.Id == mediaUploadId);
 
-                var maxForType = await _contextRegistry.GetMaxForEntityMediaAsync("item", upload.ResourceType, cancellationToken);
+                var maxForType = _contextRegistry.GetMaxForEntityMedia("item", upload.ResourceType);
                 
                 // Add image to item domain
                 item.AddMedia(
@@ -196,6 +196,12 @@ internal sealed class CreateItemCommandHandler
         }
 
         _dbContext.Insert(item);
+
+        if (mediaUploads is not null)
+        {
+            foreach (var upload in mediaUploads)
+                await _mediaRelocationService.RelocateLinkedUploadAsync(upload, cancellationToken);
+        }
         
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -250,9 +256,11 @@ internal sealed class CreateItemCommandHandler
         if (invalidContext.Count > 0)
         {
             _logger.LogWarning("Media uploads invalid context: {InvalidContext}", string.Join(", ", invalidContext.Select(p => p.Id)));
-            return MediaErrors.WrongContext(invalidContext[0].Context, await _contextRegistry.GetAllContextAsync(cancellationToken));
+            return MediaErrors.WrongContext(invalidContext[0].Context, _contextRegistry.GetAllContext());
         }
 
         return null;
     }
 }
+
+

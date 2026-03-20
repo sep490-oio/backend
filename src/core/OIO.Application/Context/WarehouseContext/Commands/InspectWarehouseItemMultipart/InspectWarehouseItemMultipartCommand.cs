@@ -132,17 +132,11 @@ internal sealed class InspectWarehouseItemMultipartCommandHandler(
         var warehouseItem = WarehouseItem.Create(
             itemId:             shipment.ItemId,
             inboundShipmentId:  shipmentId,
-            conditionOnArrival: WarehouseItemCondition.Good,
-            now:                now,
-            inspectionNotes:    request.InspectionNotes);
+            now:                now);
 
         warehouseItem.MarkReceived(now);
 
-        var inspectResult = warehouseItem.CompleteInspection(
-            condition:       WarehouseItemCondition.Good,
-            inspectedBy:     staffId,
-            now:             now,
-            inspectionNotes: request.InspectionNotes);
+        var inspectResult = warehouseItem.MarkInspected(now);
 
         if (inspectResult.IsFailure) return inspectResult.Error;
 
@@ -156,7 +150,7 @@ internal sealed class InspectWarehouseItemMultipartCommandHandler(
                 maxForType: 4,
                 sortOrder:  sortOrder);
 
-            var linkResult = upload.LinkToEntity(warehouseItem.Id.Value, nowUtc: now);
+            var linkResult = upload.LinkToEntity(warehouseItem.Id, nowUtc: now);
             if (linkResult.IsFailure) return linkResult.Error;
         }
 

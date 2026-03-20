@@ -15,4 +15,25 @@ public sealed class UserNotificationPreference : BaseEntity<UserNotificationPref
     public DateTime? ModifiedAt { get; private set; }
 
     private UserNotificationPreference() { }
+
+    public static UserNotificationPreference Create(UserId userId, DateTime nowUtc)
+    {
+        return new UserNotificationPreference
+        {
+            Id = UserNotificationPreferenceId.From(Guid.NewGuid()),
+            UserId = userId,
+            IsEnabled = true,
+            TypePreferences = "{}",
+            Channels = "{}",
+            CreatedAt = nowUtc
+        };
+    }
+
+    public void Update(bool isEnabled, string channels, string? quietHours, DateTime nowUtc)
+    {
+        IsEnabled = isEnabled;
+        Channels = channels;
+        QuietHours = quietHours;
+        ModifiedAt = nowUtc;
+    }
 }

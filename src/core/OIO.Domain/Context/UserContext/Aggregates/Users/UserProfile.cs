@@ -30,11 +30,11 @@ public sealed class UserProfile : BaseEntity<UserId>, IAuditableEntity
     }
 
     internal UnitResult<Error> Update(
-        PersonName? name,
-        AvatarUrl? avatarUrl,
-        DateOnly? dateOfBirth,
-        Gender? gender,
-        DateTime now)
+        DateTime now,
+        PersonName? name = null,
+        AvatarUrl? avatarUrl = null,
+        DateOnly? dateOfBirth = null,
+        Gender? gender = null)
     {
         Name = name ?? Name;
         AvatarUrl = avatarUrl ?? AvatarUrl;
@@ -44,5 +44,23 @@ public sealed class UserProfile : BaseEntity<UserId>, IAuditableEntity
         ModifiedAt = now;
 
         return UnitResult.Success<Error>();
+    }
+
+    internal bool RefreshAvatarSnapshot(
+        string oldPublicId,
+        AvatarUrl avatarUrl,
+        DateTime now)
+    {
+        if (AvatarUrl is null ||
+            string.IsNullOrWhiteSpace(oldPublicId) ||
+            !AvatarUrl.Value.Contains(oldPublicId, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        AvatarUrl = avatarUrl;
+        ModifiedAt = now;
+
+        return true;
     }
 }

@@ -1,0 +1,1234 @@
+{
+  "info": {
+    "name": "Flow 10 — Order Lifecycle",
+    "_postman_id": "flow10-order-lifecycle",
+    "description": "Complete order lifecycle flow covering order creation (Buy Now & Auction Winner paths), checkout payment (VNPay, Wallet, Hybrid), payment callbacks, expiration cancellation, shipping & delivery, decision window auto-complete, return flows (happy path & rejection), and error cases.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    { "key": "buyNowOrderId", "value": "" },
+    { "key": "auctionWinnerOrderId", "value": "" },
+    { "key": "returnId", "value": "" },
+    { "key": "checkoutPaymentUrl", "value": "" },
+    { "key": "checkoutTransactionId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01-Order Creation (Buy Now Path)",
+      "item": [
+        {
+          "name": "1. Get My Orders (verify initially)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "orders"]
+            },
+            "description": "Fetch all orders for the current user. Verify the initial state before any Buy Now or Auction Win creates an order."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – orders retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('My orders count:', Array.isArray(body) ? body.length : (body.data ? body.data.length : 'unknown'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. [Info] Buy Now → order auto-created + auto-paid",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders"]
+            },
+            "description": "INFO-ONLY: When a buyer completes Buy Now (POST /api/auctions/{auctionId}/buy-now), the system automatically creates an Order in Paid status and processes payment immediately. No manual order creation endpoint is needed.\n\nFlow:\n1. Buyer calls POST /api/auctions/{auctionId}/buy-now\n2. System creates a reservation\n3. Payment is processed (VNPay redirect or wallet debit)\n4. On payment success, Order is created in Paid status\n5. Escrow is created to hold funds\n6. Outbound shipment is auto-booked via GHN\n\nAfter Buy Now completes, use GET /api/me/orders to find the new order and save its ID to {{buyNowOrderId}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// This is an informational request.",
+                  "// After a Buy Now flow completes, use Get My Orders to find the new order.",
+                  "console.log('[Info] Buy Now auto-creates an order in Paid status.');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Get Order by ID (Buy Now order)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{buyNowOrderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{buyNowOrderId}}"]
+            },
+            "description": "Retrieve the order created by Buy Now. Verify it exists and is in Paid status."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – order retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.id) {",
+                  "    pm.collectionVariables.set('buyNowOrderId', body.id);",
+                  "    console.log('buyNowOrderId:', body.id);",
+                  "}",
+                  "if (body.orderNumber) {",
+                  "    console.log('orderNumber:', body.orderNumber);",
+                  "}",
+                  "if (body.status) {",
+                  "    console.log('Order status:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02-Order Creation (Auction Winner Path)",
+      "item": [
+        {
+          "name": "4. [Info] Auction end → winner order (PendingPayment)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders"]
+            },
+            "description": "INFO-ONLY: When an auction ends, the system automatically creates an Order for the winning bidder in PendingPayment status.\n\nFlow:\n1. Auction timer expires or seller manually closes\n2. CloseAuctionJob picks up ended auctions\n3. Winner is determined (highest bidder)\n4. Order is created with status = PendingPayment\n5. Winner receives notification to complete payment\n6. Winner has a limited time window (e.g., 5 minutes) to checkout before CancelExpiredOrdersJob cancels the order\n\nAfter auction ends, use GET /api/me/orders to find the PendingPayment order and save its ID to {{auctionWinnerOrderId}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// This is an informational request.",
+                  "// After an auction ends, the winner gets an order in PendingPayment status.",
+                  "console.log('[Info] Auction end creates a PendingPayment order for the winner.');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Get Order by ID (verify PendingPayment)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{auctionWinnerOrderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{auctionWinnerOrderId}}"]
+            },
+            "description": "Retrieve the auction winner's order and verify it is in PendingPayment status."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – order retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.id) {",
+                  "    pm.collectionVariables.set('auctionWinnerOrderId', body.id);",
+                  "    console.log('auctionWinnerOrderId:', body.id);",
+                  "}",
+                  "if (body.status) {",
+                  "    pm.test('Order status is PendingPayment', function () {",
+                  "        pm.expect(body.status.toLowerCase()).to.include('pending');",
+                  "    });",
+                  "    console.log('Order status:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Get My Orders (filter PendingPayment)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "orders"]
+            },
+            "description": "Fetch all user orders and filter for those in PendingPayment status."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – orders retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "const orders = Array.isArray(body) ? body : (body.data || []);",
+                  "const pendingOrders = orders.filter(o => o.status && o.status.toLowerCase().includes('pending'));",
+                  "console.log('Total orders:', orders.length, '| PendingPayment orders:', pendingOrders.length);",
+                  "",
+                  "if (pendingOrders.length > 0) {",
+                  "    pm.collectionVariables.set('auctionWinnerOrderId', pendingOrders[0].id);",
+                  "    console.log('auctionWinnerOrderId set to:', pendingOrders[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03-Checkout Payment (Auction Winner)",
+      "item": [
+        {
+          "name": "7. Checkout — VNPay",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{auctionWinnerOrderId}}\",\n  \"paymentMethod\": \"vnpay\",\n  \"bankCode\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/checkout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "checkout"]
+            },
+            "description": "Checkout the auction winner's order using VNPay. Returns a paymentUrl to redirect the buyer to VNPay gateway."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – checkout initiated', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.transactionId) {",
+                  "    pm.collectionVariables.set('checkoutTransactionId', body.transactionId);",
+                  "    console.log('checkoutTransactionId:', body.transactionId);",
+                  "}",
+                  "if (body.transactionRef) {",
+                  "    console.log('transactionRef:', body.transactionRef);",
+                  "}",
+                  "if (body.paymentUrl) {",
+                  "    pm.collectionVariables.set('checkoutPaymentUrl', body.paymentUrl);",
+                  "    console.log('checkoutPaymentUrl:', body.paymentUrl);",
+                  "    pm.test('PaymentUrl is returned for VNPay', function () {",
+                  "        pm.expect(body.paymentUrl).to.be.a('string').and.not.empty;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8. Checkout — Full Wallet",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{auctionWinnerOrderId}}\",\n  \"paymentMethod\": \"wallet\",\n  \"bankCode\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/checkout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "checkout"]
+            },
+            "description": "Checkout using full wallet balance. No redirect needed — payment completes instantly. PaymentUrl will be null in response."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – wallet checkout completed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.transactionId) {",
+                  "    pm.collectionVariables.set('checkoutTransactionId', body.transactionId);",
+                  "    console.log('checkoutTransactionId:', body.transactionId);",
+                  "}",
+                  "if (body.transactionRef) {",
+                  "    console.log('transactionRef:', body.transactionRef);",
+                  "}",
+                  "pm.test('PaymentUrl is null for wallet payment', function () {",
+                  "    pm.expect(body.paymentUrl).to.be.null;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9. Checkout — Hybrid (wallet_vnpay)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{auctionWinnerOrderId}}\",\n  \"paymentMethod\": \"wallet_vnpay\",\n  \"bankCode\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/checkout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "checkout"]
+            },
+            "description": "Hybrid checkout: wallet balance is held first, remaining amount is paid via VNPay. If wallet covers the full amount, behaves like full wallet payment. Otherwise returns a VNPay paymentUrl for the remaining portion."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – hybrid checkout initiated', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.transactionId) {",
+                  "    pm.collectionVariables.set('checkoutTransactionId', body.transactionId);",
+                  "    console.log('checkoutTransactionId:', body.transactionId);",
+                  "}",
+                  "if (body.transactionRef) {",
+                  "    console.log('transactionRef:', body.transactionRef);",
+                  "}",
+                  "if (body.paymentUrl) {",
+                  "    pm.collectionVariables.set('checkoutPaymentUrl', body.paymentUrl);",
+                  "    console.log('checkoutPaymentUrl (hybrid):', body.paymentUrl);",
+                  "} else {",
+                  "    console.log('No paymentUrl — wallet covered full amount.');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. Get Order (verify Paid)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{auctionWinnerOrderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{auctionWinnerOrderId}}"]
+            },
+            "description": "After checkout completes, verify the order status has changed to Paid."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – order retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Order status after checkout:', body.status);",
+                  "",
+                  "pm.test('Order status is Paid', function () {",
+                  "    pm.expect(body.status.toLowerCase()).to.include('paid');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04-Payment Callback",
+      "item": [
+        {
+          "name": "11. [Info] VNPay IPN processes payment",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders"]
+            },
+            "description": "INFO-ONLY: VNPay IPN (Instant Payment Notification) callback flow.\n\nWhen the buyer completes payment on VNPay gateway:\n1. VNPay sends an IPN callback to GET /api/payments/vnpay/ipn with query parameters (vnp_TxnRef, vnp_ResponseCode, etc.)\n2. System validates the IPN signature\n3. If payment is successful (ResponseCode=00):\n   a. Transaction is marked as Completed\n   b. Order status changes from PendingPayment → Paid\n   c. Escrow is created to hold funds\n   d. For hybrid payments, wallet hold is converted to debit\n4. If payment fails, Transaction is marked as Failed and order remains PendingPayment\n5. Buyer is redirected to GET /api/payments/vnpay/return (frontend callback URL)\n\nThis is a server-to-server callback — not manually invokable."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// This is an informational request.",
+                  "// VNPay IPN is a server-to-server callback that processes payment automatically.",
+                  "console.log('[Info] VNPay IPN callback processes payment and updates order to Paid status.');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12. Get Order (verify Paid + escrow)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{auctionWinnerOrderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{auctionWinnerOrderId}}"]
+            },
+            "description": "After VNPay IPN processes successfully, verify order is Paid and escrow is in place."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – order retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Order status:', body.status);",
+                  "",
+                  "pm.test('Order status is Paid', function () {",
+                  "    pm.expect(body.status.toLowerCase()).to.include('paid');",
+                  "});",
+                  "",
+                  "if (body.escrowId) {",
+                  "    console.log('Escrow ID:', body.escrowId);",
+                  "}",
+                  "if (body.paidAt) {",
+                  "    console.log('Paid at:', body.paidAt);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05-Cancel Expired",
+      "item": [
+        {
+          "name": "13. [Info] CancelExpiredOrdersJob (5min, batch 100)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders"]
+            },
+            "description": "INFO-ONLY: CancelExpiredOrdersJob background job.\n\nThis job runs every 5 minutes and processes up to 100 orders per batch:\n1. Queries all orders in PendingPayment status where PaymentDeadline < now\n2. For each expired order:\n   a. Order status changes to Cancelled\n   b. If auction deposit was held, it may be released or forfeited depending on policy\n   c. The auction may offer to the runner-up bidder\n3. Buyer receives a notification that the order was cancelled due to payment timeout\n\nThis is a background job — not manually invokable."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// This is an informational request.",
+                  "// CancelExpiredOrdersJob automatically cancels unpaid orders after their payment deadline.",
+                  "console.log('[Info] CancelExpiredOrdersJob runs every 5 min, cancels expired PendingPayment orders.');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14. Get Order (verify Cancelled)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{auctionWinnerOrderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{auctionWinnerOrderId}}"]
+            },
+            "description": "After the CancelExpiredOrdersJob runs, verify the order status is Cancelled."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – order retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Order status:', body.status);",
+                  "",
+                  "pm.test('Order status is Cancelled', function () {",
+                  "    pm.expect(body.status.toLowerCase()).to.include('cancel');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15. Get My Orders (filter Cancelled)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "orders"]
+            },
+            "description": "Fetch all user orders and filter for those in Cancelled status."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – orders retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "const orders = Array.isArray(body) ? body : (body.data || []);",
+                  "const cancelledOrders = orders.filter(o => o.status && o.status.toLowerCase().includes('cancel'));",
+                  "console.log('Total orders:', orders.length, '| Cancelled orders:', cancelledOrders.length);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06-Shipping & Delivery",
+      "item": [
+        {
+          "name": "16. [Info] GHN outbound shipment (auto after Paid)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders"]
+            },
+            "description": "INFO-ONLY: GHN (Giao Hang Nhanh) outbound shipment auto-creation.\n\nAfter an order is marked as Paid:\n1. System auto-books an outbound shipment via POST /api/warehouse/outbound-shipments\n2. GHN creates a shipping label and tracking number\n3. Order status changes to Shipped when GHN picks up the package\n4. GHN webhook (POST /webhooks/ghn) receives status updates:\n   - picking → Shipped\n   - delivering → in transit\n   - delivered → Delivered\n5. When delivered, DecisionWindowEndsAt is set (buyer has time to inspect)\n\nThis is triggered automatically — not manually invokable."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// This is an informational request.",
+                  "// GHN outbound shipment is auto-booked after payment completes.",
+                  "console.log('[Info] GHN outbound shipment auto-created after Paid. Status updates via webhook.');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17. Get Order (verify Shipped)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{auctionWinnerOrderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{auctionWinnerOrderId}}"]
+            },
+            "description": "After GHN picks up the package, verify the order status is Shipped."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – order retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Order status:', body.status);",
+                  "",
+                  "pm.test('Order status is Shipped', function () {",
+                  "    pm.expect(body.status.toLowerCase()).to.include('ship');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18. Get Order (verify Delivered + DecisionWindowEndsAt)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{auctionWinnerOrderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{auctionWinnerOrderId}}"]
+            },
+            "description": "After GHN confirms delivery, verify order is Delivered and DecisionWindowEndsAt is set. The buyer can inspect the item and decide to accept or return within this window."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – order retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Order status:', body.status);",
+                  "",
+                  "pm.test('Order status is Delivered', function () {",
+                  "    pm.expect(body.status.toLowerCase()).to.include('deliver');",
+                  "});",
+                  "",
+                  "if (body.decisionWindowEndsAt) {",
+                  "    console.log('DecisionWindowEndsAt:', body.decisionWindowEndsAt);",
+                  "    pm.test('DecisionWindowEndsAt is set', function () {",
+                  "        pm.expect(body.decisionWindowEndsAt).to.not.be.null;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07-Decision Window & Auto-Complete",
+      "item": [
+        {
+          "name": "19. [Info] ReleaseExpiredDecisionWindowJob (10min)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders"]
+            },
+            "description": "INFO-ONLY: ReleaseExpiredDecisionWindowJob background job.\n\nThis job runs every 10 minutes:\n1. Queries all orders in Delivered status where DecisionWindowEndsAt < now\n2. For each expired decision window:\n   a. Order status changes to Completed\n   b. Escrow funds are released to the seller's wallet\n   c. Platform commission is deducted and transferred to platform wallet\n   d. Seller trust score may be updated\n3. Both buyer and seller receive completion notifications\n\nIf the buyer requests a return before the window expires, auto-complete is blocked.\n\nThis is a background job — not manually invokable."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// This is an informational request.",
+                  "// ReleaseExpiredDecisionWindowJob auto-completes orders after the decision window expires.",
+                  "console.log('[Info] ReleaseExpiredDecisionWindowJob runs every 10 min, auto-completes delivered orders.');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "20. Get Order (verify Completed)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{auctionWinnerOrderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{auctionWinnerOrderId}}"]
+            },
+            "description": "After the decision window expires and the job runs, verify the order status is Completed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – order retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Order status:', body.status);",
+                  "",
+                  "pm.test('Order status is Completed', function () {",
+                  "    pm.expect(body.status.toLowerCase()).to.include('complet');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08-Return Flow (Happy Path)",
+      "item": [
+        {
+          "name": "21. Request Return (buyer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reasonCode\": \"item_not_as_described\",\n  \"description\": \"The item condition does not match the listing description.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{auctionWinnerOrderId}}/returns",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{auctionWinnerOrderId}}", "returns"]
+            },
+            "description": "Buyer requests a return on a Delivered order within the decision window. Creates a return request with reason code and optional description."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – return requested', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.id) {",
+                  "    pm.collectionVariables.set('returnId', body.id);",
+                  "    console.log('returnId:', body.id);",
+                  "}",
+                  "if (body.status) {",
+                  "    console.log('Return status:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "22. Get Order (verify return Requested)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{auctionWinnerOrderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{auctionWinnerOrderId}}"]
+            },
+            "description": "After requesting a return, verify the order reflects the return request status."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – order retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Order status:', body.status);",
+                  "",
+                  "if (body.returnRequest) {",
+                  "    console.log('Return request status:', body.returnRequest.status);",
+                  "}",
+                  "if (body.returns && body.returns.length > 0) {",
+                  "    console.log('Return status:', body.returns[0].status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "23. Approve Return (seller)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Return approved. Please ship the item back.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{auctionWinnerOrderId}}/returns/{{returnId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{auctionWinnerOrderId}}", "returns", "{{returnId}}", "approve"]
+            },
+            "description": "Seller approves the return request. Uses seller's access token (here using adminAccessToken as proxy for seller token). After approval, buyer must ship the item back."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – return approved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.status) {",
+                  "    console.log('Return status after approval:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "24. Ship Return (buyer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerCode\": \"ghn\",\n  \"trackingNumber\": \"RETURN-TRACK-001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{auctionWinnerOrderId}}/returns/{{returnId}}/ship",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{auctionWinnerOrderId}}", "returns", "{{returnId}}", "ship"]
+            },
+            "description": "Buyer ships the return item back to the seller/warehouse. Provides the shipping provider code and tracking number."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – return shipped', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.status) {",
+                  "    console.log('Return status after shipping:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "25. Confirm Return Received (seller)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{auctionWinnerOrderId}}/returns/{{returnId}}/confirm-received",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{auctionWinnerOrderId}}", "returns", "{{returnId}}", "confirm-received"]
+            },
+            "description": "Seller confirms the returned item has been received. This triggers the refund process: escrow funds are released back to the buyer's wallet."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – return receipt confirmed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.status) {",
+                  "    console.log('Return status after confirm-received:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26. Get Order (verify Refunded)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{auctionWinnerOrderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{auctionWinnerOrderId}}"]
+            },
+            "description": "After return is confirmed received, verify the order status reflects the refund."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – order retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Order status:', body.status);",
+                  "",
+                  "pm.test('Order status is Refunded', function () {",
+                  "    pm.expect(body.status.toLowerCase()).to.include('refund');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "09-Return Flow (Rejection)",
+      "item": [
+        {
+          "name": "27. Request Return (buyer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reasonCode\": \"changed_mind\",\n  \"description\": \"I changed my mind about this purchase.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{auctionWinnerOrderId}}/returns",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{auctionWinnerOrderId}}", "returns"]
+            },
+            "description": "Buyer requests a return (this will be rejected by the seller). Uses a different reason code to demonstrate rejection scenario."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – return requested', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.id) {",
+                  "    pm.collectionVariables.set('returnId', body.id);",
+                  "    console.log('returnId (for rejection):', body.id);",
+                  "}",
+                  "if (body.status) {",
+                  "    console.log('Return status:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28. Reject Return (seller)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Return reason does not meet our return policy criteria.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{auctionWinnerOrderId}}/returns/{{returnId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{auctionWinnerOrderId}}", "returns", "{{returnId}}", "reject"]
+            },
+            "description": "Seller rejects the return request with a reason. The order remains in Delivered status and the buyer can still open a dispute if they disagree."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – return rejected', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.status) {",
+                  "    console.log('Return status after rejection:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "29. Get Order (verify still Delivered)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{auctionWinnerOrderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{auctionWinnerOrderId}}"]
+            },
+            "description": "After return rejection, verify the order remains in Delivered status (not refunded)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – order retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Order status after return rejection:', body.status);",
+                  "",
+                  "pm.test('Order status is still Delivered', function () {",
+                  "    pm.expect(body.status.toLowerCase()).to.include('deliver');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "10-Error Cases",
+      "item": [
+        {
+          "name": "30. Request Return (expired window → expect 400/409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reasonCode\": \"item_not_as_described\",\n  \"description\": \"Attempting return after decision window expired.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{auctionWinnerOrderId}}/returns",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{auctionWinnerOrderId}}", "returns"]
+            },
+            "description": "ERROR CASE: Attempt to request a return after the decision window has expired. The order should already be Completed, so this should fail with 400 Bad Request or 409 Conflict."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 or 409 – return rejected (expired window)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 409]);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Error response:', JSON.stringify(body));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "31. Request Return (not buyer → expect 403)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reasonCode\": \"item_not_as_described\",\n  \"description\": \"Attempting return as non-buyer user.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{auctionWinnerOrderId}}/returns",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{auctionWinnerOrderId}}", "returns"]
+            },
+            "description": "ERROR CASE: Attempt to request a return using a different user's token (not the buyer). Should fail with 403 Forbidden."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403 – forbidden (not the buyer)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([403, 404]);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Error response:', JSON.stringify(body));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32. Checkout (already Paid → expect 400/409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{buyNowOrderId}}\",\n  \"paymentMethod\": \"vnpay\",\n  \"bankCode\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/checkout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "checkout"]
+            },
+            "description": "ERROR CASE: Attempt to checkout an order that is already Paid (Buy Now order). Should fail with 400 Bad Request or 409 Conflict because the order cannot be paid again."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 or 409 – already paid', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 409]);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Error response:', JSON.stringify(body));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

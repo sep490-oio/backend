@@ -1,0 +1,1190 @@
+{
+  "info": {
+    "name": "Flow 12 — Dispute & Moderation",
+    "_postman_id": "flow12-dispute-moderation",
+    "description": "Complete dispute and moderation flow covering user reports (create, view), admin report management (assign, resolve, escalate), dispute threads and messaging (text, attachments, internal), dispute resolution (FavorBuyer, RefundPartial, FavorSeller), monitoring alerts (get, acknowledge, resolve, create auction alert), risk flags, bid cancellation, and SignalR DisputeHub reference.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    { "key": "reportId", "value": "" },
+    { "key": "disputeId", "value": "" },
+    { "key": "disputeMessageId", "value": "" },
+    { "key": "monitoringAlertId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01-Reports (User)",
+      "item": [
+        {
+          "name": "1. Create Report (POST /api/reports, user entity)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entityType\": \"User\",\n  \"entityId\": \"{{userId}}\",\n  \"reasonCode\": \"fraud\",\n  \"description\": \"Suspicious behaviour reported by buyer\",\n  \"attachments\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/reports",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports"]
+            },
+            "description": "Create a new report targeting a User entity. Requires authentication. EntityType can be User, Auction, Item, etc. ReasonCode examples: fraud, spam, offensive, counterfeit."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – report created', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.id) {",
+                  "    pm.collectionVariables.set('reportId', body.id);",
+                  "    console.log('reportId:', body.id);",
+                  "}",
+                  "if (body.status) {",
+                  "    console.log('Report status:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Get My Reports (GET /api/me/reports)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/reports",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "reports"]
+            },
+            "description": "Retrieve all reports submitted by the current authenticated user."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – my reports retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (Array.isArray(body) && body.length > 0) {",
+                  "    pm.collectionVariables.set('reportId', body[0].id);",
+                  "    console.log('First reportId:', body[0].id);",
+                  "    console.log('Total reports:', body.length);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Create Report — Auction entity (POST /api/reports)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entityType\": \"Auction\",\n  \"entityId\": \"{{auctionId}}\",\n  \"reasonCode\": \"counterfeit\",\n  \"description\": \"This auction lists a counterfeit item\",\n  \"attachments\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/reports",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports"]
+            },
+            "description": "Create a report targeting an Auction entity. This report can later be escalated to an emergency (only auction-type reports support escalation)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – auction report created', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.id) {",
+                  "    pm.collectionVariables.set('reportId', body.id);",
+                  "    console.log('reportId (auction):', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02-Admin Report Management",
+      "item": [
+        {
+          "name": "4. Get Reports (GET /api/admin/reports)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/reports?status=&entityType=&entityId=",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "reports"],
+              "query": [
+                { "key": "status", "value": "", "description": "Filter by report status (e.g. Pending, Resolved, Dismissed)" },
+                { "key": "entityType", "value": "", "description": "Filter by entity type (User, Auction, Item)" },
+                { "key": "entityId", "value": "", "description": "Filter by specific entity ID" }
+              ]
+            },
+            "description": "Admin endpoint to retrieve all reports. Supports optional filters: status, entityType, entityId."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – admin reports retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (Array.isArray(body) && body.length > 0) {",
+                  "    pm.collectionVariables.set('reportId', body[0].id);",
+                  "    console.log('First reportId:', body[0].id);",
+                  "    console.log('Total reports:', body.length);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Assign Report (POST /api/admin/reports/{{reportId}}/assign)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignedToUserId\": \"{{userId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/reports/{{reportId}}/assign",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "reports", "{{reportId}}", "assign"]
+            },
+            "description": "Assign a report to a specific admin/moderator user for review. Requires admin ManageItems permission."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – report assigned', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.id) {",
+                  "    console.log('Report assigned, id:', body.id);",
+                  "    console.log('Assigned to:', body.assignedToUserId || body.assignedTo);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Resolve Report — ActionTaken (Dismissed=false)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dismissed\": false,\n  \"resolutionNotes\": \"Action taken: user warned and auction flagged for review.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/reports/{{reportId}}/resolve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "reports", "{{reportId}}", "resolve"]
+            },
+            "description": "Resolve a report with action taken (dismissed=false). The report is marked as resolved with notes describing the action."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – report resolved (action taken)', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.status) {",
+                  "    console.log('Report status:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Resolve Report — Dismissed (Dismissed=true)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dismissed\": true,\n  \"resolutionNotes\": \"Report reviewed — no violation found. Dismissed.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/reports/{{reportId}}/resolve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "reports", "{{reportId}}", "resolve"]
+            },
+            "description": "Dismiss a report (dismissed=true). The report is closed without further action."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – report dismissed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.status) {",
+                  "    console.log('Report status:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8. Escalate to Emergency (POST /api/admin/reports/{{reportId}}/escalate-emergency)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reasonOverride\": \"Counterfeit item confirmed — escalating to emergency auction suspension.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/reports/{{reportId}}/escalate-emergency",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "reports", "{{reportId}}", "escalate-emergency"]
+            },
+            "description": "Escalate an auction-type report to an emergency. Only reports with entityType=Auction can be escalated. Creates an auction emergency and potentially suspends the auction."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – report escalated to emergency', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.id) {",
+                  "    console.log('Escalated report id:', body.id);",
+                  "    console.log('Report status:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03-Dispute Thread",
+      "item": [
+        {
+          "name": "9. Get Accessible Disputes (GET /api/disputes)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/disputes?status=&assignedTo=&pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "disputes"],
+              "query": [
+                { "key": "status", "value": "", "description": "Filter by dispute status" },
+                { "key": "assignedTo", "value": "", "description": "Filter by assigned admin user ID" },
+                { "key": "pageNumber", "value": "1", "description": "Page number (default 1)" },
+                { "key": "pageSize", "value": "20", "description": "Page size (default 20)" }
+              ]
+            },
+            "description": "Retrieve disputes accessible to the current user. Buyers/sellers see their own disputes; admins see all. Supports pagination and filtering."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – disputes retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "const items = body.items || body.data || body;",
+                  "if (Array.isArray(items) && items.length > 0) {",
+                  "    pm.collectionVariables.set('disputeId', items[0].id);",
+                  "    console.log('First disputeId:', items[0].id);",
+                  "    console.log('Total disputes:', items.length);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. Get Dispute Thread (GET /api/disputes/{{disputeId}})",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/disputes/{{disputeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "disputes", "{{disputeId}}"]
+            },
+            "description": "Retrieve a full dispute thread by ID, including participants, status history, and metadata. Returns 403 if user is not a participant."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – dispute thread retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.id) {",
+                  "    pm.collectionVariables.set('disputeId', body.id);",
+                  "    console.log('disputeId:', body.id);",
+                  "    console.log('Dispute status:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11. Get Dispute Messages (GET /api/disputes/{{disputeId}}/messages?pageSize=50)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/disputes/{{disputeId}}/messages?pageSize=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "disputes", "{{disputeId}}", "messages"],
+              "query": [
+                { "key": "pageSize", "value": "50", "description": "Number of messages per page" },
+                { "key": "beforeCreatedAt", "value": "", "description": "Cursor: messages before this datetime (ISO 8601)", "disabled": true },
+                { "key": "beforeId", "value": "", "description": "Cursor: messages before this ID", "disabled": true }
+              ]
+            },
+            "description": "Retrieve messages in a dispute thread with cursor-based pagination. Use beforeCreatedAt and beforeId for loading older messages."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – dispute messages retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "const messages = body.items || body.messages || body.data || body;",
+                  "if (Array.isArray(messages) && messages.length > 0) {",
+                  "    pm.collectionVariables.set('disputeMessageId', messages[0].id);",
+                  "    console.log('First disputeMessageId:', messages[0].id);",
+                  "    console.log('Messages count:', messages.length);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04-Dispute Chat (REST)",
+      "item": [
+        {
+          "name": "12. Send Message (POST /api/disputes/{{disputeId}}/messages, text only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"I received a damaged item. Requesting a full refund.\",\n  \"mediaUploadIds\": null,\n  \"isInternal\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/disputes/{{disputeId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "disputes", "{{disputeId}}", "messages"]
+            },
+            "description": "Send a text-only message in the dispute thread. Available to all dispute participants (buyer, seller, admin)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 – message sent', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.id) {",
+                  "    pm.collectionVariables.set('disputeMessageId', body.id);",
+                  "    console.log('disputeMessageId:', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13. Send Message with Attachment (POST /api/disputes/{{disputeId}}/messages)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Here are photos of the damaged item.\",\n  \"mediaUploadIds\": [\"00000000-0000-0000-0000-000000000001\"],\n  \"isInternal\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/disputes/{{disputeId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "disputes", "{{disputeId}}", "messages"]
+            },
+            "description": "Send a message with media attachments. The mediaUploadIds should reference previously uploaded media via the Media Upload flow (Flow 4). Replace the placeholder GUID with a real media upload ID."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 – message with attachment sent', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.id) {",
+                  "    pm.collectionVariables.set('disputeMessageId', body.id);",
+                  "    console.log('disputeMessageId:', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14. Send Internal Message (POST /api/disputes/{{disputeId}}/messages, isInternal=true, admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"[Internal] Reviewed evidence — leaning toward buyer refund. Awaiting seller response.\",\n  \"mediaUploadIds\": null,\n  \"isInternal\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/disputes/{{disputeId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "disputes", "{{disputeId}}", "messages"]
+            },
+            "description": "Send an internal (admin-only) message in the dispute thread. Only visible to admins/moderators. Requires admin authentication. Non-admin users will receive 403."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 – internal message sent', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.id) {",
+                  "    pm.collectionVariables.set('disputeMessageId', body.id);",
+                  "    console.log('disputeMessageId (internal):', body.id);",
+                  "    console.log('isInternal:', body.isInternal);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15. Mark as Read (POST /api/disputes/{{disputeId}}/read)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lastReadMessageId\": \"{{disputeMessageId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/disputes/{{disputeId}}/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "disputes", "{{disputeId}}", "read"]
+            },
+            "description": "Mark messages as read up to the specified message ID. Updates the participant's read state in the dispute thread."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – marked as read', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Read state updated:', JSON.stringify(body));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05-Resolve Dispute",
+      "item": [
+        {
+          "name": "16. Resolve — FavorBuyer (POST /api/admin/disputes/{{disputeId}}/resolve)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resolutionType\": \"FavorBuyer\",\n  \"notes\": \"Evidence confirms item was not as described. Full refund to buyer.\",\n  \"amount\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/disputes/{{disputeId}}/resolve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "disputes", "{{disputeId}}", "resolve"]
+            },
+            "description": "Resolve a dispute in favor of the buyer. Triggers a full refund from escrow to the buyer's wallet. Resolution types: FavorBuyer, FavorSeller, RefundFull, RefundPartial, MutualAgreement."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 – dispute resolved (FavorBuyer)', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});",
+                  "",
+                  "console.log('Dispute resolved — FavorBuyer');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17. Resolve — RefundPartial (with amount)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resolutionType\": \"RefundPartial\",\n  \"notes\": \"Partial refund agreed upon — item has minor defect.\",\n  \"amount\": 150000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/disputes/{{disputeId}}/resolve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "disputes", "{{disputeId}}", "resolve"]
+            },
+            "description": "Resolve a dispute with a partial refund. The amount field specifies the refund amount. Required when resolutionType is RefundPartial."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 – dispute resolved (RefundPartial)', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});",
+                  "",
+                  "console.log('Dispute resolved — RefundPartial with amount');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18. Resolve — FavorSeller",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resolutionType\": \"FavorSeller\",\n  \"notes\": \"Buyer's claim not substantiated. Funds released to seller.\",\n  \"amount\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/disputes/{{disputeId}}/resolve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "disputes", "{{disputeId}}", "resolve"]
+            },
+            "description": "Resolve a dispute in favor of the seller. Escrow funds are released to the seller's wallet."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 – dispute resolved (FavorSeller)', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});",
+                  "",
+                  "console.log('Dispute resolved — FavorSeller');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "19. Get Dispute Thread (verify Resolved status)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/disputes/{{disputeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "disputes", "{{disputeId}}"]
+            },
+            "description": "Retrieve the dispute thread after resolution to verify the status has changed to Resolved."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – dispute thread retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.status) {",
+                  "    pm.test('Dispute is resolved', function () {",
+                  "        pm.expect(body.status.toLowerCase()).to.include('resolved');",
+                  "    });",
+                  "    console.log('Dispute status:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06-Monitoring Alerts",
+      "item": [
+        {
+          "name": "20. Get Monitoring Alerts (GET /api/admin/monitoring-alerts)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/monitoring-alerts?status=&entityType=&entityId=",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "monitoring-alerts"],
+              "query": [
+                { "key": "status", "value": "", "description": "Filter by alert status" },
+                { "key": "entityType", "value": "", "description": "Filter by entity type" },
+                { "key": "entityId", "value": "", "description": "Filter by entity ID" }
+              ]
+            },
+            "description": "Retrieve all monitoring alerts. Supports optional filters: status, entityType, entityId. Requires admin ReadItems permission."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – monitoring alerts retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (Array.isArray(body) && body.length > 0) {",
+                  "    pm.collectionVariables.set('monitoringAlertId', body[0].id);",
+                  "    console.log('First monitoringAlertId:', body[0].id);",
+                  "    console.log('Total alerts:', body.length);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "21. Acknowledge Alert (POST /api/admin/monitoring-alerts/{{monitoringAlertId}}/acknowledge)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Alert acknowledged — investigating the flagged auction activity.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/monitoring-alerts/{{monitoringAlertId}}/acknowledge",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "monitoring-alerts", "{{monitoringAlertId}}", "acknowledge"]
+            },
+            "description": "Acknowledge a monitoring alert. Marks the alert as seen/being investigated. Requires admin ManageItems permission."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – alert acknowledged', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.id) {",
+                  "    console.log('Alert acknowledged:', body.id);",
+                  "    console.log('Alert status:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "22. Resolve Alert (POST /api/admin/monitoring-alerts/{{monitoringAlertId}}/resolve)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ignored\": false,\n  \"notes\": \"Alert resolved — appropriate action has been taken on the flagged entity.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/monitoring-alerts/{{monitoringAlertId}}/resolve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "monitoring-alerts", "{{monitoringAlertId}}", "resolve"]
+            },
+            "description": "Resolve a monitoring alert. Set ignored=true to dismiss without action, or ignored=false when action was taken. Requires admin ManageItems permission."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – alert resolved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.id) {",
+                  "    console.log('Alert resolved:', body.id);",
+                  "    console.log('Alert status:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "23. Create Auction Alert (POST /api/admin/auctions/{{auctionId}}/alerts)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alertType\": \"SuspiciousBidding\",\n  \"payload\": {\n    \"reason\": \"Multiple bids from related accounts detected\",\n    \"detectedAt\": \"2026-03-20T10:00:00Z\"\n  },\n  \"severity\": \"high\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/auctions/{{auctionId}}/alerts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "auctions", "{{auctionId}}", "alerts"]
+            },
+            "description": "Create a monitoring alert for a specific auction. AlertType examples: SuspiciousBidding, PriceManipulation, FraudSuspect. Severity: low, medium, high, critical."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – auction alert created', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.id) {",
+                  "    pm.collectionVariables.set('monitoringAlertId', body.id);",
+                  "    console.log('monitoringAlertId:', body.id);",
+                  "    console.log('Alert type:', body.alertType);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07-Risk Flags & Audit",
+      "item": [
+        {
+          "name": "24. Flag User (POST /api/admin/users/{{userId}}/risk-flags)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"flagType\": \"FraudSuspect\",\n  \"reason\": \"Multiple reports of selling counterfeit items. Account under investigation.\",\n  \"severity\": \"high\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/{{userId}}/risk-flags",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users", "{{userId}}", "risk-flags"]
+            },
+            "description": "Create a risk flag for a user. FlagType examples: FraudSuspect, ShillBidding, AccountAbuse, PaymentFraud. Severity: low, medium, high. Requires admin ManageUsers permission."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – user flagged', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.id) {",
+                  "    console.log('Risk flag id:', body.id);",
+                  "    console.log('Flag type:', body.flagType);",
+                  "    console.log('Severity:', body.severity);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "25. Cancel Invalid Bid (POST /api/admin/auctions/{{auctionId}}/bids/{{bidId}}/cancel)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Bid placed by a flagged account involved in shill bidding.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/auctions/{{auctionId}}/bids/{{bidId}}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "auctions", "{{auctionId}}", "bids", "{{bidId}}", "cancel"]
+            },
+            "description": "Cancel an invalid bid on an auction. Used when a bid is identified as fraudulent or violating auction rules. Requires admin ManageItems permission."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – bid cancelled', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.id) {",
+                  "    console.log('Cancelled bid id:', body.id);",
+                  "    console.log('Bid status:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08-SignalR Reference & Errors",
+      "item": [
+        {
+          "name": "26. [Info] DisputeHub SignalR methods & events",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/disputes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "disputes"]
+            },
+            "description": "INFO-ONLY: DisputeHub SignalR reference.\n\nHub URL: /hubs/disputes (requires Bearer token)\n\nClient → Server methods:\n  - JoinDispute(disputeId: Guid) — Join a dispute room to receive real-time updates\n  - LeaveDispute(disputeId: Guid) — Leave a dispute room\n\nServer → Client events:\n  - MessageReceived(DisputeMessageDto) — New message in the dispute\n  - ReadStateUpdated(DisputeParticipantReadStateDto) — A participant's read state changed\n  - DisputeUpdated(DisputeThreadMetaDto) — Dispute metadata changed (status, assignment, etc.)\n  - DisputeUnreadUpdated(DisputeUnreadUpdateDto) — Unread count changed for the user\n\nGroup naming:\n  - dispute:{disputeId} — All participants\n  - dispute:{disputeId}:admins — Admin-only (internal messages)\n  - dispute-user:{userId} — Per-user notifications\n\nNote: SignalR connections cannot be tested directly in Postman. Use a SignalR client or the web app."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// INFO-ONLY request — DisputeHub SignalR reference.",
+                  "// SignalR Hub URL: /hubs/disputes",
+                  "// Client methods: JoinDispute(disputeId), LeaveDispute(disputeId)",
+                  "// Server events: MessageReceived, ReadStateUpdated, DisputeUpdated, DisputeUnreadUpdated",
+                  "console.log('[Info] DisputeHub — see request description for SignalR details.');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "27. Send Internal Message (non-admin → expect 403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Attempting internal message as non-admin — should fail.\",\n  \"mediaUploadIds\": null,\n  \"isInternal\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/disputes/{{disputeId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "disputes", "{{disputeId}}", "messages"]
+            },
+            "description": "Negative test: attempt to send an internal (admin-only) message using a regular user token. Should return 403 Forbidden."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403 – non-admin cannot send internal message', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "console.log('Expected 403 for non-admin internal message. Status:', pm.response.code);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28. Escalate Non-Auction Report (→ expect error)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reasonOverride\": \"Attempting to escalate a non-auction report — should fail.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/reports/{{reportId}}/escalate-emergency",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "reports", "{{reportId}}", "escalate-emergency"]
+            },
+            "description": "Negative test: attempt to escalate a report that is NOT targeting an Auction entity. Should return 400 Bad Request because only auction-type reports can be escalated to emergencies."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 – cannot escalate non-auction report', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "console.log('Expected 400 for non-auction escalation. Status:', pm.response.code);",
+                  "const body = pm.response.json();",
+                  "if (body.detail || body.message) {",
+                  "    console.log('Error:', body.detail || body.message);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

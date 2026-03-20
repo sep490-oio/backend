@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
@@ -12,7 +12,7 @@ internal sealed class SecureTokenStore : ISecureTokenStore
 {
     private readonly IConnectionMultiplexer _redis;
     private readonly ISecureTokenGenerator _tokenGenerator;
-    private readonly IAppConfigs _appConfigs;
+    private readonly IRuntimeSettings _runtimeSettings;
     private readonly IClock _clock;
     private readonly ILogger<SecureTokenStore> _logger;
 
@@ -21,13 +21,13 @@ internal sealed class SecureTokenStore : ISecureTokenStore
     public SecureTokenStore(
         IConnectionMultiplexer redis,
         ISecureTokenGenerator tokenGenerator,
-        IAppConfigs appConfigs,
+        IRuntimeSettings runtimeSettings,
         ILogger<SecureTokenStore> logger,
         IClock clock)
     {
         _redis = redis;
         _tokenGenerator = tokenGenerator;
-        _appConfigs = appConfigs;
+        _runtimeSettings = runtimeSettings;
         _clock = clock;
         _logger = logger;
     }
@@ -39,7 +39,7 @@ internal sealed class SecureTokenStore : ISecureTokenStore
         CancellationToken cancellationToken = default)
     {
         var key = BuildKey(type, userId);
-        var ttl = expiration ?? await GetDefaultExpirationAsync(type);
+        var ttl = expiration ?? GetDefaultExpiration(type);
 
         // Generate plain token + hash
         var plainToken = _tokenGenerator.GenerateToken();
@@ -136,12 +136,12 @@ internal sealed class SecureTokenStore : ISecureTokenStore
     private static string BuildKey(TokenType type, UserId userId) =>
         $"token:{type.ToString().ToLowerInvariant()}:{userId}";
 
-    private async Task<TimeSpan> GetDefaultExpirationAsync(TokenType type, CancellationToken cancellationToken = default) => type switch
+    private TimeSpan GetDefaultExpiration(TokenType type) => type switch
     {
-        TokenType.EmailVerification => await _appConfigs.Auth.GetEmailVerificationTokenExpirationMinutesAsync(cancellationToken),
-        TokenType.PasswordReset => await _appConfigs.Auth.GetPasswordResetTokenExpirationMinutesAsync(cancellationToken),
-        TokenType.PhoneVerification => await _appConfigs.Auth.GetPhoneVerificationTokenExpirationMinutesAsync(cancellationToken),
-        TokenType.TwoFactorSetup => await _appConfigs.Auth.GetTwoFactorSetupTokenExpirationMinutesAsync(cancellationToken),
+        TokenType.EmailVerification => _runtimeSettings.Auth.EmailVerificationTokenExpiration,
+        TokenType.PasswordReset => _runtimeSettings.Auth.PasswordResetTokenExpiration,
+        TokenType.PhoneVerification => _runtimeSettings.Auth.PhoneVerificationTokenExpiration,
+        TokenType.TwoFactorSetup => _runtimeSettings.Auth.TwoFactorSetupTokenExpiration,
         _ => TimeSpan.FromMinutes(30)
     };
     

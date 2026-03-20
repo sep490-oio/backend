@@ -30,7 +30,9 @@ internal sealed class GetStorageLocationsQueryHandler(IDbContext db)
         GetStorageLocationsQuery request,
         CancellationToken cancellationToken)
     {
-        var query = db.Set<WarehouseStorageLocation>().AsNoTracking().AsQueryable();
+        var query = db.Set<WarehouseStorageLocation>()
+            .AsNoTracking()
+            .AsQueryable();
 
         if (request.VacantOnly)
             query = query.Where(l => !l.IsOccupied);

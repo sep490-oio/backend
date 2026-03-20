@@ -9,7 +9,6 @@ using OIO.Infrastructure;
 using OIO.Infrastructure.Persistence.Extensions;
 using OIO.Infrastructure.Persistence.Seed;
 using OIO.Infrastructure.Settings;
-using OIO.Infrastructure.Settings.Apps;
 using Scalar.AspNetCore;
 using Serilog;
 
@@ -34,10 +33,11 @@ var app = builder.Build();
 app.UseStaticFiles();
 
 // Configure the HTTP request pipeline.
-var appInfo = new AppInfoOptions();
-builder.Configuration.Bind(AppInfoOptions.SectionName, appInfo);
+var features = builder.Configuration
+    .GetSection(FeaturesOptions.SectionName)
+    .Get<FeaturesOptions>() ?? new FeaturesOptions();
 
-if (app.Environment.IsDevelopment() || appInfo.Features.EnableScalar)
+if (app.Environment.IsDevelopment() || features.EnableScalar)
 {
     app.MapSwagger("/openapi/{documentName}.json");
     app.MapScalarApiReference("/docs", options =>
@@ -74,12 +74,14 @@ app.UseAuthorization();
 app.MapEndpoints();
 
 app.MapHub<AuctionHub>("/hubs/auction");
+app.MapHub<DisputeHub>("/hubs/disputes");
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.MapHealthChecks("health", new HealthCheckOptions
 {
     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
 });
 
-app.MapGet("test", (IAppConfigs appInfos) => appInfos.BeUrl);
+app.MapGet("test", (IAppInfo appInfo) => appInfo.BeUrl);
 
 app.Run();

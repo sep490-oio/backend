@@ -20,7 +20,7 @@ internal sealed class OutboxProcessor
     };
 
     private readonly ILogger<OutboxProcessor> _logger;
-    private readonly OutboxSettings _outboxSettings;
+    private readonly IOptionsMonitor<OutboxSettings> _outboxSettings;
     private readonly NpgsqlDataSource _dataSource;
     private readonly IPublisher _publisher;
     private readonly IOutboxMessageResolver _outboxMessageResolver;
@@ -28,14 +28,14 @@ internal sealed class OutboxProcessor
 
     public OutboxProcessor(
         ILogger<OutboxProcessor> logger,
-        IOptions<OutboxSettings> outboxSettings,
+        IOptionsMonitor<OutboxSettings> outboxSettings,
         NpgsqlDataSource dataSource,
         IPublisher publisher,
         IOutboxMessageResolver outboxMessageResolver, 
         IClock clock)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _outboxSettings = outboxSettings.Value ?? throw new ArgumentNullException(nameof(outboxSettings));
+        _outboxSettings = outboxSettings ?? throw new ArgumentNullException(nameof(outboxSettings));
         _dataSource = dataSource ?? throw new ArgumentNullException(nameof(dataSource));
         _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
         _outboxMessageResolver =
@@ -133,7 +133,7 @@ internal sealed class OutboxProcessor
 
         var command = new CommandDefinition(
             commandText: sql,
-            parameters: new {_outboxSettings.MaxAttempts, _outboxSettings.BatchSize},
+            parameters: new {_outboxSettings.CurrentValue.MaxAttempts, _outboxSettings.CurrentValue.BatchSize},
             transaction: transaction,
             cancellationToken: cancellationToken
         );

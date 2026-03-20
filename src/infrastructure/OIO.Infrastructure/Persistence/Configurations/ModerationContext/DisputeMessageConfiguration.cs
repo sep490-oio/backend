@@ -33,8 +33,13 @@ internal sealed class DisputeMessageConfiguration : IEntityTypeConfiguration<Dis
             .HasDefaultValueSql("CURRENT_TIMESTAMP")
             .IsRequired();
 
+        builder.HasMany(m => m.Attachments)
+            .WithOne(x => x.DisputeMessage)
+            .HasForeignKey(x => x.DisputeMessageId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // Indexes
-        builder.HasIndex(m => m.DisputeId)
-            .HasDatabaseName("idx_dispute_messages_dispute");
+        builder.HasIndex(m => new { m.DisputeId, m.CreatedAt, m.Id })
+            .HasDatabaseName("idx_dispute_messages_dispute_created_at");
     }
 }

@@ -1,0 +1,1446 @@
+{
+  "info": {
+    "name": "Flow 6 — Auction Lifecycle",
+    "_postman_id": "flow6-auction-lifecycle",
+    "description": "End-to-end auction lifecycle: create, update, submit, review, publish, platform verify, cancel, close, relist, runner-up, admin ops, shipping, and sealed bids.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "secondAuctionId", "value": "" },
+    { "key": "emergencyId", "value": "" },
+    { "key": "sealedBidId", "value": "" },
+    { "key": "runnerUpOfferId", "value": "" },
+    { "key": "inspectionUploadId", "value": "" },
+    { "key": "shipmentId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 — Create & View",
+      "item": [
+        {
+          "name": "Create Auction",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Vintage Watch Auction\",\n  \"condition\": \"very_good\",\n  \"description\": \"A rare vintage watch\",\n  \"quantity\": 1,\n  \"startingPrice\": 100000,\n  \"bidIncrement\": 10000,\n  \"currency\": \"VND\",\n  \"auctionType\": \"regular\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('auctionId', json.id);",
+                  "if (json.itemId) {",
+                  "    pm.environment.set('itemId', json.itemId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Auction by ID (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "noauth" },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Auctions (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "noauth" },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions?pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get My Auctions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/me/auctions?pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "auctions"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 — Update & Timing",
+      "item": [
+        {
+          "name": "Update Auction",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startingPrice\": 150000,\n  \"bidIncrement\": 15000\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Set Auction Timing",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/timing",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "timing"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startTime\": \"future+1h\",\n  \"endTime\": \"future+25h\",\n  \"qualificationStartAt\": \"future+30m\",\n  \"qualificationEndAt\": \"future+55m\",\n  \"autoExtend\": true,\n  \"extensionMinutes\": 5\n}"
+            },
+            "description": "Set dates to future. Replace with actual ISO 8601 dates before running (e.g. 2026-03-21T10:00:00Z)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 — Submit & Admin Review",
+      "item": [
+        {
+          "name": "Submit Auction for Review",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "submit"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Auction — Verify Submitted",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Auction is submitted/pending', function () {",
+                  "    const json = pm.response.json();",
+                  "    console.log('Auction status:', json.status);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin — Get Review Queue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/items/review-queue",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "items", "review-queue"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin — Approve Item",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/items/{{itemId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "items", "{{itemId}}", "approve"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Auction — Verify Approved",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Status is approved', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('approved');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Set Timing After Approval",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/timing",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "timing"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startTime\": \"future+1h\",\n  \"endTime\": \"future+25h\",\n  \"qualificationStartAt\": \"future+30m\",\n  \"qualificationEndAt\": \"future+55m\",\n  \"autoExtend\": true,\n  \"extensionMinutes\": 5\n}"
+            },
+            "description": "Set dates to future. Replace with actual ISO 8601 dates before running."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Auction — Verify Scheduled",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Status is scheduled', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('scheduled');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 — Publish",
+      "item": [
+        {
+          "name": "Publish Auction",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/publish",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "publish"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Auction — After Publish",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Log auction status', function () {",
+                  "    const json = pm.response.json();",
+                  "    console.log('Auction status after publish:', json.status);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04a — Platform Verify Path",
+      "item": [
+        {
+          "name": "Create Auction for Platform Verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Platform Verify Watch\",\n  \"condition\": \"good\",\n  \"description\": \"A watch requiring platform verification\",\n  \"quantity\": 1,\n  \"startingPrice\": 200000,\n  \"bidIncrement\": 20000,\n  \"currency\": \"VND\",\n  \"auctionType\": \"regular\"\n}"
+            },
+            "description": "Create new item+auction for platform verify path."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('secondAuctionId', json.id);",
+                  "if (json.itemId) {",
+                  "    pm.environment.set('itemId', json.itemId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit Item for Platform Verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verifyByPlatform\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Shipping for Inspection",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/shipping",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "shipping"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"senderName\": \"Test Seller\",\n  \"senderPhone\": \"0912345678\",\n  \"senderAddress\": \"123 Le Loi\",\n  \"senderWard\": \"Ben Thanh\",\n  \"senderDistrict\": \"Quan 1\",\n  \"senderProvince\": \"Ho Chi Minh\",\n  \"weightGrams\": 500,\n  \"insuranceValue\": 1000000\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('shipmentId', json.id || json.shipmentId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Upload Signature (Inspection)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/media/upload-signature",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "media", "upload-signature"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"context\": \"warehouse_inspection_image\",\n  \"fileName\": \"inspection.jpg\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('cloudinarySignature', json.signature);",
+                  "pm.collectionVariables.set('cloudinaryTimestamp', json.timestamp);",
+                  "pm.collectionVariables.set('cloudinaryApiKey', json.apiKey);",
+                  "pm.collectionVariables.set('cloudinaryPublicId', json.publicId);",
+                  "pm.collectionVariables.set('cloudinaryFolder', json.folder);",
+                  "pm.collectionVariables.set('uploadUrl', json.uploadUrl);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upload to Cloudinary (Manual)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": { "type": "noauth" },
+            "url": {
+              "raw": "{{uploadUrl}}",
+              "host": ["{{uploadUrl}}"]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "" },
+                { "key": "signature", "value": "{{cloudinarySignature}}", "type": "text" },
+                { "key": "timestamp", "value": "{{cloudinaryTimestamp}}", "type": "text" },
+                { "key": "api_key", "value": "{{cloudinaryApiKey}}", "type": "text" },
+                { "key": "public_id", "value": "{{cloudinaryPublicId}}", "type": "text" },
+                { "key": "folder", "value": "{{cloudinaryFolder}}", "type": "text" }
+              ]
+            },
+            "description": "Manual: upload inspection photo to Cloudinary. Select a file in the 'file' field before sending."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Upload successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('confirmedSecureUrl', json.secure_url);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm Media Upload (Inspection)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/media/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "media", "confirm"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"publicId\": \"{{cloudinaryPublicId}}\",\n  \"secureUrl\": \"{{confirmedSecureUrl}}\",\n  \"resourceType\": \"image\",\n  \"format\": \"jpg\",\n  \"width\": 1024,\n  \"height\": 768,\n  \"bytes\": 102400\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('inspectionUploadId', json.id || json.uploadId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Inspect Inbound Shipment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/{{shipmentId}}/inspect",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "inbound-shipments", "{{shipmentId}}", "inspect"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"condition\": \"good\",\n  \"inspectionNotes\": \"Minor wear\",\n  \"inspectionMediaUploadIds\": [\"{{inspectionUploadId}}\"]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Review Inbound Shipment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/{{shipmentId}}/review",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "inbound-shipments", "{{shipmentId}}", "review"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"approved\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Seller Confirms Inspected Condition",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/confirm-inspected-condition",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "confirm-inspected-condition"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Second Auction — Verify Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{secondAuctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{secondAuctionId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Verify auction status after platform verify', function () {",
+                  "    const json = pm.response.json();",
+                  "    console.log('Second auction status:', json.status);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 — Cancel & Close",
+      "item": [
+        {
+          "name": "Cancel Auction",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "cancel"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Testing cancellation\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Auction — Verify Cancelled",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Status is cancelled', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('cancelled');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Close Second Auction Early",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{secondAuctionId}}/close",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{secondAuctionId}}", "close"]
+            },
+            "description": "Close an active auction early."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 — Relist",
+      "item": [
+        {
+          "name": "Relist Auction",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/relist",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "relist"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qualificationStartAt\": \"future\",\n  \"qualificationEndAt\": \"future\",\n  \"startAt\": \"future\",\n  \"endAt\": \"future\",\n  \"startingPrice\": 200000\n}"
+            },
+            "description": "Only works on PaymentDefaulted auctions. Setup needed: the auction must have ended with a winner who defaulted on payment. Replace 'future' placeholders with actual ISO 8601 dates."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Auction — After Relist",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Log relisted status', function () {",
+                  "    const json = pm.response.json();",
+                  "    console.log('Auction status after relist:', json.status);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 — Runner-Up",
+      "item": [
+        {
+          "name": "Create Runner-Up Offer",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/runner-up-offers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "runner-up-offers"]
+            },
+            "description": "Offer to 2nd highest bidder after winner defaults on payment. Auction must be in PaymentDefaulted status."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "if (json.id) {",
+                  "    pm.collectionVariables.set('runnerUpOfferId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Runner-Up Responds — Accept",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/runner-up-offers/respond",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "runner-up-offers", "respond"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accept\": true\n}"
+            },
+            "description": "Runner-up buyer accepts the offer."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Auction — After Runner-Up",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Log auction status', function () {",
+                  "    const json = pm.response.json();",
+                  "    console.log('Auction status after runner-up:', json.status);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08 — Admin Operations",
+      "item": [
+        {
+          "name": "Admin — Set Curation",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/auctions/{{auctionId}}/curation",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "auctions", "{{auctionId}}", "curation"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isFeatured\": true,\n  \"priority\": 100,\n  \"priorityReason\": \"High-value item\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin — Create Emergency",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/auctions/{{auctionId}}/emergencies",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "auctions", "{{auctionId}}", "emergencies"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"triggerSource\": \"fraud_detection\",\n  \"reason\": \"Suspicious bidding pattern\",\n  \"payload\": {\n    \"details\": \"Multiple accounts same IP\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "if (json.id) {",
+                  "    pm.collectionVariables.set('emergencyId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin — Resolve Emergency",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/auctions/{{auctionId}}/emergencies/{{emergencyId}}/resolve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "auctions", "{{auctionId}}", "emergencies", "{{emergencyId}}", "resolve"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"resolved\",\n  \"payload\": {\n    \"resolution\": \"False positive\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Place Sealed Bid",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/sealed-bids",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "sealed-bids"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500000\n}"
+            },
+            "description": "Setup sealed bid for reveal test. Auction must be of type 'sealed' and in Active status."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "if (json.id) {",
+                  "    pm.collectionVariables.set('sealedBidId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin — Reveal Sealed Bid",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/auctions/{{auctionId}}/sealed-bids/{{sealedBidId}}/reveal",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "auctions", "{{auctionId}}", "sealed-bids", "{{sealedBidId}}", "reveal"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "09 — Shipping",
+      "item": [
+        {
+          "name": "Create Auction Shipping",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/shipping",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "shipping"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipientName\": \"Buyer Name\",\n  \"recipientPhone\": \"0987654321\",\n  \"recipientAddress\": \"456 Nguyen Hue\",\n  \"recipientWard\": \"Ben Nghe\",\n  \"recipientDistrict\": \"Quan 1\",\n  \"recipientProvince\": \"Ho Chi Minh\",\n  \"weightGrams\": 500,\n  \"insuranceValue\": 1000000\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Auction Bids",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/bids",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "bids"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

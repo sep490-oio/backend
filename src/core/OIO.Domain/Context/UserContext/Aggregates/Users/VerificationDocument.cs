@@ -1,4 +1,4 @@
-﻿using OIO.Domain.Context.Shared.ValueObjects;
+using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.Enums;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
@@ -25,4 +25,36 @@ public sealed class VerificationDocument : BaseEntity<VerificationDocumentId>, I
     public IdentityVerification Verification { get; private set; } = null!;
 
     private VerificationDocument() { }
+
+    internal static VerificationDocument Create(
+        IdentityVerificationId verificationId,
+        VerificationDocumentType documentType,
+        string resourceType,
+        StorageRef storageRef,
+        MediaInfo info,
+        DateTime nowUtc,
+        string? fileHash = null,
+        string? mimeType = null)
+    {
+        return new VerificationDocument
+        {
+            Id = VerificationDocumentId.From(Guid.CreateVersion7()),
+            VerificationId = verificationId,
+            DocumentType = documentType,
+            ResourceType = resourceType,
+            StorageRef = storageRef,
+            Info = info,
+            FileHash = fileHash,
+            MimeType = mimeType,
+            VerificationStatus = DocumentVerificationStatus.Pending,
+            UploadedAt = nowUtc,
+            CreatedAt = nowUtc
+        };
+    }
+
+    internal void RefreshMediaSnapshot(StorageRef storageRef, MediaInfo info)
+    {
+        StorageRef = storageRef;
+        Info = info;
+    }
 }

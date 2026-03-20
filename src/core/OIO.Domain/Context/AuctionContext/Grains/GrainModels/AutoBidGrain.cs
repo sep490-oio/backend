@@ -31,7 +31,13 @@ public struct AutoBidGrain
     public DateTime CreatedAt { get; init; }
     [Id(12)]
     public DateTime? ModifiedAt { get; init; }
-    
+
+    /// <summary>
+    /// MaxAmount trước khi update (0 nếu mới tạo). Dùng để tính wallet holdDelta.
+    /// </summary>
+    [Id(13)]
+    public decimal PreviousMaxAmount { get; init; }
+
     public static AutoBidGrain From(AutoBid autoBid)
     {
         return new AutoBidGrain
@@ -39,10 +45,10 @@ public struct AutoBidGrain
             Id = autoBid.Id.Value,
             AuctionId = autoBid.AuctionId.Value,
             BidderId = autoBid.BidderId.Value,
-            MaxAmount = MoneyGrain.From(autoBid.Budget.MaxAmount),
-            CurrentAmount = MoneyGrain.From(autoBid.Budget.CurrentAmount),
+            MaxAmount = MoneyGrain.From(autoBid.Budget.MaxPrice),
+            CurrentAmount = MoneyGrain.From(autoBid.Budget.CurrentPrice),
             IsEnabled = autoBid.IsEnabled,
-            IncrementAmount = autoBid.Budget.IncrementAmount != null ? MoneyGrain.From(autoBid.Budget.IncrementAmount) : null,
+            IncrementAmount = autoBid.Budget.IncrementAmount != null ? MoneyGrain.From(autoBid.Budget.Increment!) : null,
             Status = autoBid.Status.Id,
             TotalAutoBids = autoBid.TotalAutoBids,
             LastAutoBidAt = autoBid.LastAutoBidAt,

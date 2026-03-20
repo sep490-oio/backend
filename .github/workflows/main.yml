@@ -67,43 +67,27 @@ jobs:
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
-      - name: Generate .env file
+      - name: Generate .env file (secrets only — non-secrets in appsettings.Production.json)
         run: |
           cat << EOF > .env
           APP_VERSION=${{ github.sha }}
           DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}
           JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
-          JWT_AUDIENCE=${{ vars.JWT_AUDIENCE }}
-          JWT_ISSUER=${{ vars.JWT_ISSUER }}
-          JWT_ACCESS_TOKEN_EXPIRATION=${{ vars.JWT_ACCESS_TOKEN_EXPIRATION }}
-          JWT_REFRESH_TOKEN_EXPIRATION=${{ vars.JWT_REFRESH_TOKEN_EXPIRATION }}
-          JWT_REFRESH_TOKEN_FAMILY_SLIDING_EXPIRATION=${{ vars.JWT_REFRESH_TOKEN_FAMILY_SLIDING_EXPIRATION }}
-          JWT_REFRESH_TOKEN_FAMILY_ABSOLUTE_EXPIRATION=${{ vars.JWT_REFRESH_TOKEN_FAMILY_ABSOLUTE_EXPIRATION }}
           MEDIATR_LICENSE_KEY=${{ secrets.MEDIATR_LICENSE_KEY }}
-          EMAIL_HOST=${{ vars.EMAIL_HOST }}
-          EMAIL_PORT=${{ vars.EMAIL_PORT }}
           EMAIL_USERNAME=${{ secrets.EMAIL_USERNAME }}
           EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}
-          EMAIL_USE_START_TLS=${{ vars.EMAIL_USE_START_TLS }}
-          EMAIL_FROM_ADDRESS=${{ vars.EMAIL_FROM_ADDRESS }}
-          EMAIL_FROM_NAME=${{ vars.EMAIL_FROM_NAME }}
           DEFAULT_ACCOUNT_EMAIL=${{ secrets.DEFAULT_ACCOUNT_EMAIL }}
           DEFAULT_ACCOUNT_USERNAME=${{ secrets.DEFAULT_ACCOUNT_USERNAME }}
           DEFAULT_ACCOUNT_PASSWORD=${{ secrets.DEFAULT_ACCOUNT_PASSWORD }}
-          DEFAULT_ACCOUNT_FIRSTNAME=${{ vars.DEFAULT_ACCOUNT_FIRSTNAME }}
-          DEFAULT_ACCOUNT_LASTNAME=${{ vars.DEFAULT_ACCOUNT_LASTNAME }}
-          DEFAULT_ACCOUNT_DISPLAYNAME=${{ vars.DEFAULT_ACCOUNT_DISPLAYNAME }}
-          OTEL_EXPORTER_OTLP_ENDPOINT=http://seq:5341/ingest/otlp
-          OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
-          CORS_ALLOWED_ORIGINS_0=${{ vars.CORS_ALLOWED_ORIGINS_0 }}
-          CORS_ALLOWED_ORIGINS_1=${{ vars.CORS_ALLOWED_ORIGINS_1 }}
-          FEATURES_ENABLE_SCALAR=${{ vars.FEATURES_ENABLE_SCALAR }}
           HASHING_KEY=${{ secrets.HASHING_KEY }}
           SEQ_ADMIN_PASSWORD=${{ secrets.SEQ_ADMIN_PASSWORD }}
-          CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
-          CLOUDINARY_BASE_URL=${{ vars.CLOUDINARY_BASE_URL }}
+          VNPT_EKYC_ACCESS_TOKEN=${{ secrets.VNPT_EKYC_ACCESS_TOKEN }}
+          VNPT_EKYC_TOKEN_ID=${{ secrets.VNPT_EKYC_TOKEN_ID }}
+          VNPT_EKYC_TOKEN_KEY=${{ secrets.VNPT_EKYC_TOKEN_KEY }}
+          VNPAY_TMN_CODE=${{ secrets.VNPAY_TMN_CODE }}
+          VNPAY_HASH_SECRET=${{ secrets.VNPAY_HASH_SECRET }}
           EOF
 
       - name: Upload compose files to VPS
@@ -112,10 +96,12 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
         run: |
-          scp -P "${VPS_PORT:-22}" compose.yaml "$VPS_USER@$VPS_HOST:/opt/myapp/docker-compose.yaml"
-          scp -P "${VPS_PORT:-22}" .env "$VPS_USER@$VPS_HOST:/opt/myapp/.env"
-          scp -P "${VPS_PORT:-22}" Caddyfile "$VPS_USER@$VPS_HOST:/opt/myapp/Caddyfile"
-          sleep 3
+            ssh -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" "mkdir -p /opt/myapp/config"
+            scp -P "${VPS_PORT:-22}" config/appsettings.Production.json "$VPS_USER@$VPS_HOST:/opt/myapp/config/appsettings.Production.json"
+            scp -P "${VPS_PORT:-22}" compose.yaml "$VPS_USER@$VPS_HOST:/opt/myapp/docker-compose.yaml"
+            scp -P "${VPS_PORT:-22}" .env "$VPS_USER@$VPS_HOST:/opt/myapp/.env"
+            scp -P "${VPS_PORT:-22}" Caddyfile "$VPS_USER@$VPS_HOST:/opt/myapp/Caddyfile"
+            sleep 3
           
       - name: Deploy on VPS
         env:

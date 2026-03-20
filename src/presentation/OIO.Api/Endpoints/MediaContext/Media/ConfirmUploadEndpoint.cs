@@ -1,5 +1,7 @@
-﻿using MediatR;
+using System.ComponentModel.DataAnnotations;
+using MediatR;
 using OIO.Api.Common;
+using OIO.Api.Filters;
 using OIO.Application.Context.MediaContext.Commands.ConfirmUpload;
 using OIO.Domain.AppDefinitions;
 
@@ -8,11 +10,11 @@ namespace OIO.Api.Endpoints.MediaContext.Media;
 public sealed class ConfirmUploadEndpoint : IEndpoint
 {
     public sealed record Request(
-        Guid MediaUploadId,
-        string PublicId,
-        string SecureUrl,
-        long Bytes,
-        string Format,
+        [Required] Guid MediaUploadId,
+        [Required] string PublicId,
+        [Required] string SecureUrl,
+        [Required] long Bytes,
+        [Required] string Format,
         string? FileName,
         int? Width,
         int? Height,
@@ -35,15 +37,16 @@ public sealed class ConfirmUploadEndpoint : IEndpoint
                     request.Width,
                     request.Height,
                     request.DurationSeconds);
-
-                var result = await sender.Send(command, ct);
-
-                return result.ToCreatedHttpResult();
+                return await sender.Send(command, ct);
             })
+            .AddEndpointFilter(new IdempotencyFilter<ConfirmUploadResponse>(
+                IdempotencyHttpPolicies.ConfirmUpload()))
             .RequireAuthorization(App.Permissions.Catalogs.Media.ConfirmUpload)
             .WithName(ApiEndpoint.Names.Media.ConfirmUpload)
             .WithTags(ApiEndpoint.Tags.Media)
             .Produces(StatusCodes.Status201Created)
-            .ProducesValidationProblem();
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict);
     }
 }

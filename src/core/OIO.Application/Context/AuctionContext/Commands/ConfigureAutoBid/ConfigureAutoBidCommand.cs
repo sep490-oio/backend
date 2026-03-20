@@ -1,10 +1,14 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
+using Microsoft.EntityFrameworkCore;
+using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
 using OIO.Application.Context.UserContext.Services;
+using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Grains;
 using OIO.Domain.Context.AuctionContext.Grains.GrainValueObjects;
+using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
@@ -30,7 +34,7 @@ public sealed record ConfigureAutoBidCommand(
             .NotWhiteSpace()
             .InSet(Domain.Context.Shared.Enums.Currency.All.Select(x => x.Id))
             .Field(IncrementAmount)
-            .WhenHasValue(x => x.NonNegative());
+            .WhenHasValue(x => x.Positive());
     }
 }
 
@@ -39,63 +43,60 @@ internal sealed class ConfigureAutoBidCommandHandler
 {
     private readonly IGrainFactory _grainFactory;
     private readonly ICurrentUser _currentUser;
+    private readonly IDbContext _dbContext;
 
     public ConfigureAutoBidCommandHandler(
         IGrainFactory grainFactory,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IDbContext dbContext)
     {
         _grainFactory = grainFactory;
         _currentUser = currentUser;
+        _dbContext = dbContext;
     }
 
     public async Task<Result<AutoBidDto, Error>> Handle(
         ConfigureAutoBidCommand request,
         CancellationToken cancellationToken)
     {
-
         var grain = _grainFactory.GetGrain<IAuctionGrain>(request.AuctionId);
-        
+
         var (_, isFailure, maxAmount, error) = Money.Create(request.MaxAmount, request.Currency);
-        
+
         if (isFailure)
-        {
             return error;
-        }
-        
+
         Money? incrementAmount = null;
-        
+
         if (request.IncrementAmount.HasValue)
         {
             var incrementResult = Money.Create(request.IncrementAmount.Value, request.Currency);
             if (incrementResult.IsFailure)
-            {
                 return incrementResult.Error;
-            }
             incrementAmount = incrementResult.Value;
         }
-        
-        (_, isFailure, var autoBid, error) = await grain.ConfigureAutoBidAsync(
+
+        var auctionId = AuctionId.From(request.AuctionId);
+
+        (_, isFailure, _, error) = await grain.ConfigureAutoBidAsync(
             _currentUser.UserId.Value,
             MoneyGrain.From(maxAmount),
-            incrementAmount == null ? null : MoneyGrain.From(incrementAmount), 
+            incrementAmount == null ? null : MoneyGrain.From(incrementAmount),
             cancellationToken);
 
         if (isFailure)
-        {
             return error;
-        }
 
-        return new AutoBidDto(
-            Id: autoBid.Id,
-            AuctionId: autoBid.AuctionId,
-            BidderId: autoBid.BidderId,
-            IsEnabled: autoBid.IsEnabled,
-            MaxAmount: autoBid.MaxAmount.ToDto(),
-            CurrentAmount: autoBid.CurrentAmount.ToDto(),
-            IncrementAmount: autoBid.IncrementAmount?.ToDto(),
-            Status: autoBid.Status,
-            TotalAutoBids: autoBid.TotalAutoBids,
-            LastAutoBidAt: autoBid.LastAutoBidAt,
-            CreatedAt: autoBid.CreatedAt);
+        var persistedAutoBid = await _dbContext.Set<AutoBid>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                ab => ab.AuctionId == auctionId &&
+                      ab.BidderId == _currentUser.UserId,
+                cancellationToken);
+
+        if (persistedAutoBid is null)
+            return Error.NotFound("AutoBid.NotFound", "Configured auto-bid could not be loaded.");
+
+        return persistedAutoBid.ToDto();
     }
 }

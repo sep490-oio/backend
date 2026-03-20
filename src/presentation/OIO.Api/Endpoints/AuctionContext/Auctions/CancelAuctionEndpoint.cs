@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using System.ComponentModel.DataAnnotations;
+using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.AuctionContext.Commands.CancelAuction;
 using OIO.Domain.AppDefinitions;
@@ -7,7 +8,7 @@ namespace OIO.Api.Endpoints.AuctionContext.Auctions;
 
 public sealed class CancelAuctionEndpoint : IEndpoint
 {
-    public sealed record Request(string Reason);
+    public sealed record Request([Required]string Reason);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

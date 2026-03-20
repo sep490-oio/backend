@@ -95,6 +95,39 @@ public static class WarehouseErrors
             description: "The specified storage location is already occupied.");
     }
 
+    public static class Inspection
+    {
+        public static Error NotFound(string id) => Error.NotFound(
+            code: "WarehouseInspection.NotFound",
+            description: $"Warehouse inspection '{id}' was not found.");
+
+        public static readonly Error AlreadyExists = Error.Conflict(
+            code: "WarehouseInspection.AlreadyExists",
+            description: "An inspection record already exists for this inbound shipment.");
+
+        public static readonly Error EvidenceRequired = Error.Validation(
+            "InspectionMediaUploadIds",
+            "WarehouseInspection.EvidenceRequired",
+            "At least one inspection image is required.");
+
+        public static readonly Error CannotReview = Error.Conflict(
+            code: "WarehouseInspection.CannotReview",
+            description: "This inspection is not ready for review.");
+
+        public static readonly Error AlreadyReviewed = Error.Conflict(
+            code: "WarehouseInspection.AlreadyReviewed",
+            description: "This inspection has already been reviewed.");
+
+        public static readonly Error ConditionConfirmationNotRequired = Error.Conflict(
+            code: "WarehouseInspection.ConditionConfirmationNotRequired",
+            description: "This inspection does not require seller condition confirmation.");
+
+        public static readonly Error UnsupportedApprovalCondition = Error.Validation(
+            "ConditionId",
+            "WarehouseInspection.UnsupportedApprovalCondition",
+            "This inspected condition cannot be approved for listing confirmation.");
+    }
+
     public static class OutboundShipment
     {
         public static Error NotFound(string id) => Error.NotFound(

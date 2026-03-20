@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
@@ -38,20 +38,20 @@ internal sealed class AskQuestionCommandHandler
     private readonly IDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
-    private readonly IAppConfigs _appConfigs;
+    private readonly IRuntimeSettings _runtimeSettings;
     private readonly IClock _clock;
 
     public AskQuestionCommandHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
-        IAppConfigs appConfigs,
+        IRuntimeSettings runtimeSettings,
         IClock clock)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
-        _appConfigs = appConfigs;
+        _runtimeSettings = runtimeSettings;
         _clock = clock;
     }
 
@@ -77,7 +77,7 @@ internal sealed class AskQuestionCommandHandler
         var (_, isFailure, question, error) = item.AskQuestion(
                 _currentUser.UserId, 
                 request.Question,
-                await _appConfigs.Items.GetMaxQuestionsPerItemAsync(cancellationToken),
+                _runtimeSettings.Item.MaxQuestionsPerItem,
                 nowUtc);
 
         if(isFailure)
@@ -90,3 +90,4 @@ internal sealed class AskQuestionCommandHandler
         
     }
 }
+

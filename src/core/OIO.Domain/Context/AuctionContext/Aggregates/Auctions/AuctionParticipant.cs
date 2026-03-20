@@ -20,4 +20,58 @@ public sealed class AuctionParticipant : BaseEntity<AuctionParticipantId>
     public Auction Auction { get; private set; } = null!;
 
     private AuctionParticipant() { }
+
+    private AuctionParticipant(
+        AuctionParticipantId id,
+        AuctionId auctionId,
+        UserId userId,
+        string roleInAuction,
+        ParticipantJoinStatus joinStatus,
+        ParticipantQualificationStatus qualificationStatus,
+        DateTime joinedAt)
+        : base(id)
+    {
+        AuctionId = auctionId;
+        UserId = userId;
+        RoleInAuction = roleInAuction;
+        JoinStatus = joinStatus;
+        QualificationStatus = qualificationStatus;
+        JoinedAt = joinedAt;
+    }
+
+    public static AuctionParticipant Create(
+        AuctionId auctionId,
+        UserId userId,
+        string roleInAuction,
+        DateTime nowUtc)
+    {
+        return new AuctionParticipant(
+            AuctionParticipantId.From(Guid.CreateVersion7()),
+            auctionId,
+            userId,
+            roleInAuction,
+            ParticipantJoinStatus.Joined,
+            ParticipantQualificationStatus.Qualified,
+            nowUtc)
+        {
+            QualifiedAt = nowUtc
+        };
+    }
+
+    public bool IsQualified =>
+        JoinStatus == ParticipantJoinStatus.Joined &&
+        QualificationStatus == ParticipantQualificationStatus.Qualified;
+
+    public void Qualify(DateTime nowUtc)
+    {
+        JoinStatus = ParticipantJoinStatus.Joined;
+        QualificationStatus = ParticipantQualificationStatus.Qualified;
+        QualifiedAt = nowUtc;
+        RejectedReason = null;
+    }
+
+    public void Withdraw()
+    {
+        JoinStatus = ParticipantJoinStatus.Withdrawn;
+    }
 }

@@ -3,7 +3,9 @@ using AppAny.Quartz.EntityFrameworkCore.Migrations.PostgreSQL;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Data;
+using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
 using OIO.Domain.Context.ModerationContext.ValueObjects.Ids;
@@ -21,8 +23,13 @@ namespace OIO.Infrastructure.Persistence;
 
 public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-        : base(options) { }
+    private ILogger<ApplicationDbContext> _logger;
+
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, ILogger<ApplicationDbContext> logger)
+        : base(options)
+    {
+        _logger = logger;
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -76,15 +83,23 @@ public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
         return Database.ExecuteSqlRawAsync(sql, parameters, cancellationToken);
     }
 
+    public void DetachAll()
+    {
+        ChangeTracker.Clear();
+    }
+
     public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
     {
         return Database.BeginTransactionAsync(cancellationToken);
     }
-    
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         configurationBuilder.Properties<AuctionDepositId>()
             .HaveConversion<EfCoreConverters.AuctionDepositIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<AuctionBuyNowReservationId>()
+            .HaveConversion<EfCoreConverters.AuctionBuyNowReservationIdEfCoreValueConverter>();
 
         configurationBuilder.Properties<AuctionEmergencyActionId>()
             .HaveConversion<EfCoreConverters.AuctionEmergencyActionIdEfCoreValueConverter>();
@@ -146,8 +161,14 @@ public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
         configurationBuilder.Properties<DisputeId>()
             .HaveConversion<EfCoreConverters.DisputeIdEfCoreValueConverter>();
 
+        configurationBuilder.Properties<DisputeMessageAttachmentId>()
+            .HaveConversion<EfCoreConverters.DisputeMessageAttachmentIdEfCoreValueConverter>();
+
         configurationBuilder.Properties<DisputeMessageId>()
             .HaveConversion<EfCoreConverters.DisputeMessageIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<DisputeParticipantStateId>()
+            .HaveConversion<EfCoreConverters.DisputeParticipantStateIdEfCoreValueConverter>();
 
         configurationBuilder.Properties<DisputeRefundId>()
             .HaveConversion<EfCoreConverters.DisputeRefundIdEfCoreValueConverter>();
@@ -203,6 +224,9 @@ public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
         configurationBuilder.Properties<WithdrawalRequestId>()
             .HaveConversion<EfCoreConverters.WithdrawalRequestIdEfCoreValueConverter>();
 
+        configurationBuilder.Properties<GatewayWebhookEventId>()
+            .HaveConversion<EfCoreConverters.GatewayWebhookEventIdEfCoreValueConverter>();
+
         configurationBuilder.Properties<BuyerReviewId>()
             .HaveConversion<EfCoreConverters.BuyerReviewIdEfCoreValueConverter>();
 
@@ -235,6 +259,9 @@ public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
 
         configurationBuilder.Properties<ShippingProviderConfigId>()
             .HaveConversion<EfCoreConverters.ShippingProviderConfigIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<WarehouseInspectionId>()
+            .HaveConversion<EfCoreConverters.WarehouseInspectionIdEfCoreValueConverter>();
 
         configurationBuilder.Properties<WarehouseItemId>()
             .HaveConversion<EfCoreConverters.WarehouseItemIdEfCoreValueConverter>();

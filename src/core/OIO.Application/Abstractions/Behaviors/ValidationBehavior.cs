@@ -25,7 +25,7 @@ public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<
         
         // UnitResult<Error>
         if (typeof(TResponse) == typeof(UnitResult<Error>))
-            return (TResponse)(object)UnitResult.Failure(errorResult);
+            return (TResponse)(object)UnitResult.Failure<Error>(errorResult);
 
         // Result<T, Error>
         if (!typeof(TResponse).IsGenericType ||
@@ -40,7 +40,7 @@ public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<
                          && m.GetGenericArguments().Length == 2);
 
         var generic = failureMethod.MakeGenericMethod(t, typeof(Error));
-        var resultObj = generic.Invoke(null, [errorResult])!;
+        var resultObj = generic.Invoke(null, [(Error)errorResult])!;
 
         return (TResponse)resultObj;
 

@@ -54,7 +54,7 @@ internal sealed class WatchAuctionCommandHandler
 
         var auction = await _dbContext.GetByIdAsync<Auction, AuctionId>(
             id: auctionId,
-            queryBuilder: query => query.Include(a => a.Watchers),
+            queryBuilder: query => query.Include(a => a.Watchers).Include(a => a.Item),
             cancellationToken: cancellationToken);
 
         if (auction is null)

@@ -20,6 +20,7 @@ public sealed record OutboundShipmentBookedEvent(
 
 public sealed record OutboundShipmentPickedUpEvent(
     string OutboundShipmentId,
+    string OrderId,
     string ProviderCode,
     string CarrierTrackingNumber,
     DateTime OccurredOn) : DomainEvent(OccurredOn);

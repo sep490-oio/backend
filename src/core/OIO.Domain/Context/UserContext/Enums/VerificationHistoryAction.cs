@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 
 namespace OIO.Domain.Context.UserContext.Enums;
 
@@ -16,5 +16,6 @@ public sealed class VerificationHistoryAction : EnumValueObject<VerificationHist
     public static readonly VerificationHistoryAction DocumentUploaded = new("document_uploaded");
     public static readonly VerificationHistoryAction DocumentDeleted = new("document_deleted");
     public static readonly VerificationHistoryAction InfoUpdated = new("info_updated");
+    public static readonly VerificationHistoryAction MovedToReview = new("moved_to_review");
     private VerificationHistoryAction(string id) : base(id) { }
 }

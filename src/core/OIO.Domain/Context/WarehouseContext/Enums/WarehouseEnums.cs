@@ -4,9 +4,10 @@ namespace OIO.Domain.Context.WarehouseContext.Enums;
 
 public sealed class ShippingProviderCode : EnumValueObject<ShippingProviderCode>
 {
-    public static readonly ShippingProviderCode Ghn  = new("ghn");
-    public static readonly ShippingProviderCode Ghtk = new("ghtk");
-    public static readonly ShippingProviderCode External = new("external");
+    public static readonly ShippingProviderCode Ghn      = new("ghn");
+    public static readonly ShippingProviderCode Ghtk     = new("ghtk");
+    public static readonly ShippingProviderCode External  = new("external");
+
     private ShippingProviderCode(string id) : base(id) { }
 }
 public sealed class InboundShipmentMode : EnumValueObject<InboundShipmentMode>
@@ -61,7 +62,11 @@ public sealed class OutboundShipmentStatus : EnumValueObject<OutboundShipmentSta
 
 public sealed class WarehouseItemStatus : EnumValueObject<WarehouseItemStatus>
 {
+    public static readonly WarehouseItemStatus Pending    = new("pending");
     public static readonly WarehouseItemStatus Received   = new("received");
+    public static readonly WarehouseItemStatus Inspected  = new("inspected");
+    public static readonly WarehouseItemStatus Stored     = new("stored");
+    public static readonly WarehouseItemStatus Reserved   = new("reserved");
     public static readonly WarehouseItemStatus Dispatched = new("dispatched");
 
     private WarehouseItemStatus(string id) : base(id) { }
@@ -77,6 +82,17 @@ public sealed class WarehouseItemCondition : EnumValueObject<WarehouseItemCondit
     public static readonly WarehouseItemCondition Damaged    = new("damaged");
 
     private WarehouseItemCondition(string id) : base(id) { }
+}
+
+public sealed class WarehouseInspectionDecisionStatus : EnumValueObject<WarehouseInspectionDecisionStatus>
+{
+    public static readonly WarehouseInspectionDecisionStatus PendingReview = new("pending_review");
+    public static readonly WarehouseInspectionDecisionStatus Approved = new("approved");
+    public static readonly WarehouseInspectionDecisionStatus Rejected = new("rejected");
+    public static readonly WarehouseInspectionDecisionStatus ConditionConfirmationRequired = new("condition_confirmation_required");
+    public static readonly WarehouseInspectionDecisionStatus ConditionConfirmed = new("condition_confirmed");
+
+    private WarehouseInspectionDecisionStatus(string id) : base(id) { }
 }
 
 public sealed class NormalizedTrackingStatus : EnumValueObject<NormalizedTrackingStatus>

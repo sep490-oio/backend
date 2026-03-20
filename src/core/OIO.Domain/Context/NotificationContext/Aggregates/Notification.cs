@@ -1,4 +1,4 @@
-﻿using OIO.Domain.Context.NotificationContext.Enums;
+using OIO.Domain.Context.NotificationContext.Enums;
 using OIO.Domain.Context.NotificationContext.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
@@ -30,4 +30,48 @@ public sealed class Notification : AggregateRoot<NotificationId>, IAuditableEnti
     public IReadOnlyCollection<NotificationDelivery> Deliveries => _deliveries.AsReadOnly();
 
     private Notification() { }
+
+    public static Notification Create(
+        Guid userId,
+        string notificationType,
+        string eventType,
+        string title,
+        string message,
+        NotificationPriority? priority = null,
+        string? entityType = null,
+        Guid? entityId = null,
+        string? metadata = null,
+        string? relatedEntities = null,
+        string? actions = null,
+        DateTime? expiresAt = null)
+    {
+        return new Notification
+        {
+            Id = NotificationId.From(Guid.NewGuid()),
+            UserId = UserId.From(userId),
+            NotificationType = notificationType,
+            EventType = eventType,
+            Title = title,
+            Message = message,
+            Priority = priority ?? NotificationPriority.Normal,
+            Status = NotificationStatus.Unread,
+            EntityType = entityType,
+            EntityId = entityId,
+            Metadata = metadata,
+            RelatedEntities = relatedEntities,
+            Actions = actions,
+            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = expiresAt
+        };
+    }
+
+    public void MarkAsRead(DateTime readAt)
+    {
+        if (Status != NotificationStatus.Read)
+        {
+            Status = NotificationStatus.Read;
+            ReadAt = readAt;
+            ModifiedAt = readAt;
+        }
+    }
 }

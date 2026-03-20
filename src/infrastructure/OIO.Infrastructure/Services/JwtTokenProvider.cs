@@ -15,13 +15,13 @@ namespace OIO.Infrastructure.Services;
 
 internal sealed class JwtTokenProvider : IJwtTokenProvider
 {
-    private readonly JwtOptions _jwtOptions;
+    private readonly IOptionsMonitor<JwtOptions> _jwtOptions;
     private const int TokenSizeInBytes = 64;
 
     public JwtTokenProvider(
-        IOptions<JwtOptions> jwtOptions)
+        IOptionsMonitor<JwtOptions> jwtOptions)
     {
-        _jwtOptions = jwtOptions.Value;
+        _jwtOptions = jwtOptions;
         
     }
 
@@ -46,14 +46,14 @@ internal sealed class JwtTokenProvider : IJwtTokenProvider
         };
         claims.AddRange(roles.Select(role => new Claim(CustomClaimType.Role, role)));
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.SecretKey));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.CurrentValue.SecretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
-            issuer: _jwtOptions.Issuer,
-            audience: _jwtOptions.Audience,
+            issuer: _jwtOptions.CurrentValue.Issuer,
+            audience: _jwtOptions.CurrentValue.Audience,
             claims: claims,
-            expires: nowUtc.Add(_jwtOptions.AccessTokenExpiration),
+            expires: nowUtc.Add(_jwtOptions.CurrentValue.AccessTokenExpiration),
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
@@ -65,6 +65,29 @@ internal sealed class JwtTokenProvider : IJwtTokenProvider
         var rawToken = Convert.ToBase64String(randomBytes);
         return rawToken;
     }
-    
-    
+
+    public string GenerateTwoFactorJwt(UserId userId, DateTime nowUtc)
+    {
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, userId.ToString()),
+            new(JwtRegisteredClaimNames.Jti, $"{Guid.CreateVersion7()}"),
+            new("purpose", "2fa_verification"),
+            new(JwtRegisteredClaimNames.Iat,
+                new DateTimeOffset(nowUtc).ToUnixTimeSeconds().ToString(),
+                ClaimValueTypes.Integer64)
+        };
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.CurrentValue.SecretKey));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var token = new JwtSecurityToken(
+            issuer: _jwtOptions.CurrentValue.Issuer,
+            audience: _jwtOptions.CurrentValue.Audience,
+            claims: claims,
+            expires: nowUtc.AddMinutes(3), // Short-lived 2FA token
+            signingCredentials: credentials);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
 }
