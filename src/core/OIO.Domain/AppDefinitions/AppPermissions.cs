@@ -1,4 +1,4 @@
-﻿using OIO.Domain.Context.UserContext.Aggregates.Roles;
+using OIO.Domain.Context.UserContext.Aggregates.Roles;
 
 namespace OIO.Domain.AppDefinitions;
 
@@ -72,6 +72,7 @@ public static partial class App
                 public const string ManageLocations = "warehouse:locations:manage";
                 public const string ReadShipments    = "warehouse:shipments:read";
                 public const string UpdateExternalStatus = "warehouse:inbound:update-external-status";
+                public const string SelfShipOutbound = "warehouse:outbound:self-ship";
             }
 
             // ==================== Media ====================
@@ -165,6 +166,9 @@ public static partial class App
                 Warehouse.Store,
                 Warehouse.ManageLocations,
                 Warehouse.ReadShipments,
+                Warehouse.UpdateExternalStatus,
+                Warehouse.SelfShipOutbound,
+
 
                 // Categories
                 Categories.Create,
@@ -190,6 +194,8 @@ public static partial class App
                 Admin.ReadRoles,
                 Admin.ReadPermissions,
                 Admin.ReadSettings,
+                Warehouse.UpdateExternalStatus,
+
             ];
         }
 
@@ -285,6 +291,7 @@ public static partial class App
                 public static readonly Permission ManageLocations = Permission.Create(Catalogs.Warehouse.ManageLocations);
                 public static readonly Permission ReadShipments = Permission.Create(Catalogs.Warehouse.ReadShipments);
                 public static readonly Permission UpdateExternalStatus = Permission.Create(Catalogs.Warehouse.UpdateExternalStatus);
+                public static readonly Permission SelfShipOutbound = Permission.Create(Catalogs.Warehouse.SelfShipOutbound);
             }
             
             public static class Categories
@@ -348,6 +355,9 @@ public static partial class App
                 [Catalogs.Warehouse.Store] = Warehouse.Store,
                 [Catalogs.Warehouse.ManageLocations] = Warehouse.ManageLocations,
                 [Catalogs.Warehouse.ReadShipments] = Warehouse.ReadShipments,
+                [Catalogs.Warehouse.UpdateExternalStatus] = Warehouse.UpdateExternalStatus,
+                [Catalogs.Warehouse.SelfShipOutbound] = Warehouse.SelfShipOutbound,
+
                 
                 // Media
                 [Catalogs.Media.ReadContexts] = Media.ReadContexts,
