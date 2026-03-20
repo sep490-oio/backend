@@ -1,10 +1,12 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.Events;
 using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.Context.WarehouseContext.Errors;
 using OIO.Domain.Context.WarehouseContext.ValueObjects;
 using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
+using OIO.Domain.Context.Shared.ValueObjects;
+using OIO.Domain.Context.Shared.Entities;
 using OIO.Domain.SeedWork.Entities;
 using OIO.Domain.SeedWork.Errors;
 using e = OIO.Domain.SeedWork.Errors.Error;
@@ -20,6 +22,9 @@ namespace OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 /// </summary>
 public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
 {
+    private readonly List<WarehouseItemMedia> _media = [];
+    public IReadOnlyList<WarehouseItemMedia> Media => _media.AsReadOnly();
+
     private WarehouseItem() { }
 
     private WarehouseItem(
@@ -28,7 +33,6 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
         InboundShipmentId inboundShipmentId,
         WarehouseItemCondition conditionOnArrival,
         string? inspectionNotes,
-        InspectionImages inspectionImages,
         DateTime now)
     {
         Id                  = id;
@@ -36,8 +40,7 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
         InboundShipmentId   = inboundShipmentId;
         ConditionOnArrival  = conditionOnArrival;
         InspectionNotes     = inspectionNotes;
-        InspectionImages    = inspectionImages;
-        Status              = WarehouseItemStatus.Pending;
+        Status              = WarehouseItemStatus.Received;
         CreatedAt           = now;
     }
 
@@ -54,7 +57,6 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
     public WarehouseItemCondition ConditionOnArrival { get; private set; }
 
     public string? InspectionNotes { get; private set; }
-    public InspectionImages InspectionImages { get; private set; }
     public WarehouseItemStatus Status { get; private set; }
 
     public UserId? InspectedBy { get; private set; }
@@ -68,8 +70,7 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
         InboundShipmentId inboundShipmentId,
         WarehouseItemCondition conditionOnArrival,
         DateTime now,
-        string? inspectionNotes = null,
-        InspectionImages? inspectionImages = null)
+        string? inspectionNotes = null)
     {
         var item = new WarehouseItem(
             WarehouseItemId.From(Guid.CreateVersion7()),
@@ -77,7 +78,6 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
             inboundShipmentId,
             conditionOnArrival,
             inspectionNotes,
-            inspectionImages ?? InspectionImages.Empty,
             now);
 
         item.RaiseDomainEvent(new WarehouseItemCreatedEvent(
@@ -90,7 +90,7 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
         return item;
     }
 
-    /// <summary>Mark item as physically received at warehouse (before full inspection).</summary>
+    /// <summary>Mark item as physically received at warehouse.</summary>
     public UnitResult<e> MarkReceived(DateTime now)
     {
         Status     = WarehouseItemStatus.Received;
@@ -104,31 +104,84 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
         WarehouseItemCondition condition,
         UserId inspectedBy,
         DateTime now,
-        string? inspectionNotes = null,
-        InspectionImages? inspectionImages = null)
+        string? inspectionNotes = null)
     {
         ConditionOnArrival = condition;
         InspectionNotes    = inspectionNotes ?? InspectionNotes;
-        InspectionImages   = inspectionImages ?? InspectionImages;
         InspectedBy        = inspectedBy;
         InspectedAt        = now;
-        Status             = WarehouseItemStatus.Inspected;
         ModifiedAt         = now;
 
         return UnitResult.Success<e>();
     }
 
+    public void AddMedia(
+        DateTime nowUtc,
+        MediaUpload upload,
+        bool isPrimary,
+        int maxForType,
+        int sortOrder)
+    {
+        var existingForType = _media.Where(m => m.ResourceType == upload.ResourceType).ToList();
+        
+        // Remove primary flag from existing item if this one is intended to be primary
+        if (isPrimary || existingForType.Count == 0)
+        {
+            foreach (var existing in existingForType)
+            {
+                existing.UnsetPrimary();
+            }
+            isPrimary = true;
+        }
+
+        var image = WarehouseItemMedia.Create(nowUtc, Id, upload.ResourceType, isPrimary, sortOrder, upload.StorageRef, upload.Info);
+        _media.Add(image);
+        
+        while (_media.Count(m => m.ResourceType == upload.ResourceType) > maxForType)
+        {
+            var oldest = _media
+                .Where(m => m.ResourceType == upload.ResourceType)
+                .OrderBy(m => m.CreatedAt)
+                .First();
+            _media.Remove(oldest);
+        }
+        
+        this.ReorderMediaImages(upload.ResourceType);
+        
+        // Ensure there is still 1 primary image
+        var mediaForType = _media.Where(m => m.ResourceType == upload.ResourceType).ToList();
+        if (mediaForType.Count > 0 && mediaForType.All(m => !m.IsPrimary))
+        {
+            mediaForType.First().SetAsPrimary();
+        }
+
+        ModifiedAt = nowUtc;
+    }
+
+    private void ReorderMediaImages(string resourceType)
+    {
+        var orderedMedia = _media
+            .Where(m => m.ResourceType == resourceType)
+            .OrderBy(m => m.SortOrder)
+            .ThenBy(m => m.CreatedAt)
+            .ToList();
+
+        for (var i = 0; i < orderedMedia.Count; i++)
+        {
+            orderedMedia[i].Reorder(i);
+        }
+    }
+
     /// <summary>Assign a physical storage location to this item.</summary>
     public UnitResult<e> Store(WarehouseStorageLocationId locationId, string locationLabel, DateTime now)
     {
-        if (Status != WarehouseItemStatus.Inspected)
-            return WarehouseErrors.WarehouseItem.NotInspected;
+        if (Status != WarehouseItemStatus.Received)
+            return WarehouseErrors.WarehouseItem.NotReceived;
 
         if (StorageLocationId is not null)
             return WarehouseErrors.WarehouseItem.AlreadyStored;
 
         StorageLocationId = locationId;
-        Status            = WarehouseItemStatus.Stored;
         ModifiedAt        = now;
 
         RaiseDomainEvent(new WarehouseItemStoredEvent(
@@ -143,10 +196,9 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
     /// <summary>Reserve item for an outbound shipment after order is paid.</summary>
     public UnitResult<e> Reserve(OutboundShipmentId outboundShipmentId, DateTime now)
     {
-        if (Status != WarehouseItemStatus.Stored)
+        if (Status != WarehouseItemStatus.Received)
             return WarehouseErrors.WarehouseItem.NotAvailable;
 
-        Status     = WarehouseItemStatus.Reserved;
         ModifiedAt = now;
 
         RaiseDomainEvent(new WarehouseItemReservedEvent(
@@ -160,7 +212,7 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
     /// <summary>Mark item as dispatched — called when outbound shipment is picked up by carrier.</summary>
     public UnitResult<e> MarkDispatched(OutboundShipmentId outboundShipmentId, DateTime now)
     {
-        if (Status != WarehouseItemStatus.Reserved)
+        if (Status != WarehouseItemStatus.Received)
             return WarehouseErrors.WarehouseItem.NotAvailable;
 
         StorageLocationId = null; // freed from shelf

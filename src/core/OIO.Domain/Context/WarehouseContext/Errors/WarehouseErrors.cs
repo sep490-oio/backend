@@ -1,4 +1,4 @@
-﻿using OIO.Domain.SeedWork.Errors;
+using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Domain.Context.WarehouseContext.Errors;
 
@@ -57,6 +57,11 @@ public static class WarehouseErrors
         public static readonly Error TrackingNotAllowedForExternal = Error.Conflict(
             code: "InboundShipment.TrackingNotAllowedForExternal",
             description: "Carrier webhook tracking is not applicable to external carrier shipments.");
+
+        public static readonly Error SenderAddressMissingAndNoDefault = Error.Validation(
+            "SenderAddress",
+            "InboundShipment.SenderAddressMissingAndNoDefault",
+            "Sender address information is missing, and the user has no default address configured.");
     }
 
     public static class WarehouseItem
@@ -64,6 +69,10 @@ public static class WarehouseErrors
         public static Error NotFound(string id) => Error.NotFound(
             code: "WarehouseItem.NotFound",
             description: $"Warehouse item '{id}' was not found.");
+
+        public static readonly Error NotReceived = Error.Conflict(
+            code: "WarehouseItem.NotReceived",
+            description: "Item must be received before this operation is allowed.");
 
         public static readonly Error AlreadyStored = Error.Conflict(
             code: "WarehouseItem.AlreadyStored",
@@ -103,6 +112,18 @@ public static class WarehouseErrors
         public static readonly Error CannotMarkDelivered = Error.Conflict(
             code: "OutboundShipment.CannotMarkDelivered",
             description: "Shipment must be in transit before it can be marked as delivered.");
+
+        public static readonly Error NotSellerSelfShip = Error.Conflict(
+            code: "OutboundShipment.NotSellerSelfShip",
+            description: "This operation is only valid for seller self-ship shipments.");
+
+        public static readonly Error AlreadyShipped = Error.Conflict(
+            code: "OutboundShipment.AlreadyShipped",
+            description: "A tracking number has already been set for this shipment.");
+
+        public static Error AlreadyExists(string orderId) => Error.Conflict(
+            code: "OutboundShipment.AlreadyExists",
+            description: $"An outbound shipment already exists for order '{orderId}'.");
     }
 
     public static class ShippingProvider
