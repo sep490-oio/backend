@@ -1,4 +1,4 @@
-﻿using OIO.Application.Context.WarehouseContext.DTOs;
+using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments;
 
 namespace OIO.Application.Context.WarehouseContext.Mappings;
@@ -9,7 +9,9 @@ internal static class OutboundShipmentMappings
         new(
             Id:                   shipment.Id.Value,
             OrderId:              shipment.OrderId.Value,
-            WarehouseItemId:      shipment.WarehouseItemId.Value,
+            WarehouseItemId:      shipment.WarehouseItemId?.Value,
+            ShipmentMode:         shipment.ShipmentMode.Id,
+            ExternalCarrierName:  shipment.ExternalCarrierName,
             ProviderCode:         shipment.ProviderCode.Id,
             ClientOrderCode:      shipment.ClientOrderCode,
             CarrierTrackingNumber: shipment.CarrierTrackingNumber,

@@ -1,4 +1,4 @@
-﻿namespace OIO.Application.Context.WarehouseContext.DTOs;
+namespace OIO.Application.Context.WarehouseContext.DTOs;
 
 public sealed record InboundShipmentDto(
     Guid    Id,
@@ -9,6 +9,7 @@ public sealed record InboundShipmentDto(
     string? ExternalCarrierName,
     string  ClientOrderCode,
     string? CarrierTrackingNumber,
+    string? QrCodeData,
     string  SenderName,
     string  SenderPhone,
     string  SenderAddress,

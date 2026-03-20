@@ -1,4 +1,4 @@
-﻿using OIO.Application.Context.WarehouseContext.DTOs;
+using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
 
 namespace OIO.Application.Context.WarehouseContext.Mappings;
@@ -17,6 +17,7 @@ internal static class InboundShipmentMappings
 
             ClientOrderCode:       shipment.ClientOrderCode,
             CarrierTrackingNumber: shipment.CarrierTrackingNumber,
+            QrCodeData:            shipment.Id.Value.ToString(),
 
             SenderName:            shipment.SenderName,
             SenderPhone:           shipment.SenderPhone,

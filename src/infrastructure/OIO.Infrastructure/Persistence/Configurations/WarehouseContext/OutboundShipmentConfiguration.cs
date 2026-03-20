@@ -1,5 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
@@ -44,8 +45,18 @@ internal sealed class OutboundShipmentConfiguration : IEntityTypeConfiguration<O
 
         builder.Property(e => e.WarehouseItemId)
             .HasColumnName("warehouse_item_id")
+            .IsRequired(false)
+            .HasConversion(x => x.HasValue ? x.Value.Value : (Guid?)null, v => v.HasValue ? WarehouseItemId.From(v.Value) : null);
+
+        builder.Property(e => e.ShipmentMode)
+            .HasColumnName("shipment_mode")
+            .HasMaxLength(30)
             .IsRequired()
-            .HasConversion(x => x.Value, v => WarehouseItemId.From(v));
+            .HasConversion(x => x.Id, v => OutboundShipmentMode.FromId(v).GetValueOrThrow());
+
+        builder.Property(e => e.ExternalCarrierName)
+            .HasColumnName("external_carrier_name")
+            .HasMaxLength(100);
 
         builder.Property(e => e.ProviderCode)
             .HasColumnName("provider_code")
@@ -176,12 +187,19 @@ internal sealed class OutboundShipmentConfiguration : IEntityTypeConfiguration<O
         builder.HasOne<WarehouseItem>()
             .WithOne()
             .HasForeignKey<OutboundShipment>(e => e.WarehouseItemId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasMany(e => e.TrackingEvents)
             .WithOne()
             .HasForeignKey("OutboundShipmentId")
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne<Order>()
+            .WithMany()
+            .HasForeignKey("order_id")
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // ==================== Indexes ====================
         builder.HasIndex(e => e.ClientOrderCode)
