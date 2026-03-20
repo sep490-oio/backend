@@ -1,4 +1,4 @@
-﻿namespace OIO.Api.Common;
+namespace OIO.Api.Common;
 
 public static partial class ApiEndpoint
 {
@@ -127,6 +127,12 @@ public static partial class ApiEndpoint
             public const string DeleteStorageLocation          = nameof(DeleteStorageLocation);
             public const string UpdateStorageLocation          = nameof(UpdateStorageLocation);
             public const string UpdateShippingProviderConfig   = nameof(UpdateShippingProviderConfig);
+            public const string SetExternalTrackingNumber      = nameof(SetExternalTrackingNumber);
+            public const string UpdateExternalShipmentStatus   = nameof(UpdateExternalShipmentStatus);
+            public const string GetInboundShipmentQrCode       = nameof(GetInboundShipmentQrCode);
+            public const string InspectWarehouseItemMultipart = nameof(InspectWarehouseItemMultipart);
+            public const string SelfShipOrder = nameof(SelfShipOrder);
         }
+
     }
 }

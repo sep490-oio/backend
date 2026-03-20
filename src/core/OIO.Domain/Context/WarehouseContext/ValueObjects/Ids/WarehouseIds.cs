@@ -1,4 +1,4 @@
-﻿using OIO.Domain.SeedWork.Entities;
+using OIO.Domain.SeedWork.Entities;
 using Vogen;
 
 namespace OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
@@ -8,6 +8,9 @@ public readonly partial struct InboundShipmentId : IEntityId;
 
 [ValueObject<Guid>]
 public readonly partial struct WarehouseItemId : IEntityId;
+
+[ValueObject<Guid>]
+public readonly partial struct WarehouseItemMediaId : IEntityId;
 
 [ValueObject<Guid>]
 public readonly partial struct OutboundShipmentId : IEntityId;

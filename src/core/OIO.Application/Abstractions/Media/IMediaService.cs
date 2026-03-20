@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using OIO.Application.Abstractions.Commons;
 using OIO.Domain.SeedWork.Errors;
 
@@ -31,6 +31,33 @@ public interface IMediaSignatureService
         IEnumerable<(string PublicId, MediaResourceType ResourceType)> resources,
         CancellationToken ct = default);
 }
+
+/// <summary>
+/// Server-side direct upload to Cloudinary — used for internal staff flows
+/// where the client should not be responsible for the 3-step signature/upload/confirm cycle.
+/// </summary>
+public interface IMediaDirectUploadService
+{
+    /// <summary>
+    /// Upload a raw file stream directly to Cloudinary from the server.
+    /// Returns the resulting upload metadata.
+    /// </summary>
+    Task<Result<DirectUploadResult, Error>> UploadAsync(
+        Stream fileStream,
+        string fileName,
+        string folder,
+        string? eager = null,
+        CancellationToken ct = default);
+}
+
+public sealed record DirectUploadResult(
+    string PublicId,
+    string SecureUrl,
+    long Bytes,
+    string Format,
+    string FileName,
+    int? Width,
+    int? Height);
 
 public sealed record UploadSignatureResult(
     string UploadUrl,

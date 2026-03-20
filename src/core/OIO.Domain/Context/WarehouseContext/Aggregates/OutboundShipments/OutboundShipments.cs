@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
@@ -34,7 +34,7 @@ public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
     private OutboundShipment(
         OutboundShipmentId id,
         OrderId orderId,
-        WarehouseItemId warehouseItemId,
+        WarehouseItemId? warehouseItemId,
         ShippingProviderCode providerCode,
         string clientOrderCode,
         string? shippingMethod,
@@ -46,6 +46,8 @@ public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
         GhnPaymentType? ghnPaymentType,
         GhnHandlingNote? ghnHandlingNote,
         ShipmentExtraData extraData,
+        OutboundShipmentMode shipmentMode,
+        string? externalCarrierName,
         DateTime now)
     {
         Id                           = id;
@@ -62,12 +64,16 @@ public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
         GhnPaymentType               = ghnPaymentType;
         GhnHandlingNote              = ghnHandlingNote;
         ExtraData                    = extraData;
+        ShipmentMode                 = shipmentMode;
+        ExternalCarrierName          = externalCarrierName;
         Status                       = OutboundShipmentStatus.Pending;
         CreatedAt                    = now;
     }
 
     public OrderId OrderId { get; private set; }
-    public WarehouseItemId WarehouseItemId { get; private set; }
+    public WarehouseItemId? WarehouseItemId { get; private set; }
+    public OutboundShipmentMode ShipmentMode { get; private set; }
+    public string? ExternalCarrierName { get; private set; }
     public ShippingProviderCode ProviderCode { get; private set; }
 
     /// <summary>Our internal reference sent to the carrier on booking.</summary>
@@ -117,11 +123,13 @@ public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
 
     public static OutboundShipment Create(
         OrderId orderId,
-        WarehouseItemId warehouseItemId,
+        WarehouseItemId? warehouseItemId,
         ShippingProviderCode providerCode,
         string clientOrderCode,
         PackageDimensions dimensions,
         DateTime now,
+        OutboundShipmentMode? shipmentMode = null,
+        string? externalCarrierName = null,
         string? shippingMethod = null,
         CarrierAddressData? recipientCarrierAddressData = null,
         decimal shippingFee = 0,
@@ -131,6 +139,14 @@ public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
         GhnHandlingNote? ghnHandlingNote = null,
         ShipmentExtraData? extraData = null)
     {
+        var mode = shipmentMode ?? OutboundShipmentMode.PlatformManaged;
+
+        if (mode == OutboundShipmentMode.SellerSelfShip && warehouseItemId != null)
+        {
+            // Self-ship items don't go through warehouse items
+            // but we might allow linking if needed? For now, keep it separate.
+        }
+
         var shipment = new OutboundShipment(
             OutboundShipmentId.From(Guid.CreateVersion7()),
             orderId,
@@ -146,17 +162,35 @@ public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
             ghnPaymentType,
             ghnHandlingNote,
             extraData ?? ShipmentExtraData.Empty,
+            mode,
+            externalCarrierName,
             now);
 
         shipment.RaiseDomainEvent(new OutboundShipmentCreatedEvent(
             shipment.Id.ToString(),
             orderId.ToString(),
-            warehouseItemId.ToString(),
+            warehouseItemId?.ToString() ?? string.Empty,
             providerCode.Id,
             clientOrderCode,
             now));
 
         return shipment;
+    }
+
+    public UnitResult<e> RecordSellerShipped(string carrierTrackingNumber, DateTime now)
+    {
+        if (ShipmentMode != OutboundShipmentMode.SellerSelfShip)
+            return WarehouseErrors.OutboundShipment.NotSellerSelfShip;
+
+        if (CarrierTrackingNumber is not null)
+            return WarehouseErrors.OutboundShipment.AlreadyShipped;
+
+        CarrierTrackingNumber = carrierTrackingNumber;
+        Status                = OutboundShipmentStatus.InTransit;
+        ModifiedAt            = now;
+        DispatchedAt          = now;
+
+        return UnitResult.Success<e>();
     }
 
     /// <summary>

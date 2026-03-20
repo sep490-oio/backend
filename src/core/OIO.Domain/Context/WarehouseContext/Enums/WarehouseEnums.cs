@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 
 namespace OIO.Domain.Context.WarehouseContext.Enums;
 
@@ -6,10 +6,23 @@ public sealed class ShippingProviderCode : EnumValueObject<ShippingProviderCode>
 {
     public static readonly ShippingProviderCode Ghn  = new("ghn");
     public static readonly ShippingProviderCode Ghtk = new("ghtk");
-
+    public static readonly ShippingProviderCode External = new("external");
     private ShippingProviderCode(string id) : base(id) { }
 }
+public sealed class InboundShipmentMode : EnumValueObject<InboundShipmentMode>
+{
+    public static readonly InboundShipmentMode PlatformManaged = new("platform_managed");
+    public static readonly InboundShipmentMode ExternalCarrier  = new("external_carrier");
 
+    private InboundShipmentMode(string id) : base(id) { }
+}
+public sealed class OutboundShipmentMode : EnumValueObject<OutboundShipmentMode>
+{
+    public static readonly OutboundShipmentMode PlatformManaged = new("platform_managed");
+    public static readonly OutboundShipmentMode SellerSelfShip    = new("seller_self_ship");
+
+    private OutboundShipmentMode(string id) : base(id) { }
+}
 public sealed class ShippingEnvironment : EnumValueObject<ShippingEnvironment>
 {
     public static readonly ShippingEnvironment Sandbox    = new("sandbox");
@@ -48,11 +61,7 @@ public sealed class OutboundShipmentStatus : EnumValueObject<OutboundShipmentSta
 
 public sealed class WarehouseItemStatus : EnumValueObject<WarehouseItemStatus>
 {
-    public static readonly WarehouseItemStatus Pending    = new("pending");
     public static readonly WarehouseItemStatus Received   = new("received");
-    public static readonly WarehouseItemStatus Inspected  = new("inspected");
-    public static readonly WarehouseItemStatus Stored     = new("stored");
-    public static readonly WarehouseItemStatus Reserved   = new("reserved");
     public static readonly WarehouseItemStatus Dispatched = new("dispatched");
 
     private WarehouseItemStatus(string id) : base(id) { }

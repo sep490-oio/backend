@@ -1,9 +1,11 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Application.Context.WarehouseContext.Mappings;
+using OIO.Application.Extensions;
 using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
 using OIO.Domain.SeedWork.Errors;
 
@@ -18,16 +20,20 @@ public sealed record GetInboundShipmentsQuery(
     DateTime? ToDate = null,
     int       Page = 1,
     int       PageSize = 20
-) : IQuery<IReadOnlyList<InboundShipmentDto>>;
+) : IQuery<PagedList<InboundShipmentDto>>, IPagedParameter
+{
+    int IPagedParameter.PageNumber => Page < 1 ? 1 : Page;
+    int IPagedParameter.PageSize   => PageSize < 1 ? 20 : Math.Min(PageSize, 50);
+}
 
 internal sealed class GetInboundShipmentsQueryHandler(IDbContext db)
-    : IQueryHandler<GetInboundShipmentsQuery, IReadOnlyList<InboundShipmentDto>>
+    : IQueryHandler<GetInboundShipmentsQuery, PagedList<InboundShipmentDto>>
 {
-    public async Task<Result<IReadOnlyList<InboundShipmentDto>, Error>> Handle(
+    public async Task<Result<PagedList<InboundShipmentDto>, Error>> Handle(
         GetInboundShipmentsQuery request,
         CancellationToken cancellationToken)
     {
-        var query = db.Set<InboundShipment>().AsQueryable();
+        var query = db.Set<InboundShipment>().AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(request.Status))
             query = query.Where(s => s.Status.Id == request.Status);
@@ -49,13 +55,13 @@ internal sealed class GetInboundShipmentsQueryHandler(IDbContext db)
         if (request.ToDate.HasValue)
             query = query.Where(s => s.CreatedAt <= request.ToDate.Value);
 
+        var totalCount = await query.CountAsync(cancellationToken);
+
         var shipments = await query
             .OrderByDescending(s => s.CreatedAt)
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
             .Select(s => s.ToDto())
-            .ToListAsync(cancellationToken);
+            .ToPagedListAsync(totalCount, request, cancellationToken);
 
         return shipments;
     }
-}
+}

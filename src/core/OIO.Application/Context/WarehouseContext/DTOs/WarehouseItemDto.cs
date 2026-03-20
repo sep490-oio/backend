@@ -1,4 +1,4 @@
-﻿namespace OIO.Application.Context.WarehouseContext.DTOs;
+namespace OIO.Application.Context.WarehouseContext.DTOs;
 
 public sealed record WarehouseItemDto(
     Guid    Id,
@@ -12,4 +12,13 @@ public sealed record WarehouseItemDto(
     DateTime? InspectedAt,
     DateTime? ReceivedAt,
     DateTime  CreatedAt,
-    DateTime? ModifiedAt);
+    DateTime? ModifiedAt,
+    List<WarehouseItemMediaDto> Media);
+
+public sealed record WarehouseItemMediaDto(
+    Guid   Id,
+    string ResourceType,
+    bool   IsPrimary,
+    int    SortOrder,
+    string SecureUrl,
+    string? FileName);

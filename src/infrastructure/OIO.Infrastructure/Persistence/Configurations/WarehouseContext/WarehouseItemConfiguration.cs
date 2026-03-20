@@ -1,6 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using OIO.Domain.Context.CatalogContext.Aggregates.Items;
+using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
 using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseStorage;
@@ -51,12 +54,8 @@ internal sealed class WarehouseItemConfiguration : IEntityTypeConfiguration<Ware
             .HasColumnName("inspection_notes")
             .HasMaxLength(1000);
 
-        // Array of image URLs stored as JSON e.g. ["https://cdn.../img1.jpg"]
-        builder.Property(e => e.InspectionImages)
-            .HasColumnName("inspection_images")
-            .HasColumnType("jsonb")
-            .IsRequired()
-            .HasConversion(x => x.RawJson, v => InspectionImages.From(v));
+        var navigation = builder.Metadata.FindNavigation(nameof(WarehouseItem.Media))!;
+        navigation.SetPropertyAccessMode(PropertyAccessMode.Field);
 
         builder.Property(e => e.Status)
             .HasColumnName("status")
@@ -97,6 +96,23 @@ internal sealed class WarehouseItemConfiguration : IEntityTypeConfiguration<Ware
             .WithMany()
             .HasForeignKey(e => e.StorageLocationId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne<Item>()
+            .WithMany()
+            .HasForeignKey("item_id")
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey("inspected_by")
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasMany(e => e.Media)
+            .WithOne(m => m.WarehouseItem)
+            .HasForeignKey(m => m.WarehouseItemId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // ==================== Indexes ====================
         builder.HasIndex(e => e.InboundShipmentId)

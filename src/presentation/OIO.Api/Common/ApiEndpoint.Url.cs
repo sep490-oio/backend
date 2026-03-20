@@ -1,4 +1,4 @@
-﻿namespace OIO.Api.Common;
+namespace OIO.Api.Common;
 
 public static partial class ApiEndpoint
 {
@@ -128,6 +128,11 @@ public static partial class ApiEndpoint
             public const string CancelOutbound             = $"{Base}/outbound-shipments/{{shipmentId:guid}}/cancel";
             public const string StorageLocationById        = $"{Base}/storage-locations/{{locationId:guid}}";
             public const string ShippingProviderConfigById = $"{Base}/shipping-provider-configs/{{configId:guid}}";
+            public const string SetExternalTracking = $"{Base}/inbound-shipments/{{shipmentId}}/tracking";
+            public const string UpdateExternalStatus   = $"{Base}/inbound-shipments/{{shipmentId}}/status";
+            public const string QrCode                 = $"{Base}/inbound-shipments/{{shipmentId:guid}}/qr";
+            public const string InspectMultipart = $"{Base}/inbound-shipments/{{shipmentId}}/inspect/multipart";
+            public const string SelfShipOutbound = $"{Base}/outbound-shipments/self-ship";
         }
 
         public static class Me

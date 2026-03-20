@@ -9,6 +9,7 @@ using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.Context.WarehouseContext.Errors;
 using OIO.Domain.Context.WarehouseContext.ValueObjects;
 using OIO.Domain.SeedWork.Errors;
+using e = OIO.Domain.SeedWork.Errors.Error;
 
 namespace OIO.Application.Context.WarehouseContext.Commands.ProcessTrackingWebhook;
 
@@ -29,7 +30,7 @@ internal sealed class ProcessTrackingWebhookCommandHandler
         _clock      = clock;
     }
 
-    public async Task<UnitResult<Error>> Handle(
+    public async Task<UnitResult<e>> Handle(
         ProcessTrackingWebhookCommand request,
         CancellationToken             cancellationToken)
     {
@@ -49,14 +50,16 @@ internal sealed class ProcessTrackingWebhookCommandHandler
         var rawPayload = WebhookRawPayload.From(request.RawPayloadJson);
 
         // ── 2. Determine shipment type from ClientOrderCode prefix ────────────
-        // INB-xxx → inbound, OUT-xxx → outbound.
-        // If ClientOrderCode is absent, fall back to CarrierTrackingNumber search.
+        // INB-xxx → inbound, OUT-xxx → outbound, EXT-xxx → external (skip).
         var isInbound  = request.ClientOrderCode?.StartsWith("INB-", StringComparison.OrdinalIgnoreCase) == true;
         var isOutbound = request.ClientOrderCode?.StartsWith("OUT-", StringComparison.OrdinalIgnoreCase) == true;
+        var isExternal = request.ClientOrderCode?.StartsWith("EXT-", StringComparison.OrdinalIgnoreCase) == true;
+
+        if (isExternal)
+            return UnitResult.Success<e>();
 
         if (!isInbound && !isOutbound)
         {
-            // No recognizable prefix — try CarrierTrackingNumber across both tables
             return await ProcessByCarrierTrackingNumberAsync(
                 request, providerCode.Value, normalizedStatus.Value, rawPayload, now, cancellationToken);
         }
@@ -69,9 +72,7 @@ internal sealed class ProcessTrackingWebhookCommandHandler
             request, providerCode.Value, normalizedStatus.Value, rawPayload, now, cancellationToken);
     }
 
-    // ── Inbound ───────────────────────────────────────────────────────────────
-
-    private async Task<UnitResult<Error>> ProcessInboundAsync(
+    private async Task<UnitResult<e>> ProcessInboundAsync(
         ProcessTrackingWebhookCommand request,
         ShippingProviderCode          providerCode,
         NormalizedTrackingStatus      normalizedStatus,
@@ -80,14 +81,12 @@ internal sealed class ProcessTrackingWebhookCommandHandler
         CancellationToken             ct)
     {
         var shipment = await _dbContext.Set<InboundShipment>()
-            .FirstOrDefaultAsync(
-                s => s.ClientOrderCode == request.ClientOrderCode,
-                ct);
+            .FirstOrDefaultAsync(s => s.ClientOrderCode == request.ClientOrderCode, ct);
 
         if (shipment is null)
             return WarehouseErrors.InboundShipment.NotFound(request.ClientOrderCode ?? "");
 
-        shipment.RecordTrackingEvent(
+        var result = shipment.RecordTrackingEvent(
             providerCode,
             request.CarrierStatusRaw,
             request.CarrierStatusDesc,
@@ -99,15 +98,15 @@ internal sealed class ProcessTrackingWebhookCommandHandler
             rawPayload,
             now);
 
+        if (result.IsFailure) return result.Error;
+
         _dbContext.Update(shipment);
         await _unitOfWork.SaveChangesAsync(ct);
 
-        return UnitResult.Success<Error>();
+        return UnitResult.Success<e>();
     }
 
-    // ── Outbound ──────────────────────────────────────────────────────────────
-
-    private async Task<UnitResult<Error>> ProcessOutboundAsync(
+    private async Task<UnitResult<e>> ProcessOutboundAsync(
         ProcessTrackingWebhookCommand request,
         ShippingProviderCode          providerCode,
         NormalizedTrackingStatus      normalizedStatus,
@@ -116,9 +115,7 @@ internal sealed class ProcessTrackingWebhookCommandHandler
         CancellationToken             ct)
     {
         var shipment = await _dbContext.Set<OutboundShipment>()
-            .FirstOrDefaultAsync(
-                s => s.ClientOrderCode == request.ClientOrderCode,
-                ct);
+            .FirstOrDefaultAsync(s => s.ClientOrderCode == request.ClientOrderCode, ct);
 
         if (shipment is null)
             return WarehouseErrors.OutboundShipment.NotFound(request.ClientOrderCode ?? "");
@@ -138,12 +135,10 @@ internal sealed class ProcessTrackingWebhookCommandHandler
         _dbContext.Update(shipment);
         await _unitOfWork.SaveChangesAsync(ct);
 
-        return UnitResult.Success<Error>();
+        return UnitResult.Success<e>();
     }
 
-    // ── Fallback: search by CarrierTrackingNumber ─────────────────────────────
-
-    private async Task<UnitResult<Error>> ProcessByCarrierTrackingNumberAsync(
+    private async Task<UnitResult<e>> ProcessByCarrierTrackingNumberAsync(
         ProcessTrackingWebhookCommand request,
         ShippingProviderCode          providerCode,
         NormalizedTrackingStatus      normalizedStatus,
@@ -156,29 +151,25 @@ internal sealed class ProcessTrackingWebhookCommandHandler
                 code: "Webhook.NoReference",
                 description: "Webhook contains neither a recognizable ClientOrderCode nor a CarrierTrackingNumber.");
 
-        // Try inbound first
         var inbound = await _dbContext.Set<InboundShipment>()
-            .FirstOrDefaultAsync(
-                s => s.CarrierTrackingNumber == request.CarrierTrackingNumber,
-                ct);
+            .FirstOrDefaultAsync(s => s.CarrierTrackingNumber == request.CarrierTrackingNumber, ct);
 
         if (inbound is not null)
         {
-            inbound.RecordTrackingEvent(
+            var result = inbound.RecordTrackingEvent(
                 providerCode, request.CarrierStatusRaw, request.CarrierStatusDesc,
                 normalizedStatus, request.Location, request.ReasonCode,
                 request.ReasonDescription, request.EventTime, rawPayload, now);
 
+            if (result.IsFailure) return result.Error;
+
             _dbContext.Update(inbound);
             await _unitOfWork.SaveChangesAsync(ct);
-            return UnitResult.Success<Error>();
+            return UnitResult.Success<e>();
         }
 
-        // Try outbound
         var outbound = await _dbContext.Set<OutboundShipment>()
-            .FirstOrDefaultAsync(
-                s => s.CarrierTrackingNumber == request.CarrierTrackingNumber,
-                ct);
+            .FirstOrDefaultAsync(s => s.CarrierTrackingNumber == request.CarrierTrackingNumber, ct);
 
         if (outbound is not null)
         {
@@ -189,7 +180,7 @@ internal sealed class ProcessTrackingWebhookCommandHandler
 
             _dbContext.Update(outbound);
             await _unitOfWork.SaveChangesAsync(ct);
-            return UnitResult.Success<Error>();
+            return UnitResult.Success<e>();
         }
 
         return Error.NotFound(

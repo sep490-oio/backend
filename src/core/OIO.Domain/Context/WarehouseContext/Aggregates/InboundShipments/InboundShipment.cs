@@ -11,13 +11,6 @@ using e = OIO.Domain.SeedWork.Errors.Error;
 
 namespace OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
 
-/// <summary>
-/// Represents the shipment of an item from a seller to the warehouse.
-///
-/// Lifecycle:
-///   AwaitingPickup → InTransit → Arrived → Inspected → Completed
-///                                                    ↘ Cancelled | Failed (from any pre-completed state)
-/// </summary>
 public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
 {
     private readonly List<ShipmentTrackingEvent> _trackingEvents = [];
@@ -43,67 +36,94 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
         ShipmentExtraData extraData,
         string? notes,
         DateTime? expectedArrivalAt,
+        InboundShipmentMode shipmentMode,
+        string? externalCarrierName,
         DateTime now)
     {
-        Id                       = id;
-        ItemId                   = itemId;
-        SellerId                 = sellerId;
-        ProviderCode             = providerCode;
-        ClientOrderCode          = clientOrderCode;
-        SenderName               = senderName;
-        SenderPhone              = senderPhone;
-        SenderAddress            = senderAddress;
-        SenderWard               = senderWard;
-        SenderDistrict           = senderDistrict;
-        SenderProvince           = senderProvince;
+        Id = id;
+        ItemId = itemId;
+        SellerId = sellerId;
+        ProviderCode = providerCode;
+
+        ShipmentMode = shipmentMode;
+        ExternalCarrierName = externalCarrierName;
+
+        ClientOrderCode = clientOrderCode;
+
+        SenderName = senderName;
+        SenderPhone = senderPhone;
+        SenderAddress = senderAddress;
+        SenderWard = senderWard;
+        SenderDistrict = senderDistrict;
+        SenderProvince = senderProvince;
         SenderCarrierAddressData = senderCarrierAddressData;
-        Dimensions               = dimensions;
-        ShippingFee              = shippingFee;
-        InsuranceValue           = insuranceValue;
-        ExtraData                = extraData;
-        Notes                    = notes;
-        Status                   = InboundShipmentStatus.AwaitingPickup;
-        ExpectedArrivalAt        = expectedArrivalAt;
-        CreatedAt                = now;
+
+        Dimensions = dimensions;
+
+        ShippingFee = shippingFee;
+        InsuranceValue = insuranceValue;
+
+        ExtraData = extraData;
+        Notes = notes;
+
+        Status = InboundShipmentStatus.AwaitingPickup;
+
+        ExpectedArrivalAt = expectedArrivalAt;
+
+        CreatedAt = now;
     }
 
     public Guid ItemId { get; private set; }
+
     public UserId SellerId { get; private set; }
+
     public ShippingProviderCode ProviderCode { get; private set; }
 
-    /// <summary>Our internal reference sent to the carrier on order creation.</summary>
+    public InboundShipmentMode ShipmentMode { get; private set; }
+
+    public string? ExternalCarrierName { get; private set; }
+
     public string ClientOrderCode { get; private set; }
 
-    /// <summary>
-    /// Tracking number returned by carrier after booking.
-    /// GHN: order_code. GHTK: label. Null until booked.
-    /// </summary>
     public string? CarrierTrackingNumber { get; private set; }
 
     public string SenderName { get; private set; }
+
     public string SenderPhone { get; private set; }
+
     public string SenderAddress { get; private set; }
+
     public string SenderWard { get; private set; }
+
     public string SenderDistrict { get; private set; }
+
     public string SenderProvince { get; private set; }
 
-    /// <summary>GHN: { "district_id": 1442, "ward_code": "21012" }. Null for GHTK.</summary>
     public CarrierAddressData? SenderCarrierAddressData { get; private set; }
 
     public PackageDimensions Dimensions { get; private set; }
+
     public decimal ShippingFee { get; private set; }
+
     public decimal InsuranceValue { get; private set; }
+
     public ShipmentExtraData ExtraData { get; private set; }
+
     public InboundShipmentStatus Status { get; private set; }
+
     public string? Notes { get; private set; }
+
     public DateTime? ExpectedArrivalAt { get; private set; }
+
     public DateTime? ArrivedAt { get; private set; }
+
     public DateTime CreatedAt { get; private set; }
+
     public DateTime? ModifiedAt { get; private set; }
 
     public IReadOnlyList<ShipmentTrackingEvent> TrackingEvents => _trackingEvents;
 
-    public static InboundShipment Create(
+    public static Result<InboundShipment, e> Create(
         Guid itemId,
         UserId sellerId,
         ShippingProviderCode providerCode,
@@ -116,6 +136,8 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
         string senderProvince,
         PackageDimensions dimensions,
         DateTime now,
+        InboundShipmentMode? shipmentMode = null,
+        string? externalCarrierName = null,
         CarrierAddressData? senderCarrierAddressData = null,
         decimal shippingFee = 0,
         decimal insuranceValue = 0,
@@ -123,6 +145,23 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
         string? notes = null,
         DateTime? expectedArrivalAt = null)
     {
+        var mode = shipmentMode ?? InboundShipmentMode.PlatformManaged;
+
+        if (mode == InboundShipmentMode.ExternalCarrier)
+        {
+            if (string.IsNullOrWhiteSpace(externalCarrierName))
+                return WarehouseErrors.InboundShipment.ExternalCarrierNameRequired;
+
+            if (providerCode != ShippingProviderCode.External)
+                return WarehouseErrors.InboundShipment.NotExternalCarrier;
+        }
+
+        if (mode == InboundShipmentMode.PlatformManaged &&
+            externalCarrierName is not null)
+        {
+            return WarehouseErrors.InboundShipment.NotPlatformManaged;
+        }
+
         var shipment = new InboundShipment(
             InboundShipmentId.From(Guid.CreateVersion7()),
             itemId,
@@ -142,6 +181,8 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
             extraData ?? ShipmentExtraData.Empty,
             notes,
             expectedArrivalAt,
+            mode,
+            externalCarrierName,
             now);
 
         shipment.RaiseDomainEvent(new InboundShipmentCreatedEvent(
@@ -155,15 +196,16 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
         return shipment;
     }
 
-    /// <summary>
-    /// Called after carrier API confirms booking and returns a tracking number.
-    /// </summary>
     public UnitResult<e> RecordBooked(string carrierTrackingNumber, DateTime now)
     {
+        if (ShipmentMode == InboundShipmentMode.ExternalCarrier)
+            return WarehouseErrors.InboundShipment.NotPlatformManaged;
+
         if (CarrierTrackingNumber is not null)
             return WarehouseErrors.InboundShipment.AlreadyBooked;
 
         CarrierTrackingNumber = carrierTrackingNumber;
+
         ModifiedAt = now;
 
         RaiseDomainEvent(new InboundShipmentBookedEvent(
@@ -176,16 +218,56 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
         return UnitResult.Success<e>();
     }
 
-    /// <summary>
-    /// Called when carrier webhook reports the item has arrived at the warehouse.
-    /// </summary>
+    public UnitResult<e> SetExternalTrackingNumber(string trackingNumber, DateTime now)
+    {
+        if (ShipmentMode != InboundShipmentMode.ExternalCarrier)
+            return WarehouseErrors.InboundShipment.NotExternalCarrier;
+
+        if (CarrierTrackingNumber is not null)
+            return WarehouseErrors.InboundShipment.ExternalTrackingAlreadySet;
+
+        CarrierTrackingNumber = trackingNumber;
+
+        ModifiedAt = now;
+
+        return UnitResult.Success<e>();
+    }
+
+    public UnitResult<e> ManuallyAdvanceStatus(InboundShipmentStatus newStatus, DateTime now)
+    {
+        if (ShipmentMode != InboundShipmentMode.ExternalCarrier)
+            return WarehouseErrors.InboundShipment.NotExternalCarrier;
+
+        if (newStatus.Id == Status.Id)
+            return WarehouseErrors.InboundShipment.StatusUnchanged;
+
+        if (Status == InboundShipmentStatus.AwaitingPickup &&
+            newStatus != InboundShipmentStatus.InTransit)
+            return WarehouseErrors.InboundShipment.InvalidTransition;
+
+        if (Status == InboundShipmentStatus.InTransit &&
+            newStatus != InboundShipmentStatus.Arrived)
+            return WarehouseErrors.InboundShipment.InvalidTransition;
+
+        Status = newStatus;
+
+        ModifiedAt = now;
+
+        if (newStatus == InboundShipmentStatus.Arrived)
+            ArrivedAt = now;
+
+        return UnitResult.Success<e>();
+    }
+
     public UnitResult<e> RecordArrived(DateTime now)
     {
         if (Status == InboundShipmentStatus.Arrived)
             return WarehouseErrors.InboundShipment.AlreadyArrived;
 
-        Status     = InboundShipmentStatus.Arrived;
-        ArrivedAt  = now;
+        Status = InboundShipmentStatus.Arrived;
+
+        ArrivedAt = now;
+
         ModifiedAt = now;
 
         RaiseDomainEvent(new InboundShipmentArrivedEvent(
@@ -197,38 +279,32 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
         return UnitResult.Success<e>();
     }
 
-    /// <summary>
-    /// Called by warehouse staff after physically inspecting the item.
-    /// Triggers WarehouseItem creation downstream.
-    /// </summary>
     public UnitResult<e> RecordInspected(UserId inspectedBy, DateTime now)
     {
         if (Status != InboundShipmentStatus.Arrived)
             return WarehouseErrors.InboundShipment.CannotInspect;
 
-        Status     = InboundShipmentStatus.Inspected;
+        Status = InboundShipmentStatus.Inspected;
+
         ModifiedAt = now;
 
         RaiseDomainEvent(new InboundShipmentInspectedEvent(
             Id.ToString(),
             ItemId.ToString(),
-            string.Empty, // condition set on WarehouseItem, not here
+            string.Empty,
             inspectedBy.ToString(),
             now));
 
         return UnitResult.Success<e>();
     }
 
-    /// <summary>
-    /// Called after WarehouseItem has been created and stored.
-    /// Final state — no further transitions allowed.
-    /// </summary>
     public UnitResult<e> Complete(DateTime now)
     {
         if (Status != InboundShipmentStatus.Inspected)
             return WarehouseErrors.InboundShipment.CannotComplete;
 
-        Status     = InboundShipmentStatus.Completed;
+        Status = InboundShipmentStatus.Completed;
+
         ModifiedAt = now;
 
         RaiseDomainEvent(new InboundShipmentCompletedEvent(
@@ -244,11 +320,14 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
         if (Status is { Id: "completed" or "cancelled" or "failed" })
             return WarehouseErrors.InboundShipment.CannotCancel;
 
-        Status     = InboundShipmentStatus.Cancelled;
+        Status = InboundShipmentStatus.Cancelled;
+
         ModifiedAt = now;
 
         RaiseDomainEvent(new InboundShipmentCancelledEvent(
-            Id.ToString(), reason, now));
+            Id.ToString(),
+            reason,
+            now));
 
         return UnitResult.Success<e>();
     }
@@ -258,20 +337,19 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
         if (Status is { Id: "completed" or "cancelled" or "failed" })
             return WarehouseErrors.InboundShipment.CannotCancel;
 
-        Status     = InboundShipmentStatus.Failed;
+        Status = InboundShipmentStatus.Failed;
+
         ModifiedAt = now;
 
         RaiseDomainEvent(new InboundShipmentFailedEvent(
-            Id.ToString(), reason, now));
+            Id.ToString(),
+            reason,
+            now));
 
         return UnitResult.Success<e>();
     }
 
-    /// <summary>
-    /// Records a carrier webhook tracking event. Called by the webhook handler.
-    /// Also advances shipment status based on normalized status.
-    /// </summary>
-    public ShipmentTrackingEvent RecordTrackingEvent(
+    public Result<ShipmentTrackingEvent, e> RecordTrackingEvent(
         ShippingProviderCode providerCode,
         string carrierStatusRaw,
         string? carrierStatusDesc,
@@ -283,6 +361,9 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
         WebhookRawPayload rawPayload,
         DateTime now)
     {
+        if (ShipmentMode == InboundShipmentMode.ExternalCarrier)
+            return WarehouseErrors.InboundShipment.TrackingNotAllowedForExternal;
+
         var trackingEvent = new ShipmentTrackingEvent(
             ShipmentTrackingEventId.From(Guid.CreateVersion7()),
             "inbound",
@@ -300,15 +381,13 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
 
         _trackingEvents.Add(trackingEvent);
 
-        // Auto-advance status based on normalized event
-        // Auto-advance status based on normalized event
         switch (normalizedStatus.Id)
         {
             case "picked_up" or "in_transit" or "delayed":
                 if (Status == InboundShipmentStatus.AwaitingPickup ||
                     Status == InboundShipmentStatus.InTransit)
                 {
-                    Status     = InboundShipmentStatus.InTransit;
+                    Status = InboundShipmentStatus.InTransit;
                     ModifiedAt = now;
                 }
                 break;
@@ -318,8 +397,8 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
                     Status != InboundShipmentStatus.Inspected &&
                     Status != InboundShipmentStatus.Completed)
                 {
-                    Status     = InboundShipmentStatus.Arrived;
-                    ArrivedAt  = now;
+                    Status = InboundShipmentStatus.Arrived;
+                    ArrivedAt = now;
                     ModifiedAt = now;
                 }
                 break;
@@ -327,7 +406,7 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
             case "cancelled":
                 if (Status is not { Id: "completed" or "cancelled" or "failed" })
                 {
-                    Status     = InboundShipmentStatus.Cancelled;
+                    Status = InboundShipmentStatus.Cancelled;
                     ModifiedAt = now;
                 }
                 break;
@@ -335,7 +414,7 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
             case "failed" or "returning" or "returned":
                 if (Status is not { Id: "completed" or "cancelled" or "failed" })
                 {
-                    Status     = InboundShipmentStatus.Failed;
+                    Status = InboundShipmentStatus.Failed;
                     ModifiedAt = now;
                 }
                 break;

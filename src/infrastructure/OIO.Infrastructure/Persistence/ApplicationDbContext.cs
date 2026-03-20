@@ -1,4 +1,4 @@
-﻿using AppAny.Quartz.EntityFrameworkCore.Migrations;
+using AppAny.Quartz.EntityFrameworkCore.Migrations;
 using AppAny.Quartz.EntityFrameworkCore.Migrations.PostgreSQL;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -238,6 +238,9 @@ public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
 
         configurationBuilder.Properties<WarehouseItemId>()
             .HaveConversion<EfCoreConverters.WarehouseItemIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<WarehouseItemMediaId>()
+            .HaveConversion<EfCoreConverters.WarehouseItemMediaIdEfCoreValueConverter>();
 
         configurationBuilder.Properties<WarehouseStorageLocationId>()
             .HaveConversion<EfCoreConverters.WarehouseStorageLocationIdEfCoreValueConverter>();
