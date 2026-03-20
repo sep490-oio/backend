@@ -1,6 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
+using OIO.Domain.Context.CatalogContext.Aggregates.Items;
+using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
 using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.Context.WarehouseContext.ValueObjects;
@@ -160,12 +163,25 @@ internal sealed class InboundShipmentConfiguration : IEntityTypeConfiguration<In
         builder.Property(e => e.ModifiedAt)
             .HasColumnName("modified_at");
 
-        // ==================== Indexes ====================
-        // NOTE: TrackingEvents are NOT mapped as HasMany here.
-        // ShipmentTrackingEvent is polymorphic (shipment_type + shipment_id).
-        // EF cannot map one FK column to two aggregate roots simultaneously.
-        // New events added via aggregate.RecordTrackingEvent() are saved
-        // by the repository via DbSet<ShipmentTrackingEvent> directly.
+        // ==================== Relationships ====================
+        // Each shipment has an append-only log of tracking events pushed via carrier webhooks.
+        // We use a shadow FK "InboundShipmentId" on the ShipmentTrackingEvent table.
+        builder.HasMany(e => e.TrackingEvents)
+            .WithOne()
+            .HasForeignKey("InboundShipmentId")
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne<Item>()
+            .WithMany()
+            .HasForeignKey("item_id")
+            .IsRequired(false) // Assuming we don't cascade delete shipmnets on item delete
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey("seller_id")
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
         
         builder.HasIndex(e => e.ClientOrderCode)
             .IsUnique()
