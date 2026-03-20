@@ -1,0 +1,1297 @@
+{
+  "info": {
+    "name": "Flow 11 \u2013 Warehouse & Shipping",
+    "_postman_id": "flow11-warehouse-shipping",
+    "description": "Complete warehouse and shipping flow covering inbound shipment booking, inspector queue and inspection, inspection review (approve/reject/condition-mismatch), warehouse item storage, outbound shipment booking, GHN webhook tracking simulation, shipment cancellation, storage management, and error cases.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    { "key": "inboundShipmentId", "value": "" },
+    { "key": "outboundShipmentId", "value": "" },
+    { "key": "warehouseItemId", "value": "" },
+    { "key": "inspectionId", "value": "" },
+    { "key": "storageLocationId", "value": "" },
+    { "key": "carrierTrackingNumber", "value": "" },
+    { "key": "inboundClientOrderCode", "value": "" },
+    { "key": "outboundClientOrderCode", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01-Inbound Shipment",
+      "item": [
+        {
+          "name": "1. Book Inbound Shipment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ItemId\": \"{{itemId}}\",\n  \"SenderName\": \"Nguyen Van A\",\n  \"SenderPhone\": \"0901234567\",\n  \"SenderAddress\": \"123 Le Loi\",\n  \"SenderWard\": \"Ben Thanh\",\n  \"SenderDistrict\": \"Quan 1\",\n  \"SenderProvince\": \"Ho Chi Minh\",\n  \"WeightGrams\": 500,\n  \"InsuranceValue\": 1000000,\n  \"ItemName\": \"Vintage Watch\",\n  \"ItemPrice\": 5000000,\n  \"LengthCm\": 20,\n  \"WidthCm\": 15,\n  \"HeightCm\": 10,\n  \"Notes\": \"Handle with care\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/inbound-shipments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "inbound-shipments"]
+            },
+            "description": "Book an inbound shipment to send a seller's item to the warehouse for inspection. The carrier (GHN) order is created and a tracking number is assigned."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 \u2013 inbound shipment booked', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.id) {",
+                  "    pm.collectionVariables.set('inboundShipmentId', body.id);",
+                  "    console.log('inboundShipmentId:', body.id);",
+                  "}",
+                  "if (body.carrierTrackingNumber) {",
+                  "    pm.collectionVariables.set('carrierTrackingNumber', body.carrierTrackingNumber);",
+                  "    console.log('carrierTrackingNumber:', body.carrierTrackingNumber);",
+                  "}",
+                  "if (body.clientOrderCode) {",
+                  "    pm.collectionVariables.set('inboundClientOrderCode', body.clientOrderCode);",
+                  "    console.log('inboundClientOrderCode:', body.clientOrderCode);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Get Inbound Shipment by ID (verify Booked)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/{{inboundShipmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "inbound-shipments", "{{inboundShipmentId}}"]
+            },
+            "description": "Retrieve the inbound shipment by ID. Verify status is AwaitingPickup or Booked."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 inbound shipment retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('Status is AwaitingPickup or Booked', function () {",
+                  "    pm.expect(['AwaitingPickup', 'Booked', 'awaiting_pickup', 'booked']).to.include(body.status);",
+                  "});",
+                  "console.log('Inbound shipment status:', body.status);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Get Inbound Shipments (list, filter by status)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/inbound-shipments?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "inbound-shipments"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            },
+            "description": "List all inbound shipments with optional status filter."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 inbound shipments listed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Inbound shipments count:', Array.isArray(body) ? body.length : (body.data ? body.data.length : 'unknown'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02-Inspector Queue",
+      "item": [
+        {
+          "name": "4. Get Inspection Queue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/inspection-queue?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "inbound-shipments", "inspection-queue"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            },
+            "description": "Get the list of inbound shipments that have arrived and are awaiting inspection."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 inspection queue retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Inspection queue items:', Array.isArray(body) ? body.length : (body.data ? body.data.length : 'unknown'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Request Upload Signature (warehouse_inspection_image)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Context\": \"warehouse_inspection_image\",\n  \"FileName\": \"inspection_photo_1.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/media/upload-signature",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "media", "upload-signature"]
+            },
+            "description": "Request a Cloudinary upload signature for an inspection photo. Context must be 'warehouse_inspection_image'."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 upload signature received', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.mediaUploadId) {",
+                  "    pm.collectionVariables.set('mediaUploadId', body.mediaUploadId);",
+                  "    console.log('mediaUploadId:', body.mediaUploadId);",
+                  "}",
+                  "console.log('Upload signature response:', JSON.stringify(body));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Confirm Upload",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"MediaUploadId\": \"{{mediaUploadId}}\",\n  \"PublicId\": \"warehouse/inspection_photo_1\",\n  \"SecureUrl\": \"https://res.cloudinary.com/demo/image/upload/warehouse/inspection_photo_1.jpg\",\n  \"Bytes\": 204800,\n  \"Format\": \"jpg\",\n  \"FileName\": \"inspection_photo_1.jpg\",\n  \"Width\": 1920,\n  \"Height\": 1080\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/media/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "media", "confirm"]
+            },
+            "description": "Confirm the Cloudinary upload was completed. After this, the media upload is usable for linking to an inspection."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 \u2013 upload confirmed', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Confirm upload response:', JSON.stringify(body));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Inspect Warehouse Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Condition\": \"like_new\",\n  \"InspectionNotes\": \"Item is in excellent condition, matches seller description.\",\n  \"InspectionMediaUploadIds\": [\"{{mediaUploadId}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/{{inboundShipmentId}}/inspect",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "inbound-shipments", "{{inboundShipmentId}}", "inspect"]
+            },
+            "description": "Inspector records the inspection result for an arrived inbound shipment. Condition must be one of the valid WarehouseItemCondition values. Requires at least one confirmed media upload as evidence."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 \u2013 inspection recorded', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.id) {",
+                  "    pm.collectionVariables.set('inspectionId', body.id);",
+                  "    console.log('inspectionId:', body.id);",
+                  "}",
+                  "if (body.warehouseItemId) {",
+                  "    pm.collectionVariables.set('warehouseItemId', body.warehouseItemId);",
+                  "    console.log('warehouseItemId:', body.warehouseItemId);",
+                  "}",
+                  "console.log('Inspection result:', JSON.stringify(body));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8. Get Inspection Queue (verify awaiting_review)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/inspection-queue?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "inbound-shipments", "inspection-queue"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            },
+            "description": "Re-check the inspection queue after an inspection has been recorded. The inspected item should now show awaiting_review status."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 inspection queue retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "console.log('Inspection queue after inspection:', JSON.stringify(pm.response.json()));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03-Inspection Review",
+      "item": [
+        {
+          "name": "9. Review \u2014 Approve (Decision=approve)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Decision\": \"approve\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/{{inboundShipmentId}}/review",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "inbound-shipments", "{{inboundShipmentId}}", "review"]
+            },
+            "description": "Approve the inspection. If the inspected condition matches the declared condition, the item is approved and the auction flow can continue."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 inspection approved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('Decision is approved or condition_confirmation_required', function () {",
+                  "    pm.expect(['approved', 'Approved', 'condition_confirmation_required', 'ConditionConfirmationRequired']).to.include(body.decisionStatus);",
+                  "});",
+                  "console.log('Review approve response:', JSON.stringify(body));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. Review \u2014 Reject (Decision=reject, Reason required)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Decision\": \"reject\",\n  \"Reason\": \"Item condition does not match the seller's description. Visible damage found.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/{{inboundShipmentId}}/review",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "inbound-shipments", "{{inboundShipmentId}}", "review"]
+            },
+            "description": "Reject the inspection. A Reason is required when Decision is 'reject'. This will mark the item as rejected from platform inspection."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 inspection rejected', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('Decision is rejected', function () {",
+                  "    pm.expect(['rejected', 'Rejected']).to.include(body.decisionStatus);",
+                  "});",
+                  "console.log('Review reject response:', JSON.stringify(body));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11. Review \u2014 Condition Mismatch (approve but condition differs)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Decision\": \"approve\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/{{inboundShipmentId}}/review",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "inbound-shipments", "{{inboundShipmentId}}", "review"]
+            },
+            "description": "Approve the inspection when the inspected condition differs from the declared condition. This results in a 'condition_confirmation_required' status, where the seller must confirm the updated condition before the auction can proceed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 review processed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('Decision is condition_confirmation_required', function () {",
+                  "    pm.expect(['condition_confirmation_required', 'ConditionConfirmationRequired']).to.include(body.decisionStatus);",
+                  "});",
+                  "console.log('Condition mismatch response:', JSON.stringify(body));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12. Get Inbound Shipment (verify Inspected)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/{{inboundShipmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "inbound-shipments", "{{inboundShipmentId}}"]
+            },
+            "description": "Retrieve the inbound shipment after inspection review. Verify the status has changed to Inspected."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 inbound shipment retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('Status is Inspected', function () {",
+                  "    pm.expect(['Inspected', 'inspected']).to.include(body.status);",
+                  "});",
+                  "console.log('Inbound shipment after review:', body.status);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04-Store Warehouse Item",
+      "item": [
+        {
+          "name": "13. Create Storage Location",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Zone\": \"A\",\n  \"Aisle\": \"01\",\n  \"Shelf\": \"03\",\n  \"Bin\": \"B2\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/storage-locations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "storage-locations"]
+            },
+            "description": "Create a new storage location in the warehouse. The label is auto-generated as ZONE-AISLE-SHELF-BIN (e.g. A-01-03-B2)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 \u2013 storage location created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.id) {",
+                  "    pm.collectionVariables.set('storageLocationId', body.id);",
+                  "    console.log('storageLocationId:', body.id);",
+                  "}",
+                  "console.log('Storage location:', JSON.stringify(body));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14. Get Storage Locations (list vacant)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/storage-locations?vacantOnly=true&page=1&pageSize=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "storage-locations"],
+              "query": [
+                { "key": "vacantOnly", "value": "true" },
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "50" }
+              ]
+            },
+            "description": "List storage locations, filtering for vacant ones only."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 storage locations listed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Vacant storage locations:', Array.isArray(body) ? body.length : (body.data ? body.data.length : 'unknown'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15. Store Warehouse Item",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"StorageLocationId\": \"{{storageLocationId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/warehouse-items/{{warehouseItemId}}/store",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "warehouse-items", "{{warehouseItemId}}", "store"]
+            },
+            "description": "Store a warehouse item in a specific storage location. The item must have been inspected and approved first."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 warehouse item stored', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Stored warehouse item:', JSON.stringify(body));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16. Get Warehouse Items (verify Stored)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/warehouse-items?status=stored&page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "warehouse-items"],
+              "query": [
+                { "key": "status", "value": "stored" },
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            },
+            "description": "List warehouse items filtered by 'stored' status to verify the item was successfully stored."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 warehouse items retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Stored warehouse items:', Array.isArray(body) ? body.length : (body.data ? body.data.length : 'unknown'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05-Outbound Shipment",
+      "item": [
+        {
+          "name": "17. Book Outbound Shipment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"OrderId\": \"{{orderId}}\",\n  \"WarehouseItemId\": \"{{warehouseItemId}}\",\n  \"RecipientName\": \"Tran Thi B\",\n  \"RecipientPhone\": \"0912345678\",\n  \"RecipientAddress\": \"456 Nguyen Hue\",\n  \"RecipientWard\": \"Ben Nghe\",\n  \"RecipientDistrict\": \"Quan 1\",\n  \"RecipientProvince\": \"Ho Chi Minh\",\n  \"WeightGrams\": 500,\n  \"InsuranceValue\": 1000000,\n  \"CodAmount\": 0,\n  \"ItemName\": \"Vintage Watch\",\n  \"ItemPrice\": 5000000,\n  \"LengthCm\": 20,\n  \"WidthCm\": 15,\n  \"HeightCm\": 10\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/outbound-shipments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "outbound-shipments"]
+            },
+            "description": "Book an outbound shipment to send a sold item from the warehouse to the buyer. Creates a GHN carrier order for delivery."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 \u2013 outbound shipment booked', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.id) {",
+                  "    pm.collectionVariables.set('outboundShipmentId', body.id);",
+                  "    console.log('outboundShipmentId:', body.id);",
+                  "}",
+                  "if (body.carrierTrackingNumber) {",
+                  "    pm.collectionVariables.set('carrierTrackingNumber', body.carrierTrackingNumber);",
+                  "    console.log('carrierTrackingNumber:', body.carrierTrackingNumber);",
+                  "}",
+                  "if (body.clientOrderCode) {",
+                  "    pm.collectionVariables.set('outboundClientOrderCode', body.clientOrderCode);",
+                  "    console.log('outboundClientOrderCode:', body.clientOrderCode);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18. Get Outbound Shipment by ID (verify Booked)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/outbound-shipments/{{outboundShipmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "outbound-shipments", "{{outboundShipmentId}}"]
+            },
+            "description": "Retrieve the outbound shipment by ID and verify it is in Booked status."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 outbound shipment retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('Status is Booked', function () {",
+                  "    pm.expect(['Booked', 'booked']).to.include(body.status);",
+                  "});",
+                  "console.log('Outbound shipment status:', body.status);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "19. Get Warehouse Items (verify Reserved)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/warehouse-items?status=reserved&page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "warehouse-items"],
+              "query": [
+                { "key": "status", "value": "reserved" },
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            },
+            "description": "List warehouse items with 'reserved' status to verify the item is reserved for outbound shipment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 warehouse items retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Reserved warehouse items:', Array.isArray(body) ? body.length : (body.data ? body.data.length : 'unknown'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "20. Get Outbound Shipments (list by status)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/outbound-shipments?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "outbound-shipments"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            },
+            "description": "List all outbound shipments with optional status filter."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 outbound shipments listed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Outbound shipments:', Array.isArray(body) ? body.length : (body.data ? body.data.length : 'unknown'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06-GHN Webhook Tracking",
+      "item": [
+        {
+          "name": "21. Simulate GHN Webhook \u2014 Inbound PickedUp",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ShopID\": 885,\n  \"ClientOrderCode\": \"{{inboundClientOrderCode}}\",\n  \"OrderCode\": \"{{carrierTrackingNumber}}\",\n  \"Status\": \"picked_up\",\n  \"Description\": \"GHN picked up package from sender\",\n  \"Time\": \"2026-03-20T10:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/ghn",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhooks", "ghn"]
+            },
+            "description": "Simulate GHN webhook callback for inbound shipment picked up. No authentication required. Always returns 200 OK."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 webhook accepted', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "22. Get Inbound Shipment (verify InTransit)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/{{inboundShipmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "inbound-shipments", "{{inboundShipmentId}}"]
+            },
+            "description": "Verify the inbound shipment status changed to InTransit after the picked_up webhook."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 inbound shipment retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('Status is InTransit', function () {",
+                  "    pm.expect(['InTransit', 'in_transit']).to.include(body.status);",
+                  "});",
+                  "console.log('Inbound shipment status after pickup:', body.status);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "23. Simulate GHN Webhook \u2014 Inbound Arrived (delivered)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ShopID\": 885,\n  \"ClientOrderCode\": \"{{inboundClientOrderCode}}\",\n  \"OrderCode\": \"{{carrierTrackingNumber}}\",\n  \"Status\": \"delivered\",\n  \"Description\": \"Package delivered to warehouse\",\n  \"Time\": \"2026-03-20T14:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/ghn",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhooks", "ghn"]
+            },
+            "description": "Simulate GHN webhook for inbound shipment delivered to warehouse. This should transition the shipment to Arrived status."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 webhook accepted', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "24. Simulate GHN Webhook \u2014 Outbound PickedUp",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ShopID\": 885,\n  \"ClientOrderCode\": \"{{outboundClientOrderCode}}\",\n  \"OrderCode\": \"{{carrierTrackingNumber}}\",\n  \"Status\": \"picked_up\",\n  \"Description\": \"GHN picked up package from warehouse\",\n  \"Time\": \"2026-03-20T16:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/ghn",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhooks", "ghn"]
+            },
+            "description": "Simulate GHN webhook for outbound shipment picked up from warehouse."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 webhook accepted', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "25. Get Outbound Shipment (verify PickedUp)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/outbound-shipments/{{outboundShipmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "outbound-shipments", "{{outboundShipmentId}}"]
+            },
+            "description": "Verify the outbound shipment status changed to PickedUp after the picked_up webhook."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 outbound shipment retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('Status is PickedUp or InTransit', function () {",
+                  "    pm.expect(['PickedUp', 'picked_up', 'InTransit', 'in_transit']).to.include(body.status);",
+                  "});",
+                  "console.log('Outbound shipment status after pickup:', body.status);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26. Simulate GHN Webhook \u2014 Outbound Delivered",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ShopID\": 885,\n  \"ClientOrderCode\": \"{{outboundClientOrderCode}}\",\n  \"OrderCode\": \"{{carrierTrackingNumber}}\",\n  \"Status\": \"delivered\",\n  \"Description\": \"Package delivered to buyer\",\n  \"Time\": \"2026-03-20T20:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/ghn",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhooks", "ghn"]
+            },
+            "description": "Simulate GHN webhook for outbound shipment delivered to the buyer."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 webhook accepted', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "27. Get Outbound Shipment (verify Delivered)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/outbound-shipments/{{outboundShipmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "outbound-shipments", "{{outboundShipmentId}}"]
+            },
+            "description": "Verify the outbound shipment status changed to Delivered after the delivered webhook."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 outbound shipment retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('Status is Delivered', function () {",
+                  "    pm.expect(['Delivered', 'delivered']).to.include(body.status);",
+                  "});",
+                  "console.log('Outbound shipment status after delivery:', body.status);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07-Cancel Shipment",
+      "item": [
+        {
+          "name": "28. Cancel Inbound Shipment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Reason\": \"Seller requested cancellation before pickup.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/{{inboundShipmentId}}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "inbound-shipments", "{{inboundShipmentId}}", "cancel"]
+            },
+            "description": "Cancel an inbound shipment. Only possible before the shipment has been picked up by the carrier."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 \u2013 inbound shipment cancelled', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "29. Cancel Outbound Shipment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Reason\": \"Order cancelled by admin before dispatch.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/outbound-shipments/{{outboundShipmentId}}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "outbound-shipments", "{{outboundShipmentId}}", "cancel"]
+            },
+            "description": "Cancel an outbound shipment. Only possible before the shipment has been picked up by the carrier. If a GHN order exists, it is also cancelled."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 \u2013 outbound shipment cancelled', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08-Storage Management",
+      "item": [
+        {
+          "name": "30. Update Storage Location",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Zone\": \"B\",\n  \"Aisle\": \"02\",\n  \"Shelf\": \"05\",\n  \"Bin\": \"C1\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/storage-locations/{{storageLocationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "storage-locations", "{{storageLocationId}}"]
+            },
+            "description": "Update a storage location's zone, aisle, shelf, and bin. The label is recalculated."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 storage location updated', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Updated storage location:', JSON.stringify(body));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "31. Delete Storage Location (must be vacant)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/storage-locations/{{storageLocationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "storage-locations", "{{storageLocationId}}"]
+            },
+            "description": "Delete a storage location. Only vacant (unoccupied) locations can be deleted. Returns 409 Conflict if the location is occupied."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 \u2013 storage location deleted', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32. Get Storage Locations (verify changes)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/storage-locations?page=1&pageSize=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "storage-locations"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "50" }
+              ]
+            },
+            "description": "List all storage locations to verify the update and delete operations."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 \u2013 storage locations listed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Storage locations after changes:', Array.isArray(body) ? body.length : (body.data ? body.data.length : 'unknown'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "09-Error Cases",
+      "item": [
+        {
+          "name": "33. Inspect (shipment not Arrived \u2192 expect error)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Condition\": \"like_new\",\n  \"InspectionNotes\": \"Attempting inspection on non-arrived shipment.\",\n  \"InspectionMediaUploadIds\": [\"00000000-0000-0000-0000-000000000001\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/{{inboundShipmentId}}/inspect",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "inbound-shipments", "{{inboundShipmentId}}", "inspect"]
+            },
+            "description": "Error case: attempt to inspect an inbound shipment that has not yet arrived at the warehouse. Should return 400 or 409 error."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 or 409 \u2013 cannot inspect non-arrived shipment', function () {",
+                  "    pm.expect([400, 409]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "console.log('Error response:', JSON.stringify(pm.response.json()));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34. Cancel Outbound (after PickedUp \u2192 expect error)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Reason\": \"Attempting to cancel after pickup.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/outbound-shipments/{{outboundShipmentId}}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "outbound-shipments", "{{outboundShipmentId}}", "cancel"]
+            },
+            "description": "Error case: attempt to cancel an outbound shipment after it has already been picked up by the carrier. Should return 409 Conflict."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409 \u2013 cannot cancel after pickup', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "console.log('Error response:', JSON.stringify(pm.response.json()));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
