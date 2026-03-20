@@ -1,4 +1,4 @@
-﻿using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
 using OIO.Domain.Context.ModerationContext.ValueObjects.Ids;
 using OIO.Domain.Context.NotificationContext.ValueObjects.Ids;
@@ -81,6 +81,7 @@ namespace OIO.Infrastructure.Persistence.Converters;
 [EfCoreConverter<ShipmentTrackingEventId>]
 [EfCoreConverter<ShippingProviderConfigId>]
 [EfCoreConverter<WarehouseItemId>]
+[EfCoreConverter<WarehouseItemMediaId>]
 [EfCoreConverter<WarehouseStorageLocationId>]
 
 //UserContext

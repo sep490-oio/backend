@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -242,7 +242,8 @@ public static class DependencyInjection
             services.Configure<CloudinaryOptions>(configuration.GetSection(CloudinaryOptions.SectionName));
             services.AddScoped<UploadContextRegistry>();
             services.AddScoped<IMediaSignatureService, CloudinarySignatureService>();
-
+            services.AddScoped<IMediaSignatureService, CloudinarySignatureService>();
+services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();  
             return services;
         }
 
