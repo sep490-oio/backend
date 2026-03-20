@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
@@ -11,7 +11,9 @@ using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
 using OIO.Domain.Context.WarehouseContext.Aggregates.ShippingProviders;
 using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.Context.WarehouseContext.Errors;
+using OIO.Domain.Context.WarehouseContext.Errors;
 using OIO.Domain.Context.WarehouseContext.ValueObjects;
+using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.WarehouseContext.Commands.BookInboundShipment;
@@ -56,7 +58,38 @@ internal sealed class BookInboundShipmentCommandHandler
         if (dimensionsResult.IsFailure) return dimensionsResult.Error;
         var dimensions = dimensionsResult.Value;
 
-        // ── 2a. External carrier — skip carrier API ───────────────────────────
+        // ── 2. Resolve Sender Address ─────────────────────────────────────────
+        var senderName      = request.SenderName;
+        var senderPhone     = request.SenderPhone;
+        var senderAddress   = request.SenderAddress;
+        var senderWard      = request.SenderWard;
+        var senderDistrict  = request.SenderDistrict;
+        var senderProvince  = request.SenderProvince;
+
+        if (string.IsNullOrWhiteSpace(senderName)    ||
+            string.IsNullOrWhiteSpace(senderPhone)   ||
+            string.IsNullOrWhiteSpace(senderAddress) ||
+            string.IsNullOrWhiteSpace(senderWard)    ||
+            string.IsNullOrWhiteSpace(senderDistrict)||
+            string.IsNullOrWhiteSpace(senderProvince))
+        {
+            var defaultUserAddress = await _dbContext.Set<UserAddress>()
+                .FirstOrDefaultAsync(a => a.UserId == _currentUser.UserId && a.IsDefault, cancellationToken);
+
+            if (defaultUserAddress is null)
+            {
+                return WarehouseErrors.InboundShipment.SenderAddressMissingAndNoDefault;
+            }
+
+            senderName     = string.IsNullOrWhiteSpace(senderName) ? defaultUserAddress.Recipient.RecipientName : senderName;
+            senderPhone    = string.IsNullOrWhiteSpace(senderPhone) ? defaultUserAddress.Recipient.Phone.Value : senderPhone;
+            senderAddress  = string.IsNullOrWhiteSpace(senderAddress) ? defaultUserAddress.Address.Street : senderAddress;
+            senderWard     = string.IsNullOrWhiteSpace(senderWard) ? defaultUserAddress.Address.Ward : senderWard;
+            senderDistrict = string.IsNullOrWhiteSpace(senderDistrict) ? defaultUserAddress.Address.District : senderDistrict;
+            senderProvince = string.IsNullOrWhiteSpace(senderProvince) ? defaultUserAddress.Address.City : senderProvince;
+        }
+
+        // ── 3a. External carrier — skip carrier API ───────────────────────────
         if (isExternal)
         {
             if (string.IsNullOrWhiteSpace(request.ExternalCarrierName))
@@ -69,12 +102,12 @@ internal sealed class BookInboundShipmentCommandHandler
                 sellerId:            _currentUser.UserId,
                 providerCode:        ShippingProviderCode.External,
                 clientOrderCode:     externalCode,
-                senderName:          request.SenderName,
-                senderPhone:         request.SenderPhone,
-                senderAddress:       request.SenderAddress,
-                senderWard:          request.SenderWard,
-                senderDistrict:      request.SenderDistrict,
-                senderProvince:      request.SenderProvince,
+                senderName:          senderName,
+                senderPhone:         senderPhone,
+                senderAddress:       senderAddress,
+                senderWard:          senderWard,
+                senderDistrict:      senderDistrict,
+                senderProvince:      senderProvince,
                 dimensions:          dimensions,
                 now:                 now,
                 shipmentMode:        InboundShipmentMode.ExternalCarrier,
@@ -90,7 +123,7 @@ internal sealed class BookInboundShipmentCommandHandler
             return externalResult.Value.ToDto();
         }
 
-        // ── 2b. Platform-managed — load ShippingProviderConfig ────────────────
+        // ── 3b. Platform-managed — load ShippingProviderConfig ────────────────
         ShippingProviderConfig? config;
 
         if (!string.IsNullOrWhiteSpace(request.ProviderCode))
@@ -116,10 +149,10 @@ internal sealed class BookInboundShipmentCommandHandler
                 return WarehouseErrors.ShippingProvider.NoDefaultProvider;
         }
 
-        // ── 3. Generate client order code ─────────────────────────────────────
+        // ── 4. Generate client order code ─────────────────────────────────────
         var clientOrderCode = $"INB-{Guid.NewGuid():N}"[..20];
 
-        // ── 4. Call carrier API ───────────────────────────────────────────────
+        // ── 5. Call carrier API ───────────────────────────────────────────────
         // Recipient = warehouse (pick address from config)
         // Sender    = seller's address (carrier picks up FROM seller)
         var bookingRequest = new BookShipmentRequest
@@ -136,12 +169,12 @@ internal sealed class BookInboundShipmentCommandHandler
             RecipientCarrierAddressDataJson  = config.PickCarrierAddressData?.RawJson,
 
             // Seller is the pickup point
-            SenderName                   = request.SenderName,
-            SenderPhone                  = request.SenderPhone,
-            SenderAddress                = request.SenderAddress,
-            SenderWard                   = request.SenderWard,
-            SenderDistrict               = request.SenderDistrict,
-            SenderProvince               = request.SenderProvince,
+            SenderName                   = senderName,
+            SenderPhone                  = senderPhone,
+            SenderAddress                = senderAddress,
+            SenderWard                   = senderWard,
+            SenderDistrict               = senderDistrict,
+            SenderProvince               = senderProvince,
             SenderCarrierAddressDataJson  = request.SenderCarrierAddressDataJson,
 
             WeightGrams    = request.WeightGrams,
@@ -172,18 +205,18 @@ internal sealed class BookInboundShipmentCommandHandler
         if (bookingResult.IsFailure) return bookingResult.Error;
         var booking = bookingResult.Value;
 
-        // ── 5. Create InboundShipment domain entity ───────────────────────────
+        // ── 6. Create InboundShipment domain entity ───────────────────────────
         var createResult = InboundShipment.Create(
             itemId:          request.ItemId,
             sellerId:        _currentUser.UserId,
             providerCode:    config.ProviderCode,
             clientOrderCode: clientOrderCode,
-            senderName:      request.SenderName,
-            senderPhone:     request.SenderPhone,
-            senderAddress:   request.SenderAddress,
-            senderWard:      request.SenderWard,
-            senderDistrict:  request.SenderDistrict,
-            senderProvince:  request.SenderProvince,
+            senderName:      senderName,
+            senderPhone:     senderPhone,
+            senderAddress:   senderAddress,
+            senderWard:      senderWard,
+            senderDistrict:  senderDistrict,
+            senderProvince:  senderProvince,
             dimensions:      dimensions,
             now:             now,
             shipmentMode:    InboundShipmentMode.PlatformManaged,
@@ -198,11 +231,11 @@ internal sealed class BookInboundShipmentCommandHandler
         if (createResult.IsFailure) return createResult.Error;
         var shipment = createResult.Value;
 
-        // ── 6. Record carrier booking ─────────────────────────────────────────
+        // ── 7. Record carrier booking ─────────────────────────────────────────
         var bookedResult = shipment.RecordBooked(booking.CarrierTrackingNumber, now);
         if (bookedResult.IsFailure) return bookedResult.Error;
 
-        // ── 7. Persist ────────────────────────────────────────────────────────
+        // ── 8. Persist ────────────────────────────────────────────────────────
         _dbContext.Insert(shipment);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
