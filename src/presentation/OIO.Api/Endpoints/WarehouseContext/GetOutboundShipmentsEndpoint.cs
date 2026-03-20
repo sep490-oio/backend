@@ -1,6 +1,8 @@
-﻿using MediatR;
+using MediatR;
 using OIO.Api.Common;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Context.WarehouseContext.DTOs;
+
 using OIO.Application.Context.WarehouseContext.Queries.GetOutboundShipments;
 using OIO.Domain.AppDefinitions;
 
@@ -29,6 +31,7 @@ public sealed class GetOutboundShipmentsEndpoint : IEndpoint
             .RequireAuthorization(App.Permissions.Catalogs.Warehouse.ReadShipments)
             .WithName(ApiEndpoint.Names.Warehouse.GetOutboundShipments)
             .WithTags(ApiEndpoint.Tags.Warehouse)
-            .Produces<IReadOnlyList<OutboundShipmentDto>>(StatusCodes.Status200OK);
+            .Produces<PagedList<OutboundShipmentDto>>(StatusCodes.Status200OK);
+
     }
 }
