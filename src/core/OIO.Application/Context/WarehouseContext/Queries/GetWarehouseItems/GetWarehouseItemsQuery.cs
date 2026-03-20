@@ -1,9 +1,11 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Application.Context.WarehouseContext.Mappings;
+using OIO.Application.Extensions;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 using OIO.Domain.SeedWork.Errors;
 
@@ -16,16 +18,20 @@ public sealed record GetWarehouseItemsQuery(
     Guid?   InboundShipmentId = null,
     int     Page = 1,
     int     PageSize = 20
-) : IQuery<IReadOnlyList<WarehouseItemDto>>;
+) : IQuery<PagedList<WarehouseItemDto>>, IPagedParameter
+{
+    int IPagedParameter.PageNumber => Page < 1 ? 1 : Page;
+    int IPagedParameter.PageSize   => PageSize < 1 ? 20 : Math.Min(PageSize, 50);
+}
 
 internal sealed class GetWarehouseItemsQueryHandler(IDbContext db)
-    : IQueryHandler<GetWarehouseItemsQuery, IReadOnlyList<WarehouseItemDto>>
+    : IQueryHandler<GetWarehouseItemsQuery, PagedList<WarehouseItemDto>>
 {
-    public async Task<Result<IReadOnlyList<WarehouseItemDto>, Error>> Handle(
+    public async Task<Result<PagedList<WarehouseItemDto>, Error>> Handle(
         GetWarehouseItemsQuery request,
         CancellationToken cancellationToken)
     {
-        var query = db.Set<WarehouseItem>().AsQueryable();
+        var query = db.Set<WarehouseItem>().AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(request.Status))
             query = query.Where(w => w.Status.Id == request.Status);
@@ -39,12 +45,12 @@ internal sealed class GetWarehouseItemsQueryHandler(IDbContext db)
         if (request.InboundShipmentId.HasValue)
             query = query.Where(w => w.InboundShipmentId.Value == request.InboundShipmentId.Value);
 
+        var totalCount = await query.CountAsync(cancellationToken);
+
         var items = await query
             .OrderByDescending(w => w.CreatedAt)
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
             .Select(w => w.ToDto())
-            .ToListAsync(cancellationToken);
+            .ToPagedListAsync(totalCount, request, cancellationToken);
 
         return items;
     }

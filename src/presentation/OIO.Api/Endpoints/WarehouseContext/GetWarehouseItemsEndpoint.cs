@@ -1,6 +1,8 @@
-﻿using MediatR;
+using MediatR;
 using OIO.Api.Common;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Context.WarehouseContext.DTOs;
+
 using OIO.Application.Context.WarehouseContext.Queries.GetWarehouseItems;
 using OIO.Domain.AppDefinitions;
 
@@ -28,6 +30,7 @@ public sealed class GetWarehouseItemsEndpoint : IEndpoint
             .RequireAuthorization(App.Permissions.Catalogs.Warehouse.ReadShipments)
             .WithName(ApiEndpoint.Names.Warehouse.GetWarehouseItems)
             .WithTags(ApiEndpoint.Tags.Warehouse)
-            .Produces<IReadOnlyList<WarehouseItemDto>>(StatusCodes.Status200OK);
+            .Produces<PagedList<WarehouseItemDto>>(StatusCodes.Status200OK);
+
     }
 }

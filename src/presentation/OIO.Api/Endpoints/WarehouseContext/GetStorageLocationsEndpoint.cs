@@ -1,6 +1,8 @@
-﻿using MediatR;
+using MediatR;
 using OIO.Api.Common;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Context.WarehouseContext.DTOs;
+
 using OIO.Application.Context.WarehouseContext.Queries.GetStorageLocations;
 using OIO.Domain.AppDefinitions;
 
@@ -27,6 +29,7 @@ public sealed class GetStorageLocationsEndpoint : IEndpoint
             .RequireAuthorization(App.Permissions.Catalogs.Warehouse.ManageLocations)
             .WithName(ApiEndpoint.Names.Warehouse.GetStorageLocations)
             .WithTags(ApiEndpoint.Tags.Warehouse)
-            .Produces<IReadOnlyList<StorageLocationDto>>(StatusCodes.Status200OK);
+            .Produces<PagedList<StorageLocationDto>>(StatusCodes.Status200OK);
+
     }
 }

@@ -1,9 +1,11 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Application.Context.WarehouseContext.Mappings;
+using OIO.Application.Extensions;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseStorage;
 using OIO.Domain.SeedWork.Errors;
 
@@ -15,16 +17,20 @@ public sealed record GetStorageLocationsQuery(
     string? Search = null,
     int     Page = 1,
     int     PageSize = 50
-) : IQuery<IReadOnlyList<StorageLocationDto>>;
+) : IQuery<PagedList<StorageLocationDto>>, IPagedParameter
+{
+    int IPagedParameter.PageNumber => Page < 1 ? 1 : Page;
+    int IPagedParameter.PageSize   => PageSize < 1 ? 50 : Math.Min(PageSize, 100);
+}
 
 internal sealed class GetStorageLocationsQueryHandler(IDbContext db)
-    : IQueryHandler<GetStorageLocationsQuery, IReadOnlyList<StorageLocationDto>>
+    : IQueryHandler<GetStorageLocationsQuery, PagedList<StorageLocationDto>>
 {
-    public async Task<Result<IReadOnlyList<StorageLocationDto>, Error>> Handle(
+    public async Task<Result<PagedList<StorageLocationDto>, Error>> Handle(
         GetStorageLocationsQuery request,
         CancellationToken cancellationToken)
     {
-        var query = db.Set<WarehouseStorageLocation>().AsQueryable();
+        var query = db.Set<WarehouseStorageLocation>().AsNoTracking().AsQueryable();
 
         if (request.VacantOnly)
             query = query.Where(l => !l.IsOccupied);
@@ -35,15 +41,15 @@ internal sealed class GetStorageLocationsQueryHandler(IDbContext db)
         if (!string.IsNullOrWhiteSpace(request.Search))
             query = query.Where(l => l.Label.Contains(request.Search));
 
+        var totalCount = await query.CountAsync(cancellationToken);
+
         var locations = await query
             .OrderBy(l => l.Zone)
             .ThenBy(l => l.Aisle)
             .ThenBy(l => l.Shelf)
             .ThenBy(l => l.Bin)
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
             .Select(l => l.ToDto())
-            .ToListAsync(cancellationToken);
+            .ToPagedListAsync(totalCount, request, cancellationToken);
 
         return locations;
     }
