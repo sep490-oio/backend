@@ -50,7 +50,35 @@ public sealed class MediaUpload : BaseEntity<MediaUploadId>, ICreatedAtEntity
             ExpiresAt = nowUtc.Add(signatureExpirationMinutes)
         };
     }
-
+    /// <summary>
+    /// Creates a MediaUpload record that is pre-confirmed and ready to link.
+    /// Used for server-side uploads (e.g. warehouse staff inspection photos)
+    /// where the 3-step signature/upload/confirm cycle is bypassed.
+    /// </summary>
+    public static MediaUpload CreateServerSide(
+        UserId userId,
+        string context,
+        string resourceType,
+        MediaInfo mediaInfo,
+        StorageRef storageRef,
+        DateTime nowUtc)
+    {
+        return new MediaUpload
+        {
+            Id          = MediaUploadId.From(Guid.CreateVersion7()),
+            UserId      = userId,
+            Context     = context,
+            ResourceType = resourceType,
+            EntityId    = null,
+            Info        = mediaInfo,
+            StorageRef  = storageRef,
+            IsConfirmed = true,
+            IsLinked    = false,
+            CreatedAt   = nowUtc,
+            ConfirmedAt = nowUtc,
+            ExpiresAt   = nowUtc.AddDays(30) // long expiry — will be linked immediately
+        };
+    }
     public bool IsExpired(DateTime nowUtc) => !IsConfirmed && nowUtc > ExpiresAt;
 
     public UnitResult<Error> Confirm(
