@@ -380,6 +380,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     token_reference = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    vnpay_token = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
+                    masked_card_number = table.Column<string>(type: "character varying(25)", maxLength: 25, nullable: true),
+                    vnpay_card_type = table.Column<string>(type: "character varying(5)", maxLength: 5, nullable: true),
+                    bank_code = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
                     expiry_month = table.Column<int>(type: "integer", nullable: true),
                     expiry_year = table.Column<int>(type: "integer", nullable: true),
                     holder_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
@@ -500,6 +504,22 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_qrtz_scheduler_state", x => new { x.sched_name, x.instance_name });
+                });
+
+            migrationBuilder.CreateTable(
+                name: "recovery_codes",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    code_hash = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    is_used = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    used_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_recovery_codes", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -754,6 +774,9 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     phone_number_confirmed = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     phone_number_confirmed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     two_factor_enabled = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    two_factor_secret = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    pending_two_factor_secret = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    last_used_totp_time_step = table.Column<long>(type: "bigint", nullable: true),
                     status = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false, defaultValue: "inactive"),
                     lockout_enabled = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     lockout_reason = table.Column<string>(type: "text", nullable: true),
@@ -950,6 +973,8 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     order_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    auction_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    buy_now_reservation_id = table.Column<Guid>(type: "uuid", nullable: true),
                     user_id = table.Column<Guid>(type: "uuid", nullable: false),
                     payment_method_id = table.Column<Guid>(type: "uuid", nullable: true),
                     fee = table.Column<decimal>(type: "numeric(18,2)", nullable: false, defaultValue: 0m),
@@ -1243,6 +1268,8 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     verified_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     total_sales_count = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
                     total_sales_amount = table.Column<decimal>(type: "numeric(18,2)", nullable: false, defaultValue: 0m),
+                    trust_score_overall = table.Column<decimal>(type: "numeric(5,2)", precision: 5, scale: 2, nullable: false, defaultValue: 0m),
+                    trust_score_calculated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
                     modified_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     status = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false)
@@ -1604,7 +1631,8 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    wallet_type = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false, defaultValue: "personal"),
                     is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     version = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
@@ -2035,6 +2063,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     auction_id = table.Column<Guid>(type: "uuid", nullable: false),
                     buyer_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    buy_now_price = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    deposit_applied_amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    gateway_amount_due = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    currency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
                     payment_transaction_id = table.Column<Guid>(type: "uuid", nullable: true),
                     order_id = table.Column<Guid>(type: "uuid", nullable: true),
                     expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
@@ -2042,10 +2074,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     failure_reason = table.Column<string>(type: "text", nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
                     modified_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    buy_now_price = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    currency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
-                    deposit_applied_amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    gateway_amount_due = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     status = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false)
                 },
                 constraints: table =>
@@ -2404,6 +2432,7 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     auction_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    type = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
                     bid_id = table.Column<Guid>(type: "uuid", nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
                     price = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
@@ -2998,6 +3027,12 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 columns: new[] { "user_id", "is_active" });
 
             migrationBuilder.CreateIndex(
+                name: "idx_payment_methods_user_token",
+                table: "payment_methods",
+                columns: new[] { "user_id", "vnpay_token" },
+                filter: "vnpay_token IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
                 name: "idx_qrtz_ft_job_group",
                 schema: "quartz",
                 table: "qrtz_fired_triggers",
@@ -3068,6 +3103,12 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 schema: "quartz",
                 table: "qrtz_triggers",
                 columns: new[] { "sched_name", "job_name", "job_group" });
+
+            migrationBuilder.CreateIndex(
+                name: "idx_recovery_codes_user_unused",
+                table: "recovery_codes",
+                columns: new[] { "user_id", "is_used" },
+                filter: "is_used = false");
 
             migrationBuilder.CreateIndex(
                 name: "idx_reports_entity",
@@ -3195,6 +3236,16 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 table: "terms_documents",
                 columns: new[] { "term_type", "version" },
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "idx_transactions_auction",
+                table: "transactions",
+                column: "auction_id");
+
+            migrationBuilder.CreateIndex(
+                name: "idx_transactions_buy_now_reservation",
+                table: "transactions",
+                column: "buy_now_reservation_id");
 
             migrationBuilder.CreateIndex(
                 name: "idx_transactions_order",
@@ -3373,10 +3424,18 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 column: "transaction_id");
 
             migrationBuilder.CreateIndex(
+                name: "uq_wallets_platform",
+                table: "wallets",
+                column: "wallet_type",
+                unique: true,
+                filter: "wallet_type = 'platform'");
+
+            migrationBuilder.CreateIndex(
                 name: "uq_wallets_user_id",
                 table: "wallets",
                 column: "user_id",
-                unique: true);
+                unique: true,
+                filter: "wallet_type = 'personal'");
 
             migrationBuilder.CreateIndex(
                 name: "idx_unique_warehouse_inspections_inbound_shipment_id",
@@ -3776,6 +3835,9 @@ namespace OIO.Infrastructure.Persistence.Migrations
             migrationBuilder.DropTable(
                 name: "qrtz_simprop_triggers",
                 schema: "quartz");
+
+            migrationBuilder.DropTable(
+                name: "recovery_codes");
 
             migrationBuilder.DropTable(
                 name: "reports");

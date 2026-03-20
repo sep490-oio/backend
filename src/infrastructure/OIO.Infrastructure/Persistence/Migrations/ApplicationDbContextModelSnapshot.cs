@@ -4057,8 +4057,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Type")
                         .IsRequired()
+                        .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
+                        .HasDefaultValue("personal")
                         .HasColumnName("wallet_type");
 
                     b.Property<Guid?>("UserId")

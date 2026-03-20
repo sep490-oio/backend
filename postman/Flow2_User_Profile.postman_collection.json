@@ -1,0 +1,942 @@
+{
+	"info": {
+		"_postman_id": "f2a1b2c3-d4e5-6f78-9a0b-c1d2e3f4a5b6",
+		"name": "Flow 2 – User Profile",
+		"description": "Tests 17 User Profile endpoints organized in 4 folders: View & Update Profile, Phone Verification, Address Management, and Notification Preferences.\n\nRequires environment variables: baseUrl, accessToken (from Flow 1), addressId.\nUses collection variables: secondAddressId, phoneVerificationCode, mediaUploadId.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "secondAddressId",
+			"value": ""
+		},
+		{
+			"key": "phoneVerificationCode",
+			"value": ""
+		},
+		{
+			"key": "mediaUploadId",
+			"value": ""
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{accessToken}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Ensure accessToken is available",
+					"if (!pm.environment.get('accessToken')) {",
+					"    console.warn('accessToken not set. Run Flow 1 Login first.');",
+					"}"
+				]
+			}
+		}
+	],
+	"item": [
+		{
+			"name": "01 – View & Update Profile",
+			"item": [
+				{
+					"name": "Get Current User",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"me"
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has id, email, userName, profile', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.have.property('id');",
+									"    pm.expect(json).to.have.property('email');",
+									"    pm.expect(json).to.have.property('userName');",
+									"    pm.expect(json).to.have.property('profile');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Get User Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"me",
+								"profile"
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has firstName, lastName, displayName, avatarUrl, dateOfBirth, gender', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.have.property('firstName');",
+									"    pm.expect(json).to.have.property('lastName');",
+									"    pm.expect(json).to.have.property('displayName');",
+									"    pm.expect(json).to.have.property('avatarUrl');",
+									"    pm.expect(json).to.have.property('dateOfBirth');",
+									"    pm.expect(json).to.have.property('gender');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Update Profile (basic)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"displayName\": \"JD\",\n  \"dateOfBirth\": \"1990-01-15\",\n  \"gender\": \"male\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"me",
+								"profile"
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('firstName is John', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.firstName).to.eql('John');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Update Profile (with avatar)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"avatarMediaUploadId\": \"{{mediaUploadId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"me",
+								"profile"
+							]
+						},
+						"description": "Set mediaUploadId from Media Upload flow first",
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "02 – Phone Verification",
+			"item": [
+				{
+					"name": "Set Phone Number",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phoneNumber\": \"0912345678\",\n  \"countryCode\": \"VN\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/phone",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"me",
+								"phone"
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Confirm Phone (OTP)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"verificationCode\": \"{{phoneVerificationCode}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/phone/confirm",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"me",
+								"phone",
+								"confirm"
+							]
+						},
+						"description": "Set phoneVerificationCode manually",
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Set Phone (change number)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phoneNumber\": \"0987654321\",\n  \"countryCode\": \"VN\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/phone",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"me",
+								"phone"
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "03 – Address Management",
+			"item": [
+				{
+					"name": "Add Address (home, default)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"home\",\n  \"recipientName\": \"John Doe\",\n  \"street\": \"123 Le Loi\",\n  \"ward\": \"Ben Thanh\",\n  \"district\": \"Quan 1\",\n  \"city\": \"Ho Chi Minh\",\n  \"postalCode\": \"700000\",\n  \"phoneNumber\": \"0912345678\",\n  \"countryCode\": \"VN\",\n  \"isDefault\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/addresses",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"me",
+								"addresses"
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Save addressId to environment', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.have.property('id');",
+									"    pm.environment.set('addressId', json.id);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Add Address (work)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"work\",\n  \"recipientName\": \"John Doe\",\n  \"street\": \"456 Nguyen Hue\",\n  \"ward\": \"Ben Nghe\",\n  \"district\": \"Quan 1\",\n  \"city\": \"Ho Chi Minh\",\n  \"phoneNumber\": \"0912345678\",\n  \"countryCode\": \"VN\",\n  \"isDefault\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/addresses",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"me",
+								"addresses"
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Save secondAddressId to collection variables', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.have.property('id');",
+									"    pm.collectionVariables.set('secondAddressId', json.id);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Addresses",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/addresses?pageNumber=1&pageSize=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"me",
+								"addresses"
+							],
+							"query": [
+								{
+									"key": "pageNumber",
+									"value": "1"
+								},
+								{
+									"key": "pageSize",
+									"value": "10"
+								}
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Items is array with at least 2 entries', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.items).to.be.an('array');",
+									"    pm.expect(json.items.length).to.be.at.least(2);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Update Address",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"recipientName\": \"Jane Doe\",\n  \"street\": \"789 Tran Hung Dao\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/addresses/{{secondAddressId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"me",
+								"addresses",
+								"{{secondAddressId}}"
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Set Default Address",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/addresses/{{secondAddressId}}/default",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"me",
+								"addresses",
+								"{{secondAddressId}}",
+								"default"
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Delete Address",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/addresses/{{secondAddressId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"me",
+								"addresses",
+								"{{secondAddressId}}"
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Addresses (verify delete)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/addresses?pageNumber=1&pageSize=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"me",
+								"addresses"
+							],
+							"query": [
+								{
+									"key": "pageNumber",
+									"value": "1"
+								},
+								{
+									"key": "pageSize",
+									"value": "10"
+								}
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Deleted address is not in items', function () {",
+									"    var json = pm.response.json();",
+									"    var secondAddressId = pm.collectionVariables.get('secondAddressId');",
+									"    var ids = json.items.map(function (item) { return item.id; });",
+									"    pm.expect(ids).to.not.include(secondAddressId);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "04 – Notification Preferences",
+			"item": [
+				{
+					"name": "Get Notification Preferences",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/notification-preferences",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"me",
+								"notification-preferences"
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Update Notification Preferences",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"isEnabled\": true,\n  \"channels\": \"{\\\"email\\\":true,\\\"signalr\\\":true,\\\"inApp\\\":true}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/me/notification-preferences",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"me",
+								"notification-preferences"
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Notification Preferences (verify)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me/notification-preferences",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"me",
+								"notification-preferences"
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('isEnabled is true', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.isEnabled).to.eql(true);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		}
+	]
+}

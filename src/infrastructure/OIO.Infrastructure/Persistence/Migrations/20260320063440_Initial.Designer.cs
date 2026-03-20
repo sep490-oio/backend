@@ -14,8 +14,8 @@ using OIO.Infrastructure.Persistence;
 namespace OIO.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260319210527_config_user_and_wallet")]
-    partial class config_user_and_wallet
+    [Migration("20260320063440_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -4060,8 +4060,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Type")
                         .IsRequired()
+                        .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
+                        .HasDefaultValue("personal")
                         .HasColumnName("wallet_type");
 
                     b.Property<Guid?>("UserId")

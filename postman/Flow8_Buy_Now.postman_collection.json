@@ -1,0 +1,785 @@
+{
+  "info": {
+    "name": "Flow 8 — Buy Now",
+    "_postman_id": "flow8-buy-now",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    { "key": "buyNowPaymentUrl", "value": "" },
+    { "key": "buyNowExpiresAt", "value": "" },
+    { "key": "buyNowPrice", "value": "0" },
+    { "key": "depositApplied", "value": "0" },
+    { "key": "amountDue", "value": "0" },
+    { "key": "paymentMethodId", "value": "" },
+    { "key": "transactionId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 Initiate Reservation",
+      "item": [
+        {
+          "name": "Buy Now – Create Reservation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/buy-now",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "buy-now"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 – reservation created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.reservationId) {",
+                  "    pm.environment.set('buyNowReservationId', body.reservationId);",
+                  "    console.log('buyNowReservationId saved:', body.reservationId);",
+                  "}",
+                  "if (body.paymentUrl) {",
+                  "    pm.collectionVariables.set('buyNowPaymentUrl', body.paymentUrl);",
+                  "    console.log('buyNowPaymentUrl saved:', body.paymentUrl);",
+                  "}",
+                  "if (body.expiresAt) {",
+                  "    pm.collectionVariables.set('buyNowExpiresAt', body.expiresAt);",
+                  "    console.log('buyNowExpiresAt saved:', body.expiresAt);",
+                  "}",
+                  "if (body.price !== undefined) {",
+                  "    pm.collectionVariables.set('buyNowPrice', String(body.price));",
+                  "    console.log('buyNowPrice saved:', body.price);",
+                  "}",
+                  "if (body.deposit !== undefined) {",
+                  "    pm.collectionVariables.set('depositApplied', String(body.deposit));",
+                  "    console.log('depositApplied saved:', body.deposit);",
+                  "}",
+                  "if (body.amountDue !== undefined) {",
+                  "    pm.collectionVariables.set('amountDue', String(body.amountDue));",
+                  "    console.log('amountDue saved:', body.amountDue);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Auction – Verify Locked by BuyNow",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            },
+            "description": "Verify auction locked by active BuyNow reservation"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – auction retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Auction status:', body.status);",
+                  "console.log('BuyNow reservation active:', JSON.stringify(body));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Place Bid – Expect 409 (Locked by BuyNow)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/bids",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "bids"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100000,\n  \"currency\": \"VND\"\n}"
+            },
+            "description": "Expect error — auction locked by BuyNow reservation"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409 – auction locked by BuyNow reservation', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 Payment & Finalize",
+      "item": [
+        {
+          "name": "Get Auction – Payment Step",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            },
+            "description": "## Payment Step\n\n1. Open `{{buyNowPaymentUrl}}` in browser\n2. Complete VNPay payment\n3. VNPay sends IPN callback to `/api/payments/vnpay/ipn`\n4. System finalizes reservation, creates order\n5. Run this request to verify"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – auction retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Auction status:', body.status);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Auction – Verify Sold",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            },
+            "description": "Verify status=sold after payment callback"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – auction retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Auction status:', body.status);",
+                  "pm.test('Auction status is sold', function () {",
+                  "    pm.expect(body.status).to.eql('sold');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get My Orders – Verify BuyNow Order",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/orders?pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "orders"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            },
+            "description": "Verify order created from buy-now"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – orders retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.items) {",
+                  "    console.log('Total orders:', body.items.length);",
+                  "    body.items.forEach(function (order, i) {",
+                  "        console.log((i + 1) + '. OrderId:', order.id, '| Status:', order.status, '| AuctionId:', order.auctionId);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 Reservation Expiry",
+      "item": [
+        {
+          "name": "Buy Now – New Reservation for Expiry Test",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/buy-now",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "buy-now"]
+            },
+            "description": "Create new reservation for expiry test (need different auction)"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 – reservation created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.reservationId) {",
+                  "    pm.environment.set('buyNowReservationId', body.reservationId);",
+                  "    console.log('buyNowReservationId saved:', body.reservationId);",
+                  "}",
+                  "if (body.expiresAt) {",
+                  "    pm.collectionVariables.set('buyNowExpiresAt', body.expiresAt);",
+                  "    console.log('Reservation expires at:', body.expiresAt);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Auction – After Expiry",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            },
+            "description": "Wait 15 minutes, then run. Reservation should be expired by ExpireBuyNowReservationsJob"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – auction retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log('Auction status:', body.status);",
+                  "console.log('Reservation should be expired by now');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Place Bid – After Reservation Expired",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/bids",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "bids"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100000,\n  \"currency\": \"VND\"\n}"
+            },
+            "description": "After reservation expired, bidding should work again"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 – bid placed after reservation expired', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 VNPay Token Flows",
+      "item": [
+        {
+          "name": "Link Card via VNPay",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/methods/link-card",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "methods", "link-card"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "Link card via VNPay token_create (amount=0). Redirects to VNPay to enter card details."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 or 200 – link card initiated', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.paymentUrl) {",
+                  "    pm.collectionVariables.set('buyNowPaymentUrl', body.paymentUrl);",
+                  "    console.log('Card link paymentUrl saved:', body.paymentUrl);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Payment Methods",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "methods"]
+            },
+            "description": "List saved payment methods (after linking card)"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – payment methods listed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (Array.isArray(body) && body.length > 0) {",
+                  "    pm.collectionVariables.set('paymentMethodId', body[0].id);",
+                  "    console.log('paymentMethodId saved:', body[0].id);",
+                  "} else if (body.items && body.items.length > 0) {",
+                  "    pm.collectionVariables.set('paymentMethodId', body.items[0].id);",
+                  "    console.log('paymentMethodId saved:', body.items[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Set Default Payment Method",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/methods/{{paymentMethodId}}/default",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "methods", "{{paymentMethodId}}", "default"]
+            },
+            "description": "Set linked card as default"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 – default payment method set', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pay with Saved Card Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/vnpay/create-url",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "vnpay", "create-url"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100000,\n  \"currency\": \"VND\",\n  \"purpose\": \"auction_buy_now\",\n  \"ipAddress\": \"127.0.0.1\",\n  \"description\": \"BuyNow with token\",\n  \"auctionId\": \"{{auctionId}}\",\n  \"buyNowReservationId\": \"{{buyNowReservationId}}\",\n  \"paymentMethodId\": \"{{paymentMethodId}}\"\n}"
+            },
+            "description": "Pay using saved card token (token_pay flow)"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – payment URL created', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.paymentUrl) {",
+                  "    console.log('Token payment URL:', body.paymentUrl);",
+                  "}",
+                  "if (body.transactionId) {",
+                  "    pm.collectionVariables.set('transactionId', body.transactionId);",
+                  "    console.log('transactionId saved:', body.transactionId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove Saved Card",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/methods/{{paymentMethodId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "methods", "{{paymentMethodId}}"]
+            },
+            "description": "Remove saved card"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 – payment method removed', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 IPN & Return",
+      "item": [
+        {
+          "name": "IPN Webhook – Reference",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            },
+            "description": "## IPN Webhook\n\n**Endpoint:** `GET /api/payments/vnpay/ipn`\n\nVNPay sends GET request with query params:\n- `vnp_TxnRef`: Transaction reference\n- `vnp_Amount`: Amount * 100\n- `vnp_ResponseCode`: '00' = success\n- `vnp_SecureHash`: HMAC-SHA512 signature\n\nServer validates hash, processes callback, returns VNPay format response.\n\n**Cannot be tested directly in Postman** — VNPay server calls this endpoint."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – auction retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Return URL – Reference",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            },
+            "description": "## Return URL\n\n**Endpoint:** `GET /api/payments/vnpay/return`\n\nUser redirected here after payment. Shows payment result.\n\n**Test by opening PaymentUrl in browser.**"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – auction retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wallet Transactions – Verify Payment",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/wallet/transactions?pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "wallet", "transactions"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            },
+            "description": "Verify payment transaction in wallet history"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – wallet transactions retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.items) {",
+                  "    console.log('Total transactions:', body.items.length);",
+                  "    body.items.forEach(function (tx, i) {",
+                  "        console.log((i + 1) + '. Type:', tx.type, '| Amount:', tx.amount, '| Status:', tx.status);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 Refund",
+      "item": [
+        {
+          "name": "Refund VNPay Payment (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/vnpay/refund",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "vnpay", "refund"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionId\": \"{{transactionId}}\",\n  \"amount\": 100000,\n  \"reason\": \"Test refund\"\n}"
+            },
+            "description": "Admin-only. Refund VNPay payment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 204 – refund processed', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wallet Transactions – Verify Refund",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/wallet/transactions?pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "wallet", "transactions"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            },
+            "description": "Verify refund transaction"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – wallet transactions retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.items) {",
+                  "    console.log('Total transactions:', body.items.length);",
+                  "    body.items.forEach(function (tx, i) {",
+                  "        console.log((i + 1) + '. Type:', tx.type, '| Amount:', tx.amount, '| Status:', tx.status);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 SignalR Reference",
+      "item": [
+        {
+          "name": "SignalR – BuyNow via Hub",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            },
+            "description": "## BuyNow via SignalR\n\n**Hub:** `wss://{{baseUrl}}/hubs/auction?access_token={{accessToken}}`\n\nSend: `{\"type\":1,\"target\":\"BuyNow\",\"arguments\":[\"{{auctionId}}\"]}`\n\nReceive: `HubCommandResult<BuyNowCheckoutDto>` with ReservationId, PaymentUrl, ExpiresAt, prices"
+          }
+        },
+        {
+          "name": "SignalR – BuyNow Events",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            },
+            "description": "## BuyNow Events\n\n**BuyNowReserved:** Sent to auction group when reservation created\n**BuyNowReservationReleased:** Sent when reservation expires/fails\n**BuyNowExecuted:** Sent when payment completes and auction sold"
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 Error Cases",
+      "item": [
+        {
+          "name": "Buy Now – No BuyNow Price (expect 4xx)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/buy-now",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "buy-now"]
+            },
+            "description": "Auction without BuyNow price configured → expect error"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx – BuyNow not configured for auction', function () {",
+                  "    pm.expect(pm.response.code).to.be.within(400, 499);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

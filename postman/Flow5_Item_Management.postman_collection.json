@@ -1,0 +1,1273 @@
+{
+  "info": {
+    "name": "Flow 5 — Item Management",
+    "_postman_id": "flow5-item-management",
+    "description": "End-to-end item lifecycle: create, media, Q&A, review, warehouse inspection, activation, and auction.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "itemMediaId", "value": "" },
+    { "key": "secondMediaId", "value": "" },
+    { "key": "questionId", "value": "" },
+    { "key": "itemMediaUploadId", "value": "" },
+    { "key": "shipmentId", "value": "" },
+    { "key": "cloudinarySignature", "value": "" },
+    { "key": "cloudinaryTimestamp", "value": "" },
+    { "key": "cloudinaryApiKey", "value": "" },
+    { "key": "cloudinaryPublicId", "value": "" },
+    { "key": "cloudinaryFolder", "value": "" },
+    { "key": "uploadUrl", "value": "" },
+    { "key": "confirmedSecureUrl", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 — Create Item",
+      "item": [
+        {
+          "name": "Create Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Vintage Watch\",\n  \"condition\": \"very_good\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"description\": \"A beautiful vintage watch\",\n  \"quantity\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('itemId', json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Item by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "noauth" },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Title matches', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.title).to.eql('Vintage Watch');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get My Items",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/my?pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "my"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Items array exists', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.items).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get All Items (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "noauth" },
+            "url": {
+              "raw": "{{baseUrl}}/api/items?pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 — Manage Media",
+      "item": [
+        {
+          "name": "Get Upload Signature",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/media/upload-signature",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "media", "upload-signature"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"context\": \"item_image\",\n  \"fileName\": \"watch-photo.jpg\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('cloudinarySignature', json.signature);",
+                  "pm.collectionVariables.set('cloudinaryTimestamp', json.timestamp);",
+                  "pm.collectionVariables.set('cloudinaryApiKey', json.apiKey);",
+                  "pm.collectionVariables.set('cloudinaryPublicId', json.publicId);",
+                  "pm.collectionVariables.set('cloudinaryFolder', json.folder);",
+                  "pm.collectionVariables.set('uploadUrl', json.uploadUrl);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upload Image to Cloudinary",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": { "type": "noauth" },
+            "url": {
+              "raw": "{{uploadUrl}}",
+              "host": ["{{uploadUrl}}"]
+            },
+            "description": "Manual: upload image to Cloudinary",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "" },
+                { "key": "signature", "value": "{{cloudinarySignature}}", "type": "text" },
+                { "key": "timestamp", "value": "{{cloudinaryTimestamp}}", "type": "text" },
+                { "key": "api_key", "value": "{{cloudinaryApiKey}}", "type": "text" },
+                { "key": "public_id", "value": "{{cloudinaryPublicId}}", "type": "text" },
+                { "key": "folder", "value": "{{cloudinaryFolder}}", "type": "text" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Upload successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('confirmedSecureUrl', json.secure_url);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm Media Upload",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/media/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "media", "confirm"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"publicId\": \"{{cloudinaryPublicId}}\",\n  \"secureUrl\": \"{{confirmedSecureUrl}}\",\n  \"resourceType\": \"image\",\n  \"format\": \"jpg\",\n  \"originalFileName\": \"watch-photo.jpg\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('itemMediaUploadId', json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Attach Media to Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/media",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "media"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mediaUploadId\": \"{{itemMediaUploadId}}\",\n  \"isPrimary\": true,\n  \"sortOrder\": 0\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('itemMediaId', json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Attach Second Media to Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/media",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "media"]
+            },
+            "description": "Requires second upload. Use signature from a new request.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mediaUploadId\": \"{{itemMediaUploadId}}\",\n  \"isPrimary\": false,\n  \"sortOrder\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('secondMediaId', json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Set Second Media as Primary",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/media/{{secondMediaId}}/primary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "media", "{{secondMediaId}}", "primary"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reorder Media",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/media/reorder",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "media", "reorder"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderedMediaIds\": [\"{{secondMediaId}}\", \"{{itemMediaId}}\"]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Second Media",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/media/{{secondMediaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "media", "{{secondMediaId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Media After Delete",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Media count is correct', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.media.length).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 — Item Q&A",
+      "item": [
+        {
+          "name": "Ask a Question",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/questions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "questions"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Is this watch still functioning?\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('questionId', json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Questions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/questions?pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "questions"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Items array exists', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.items).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Answer a Question",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/questions/{{questionId}}/answer",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "questions", "{{questionId}}", "answer"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answer\": \"Yes, it keeps perfect time.\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 — Submit for Review",
+      "item": [
+        {
+          "name": "Submit Item for Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verifyByPlatform\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Pending Review Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Item status is pending_review', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('pending_review');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 — Admin Review",
+      "item": [
+        {
+          "name": "Get Review Queue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/items/review-queue?pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "items", "review-queue"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Item Details (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/items/{{itemId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "items", "{{itemId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Assign Reviewer",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/items/{{itemId}}/assign",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "items", "{{itemId}}", "assign"]
+            },
+            "description": "Use admin userId",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"adminId\": \"{{userId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/items/{{itemId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "items", "{{itemId}}", "reject"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Images too blurry, please retake\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resubmit Item (Seller)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/resubmit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "resubmit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verifyByPlatform\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve Item",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/items/{{itemId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "items", "{{itemId}}", "approve"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Review History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/items/{{itemId}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "items", "{{itemId}}", "reviews"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Review history has entries', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.be.an('array').that.is.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 — Warehouse Inspection",
+      "item": [
+        {
+          "name": "Submit for Platform Verification",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "submit"]
+            },
+            "description": "Submit another item for platform verification",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verifyByPlatform\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Shipping for Inspection",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/shipping",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "shipping"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"senderName\": \"John Doe\",\n  \"senderPhone\": \"0912345678\",\n  \"senderAddress\": \"123 Le Loi\",\n  \"senderWard\": \"Ben Thanh\",\n  \"senderDistrict\": \"Quan 1\",\n  \"senderProvince\": \"Ho Chi Minh\",\n  \"weightGrams\": 500,\n  \"insuranceValue\": 1000000\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('shipmentId', json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Inspection Queue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/inspection-queue",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "inbound-shipments", "inspection-queue"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Inspect Shipment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/{{shipmentId}}/inspect",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "inbound-shipments", "{{shipmentId}}", "inspect"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"condition\": \"good\",\n  \"inspectionNotes\": \"Minor scratches on case\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Review Inspection",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/{{shipmentId}}/review",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "warehouse", "inbound-shipments", "{{shipmentId}}", "review"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"condition_confirmation_required\",\n  \"reason\": \"Condition differs from listing\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm Inspected Condition (Seller)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/confirm-inspected-condition",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "confirm-inspected-condition"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 — Activate & Auction",
+      "item": [
+        {
+          "name": "Activate Item",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/activate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "activate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Auction",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/auctions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "auctions"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startingPrice\": 100000,\n  \"bidIncrement\": 10000,\n  \"currency\": \"VND\",\n  \"auctionType\": \"regular\",\n  \"extensionMinutes\": 5\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('auctionId', json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Item Final State",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08 — Error Cases",
+      "item": [
+        {
+          "name": "Submit Item in Wrong Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "submit"]
+            },
+            "description": "Submit without media or wrong status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verifyByPlatform\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expect 4xx error', function () {",
+                  "    pm.expect(pm.response.code).to.be.within(400, 499);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
