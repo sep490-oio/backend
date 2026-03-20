@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OIO.Domain.Context.WarehouseContext.Aggregates;
 using OIO.Domain.Context.WarehouseContext.Enums;
@@ -105,7 +105,21 @@ internal sealed class ShipmentTrackingEventConfiguration : IEntityTypeConfigurat
             .HasColumnName("created_at")
             .HasDefaultValueSql("CURRENT_TIMESTAMP")
             .IsRequired();
+        // ==================== Shadow FK Properties ====================
+        // EF uses shadow properties for the two nullable FKs to avoid polymorphic mapping issues.
+        builder.Property<InboundShipmentId?>("InboundShipmentId")
+            .HasColumnName("inbound_shipment_id")
+            .HasConversion(
+                id => id.HasValue ? id.Value.Value : (Guid?)null,
+                value => value.HasValue ? InboundShipmentId.From(value.Value) : (InboundShipmentId?)null);
 
+        builder.Property<OutboundShipmentId?>("OutboundShipmentId")
+            .HasColumnName("outbound_shipment_id")
+            .HasConversion(
+                id => id.HasValue ? id.Value.Value : (Guid?)null,
+                value => value.HasValue ? OutboundShipmentId.From(value.Value) : (OutboundShipmentId?)null);
+
+        // ==================== Carrier Data ====================
         // ==================== Indexes ====================
         // Primary query pattern: all events for a shipment, ordered by time
         builder.HasIndex("InboundShipmentId", nameof(ShipmentTrackingEvent.EventTime))
