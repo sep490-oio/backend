@@ -1,4 +1,4 @@
-﻿using OIO.Application.Context.WarehouseContext.DTOs;
+using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 
 namespace OIO.Application.Context.WarehouseContext.Mappings;
@@ -18,5 +18,13 @@ internal static class WarehouseItemMappings
             InspectedAt:       item.InspectedAt,
             ReceivedAt:        item.ReceivedAt,
             CreatedAt:         item.CreatedAt,
-            ModifiedAt:        item.ModifiedAt);
+            ModifiedAt:        item.ModifiedAt,
+            Media:             item.Media.Select(m => new WarehouseItemMediaDto(
+                Id:           m.Id.Value,
+                ResourceType: m.ResourceType,
+                IsPrimary:    m.IsPrimary,
+                SortOrder:    m.SortOrder,
+                SecureUrl:    m.Info.SecureUrl,
+                FileName:     m.Info.FileName
+            )).OrderBy(m => m.SortOrder).ToList());
 }
