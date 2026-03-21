@@ -53,7 +53,7 @@ internal sealed class GetAuctionsQueryHandler
         else
         {
             // Default: show only active auctions for public listing
-            query = query.Where(x => x.Status == AuctionStatus.Active);
+            query = query.Where(x => x.Status == AuctionStatus.Active || x.Status == AuctionStatus.Scheduled);
         }
 
         // Category filter

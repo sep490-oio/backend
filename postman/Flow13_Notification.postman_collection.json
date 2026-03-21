@@ -1,0 +1,504 @@
+{
+  "info": {
+    "name": "Flow 13 — Notification",
+    "_postman_id": "flow13-notification",
+    "description": "Complete notification flow covering user notification preferences (get, update), paginated notification listing, unread count, mark-as-read (single and bulk), SignalR NotificationHub reference, notification source events (auction, order, item question / moderation), and error cases (404, 401).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    { "key": "notificationId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01-User Preferences",
+      "item": [
+        {
+          "name": "1. Get Notification Preferences (GET /api/me/notification-preferences)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/notification-preferences",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "notification-preferences"]
+            },
+            "description": "Retrieve the current user's notification preferences. Returns default preferences (isEnabled: true, channels: '{}') if the user has not configured any yet. Requires permission: Catalogs.Me.ReadNotificationPreferences."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – preferences retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    console.log('isEnabled:', body.isEnabled);",
+                  "    console.log('channels:', body.channels);",
+                  "    console.log('quietHours:', body.quietHours);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Update Preferences — enable Email + SignalR (PUT /api/me/notification-preferences)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isEnabled\": true,\n  \"channels\": \"[\\\"Email\\\",\\\"SignalR\\\"]\",\n  \"quietHours\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/me/notification-preferences",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "notification-preferences"]
+            },
+            "description": "Update the current user's notification preferences. Enables both Email and SignalR channels. The 'channels' field is a JSON-serialized string array. QuietHours is optional and can specify time ranges when notifications are suppressed. Requires permission: Catalogs.Me.ManageNotificationPreferences."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – preferences updated', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    console.log('Updated isEnabled:', body.isEnabled);",
+                  "    console.log('Updated channels:', body.channels);",
+                  "    console.log('Updated quietHours:', body.quietHours);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Update Preferences — disable Email (PUT, channels: [\"SignalR\"])",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isEnabled\": true,\n  \"channels\": \"[\\\"SignalR\\\"]\",\n  \"quietHours\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/me/notification-preferences",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "notification-preferences"]
+            },
+            "description": "Update preferences to keep only SignalR channel active (disable Email). This means the user will only receive real-time push notifications via the SignalR hub and will NOT receive email notifications."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – preferences updated (SignalR only)', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    console.log('channels after update:', body.channels);",
+                  "    pm.test('Email disabled – only SignalR', function () {",
+                  "        const channels = JSON.parse(body.channels);",
+                  "        pm.expect(channels).to.not.include('Email');",
+                  "        pm.expect(channels).to.include('SignalR');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02-Get Notifications",
+      "item": [
+        {
+          "name": "4. Get My Notifications — paged (GET /api/notifications?page=1&pageSize=10)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            },
+            "description": "Retrieve the current user's notifications with pagination. Returns a PagedList<NotificationDto> containing: id, notificationType, eventType, title, message, priority, status, entityType, entityId, metadata (JSON string), relatedEntities, actions, createdAt, readAt, expiresAt."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – notifications retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body && body.items && body.items.length > 0) {",
+                  "    const firstId = body.items[0].id;",
+                  "    pm.collectionVariables.set('notificationId', firstId);",
+                  "    console.log('notificationId extracted:', firstId);",
+                  "    console.log('Total items on page:', body.items.length);",
+                  "    console.log('Total count:', body.totalCount);",
+                  "} else {",
+                  "    console.log('No notifications found for current user.');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Get Unread Count (GET /api/notifications/unread-count)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/unread-count",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "unread-count"]
+            },
+            "description": "Returns the number of unread notifications for the authenticated user. Response shape: { count: number }."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – unread count retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body !== undefined) {",
+                  "    console.log('Unread count:', body.count);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03-Mark as Read",
+      "item": [
+        {
+          "name": "6. Mark Single Notification as Read (PATCH /api/notifications/{{notificationId}}/read)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/{{notificationId}}/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "{{notificationId}}", "read"]
+            },
+            "description": "Mark a single notification as read by its ID. Returns the notificationId of the marked notification. Produces 404 if the notification does not exist or does not belong to the current user."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – notification marked as read', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body && body.notificationId) {",
+                  "    console.log('Marked as read:', body.notificationId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Mark All as Read (PATCH /api/notifications/read-all)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/read-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "read-all"]
+            },
+            "description": "Mark all of the current user's unread notifications as read in a single bulk operation."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – all notifications marked as read', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "console.log('All notifications marked as read successfully.');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04-SignalR Reference",
+      "item": [
+        {
+          "name": "8. [Info] Hub URL + connection (GET /api/notifications — placeholder for docs)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications"]
+            },
+            "description": "--- SignalR NotificationHub Reference ---\n\nHub URL: {{baseUrl}}/hubs/notifications\nAuth: Bearer token required (passed as access_token query parameter for WebSocket).\n\nConnection example (JavaScript):\n```\nconst connection = new signalR.HubConnectionBuilder()\n  .withUrl(`${baseUrl}/hubs/notifications`, {\n    accessTokenFactory: () => accessToken\n  })\n  .withAutomaticReconnect()\n  .build();\nawait connection.start();\n```\n\nOn connect, the server automatically adds the user to their personal group: `user_{userId}`.\n\nThis is a documentation-only request. The GET /api/notifications endpoint is used here as a valid placeholder; the actual hub connection uses WebSocket transport via /hubs/notifications."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Placeholder – see description for SignalR hub URL', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "console.log('NotificationHub URL: {{baseUrl}}/hubs/notifications');",
+                  "console.log('Auth: Bearer token via access_token query param');",
+                  "console.log('Auto-joins group: user_{userId}');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9. [Info] Client events reference (GET /api/notifications — placeholder for docs)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications"]
+            },
+            "description": "--- Client Events Reference (INotificationHubClient) ---\n\nThe server pushes two event types to connected clients:\n\n1. ReceiveNotification(notification)\n   Payload (NotificationPushDto):\n   - notificationId: Guid\n   - notificationType: string (e.g. 'order', 'moderation', 'item_question')\n   - eventType: string (e.g. 'order_cancelled', 'item_approved', 'item_question_asked')\n   - title: string\n   - message: string\n   - entityType: string? (e.g. 'Order', 'Auction', 'Item')\n   - entityId: Guid?\n   - priority: string ('Normal', 'High')\n   - createdAt: DateTime\n\n2. UnreadCountUpdated(count)\n   Payload: int — the updated total unread notification count.\n\nJavaScript listener example:\n```\nconnection.on('ReceiveNotification', (notification) => {\n  console.log('New notification:', notification.title);\n});\nconnection.on('UnreadCountUpdated', (count) => {\n  console.log('Unread:', count);\n});\n```\n\nThis is a documentation-only request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Placeholder – see description for client events', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "console.log('Client events: ReceiveNotification, UnreadCountUpdated');",
+                  "console.log('ReceiveNotification payload: NotificationPushDto (notificationId, notificationType, eventType, title, message, entityType, entityId, priority, createdAt)');",
+                  "console.log('UnreadCountUpdated payload: int (count)');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05-Notification Sources (Info)",
+      "item": [
+        {
+          "name": "10. [Info] Auction events → notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications"]
+            },
+            "description": "--- Auction & Moderation Event → Notification Mapping ---\n\nThe following domain events automatically create notifications:\n\n1. AuctionApprovedEvent → notificationType: 'moderation', eventType: 'item_approved'\n   Recipient: Seller\n   Priority: Normal\n   Title: 'San pham da duoc phe duyet'\n\n2. AuctionRejectedEvent → notificationType: 'moderation', eventType: 'item_rejected'\n   Recipient: Seller\n   Priority: High\n   Title: 'San pham can chinh sua'\n   Includes rejection reason and count in metadata.\n\nAll auction notifications include metadata with auctionId, itemId, and reviewerId.\nNotifications are routed through NotificationRoutingService which respects the user's channel preferences (Email, SignalR).\n\nThis is a documentation-only request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Placeholder – see description for auction notification sources', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "console.log('Auction notification sources: AuctionApprovedEvent, AuctionRejectedEvent');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11. [Info] Order events → notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications"]
+            },
+            "description": "--- Order Event → Notification Mapping ---\n\nThe following domain events automatically create notifications:\n\n1. OrderCancelledEvent → notificationType: 'order', eventType: 'order_cancelled'\n   Recipient: Buyer\n   Priority: High\n   Title: 'Don hang da bi huy'\n   Metadata: orderId, orderNumber, reason\n\n2. OutboundShipmentPickedUpEvent → notificationType: 'order', eventType: 'order_shipped'\n   Recipient: Buyer\n   Priority: Normal\n   Title: 'Don hang da duoc giao don vi van chuyen'\n   Metadata: orderId, orderNumber, outboundShipmentId, trackingNumber, providerCode\n\n3. OutboundShipmentDeliveredEvent → notificationType: 'order', eventType: 'order_delivered'\n   Recipient: Buyer\n   Priority: Normal\n   Title: 'Don hang da duoc giao thanh cong'\n   Metadata: orderId, orderNumber, outboundShipmentId, providerCode, deliveredAt\n\n4. OutboundShipmentDeliveredEvent (if DecisionWindowEndsAt is set) → eventType: 'decision_window_started'\n   Recipient: Buyer\n   Priority: Normal\n   Title: 'Thoi gian quyet dinh da bat dau'\n   Metadata: orderId, orderNumber, decisionWindowEndsAt\n\nThis is a documentation-only request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Placeholder – see description for order notification sources', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "console.log('Order notification sources: OrderCancelledEvent, OutboundShipmentPickedUpEvent, OutboundShipmentDeliveredEvent');",
+                  "console.log('Additional: decision_window_started if DecisionWindowEndsAt is set');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12. [Info] User/Security events → notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications"]
+            },
+            "description": "--- Item Question Event → Notification Mapping ---\n\nThe following domain events automatically create notifications:\n\n1. ItemQuestionAskedEvent → notificationType: 'item_question', eventType: 'item_question_asked'\n   Recipient: Seller (item owner)\n   Priority: Normal\n   Title: 'Co cau hoi moi cho san pham {itemTitle}'\n   Message: 'Mot nguoi dung vua gui cau hoi cho san pham cua ban.'\n   Metadata: itemId, questionId, askerId, questionPreview (max 120 chars)\n\n2. ItemQuestionAnsweredEvent → notificationType: 'item_question', eventType: 'item_question_answered'\n   Recipient: Question asker\n   Priority: Normal\n   Title: 'Cau hoi cua ban da duoc tra loi cho san pham {itemTitle}'\n   Message: 'Nguoi ban da tra loi cau hoi cua ban.'\n   Metadata: itemId, questionId, askerId\n\nAvailable notification channels (from NotificationChannel enum):\n- InApp ('In App')\n- Email ('Email')\n- SignalR ('SignalR')\n\nNotification priority levels: Normal, High.\n\nThis is a documentation-only request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Placeholder – see description for item question / security notification sources', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "console.log('Item question notifications: item_question_asked, item_question_answered');",
+                  "console.log('Channels: InApp, Email, SignalR');",
+                  "console.log('Priority levels: Normal, High');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06-Error Cases",
+      "item": [
+        {
+          "name": "13. Mark Read — non-existent ID (PATCH /api/notifications/00000000-.../read → 404)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/00000000-0000-0000-0000-000000000000/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "00000000-0000-0000-0000-000000000000", "read"]
+            },
+            "description": "Attempt to mark a non-existent notification as read. Expects a 404 Not Found response."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 – notification not found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "console.log('Expected 404 for non-existent notificationId.');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14. Get Notifications — no auth (GET /api/notifications without token → 401)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications"]
+            },
+            "description": "Attempt to get notifications without an authentication token. Expects a 401 Unauthorized response. Auth is explicitly set to 'No Auth' to override the collection-level Bearer token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 – unauthorized', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "console.log('Expected 401 when no auth token is provided.');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,757 @@
+{
+  "info": {
+    "name": "Flow 14 — Wallet & Withdrawal",
+    "_postman_id": "flow14-wallet-withdrawal",
+    "description": "End-to-end wallet and withdrawal flow: view wallet & transactions, top-up via VNPay, create/cancel withdrawals, admin approve/reject withdrawals, platform wallet, and error cases (insufficient balance, invalid state transitions).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    { "key": "walletTransactionId", "value": "" },
+    { "key": "withdrawalId", "value": "" },
+    { "key": "cancelWithdrawalId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01-Wallet View",
+      "item": [
+        {
+          "name": "1. Get My Wallet (GET /api/me/wallet)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/wallet",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "wallet"]
+            },
+            "description": "Retrieve the current user's wallet including available balance, pending balance, and held amount."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – wallet retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    console.log('Balance:', body.balance);",
+                  "    console.log('Pending:', body.pendingBalance);",
+                  "    console.log('Held:', body.heldBalance);",
+                  "    pm.collectionVariables.set('initialBalance', body.balance);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Get Wallet Transactions (GET /api/me/wallet/transactions)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/wallet/transactions?pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "wallet", "transactions"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            },
+            "description": "List paginated wallet transactions for the current user."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – transactions listed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body && body.items && body.items.length > 0) {",
+                  "    const txId = body.items[0].id;",
+                  "    pm.collectionVariables.set('walletTransactionId', txId);",
+                  "    console.log('Extracted walletTransactionId:', txId);",
+                  "    console.log('Total transactions:', body.totalCount);",
+                  "} else {",
+                  "    console.log('No wallet transactions found.');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Get Wallet Transaction By Id (GET /api/me/wallet/transactions/:transactionId)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/wallet/transactions/{{walletTransactionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "wallet", "transactions", "{{walletTransactionId}}"]
+            },
+            "description": "Retrieve details of a specific wallet transaction by its ID."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – transaction detail retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    console.log('Transaction type:', body.type);",
+                  "    console.log('Amount:', body.amount);",
+                  "    console.log('Status:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02-Wallet Top-Up",
+      "item": [
+        {
+          "name": "4. Create VNPay Payment URL for Top-Up (POST /api/payments/vnpay/create-url)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500000,\n  \"currency\": \"VND\",\n  \"purpose\": \"wallet_top_up\",\n  \"description\": \"Wallet top-up test\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/vnpay/create-url",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "vnpay", "create-url"]
+            },
+            "description": "Create a VNPay payment URL for wallet top-up. The IP address is extracted server-side from the HTTP context. Frontend redirects the user to the returned paymentUrl."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – VNPay URL created', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    console.log('TransactionId:', body.transactionId);",
+                  "    console.log('TransactionRef:', body.transactionRef);",
+                  "    console.log('PaymentUrl:', body.paymentUrl);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Verify Wallet Balance After Top-Up (GET /api/me/wallet)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/wallet",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "wallet"]
+            },
+            "description": "Re-fetch the wallet to verify balance has increased after successful VNPay top-up callback."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – wallet retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    const prev = parseFloat(pm.collectionVariables.get('initialBalance') || '0');",
+                  "    console.log('Previous balance:', prev);",
+                  "    console.log('Current balance:', body.balance);",
+                  "    console.log('Balance change:', body.balance - prev);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03-Create Withdrawal",
+      "item": [
+        {
+          "name": "6. Create Withdrawal Request (POST /api/me/wallet/withdrawals)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100000,\n  \"bankName\": \"Vietcombank\",\n  \"accountNumber\": \"1234567890\",\n  \"accountHolder\": \"Nguyen Van A\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/me/wallet/withdrawals",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "wallet", "withdrawals"]
+            },
+            "description": "Create a new withdrawal request. The amount is held in the wallet pending admin approval. Returns withdrawalRequestId, amount, fee, netAmount, and status."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – withdrawal created', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    pm.collectionVariables.set('withdrawalId', body.withdrawalRequestId);",
+                  "    console.log('Extracted withdrawalId:', body.withdrawalRequestId);",
+                  "    console.log('Amount:', body.amount);",
+                  "    console.log('Fee:', body.fee);",
+                  "    console.log('Net amount:', body.netAmount);",
+                  "    console.log('Status:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Verify Wallet Pending Increased (GET /api/me/wallet)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/wallet",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "wallet"]
+            },
+            "description": "Re-fetch the wallet to verify held balance has increased after creating the withdrawal request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – wallet retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    console.log('Balance:', body.balance);",
+                  "    console.log('Held balance:', body.heldBalance);",
+                  "    console.log('Pending balance:', body.pendingBalance);",
+                  "    pm.test('Held balance reflects withdrawal hold', function () {",
+                  "        pm.expect(body.heldBalance).to.be.above(0);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04-Admin Withdrawal",
+      "item": [
+        {
+          "name": "8. Admin List Pending Withdrawals (GET /api/admin/payments/withdrawals)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payments/withdrawals?status=pending&pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "payments", "withdrawals"],
+              "query": [
+                { "key": "status", "value": "pending" },
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            },
+            "description": "Admin lists all pending withdrawal requests with pagination. Supports filtering by status and userId."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – admin withdrawals listed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    console.log('Total pending withdrawals:', body.totalCount);",
+                  "    if (body.items && body.items.length > 0) {",
+                  "        console.log('First withdrawal ID:', body.items[0].id);",
+                  "        console.log('First withdrawal status:', body.items[0].status);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9. Admin Get Withdrawal By Id (GET /api/admin/payments/withdrawals/:withdrawalId)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payments/withdrawals/{{withdrawalId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "payments", "withdrawals", "{{withdrawalId}}"]
+            },
+            "description": "Admin retrieves a specific withdrawal request by ID. Returns full withdrawal details including bank account info, amount, fee, status, and timestamps."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – withdrawal detail retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    console.log('Withdrawal ID:', body.id);",
+                  "    console.log('Amount:', body.amount);",
+                  "    console.log('Status:', body.status);",
+                  "    console.log('Bank:', body.bankName);",
+                  "    console.log('Account:', body.accountNumber);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. Admin Approve Withdrawal (POST /api/admin/payments/withdrawals/:withdrawalId/approve)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payments/withdrawals/{{withdrawalId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "payments", "withdrawals", "{{withdrawalId}}", "approve"]
+            },
+            "description": "Admin approves a pending withdrawal request. Returns 204 No Content on success. The held amount remains in hold state until processing completes."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 – withdrawal approved', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});",
+                  "",
+                  "console.log('Withdrawal', pm.collectionVariables.get('withdrawalId'), 'approved successfully.');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11. Admin Reject Withdrawal (POST /api/admin/payments/withdrawals/:withdrawalId/reject)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Bank account verification failed\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payments/withdrawals/{{withdrawalId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "payments", "withdrawals", "{{withdrawalId}}", "reject"]
+            },
+            "description": "Admin rejects a pending withdrawal request with a reason. Returns 204 No Content on success. The held amount is unholded and returned to the user's wallet."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 – withdrawal rejected', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});",
+                  "",
+                  "console.log('Withdrawal', pm.collectionVariables.get('withdrawalId'), 'rejected with reason.');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05-Cancel Withdrawal",
+      "item": [
+        {
+          "name": "12. Create Another Withdrawal to Cancel (POST /api/me/wallet/withdrawals)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50000,\n  \"bankName\": \"MB Bank\",\n  \"accountNumber\": \"9876543210\",\n  \"accountHolder\": \"Tran Thi B\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/me/wallet/withdrawals",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "wallet", "withdrawals"]
+            },
+            "description": "Create a new withdrawal request that will be cancelled in the next step."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – withdrawal created for cancellation', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    pm.collectionVariables.set('cancelWithdrawalId', body.withdrawalRequestId);",
+                  "    console.log('Extracted cancelWithdrawalId:', body.withdrawalRequestId);",
+                  "    console.log('Amount:', body.amount);",
+                  "    console.log('Status:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13. Cancel Withdrawal (POST /api/me/wallet/withdrawals/:withdrawalId/cancel)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/wallet/withdrawals/{{cancelWithdrawalId}}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "wallet", "withdrawals", "{{cancelWithdrawalId}}", "cancel"]
+            },
+            "description": "Cancel a pending withdrawal request. The held amount is unholded and returned to the user's available balance."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – withdrawal cancelled', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    console.log('Cancelled withdrawal ID:', body.id);",
+                  "    console.log('Status:', body.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06-Platform Wallet",
+      "item": [
+        {
+          "name": "14. Admin Get Platform Wallet (GET /api/admin/payments/platform-wallet)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payments/platform-wallet",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "payments", "platform-wallet"]
+            },
+            "description": "Admin retrieves the platform wallet summary including total balance, revenue, and pending amounts."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – platform wallet retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    console.log('Platform wallet:', JSON.stringify(body, null, 2));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15. User List My Withdrawals (GET /api/me/wallet/withdrawals)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/wallet/withdrawals?pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "wallet", "withdrawals"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            },
+            "description": "List all withdrawal requests for the current user with pagination."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – user withdrawals listed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    console.log('Total withdrawals:', body.totalCount);",
+                  "    if (body.items) {",
+                  "        body.items.forEach(function(w, i) {",
+                  "            console.log('Withdrawal ' + (i+1) + ': ' + w.id + ' | ' + w.status + ' | ' + w.amount);",
+                  "        });",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07-Error Cases",
+      "item": [
+        {
+          "name": "16. Insufficient Balance Withdrawal (POST /api/me/wallet/withdrawals — expect 400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 999999999,\n  \"bankName\": \"Vietcombank\",\n  \"accountNumber\": \"1234567890\",\n  \"accountHolder\": \"Nguyen Van A\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/me/wallet/withdrawals",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "wallet", "withdrawals"]
+            },
+            "description": "Attempt to create a withdrawal with an amount exceeding available balance. Expected: 400 Bad Request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 – insufficient balance', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    console.log('Error:', JSON.stringify(body));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17. Cancel Already Approved Withdrawal (POST /api/me/wallet/withdrawals/:withdrawalId/cancel — expect 400)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/wallet/withdrawals/{{withdrawalId}}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "wallet", "withdrawals", "{{withdrawalId}}", "cancel"]
+            },
+            "description": "Attempt to cancel a withdrawal that has already been approved. Expected: 400 Bad Request or 409 Conflict."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 or 409 – cannot cancel approved withdrawal', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 409]);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    console.log('Error:', JSON.stringify(body));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18. Approve Already Rejected Withdrawal (POST /api/admin/payments/withdrawals/:withdrawalId/approve — expect 400)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payments/withdrawals/{{withdrawalId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "payments", "withdrawals", "{{withdrawalId}}", "approve"]
+            },
+            "description": "Attempt to approve a withdrawal that has already been rejected. Expected: 400 Bad Request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 – cannot approve already rejected withdrawal', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    console.log('Error:', JSON.stringify(body));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

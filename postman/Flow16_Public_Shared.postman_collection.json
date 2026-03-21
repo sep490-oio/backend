@@ -1,0 +1,652 @@
+{
+  "info": {
+    "name": "Flow 16 — Public & Shared",
+    "_postman_id": "flow16-public-shared",
+    "description": "Public and shared endpoints for browsing categories, auctions, items, seller profiles, terms of service, item Q&A, and error cases. Covers anonymous access patterns and authenticated Q&A interactions.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    { "key": "categoryId", "value": "" },
+    { "key": "categorySlug", "value": "" },
+    { "key": "sellerId", "value": "" },
+    { "key": "questionId", "value": "" },
+    { "key": "termsType", "value": "TermsOfService" }
+  ],
+  "item": [
+    {
+      "name": "01-Categories",
+      "item": [
+        {
+          "name": "1. Get All Categories (GET /api/categories)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "categories"]
+            },
+            "auth": { "type": "noauth" },
+            "description": "Retrieve all active categories. Anonymous access. Used to populate category navigation and extract categoryId/categorySlug for subsequent requests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – categories retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body && body.items && body.items.length > 0) {",
+                  "    const first = body.items[0];",
+                  "    pm.collectionVariables.set('categoryId', first.id);",
+                  "    if (first.slug) {",
+                  "        pm.collectionVariables.set('categorySlug', first.slug);",
+                  "    }",
+                  "    console.log('Extracted categoryId:', first.id);",
+                  "    console.log('Extracted categorySlug:', first.slug);",
+                  "} else if (body && Array.isArray(body) && body.length > 0) {",
+                  "    const first = body[0];",
+                  "    pm.collectionVariables.set('categoryId', first.id);",
+                  "    if (first.slug) {",
+                  "        pm.collectionVariables.set('categorySlug', first.slug);",
+                  "    }",
+                  "    console.log('Extracted categoryId:', first.id);",
+                  "    console.log('Extracted categorySlug:', first.slug);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Get Category By Id (GET /api/categories/{{categoryId}})",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories/{{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "categories", "{{categoryId}}"]
+            },
+            "auth": { "type": "noauth" },
+            "description": "Retrieve a single category by its GUID. Anonymous access."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – category retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    console.log('Category name:', body.name);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Get Category By Slug (GET /api/categories/by-slug/{{categorySlug}})",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories/by-slug/{{categorySlug}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "categories", "by-slug", "{{categorySlug}}"]
+            },
+            "auth": { "type": "noauth" },
+            "description": "Retrieve a single category by its URL slug. Anonymous access."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – category retrieved by slug', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    console.log('Category:', body.name, '- slug:', body.slug);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Get Category Children (GET /api/categories/{{categoryId}}/children)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories/{{categoryId}}/children",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "categories", "{{categoryId}}", "children"]
+            },
+            "auth": { "type": "noauth" },
+            "description": "Retrieve child categories of a given parent category. Anonymous access."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – children retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02-Auction Browsing",
+      "item": [
+        {
+          "name": "5. Browse Auctions (GET /api/auctions)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions?page=1&pageSize=10&status=Active&categoryId={{categoryId}}&search=",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "10" },
+                { "key": "status", "value": "Active" },
+                { "key": "categoryId", "value": "{{categoryId}}" },
+                { "key": "search", "value": "" }
+              ]
+            },
+            "auth": { "type": "noauth" },
+            "description": "Browse auctions with optional filters: page, pageSize, status, categoryId, search, minPrice, maxPrice, sortBy, endingWithinHours, isFeatured. Anonymous access."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – auctions listed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body && body.items && body.items.length > 0) {",
+                  "    const auction = body.items[0];",
+                  "    pm.collectionVariables.set('auctionId', auction.id);",
+                  "    if (auction.sellerId) {",
+                  "        pm.collectionVariables.set('sellerId', auction.sellerId);",
+                  "    }",
+                  "    if (auction.itemId) {",
+                  "        pm.collectionVariables.set('itemId', auction.itemId);",
+                  "    }",
+                  "    console.log('Extracted auctionId:', auction.id);",
+                  "    console.log('Extracted sellerId:', auction.sellerId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Get Auction By Id (GET /api/auctions/{{auctionId}})",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            },
+            "auth": { "type": "noauth" },
+            "description": "Retrieve detailed information about a specific auction. Anonymous access."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – auction detail retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    if (body.sellerId) {",
+                  "        pm.collectionVariables.set('sellerId', body.sellerId);",
+                  "        console.log('Extracted sellerId:', body.sellerId);",
+                  "    }",
+                  "    if (body.itemId) {",
+                  "        pm.collectionVariables.set('itemId', body.itemId);",
+                  "        console.log('Extracted itemId:', body.itemId);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Get Auction Bids (GET /api/auctions/{{auctionId}}/bids)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/bids",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "bids"]
+            },
+            "description": "Retrieve bid history for a specific auction. Requires authentication (permission: Catalogs.Auctions.ReadAutoBid)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – bids retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03-Item Browsing",
+      "item": [
+        {
+          "name": "8. Get Item By Id (GET /api/items/{{itemId}})",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}"]
+            },
+            "auth": { "type": "noauth" },
+            "description": "Retrieve detailed information about a specific item. Anonymous access."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – item retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    console.log('Item title:', body.title || body.name);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04-Seller Public Profile",
+      "item": [
+        {
+          "name": "9. Get Seller Profile (GET /api/sellers/{{sellerId}})",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/sellers/{{sellerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sellers", "{{sellerId}}"]
+            },
+            "auth": { "type": "noauth" },
+            "description": "Retrieve a seller's public profile by sellerId. Anonymous access."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – seller profile retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body) {",
+                  "    console.log('Seller:', body.displayName || body.shopName);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. Get Seller Items (GET /api/sellers/{{sellerId}}/items)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/sellers/{{sellerId}}/items",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sellers", "{{sellerId}}", "items"]
+            },
+            "auth": { "type": "noauth" },
+            "description": "Retrieve items listed by a specific seller. Anonymous access."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – seller items retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05-Terms",
+      "item": [
+        {
+          "name": "11. Get Active Terms (GET /api/terms/active)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/terms/active",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "terms", "active"]
+            },
+            "auth": { "type": "noauth" },
+            "description": "Retrieve all active terms documents. Anonymous access."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – active terms retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12. Get Active Terms By Type (GET /api/terms/{{termsType}}/active)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/terms/{{termsType}}/active",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "terms", "{{termsType}}", "active"]
+            },
+            "auth": { "type": "noauth" },
+            "description": "Retrieve the active terms document for a specific type (e.g. TermsOfService, PrivacyPolicy). Anonymous access."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – terms by type retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06-Item Q&A",
+      "item": [
+        {
+          "name": "13. Get Item Questions (GET /api/items/{{itemId}}/questions)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/questions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "questions"]
+            },
+            "description": "Retrieve questions for a specific item. Requires authentication."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – questions retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14. Ask Question (POST /api/items/{{itemId}}/questions)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Is this item in good condition?\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/questions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "questions"]
+            },
+            "description": "Ask a question about an item. Requires authentication (permission: Catalogs.Items.AskQuestion)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 – question created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body && body.id) {",
+                  "    pm.collectionVariables.set('questionId', body.id);",
+                  "    console.log('Extracted questionId:', body.id);",
+                  "} else if (body && body.data && body.data.id) {",
+                  "    pm.collectionVariables.set('questionId', body.data.id);",
+                  "    console.log('Extracted questionId:', body.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15. Answer Question (POST /api/items/{{itemId}}/questions/{{questionId}}/answer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answer\": \"Yes, it is in excellent condition.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/questions/{{questionId}}/answer",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "questions", "{{questionId}}", "answer"]
+            },
+            "description": "Answer a question about an item. Requires authentication (typically the seller or item owner)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 – answer submitted', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16. Verify Answer — Get Questions Again (GET /api/items/{{itemId}}/questions)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/questions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "questions"]
+            },
+            "description": "Re-fetch item questions to verify the answer was persisted. Requires authentication."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – questions retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body && body.items) {",
+                  "    const answered = body.items.find(q => q.id === pm.collectionVariables.get('questionId'));",
+                  "    if (answered) {",
+                  "        pm.test('Question has answer', function () {",
+                  "            pm.expect(answered.answer).to.be.a('string').and.not.empty;",
+                  "        });",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07-Error Cases",
+      "item": [
+        {
+          "name": "17. Get Category — Not Found (GET /api/categories/00000000-...)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories/00000000-0000-0000-0000-000000000000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "categories", "00000000-0000-0000-0000-000000000000"]
+            },
+            "auth": { "type": "noauth" },
+            "description": "Attempt to retrieve a category with a non-existent GUID. Expects 404 Not Found."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 – category not found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18. Ask Question Without Auth (POST /api/items/{{itemId}}/questions — expect 401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Unauthorized question attempt\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/questions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "questions"]
+            },
+            "auth": { "type": "noauth" },
+            "description": "Attempt to ask a question without authentication. Expects 401 Unauthorized."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 – unauthorized', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

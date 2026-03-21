@@ -1,0 +1,1910 @@
+{
+	"info": {
+		"_postman_id": "flow15-admin-operations",
+		"name": "Flow 15 – Admin Operations",
+		"description": "Tests 56 admin endpoints across 11 folders.\n\nRequires the OIO Auction - Shared Environment to be selected.\n\nAll requests use {{adminAccessToken}} for Bearer auth.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }
+		]
+	},
+	"variable": [
+		{ "key": "adminUserId", "value": "" },
+		{ "key": "verificationId", "value": "" },
+		{ "key": "sellerProfileId", "value": "" },
+		{ "key": "reviewItemId", "value": "" },
+		{ "key": "emergencyId", "value": "" },
+		{ "key": "termsDocId", "value": "" },
+		{ "key": "withdrawalId", "value": "" },
+		{ "key": "monitoringAlertId", "value": "" }
+	],
+	"item": [
+		{
+			"name": "01-User Management",
+			"item": [
+				{
+					"name": "1. Create User (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Response contains userId', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.userId).to.be.a('string').and.not.empty;",
+									"    pm.collectionVariables.set('adminUserId', jsonData.userId);",
+									"    console.log('Created adminUserId:', jsonData.userId);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userName\": \"admin_test_user\",\n  \"email\": \"admin_test@example.com\",\n  \"password\": \"Test@12345678\",\n  \"currency\": \"VND\",\n  \"firstName\": \"Admin\",\n  \"lastName\": \"TestUser\",\n  \"displayName\": \"Admin Test\",\n  \"roles\": [\"Member\"],\n  \"emailConfirmed\": true,\n  \"skipNotifications\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/users",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "users"]
+						}
+					}
+				},
+				{
+					"name": "2. Get Users List",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response is array or paged list', function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Users count:', jsonData.items ? jsonData.items.length : jsonData.length);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/users?pageIndex=1&pageSize=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "users"],
+							"query": [
+								{ "key": "pageIndex", "value": "1" },
+								{ "key": "pageSize", "value": "10" }
+							]
+						}
+					}
+				},
+				{
+					"name": "3. Get User by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains user data', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.id || jsonData.userId).to.not.be.undefined;",
+									"    console.log('User:', jsonData.userName || jsonData.email);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/users/{{adminUserId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "users", "{{adminUserId}}"]
+						}
+					}
+				},
+				{
+					"name": "4. Change User Status",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"console.log('User status changed to suspended');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"suspended\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/users/{{adminUserId}}/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "users", "{{adminUserId}}", "status"]
+						}
+					}
+				},
+				{
+					"name": "5. Unlock User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"console.log('User unlocked successfully');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/users/{{adminUserId}}/unlock",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "users", "{{adminUserId}}", "unlock"]
+						}
+					}
+				},
+				{
+					"name": "6. Create User Risk Flag",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains risk flag data', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.flagType).to.eql('suspicious_activity');",
+									"    console.log('Risk flag created for user');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"flagType\": \"suspicious_activity\",\n  \"reason\": \"Multiple failed login attempts detected\",\n  \"severity\": \"medium\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/users/{{adminUserId}}/risk-flags",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "users", "{{adminUserId}}", "risk-flags"]
+						}
+					}
+				},
+				{
+					"name": "7. Delete User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"console.log('User deleted successfully');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/users/{{adminUserId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "users", "{{adminUserId}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "02-Role & Permission",
+			"item": [
+				{
+					"name": "1. Get All Roles",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains roles', function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Roles returned:', JSON.stringify(jsonData).substring(0, 200));",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/roles",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "roles"]
+						}
+					}
+				},
+				{
+					"name": "2. Get Permissions",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains permissions', function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Permissions count:', jsonData.items ? jsonData.items.length : jsonData.length);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/permissions",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "permissions"]
+						}
+					}
+				},
+				{
+					"name": "3. Assign Role to User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"console.log('Role assigned successfully');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/users/{{adminUserId}}/roles/Member",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "users", "{{adminUserId}}", "roles", "Member"]
+						}
+					}
+				},
+				{
+					"name": "4. Revoke Role from User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"console.log('Role revoked successfully');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/users/{{adminUserId}}/roles/Member",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "users", "{{adminUserId}}", "roles", "Member"]
+						}
+					}
+				},
+				{
+					"name": "5. Grant Permission to User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"console.log('Permission granted successfully');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/users/{{adminUserId}}/permissions/catalogs:read",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "users", "{{adminUserId}}", "permissions", "catalogs:read"]
+						}
+					}
+				},
+				{
+					"name": "6. Revoke Permission from User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"console.log('Permission revoked successfully');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/users/{{adminUserId}}/permissions/catalogs:read",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "users", "{{adminUserId}}", "permissions", "catalogs:read"]
+						}
+					}
+				},
+				{
+					"name": "7. Deny Permission from User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"console.log('Permission denied successfully');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/users/{{adminUserId}}/permissions/catalogs:read",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "users", "{{adminUserId}}", "permissions", "catalogs:read"]
+						}
+					}
+				},
+				{
+					"name": "8. Toggle Permission in Role",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"console.log('Permission toggled in role successfully');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"isActive\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/roles/Member/permissions/catalogs:read",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "roles", "Member", "permissions", "catalogs:read"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "03-Verification Review",
+			"item": [
+				{
+					"name": "1. Get Pending Verifications",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Extract first verificationId', function () {",
+									"    var jsonData = pm.response.json();",
+									"    var items = jsonData.items || jsonData;",
+									"    if (items && items.length > 0) {",
+									"        pm.collectionVariables.set('verificationId', items[0].id);",
+									"        console.log('Saved verificationId:', items[0].id);",
+									"    } else {",
+									"        console.log('No pending verifications found');",
+									"    }",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/verifications?pageIndex=1&pageSize=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "verifications"],
+							"query": [
+								{ "key": "pageIndex", "value": "1" },
+								{ "key": "pageSize", "value": "10" }
+							]
+						}
+					}
+				},
+				{
+					"name": "2. Get Verification by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains verification data', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.id).to.not.be.undefined;",
+									"    console.log('Verification status:', jsonData.status);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/verifications/{{verificationId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "verifications", "{{verificationId}}"]
+						}
+					}
+				},
+				{
+					"name": "3. Approve Verification",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"console.log('Verification approved successfully');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/verifications/{{verificationId}}/approve",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "verifications", "{{verificationId}}", "approve"]
+						}
+					}
+				},
+				{
+					"name": "4. Reject Verification",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"console.log('Verification rejected successfully');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Documents are unclear or expired\",\n  \"rejectionCode\": \"DOCS_INVALID\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/verifications/{{verificationId}}/reject",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "verifications", "{{verificationId}}", "reject"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "04-Seller Profile",
+			"item": [
+				{
+					"name": "1. Get Seller Profiles",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Extract first sellerProfileId', function () {",
+									"    var jsonData = pm.response.json();",
+									"    var items = jsonData.items || jsonData;",
+									"    if (items && items.length > 0) {",
+									"        pm.collectionVariables.set('sellerProfileId', items[0].id);",
+									"        console.log('Saved sellerProfileId:', items[0].id);",
+									"    } else {",
+									"        console.log('No seller profiles found');",
+									"    }",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/seller-profiles?pageIndex=1&pageSize=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "seller-profiles"],
+							"query": [
+								{ "key": "pageIndex", "value": "1" },
+								{ "key": "pageSize", "value": "10" }
+							]
+						}
+					}
+				},
+				{
+					"name": "2. Verify Seller Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"console.log('Seller profile verified successfully');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/seller-profiles/{{sellerProfileId}}/verify",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "seller-profiles", "{{sellerProfileId}}", "verify"]
+						}
+					}
+				},
+				{
+					"name": "3. Reject Seller Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"console.log('Seller profile rejected successfully');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/seller-profiles/{{sellerProfileId}}/reject",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "seller-profiles", "{{sellerProfileId}}", "reject"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "05-Item Review",
+			"item": [
+				{
+					"name": "1. Get Review Queue",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Extract first reviewItemId', function () {",
+									"    var jsonData = pm.response.json();",
+									"    var items = jsonData.items || jsonData;",
+									"    if (items && items.length > 0) {",
+									"        pm.collectionVariables.set('reviewItemId', items[0].itemId || items[0].id);",
+									"        console.log('Saved reviewItemId:', items[0].itemId || items[0].id);",
+									"    } else {",
+									"        console.log('No items in review queue');",
+									"    }",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/items/review-queue?pageIndex=1&pageSize=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "items", "review-queue"],
+							"query": [
+								{ "key": "pageIndex", "value": "1" },
+								{ "key": "pageSize", "value": "10" }
+							]
+						}
+					}
+				},
+				{
+					"name": "2. Get Admin Item Detail",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains item data', function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Item name:', jsonData.name || jsonData.title);",
+									"    console.log('Item status:', jsonData.status);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/items/{{reviewItemId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "items", "{{reviewItemId}}"]
+						}
+					}
+				},
+				{
+					"name": "3. Assign Item Reviewer",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"console.log('Item reviewer assigned successfully');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"adminId\": \"{{adminUserId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/items/{{reviewItemId}}/assign",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "items", "{{reviewItemId}}", "assign"]
+						}
+					}
+				},
+				{
+					"name": "4. Approve Item",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"console.log('Item approved successfully');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/items/{{reviewItemId}}/approve",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "items", "{{reviewItemId}}", "approve"]
+						}
+					}
+				},
+				{
+					"name": "5. Reject Item",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"console.log('Item rejected successfully');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Item does not meet quality standards\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/items/{{reviewItemId}}/reject",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "items", "{{reviewItemId}}", "reject"]
+						}
+					}
+				},
+				{
+					"name": "6. Get Item Review History",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains review history', function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Review history entries:', JSON.stringify(jsonData).substring(0, 200));",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/items/{{reviewItemId}}/reviews",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "items", "{{reviewItemId}}", "reviews"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "06-Auction Curation",
+			"item": [
+				{
+					"name": "1. Set Auction Curation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains auction data', function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Auction curation updated, id:', jsonData.id);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"assignedAdminId\": \"{{adminUserId}}\",\n  \"clearAssignedAdmin\": false,\n  \"priority\": 10,\n  \"priorityReason\": \"High-value item requires attention\",\n  \"isFeatured\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/auctions/{{auctionId}}/curation",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "auctions", "{{auctionId}}", "curation"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "07-Auction Emergency",
+			"item": [
+				{
+					"name": "1. Trigger Auction Emergency",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Extract emergencyId', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.id).to.not.be.undefined;",
+									"    pm.collectionVariables.set('emergencyId', jsonData.id);",
+									"    console.log('Saved emergencyId:', jsonData.id);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"triggerSource\": \"admin_manual\",\n  \"reason\": \"Suspected fraudulent auction activity\",\n  \"payload\": {\n    \"notes\": \"Multiple collusion indicators detected\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/auctions/{{auctionId}}/emergencies",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "auctions", "{{auctionId}}", "emergencies"]
+						}
+					}
+				},
+				{
+					"name": "2. Resolve Auction Emergency",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Emergency resolved', function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Emergency resolved, status:', jsonData.status);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"resolved\",\n  \"payload\": {\n    \"resolution\": \"Investigation completed, auction terminated\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/auctions/{{auctionId}}/emergencies/{{emergencyId}}/resolve",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "auctions", "{{auctionId}}", "emergencies", "{{emergencyId}}", "resolve"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "08-Sealed Bid",
+			"item": [
+				{
+					"name": "1. Reveal Sealed Bid",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Sealed bid revealed', function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Revealed bid amount:', jsonData.revealedAmount);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/auctions/{{auctionId}}/sealed-bids/{{sealedBidId}}/reveal",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "auctions", "{{auctionId}}", "sealed-bids", "{{sealedBidId}}", "reveal"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "09-Terms Management",
+			"item": [
+				{
+					"name": "1. Create Terms Document",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Extract termsDocId', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.id).to.not.be.undefined;",
+									"    pm.collectionVariables.set('termsDocId', jsonData.id);",
+									"    console.log('Saved termsDocId:', jsonData.id);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"terms_of_service\",\n  \"mediaUploadId\": \"{{mediaUploadId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/terms",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "terms"]
+						}
+					}
+				},
+				{
+					"name": "2. Get All Terms Documents",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Extract termsDocId if not set', function () {",
+									"    var jsonData = pm.response.json();",
+									"    var items = jsonData.items || jsonData;",
+									"    if (items && items.length > 0 && !pm.collectionVariables.get('termsDocId')) {",
+									"        pm.collectionVariables.set('termsDocId', items[0].id);",
+									"        console.log('Saved termsDocId:', items[0].id);",
+									"    }",
+									"    console.log('Terms documents count:', items ? items.length : 0);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/terms",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "terms"]
+						}
+					}
+				},
+				{
+					"name": "3. Activate Terms Document",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"console.log('Terms document activated successfully');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/terms/{{termsDocId}}/activate",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "terms", "{{termsDocId}}", "activate"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "10-Payment Admin",
+			"item": [
+				{
+					"name": "1. Get Payment Summary",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains summary data', function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Payment summary:', JSON.stringify(jsonData).substring(0, 300));",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/payments/summary",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "payments", "summary"]
+						}
+					}
+				},
+				{
+					"name": "2. Get Platform Wallet",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains wallet data', function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Platform wallet balance:', jsonData.balance || jsonData.availableBalance);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/payments/platform-wallet",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "payments", "platform-wallet"]
+						}
+					}
+				},
+				{
+					"name": "3. Get Transactions",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains transactions', function () {",
+									"    var jsonData = pm.response.json();",
+									"    var items = jsonData.items || jsonData;",
+									"    console.log('Transactions count:', items ? items.length : 0);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/payments/transactions?pageIndex=1&pageSize=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "payments", "transactions"],
+							"query": [
+								{ "key": "pageIndex", "value": "1" },
+								{ "key": "pageSize", "value": "10" }
+							]
+						}
+					}
+				},
+				{
+					"name": "4. Get Transaction by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains transaction data', function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Transaction id:', jsonData.id, 'status:', jsonData.status);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/payments/transactions/{{transactionId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "payments", "transactions", "{{transactionId}}"]
+						}
+					}
+				},
+				{
+					"name": "5. Get Escrows",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains escrows', function () {",
+									"    var jsonData = pm.response.json();",
+									"    var items = jsonData.items || jsonData;",
+									"    console.log('Escrows count:', items ? items.length : 0);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/payments/escrows?pageIndex=1&pageSize=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "payments", "escrows"],
+							"query": [
+								{ "key": "pageIndex", "value": "1" },
+								{ "key": "pageSize", "value": "10" }
+							]
+						}
+					}
+				},
+				{
+					"name": "6. Get Escrow by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains escrow data', function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Escrow id:', jsonData.id, 'status:', jsonData.status);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/payments/escrows/{{escrowId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "payments", "escrows", "{{escrowId}}"]
+						}
+					}
+				},
+				{
+					"name": "7. Get Withdrawals",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Extract first withdrawalId', function () {",
+									"    var jsonData = pm.response.json();",
+									"    var items = jsonData.items || jsonData;",
+									"    if (items && items.length > 0) {",
+									"        pm.collectionVariables.set('withdrawalId', items[0].id);",
+									"        console.log('Saved withdrawalId:', items[0].id);",
+									"    }",
+									"    console.log('Withdrawals count:', items ? items.length : 0);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/payments/withdrawals?pageIndex=1&pageSize=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "payments", "withdrawals"],
+							"query": [
+								{ "key": "pageIndex", "value": "1" },
+								{ "key": "pageSize", "value": "10" }
+							]
+						}
+					}
+				},
+				{
+					"name": "8. Get Withdrawal by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains withdrawal data', function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Withdrawal id:', jsonData.id, 'status:', jsonData.status);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/payments/withdrawals/{{withdrawalId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "payments", "withdrawals", "{{withdrawalId}}"]
+						}
+					}
+				},
+				{
+					"name": "9. Approve Withdrawal",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"console.log('Withdrawal approved successfully');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/payments/withdrawals/{{withdrawalId}}/approve",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "payments", "withdrawals", "{{withdrawalId}}", "approve"]
+						}
+					}
+				},
+				{
+					"name": "10. Reject Withdrawal",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"console.log('Withdrawal rejected successfully');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Insufficient documentation provided\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/payments/withdrawals/{{withdrawalId}}/reject",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "payments", "withdrawals", "{{withdrawalId}}", "reject"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "11-Monitoring & Moderation",
+			"item": [
+				{
+					"name": "1. Get Reports",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Extract first reportId', function () {",
+									"    var jsonData = pm.response.json();",
+									"    var items = jsonData.items || jsonData;",
+									"    if (items && items.length > 0) {",
+									"        pm.environment.set('reportId', items[0].id);",
+									"        console.log('Saved reportId:', items[0].id);",
+									"    }",
+									"    console.log('Reports count:', items ? items.length : 0);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/reports?pageIndex=1&pageSize=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "reports"],
+							"query": [
+								{ "key": "pageIndex", "value": "1" },
+								{ "key": "pageSize", "value": "10" }
+							]
+						}
+					}
+				},
+				{
+					"name": "2. Assign Report",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Report assigned', function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Report assigned, status:', jsonData.status);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"assignedToUserId\": \"{{adminUserId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/reports/{{reportId}}/assign",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "reports", "{{reportId}}", "assign"]
+						}
+					}
+				},
+				{
+					"name": "3. Resolve Report",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Report resolved', function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Report resolved, status:', jsonData.status);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"dismissed\": false,\n  \"resolutionNotes\": \"Investigated and action taken against the reported user\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/reports/{{reportId}}/resolve",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "reports", "{{reportId}}", "resolve"]
+						}
+					}
+				},
+				{
+					"name": "4. Escalate Report to Emergency",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Report escalated', function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Report escalated, status:', jsonData.status);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reasonOverride\": \"Critical fraud detected, escalating to auction emergency\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/reports/{{reportId}}/escalate-emergency",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "reports", "{{reportId}}", "escalate-emergency"]
+						}
+					}
+				},
+				{
+					"name": "5. Get Monitoring Alerts",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Extract first monitoringAlertId', function () {",
+									"    var jsonData = pm.response.json();",
+									"    var items = jsonData.items || jsonData;",
+									"    if (items && items.length > 0) {",
+									"        pm.collectionVariables.set('monitoringAlertId', items[0].id);",
+									"        console.log('Saved monitoringAlertId:', items[0].id);",
+									"    }",
+									"    console.log('Alerts count:', items ? items.length : 0);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/monitoring-alerts?pageIndex=1&pageSize=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "monitoring-alerts"],
+							"query": [
+								{ "key": "pageIndex", "value": "1" },
+								{ "key": "pageSize", "value": "10" }
+							]
+						}
+					}
+				},
+				{
+					"name": "6. Acknowledge Monitoring Alert",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Alert acknowledged', function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Alert acknowledged, status:', jsonData.status);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"notes\": \"Reviewing this alert, will investigate further\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/monitoring-alerts/{{monitoringAlertId}}/acknowledge",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "monitoring-alerts", "{{monitoringAlertId}}", "acknowledge"]
+						}
+					}
+				},
+				{
+					"name": "7. Resolve Monitoring Alert",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Alert resolved', function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Alert resolved, status:', jsonData.status);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"ignored\": false,\n  \"notes\": \"Alert investigated and resolved, no further action needed\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/monitoring-alerts/{{monitoringAlertId}}/resolve",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "monitoring-alerts", "{{monitoringAlertId}}", "resolve"]
+						}
+					}
+				},
+				{
+					"name": "8. Flag Auction (Create Alert)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Auction alert created', function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Auction alert id:', jsonData.id, 'type:', jsonData.alertType);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"alertType\": \"suspicious_bidding\",\n  \"payload\": {\n    \"notes\": \"Unusual bidding pattern detected\"\n  },\n  \"severity\": \"high\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/auctions/{{auctionId}}/alerts",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "auctions", "{{auctionId}}", "alerts"]
+						}
+					}
+				},
+				{
+					"name": "9. Cancel Invalid Bid",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Bid cancelled', function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Cancelled bid id:', jsonData.id);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Bid placed by flagged account with collusion indicators\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/auctions/{{auctionId}}/bids/{{bidId}}/cancel",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "auctions", "{{auctionId}}", "bids", "{{bidId}}", "cancel"]
+						}
+					}
+				},
+				{
+					"name": "10. Resolve Dispute",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"console.log('Dispute resolved successfully');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"resolutionType\": \"favor_buyer\",\n  \"notes\": \"Buyer provided sufficient evidence of item not as described\",\n  \"amount\": null\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/disputes/{{disputeId}}/resolve",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "disputes", "{{disputeId}}", "resolve"]
+						}
+					}
+				},
+				{
+					"name": "11. Non-Admin Access (403 Error)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 401 or 403', function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+									"});",
+									"",
+									"console.log('Non-admin access correctly denied, status:', pm.response.code);"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{accessToken}}", "type": "string" }
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/users",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "users"]
+						}
+					}
+				}
+			]
+		}
+	]
+}

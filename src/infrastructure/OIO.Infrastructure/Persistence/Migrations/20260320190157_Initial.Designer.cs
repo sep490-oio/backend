@@ -14,7 +14,7 @@ using OIO.Infrastructure.Persistence;
 namespace OIO.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260320063440_Initial")]
+    [Migration("20260320190157_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -6404,6 +6404,11 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expected_arrival_at");
 
+                    b.Property<string>("ExternalCarrierName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("external_carrier_name");
+
                     b.Property<string>("ExtraData")
                         .IsRequired()
                         .HasColumnType("jsonb")
@@ -6478,6 +6483,12 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("sender_ward");
 
+                    b.Property<string>("ShipmentMode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("shipment_mode");
+
                     b.Property<decimal>("ShippingFee")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("numeric(18,2)")
@@ -6489,6 +6500,14 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)")
                         .HasColumnName("status");
+
+                    b.Property<Guid?>("item_id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("item_id");
+
+                    b.Property<Guid?>("seller_id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("seller_id");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Dimensions", "OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments.InboundShipment.Dimensions#PackageDimensions", b1 =>
                         {
@@ -6528,10 +6547,26 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.HasIndex("SellerId")
                         .HasDatabaseName("idx_inbound_shipments_seller_id");
 
+                    b.HasIndex("ShipmentMode")
+                        .HasDatabaseName("idx_inbound_shipments_shipment_mode");
+
                     b.HasIndex("Status")
                         .HasDatabaseName("idx_inbound_shipments_status");
 
-                    b.ToTable("inbound_shipments", (string)null);
+                    b.HasIndex("item_id")
+                        .HasDatabaseName("ix_inbound_shipments_item_id");
+
+                    b.HasIndex("seller_id")
+                        .HasDatabaseName("ix_inbound_shipments_seller_id");
+
+                    b.ToTable("inbound_shipments", null, t =>
+                        {
+                            t.Property("item_id")
+                                .HasColumnName("item_id1");
+
+                            t.Property("seller_id")
+                                .HasColumnName("seller_id1");
+                        });
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.OutboundShipment", b =>
@@ -6574,6 +6609,11 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("EstimatedDeliveryAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("estimated_delivery_at");
+
+                    b.Property<string>("ExternalCarrierName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("external_carrier_name");
 
                     b.Property<string>("ExtraData")
                         .IsRequired()
@@ -6622,6 +6662,12 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("recipient_carrier_address_data");
 
+                    b.Property<string>("ShipmentMode")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("shipment_mode");
+
                     b.Property<decimal>("ShippingFee")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("numeric(18,2)")
@@ -6644,9 +6690,13 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(30)")
                         .HasColumnName("status");
 
-                    b.Property<Guid>("WarehouseItemId")
+                    b.Property<Guid?>("WarehouseItemId")
                         .HasColumnType("uuid")
                         .HasColumnName("warehouse_item_id");
+
+                    b.Property<Guid?>("order_id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_id");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Dimensions", "OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.OutboundShipment.Dimensions#PackageDimensions", b1 =>
                         {
@@ -6690,6 +6740,9 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("idx_unique_outbound_shipments_warehouse_item_id");
 
+                    b.HasIndex("order_id")
+                        .HasDatabaseName("ix_outbound_shipments_order_id");
+
                     b.ToTable("outbound_shipments", null, t =>
                         {
                             t.HasCheckConstraint("chk_outbound_shipments_cod_amount", "cod_amount >= 0");
@@ -6697,6 +6750,9 @@ namespace OIO.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("chk_outbound_shipments_insurance_value", "insurance_value >= 0");
 
                             t.HasCheckConstraint("chk_outbound_shipments_shipping_fee", "shipping_fee >= 0");
+
+                            t.Property("order_id")
+                                .HasColumnName("order_id1");
                         });
                 });
 
@@ -7059,6 +7115,14 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("storage_location_id");
 
+                    b.Property<Guid?>("inspected_by")
+                        .HasColumnType("uuid")
+                        .HasColumnName("inspected_by");
+
+                    b.Property<Guid?>("item_id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("item_id");
+
                     b.HasKey("Id")
                         .HasName("pk_warehouse_items");
 
@@ -7076,7 +7140,106 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("idx_warehouse_items_storage_location_id")
                         .HasFilter("storage_location_id IS NOT NULL");
 
-                    b.ToTable("warehouse_items", (string)null);
+                    b.HasIndex("inspected_by")
+                        .HasDatabaseName("ix_warehouse_items_inspected_by");
+
+                    b.HasIndex("item_id")
+                        .HasDatabaseName("ix_warehouse_items_item_id");
+
+                    b.ToTable("warehouse_items", null, t =>
+                        {
+                            t.Property("item_id")
+                                .HasColumnName("item_id1");
+                        });
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.WarehouseItemMedia", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_primary");
+
+                    b.Property<string>("ResourceType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("resource_type");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<Guid>("WarehouseItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("warehouse_item_id");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Info", "OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.WarehouseItemMedia.Info#MediaInfo", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<long?>("Bytes")
+                                .HasColumnType("bigint")
+                                .HasColumnName("bytes");
+
+                            b1.Property<double?>("DurationSeconds")
+                                .HasColumnType("double precision")
+                                .HasColumnName("duration_seconds");
+
+                            b1.Property<string>("FileName")
+                                .HasColumnType("text")
+                                .HasColumnName("file_name");
+
+                            b1.Property<string>("Format")
+                                .HasColumnType("text")
+                                .HasColumnName("format");
+
+                            b1.Property<int?>("Height")
+                                .HasColumnType("integer")
+                                .HasColumnName("height");
+
+                            b1.Property<string>("SecureUrl")
+                                .IsRequired()
+                                .HasColumnType("text")
+                                .HasColumnName("secure_url");
+
+                            b1.Property<int?>("Width")
+                                .HasColumnType("integer")
+                                .HasColumnName("width");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "StorageRef", "OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.WarehouseItemMedia.StorageRef#StorageRef", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<string>("Folder")
+                                .IsRequired()
+                                .HasColumnType("text")
+                                .HasColumnName("folder");
+
+                            b1.Property<string>("PublicId")
+                                .IsRequired()
+                                .HasColumnType("text")
+                                .HasColumnName("public_id");
+                        });
+
+                    b.HasKey("Id")
+                        .HasName("pk_warehouse_item_media");
+
+                    b.HasIndex("WarehouseItemId")
+                        .HasDatabaseName("idx_warehouse_item_media_warehouse_item_id");
+
+                    b.ToTable("warehouse_item_media", (string)null);
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseStorage.WarehouseStorageLocation", b =>
@@ -7923,6 +8086,21 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.Navigation("Verification");
                 });
 
+            modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments.InboundShipment", b =>
+                {
+                    b.HasOne("OIO.Domain.Context.CatalogContext.Aggregates.Items.Item", null)
+                        .WithMany()
+                        .HasForeignKey("item_id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_inbound_shipments_items_item_id");
+
+                    b.HasOne("OIO.Domain.Context.UserContext.Aggregates.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("seller_id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_inbound_shipments_users_seller_id");
+                });
+
             modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.OutboundShipment", b =>
                 {
                     b.HasOne("OIO.Domain.Context.OrderContext.Aggregates.Orders.Order", "Order")
@@ -7936,8 +8114,13 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .WithOne()
                         .HasForeignKey("OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.OutboundShipment", "WarehouseItemId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("fk_outbound_shipments_warehouse_item_warehouse_item_id");
+
+                    b.HasOne("OIO.Domain.Context.OrderContext.Aggregates.Orders.Order", null)
+                        .WithMany()
+                        .HasForeignKey("order_id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_outbound_shipments_orders_order_id1");
 
                     b.Navigation("Order");
                 });
@@ -7947,6 +8130,7 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.HasOne("OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments.InboundShipment", null)
                         .WithMany("TrackingEvents")
                         .HasForeignKey("InboundShipmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .HasConstraintName("fk_shipment_tracking_events_inbound_shipments_inbound_shipment");
 
                     b.HasOne("OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.OutboundShipment", null)
@@ -7987,6 +8171,30 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasForeignKey("StorageLocationId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_warehouse_items_warehouse_storage_location_storage_location");
+
+                    b.HasOne("OIO.Domain.Context.UserContext.Aggregates.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("inspected_by")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_warehouse_items_users_inspected_by");
+
+                    b.HasOne("OIO.Domain.Context.CatalogContext.Aggregates.Items.Item", null)
+                        .WithMany()
+                        .HasForeignKey("item_id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_warehouse_items_items_item_id");
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.WarehouseItemMedia", b =>
+                {
+                    b.HasOne("OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.WarehouseItem", "WarehouseItem")
+                        .WithMany("Media")
+                        .HasForeignKey("WarehouseItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_warehouse_item_media_warehouse_item_warehouse_item_id");
+
+                    b.Navigation("WarehouseItem");
                 });
 
             modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzJobDetail", b =>
@@ -8176,6 +8384,11 @@ namespace OIO.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.OutboundShipment", b =>
                 {
                     b.Navigation("TrackingEvents");
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.WarehouseItem", b =>
+                {
+                    b.Navigation("Media");
                 });
 #pragma warning restore 612, 618
         }

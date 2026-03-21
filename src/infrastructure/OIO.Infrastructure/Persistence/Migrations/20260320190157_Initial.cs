@@ -148,42 +148,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "inbound_shipments",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    item_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    seller_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    provider_code = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    client_order_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    carrier_tracking_number = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    sender_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    sender_phone = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    sender_address = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    sender_ward = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    sender_district = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    sender_province = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    sender_carrier_address_data = table.Column<string>(type: "jsonb", nullable: true),
-                    shipping_fee = table.Column<decimal>(type: "numeric(18,2)", nullable: false, defaultValue: 0m),
-                    insurance_value = table.Column<decimal>(type: "numeric(18,2)", nullable: false, defaultValue: 0m),
-                    extra_data = table.Column<string>(type: "jsonb", nullable: false),
-                    status = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false),
-                    notes = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    expected_arrival_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    arrived_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    modified_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    height_cm = table.Column<int>(type: "integer", nullable: true),
-                    length_cm = table.Column<int>(type: "integer", nullable: true),
-                    weight_grams = table.Column<int>(type: "integer", nullable: false),
-                    width_cm = table.Column<int>(type: "integer", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_inbound_shipments", x => x.id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "invoices",
                 columns: table => new
                 {
@@ -1441,36 +1405,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "warehouse_items",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    item_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    inbound_shipment_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    storage_location_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    received_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    modified_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_warehouse_items", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_warehouse_items_inbound_shipments_inbound_shipment_id",
-                        column: x => x.inbound_shipment_id,
-                        principalTable: "inbound_shipments",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_warehouse_items_warehouse_storage_location_storage_location",
-                        column: x => x.storage_location_id,
-                        principalTable: "warehouse_storage_locations",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "auctions",
                 columns: table => new
                 {
@@ -1521,6 +1455,58 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         principalTable: "items",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "inbound_shipments",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    item_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    seller_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    provider_code = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    shipment_mode = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    external_carrier_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    client_order_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    carrier_tracking_number = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    sender_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    sender_phone = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    sender_address = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    sender_ward = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    sender_district = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    sender_province = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    sender_carrier_address_data = table.Column<string>(type: "jsonb", nullable: true),
+                    shipping_fee = table.Column<decimal>(type: "numeric(18,2)", nullable: false, defaultValue: 0m),
+                    insurance_value = table.Column<decimal>(type: "numeric(18,2)", nullable: false, defaultValue: 0m),
+                    extra_data = table.Column<string>(type: "jsonb", nullable: false),
+                    status = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false),
+                    notes = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    expected_arrival_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    arrived_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    modified_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    item_id1 = table.Column<Guid>(type: "uuid", nullable: true),
+                    seller_id1 = table.Column<Guid>(type: "uuid", nullable: true),
+                    height_cm = table.Column<int>(type: "integer", nullable: true),
+                    length_cm = table.Column<int>(type: "integer", nullable: true),
+                    weight_grams = table.Column<int>(type: "integer", nullable: false),
+                    width_cm = table.Column<int>(type: "integer", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_inbound_shipments", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_inbound_shipments_items_item_id",
+                        column: x => x.item_id1,
+                        principalTable: "items",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_inbound_shipments_users_seller_id",
+                        column: x => x.seller_id1,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -1933,97 +1919,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "outbound_shipments",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    order_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    warehouse_item_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    provider_code = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    client_order_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    carrier_tracking_number = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    shipping_label_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    shipping_method = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    recipient_carrier_address_data = table.Column<string>(type: "jsonb", nullable: true),
-                    shipping_fee = table.Column<decimal>(type: "numeric(18,2)", nullable: false, defaultValue: 0m),
-                    insurance_value = table.Column<decimal>(type: "numeric(18,2)", nullable: false, defaultValue: 0m),
-                    cod_amount = table.Column<decimal>(type: "numeric(18,2)", nullable: false, defaultValue: 0m),
-                    ghn_payment_type = table.Column<string>(type: "character varying(5)", maxLength: 5, nullable: true),
-                    ghn_handling_note = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: true),
-                    extra_data = table.Column<string>(type: "jsonb", nullable: false),
-                    status = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false),
-                    packed_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    packed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    dispatched_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    estimated_delivery_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    delivered_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    modified_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    height_cm = table.Column<int>(type: "integer", nullable: true),
-                    length_cm = table.Column<int>(type: "integer", nullable: true),
-                    weight_grams = table.Column<int>(type: "integer", nullable: false),
-                    width_cm = table.Column<int>(type: "integer", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_outbound_shipments", x => x.id);
-                    table.CheckConstraint("chk_outbound_shipments_cod_amount", "cod_amount >= 0");
-                    table.CheckConstraint("chk_outbound_shipments_insurance_value", "insurance_value >= 0");
-                    table.CheckConstraint("chk_outbound_shipments_shipping_fee", "shipping_fee >= 0");
-                    table.ForeignKey(
-                        name: "fk_outbound_shipments_orders_order_id",
-                        column: x => x.order_id,
-                        principalTable: "orders",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_outbound_shipments_warehouse_item_warehouse_item_id",
-                        column: x => x.warehouse_item_id,
-                        principalTable: "warehouse_items",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "warehouse_inspections",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    warehouse_item_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    inbound_shipment_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    item_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    declared_condition = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    condition_on_arrival = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    inspection_notes = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
-                    evidence_json = table.Column<string>(type: "jsonb", nullable: false),
-                    decision_status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    decision_reason = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
-                    inspected_by = table.Column<Guid>(type: "uuid", nullable: false),
-                    inspected_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    reviewed_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    reviewed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    seller_confirmed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    modified_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_warehouse_inspections", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_warehouse_inspections_inbound_shipments_inbound_shipment_id",
-                        column: x => x.inbound_shipment_id,
-                        principalTable: "inbound_shipments",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_warehouse_inspections_warehouse_item_warehouse_item_id",
-                        column: x => x.warehouse_item_id,
-                        principalTable: "warehouse_items",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "auction_auto_bids",
                 columns: table => new
                 {
@@ -2270,6 +2165,50 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "warehouse_items",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    item_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    inbound_shipment_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    storage_location_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    received_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    modified_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    inspected_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    item_id1 = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_warehouse_items", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_warehouse_items_inbound_shipments_inbound_shipment_id",
+                        column: x => x.inbound_shipment_id,
+                        principalTable: "inbound_shipments",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_warehouse_items_items_item_id",
+                        column: x => x.item_id1,
+                        principalTable: "items",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_warehouse_items_users_inspected_by",
+                        column: x => x.inspected_by,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_warehouse_items_warehouse_storage_location_storage_location",
+                        column: x => x.storage_location_id,
+                        principalTable: "warehouse_storage_locations",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "wallet_transactions",
                 columns: table => new
                 {
@@ -2338,42 +2277,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "shipment_tracking_events",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    shipment_type = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
-                    shipment_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    provider_code = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    carrier_status_raw = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    carrier_status_desc = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
-                    normalized_status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    location = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
-                    reason_code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    reason_description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    event_time = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    raw_payload = table.Column<string>(type: "jsonb", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    inbound_shipment_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    outbound_shipment_id = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_shipment_tracking_events", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_shipment_tracking_events_inbound_shipments_inbound_shipment",
-                        column: x => x.inbound_shipment_id,
-                        principalTable: "inbound_shipments",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "fk_shipment_tracking_events_outbound_shipments_outbound_shipme",
-                        column: x => x.outbound_shipment_id,
-                        principalTable: "outbound_shipments",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "bids",
                 columns: table => new
                 {
@@ -2427,6 +2330,137 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "outbound_shipments",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    order_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    warehouse_item_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    shipment_mode = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false),
+                    external_carrier_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    provider_code = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    client_order_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    carrier_tracking_number = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    shipping_label_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    shipping_method = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    recipient_carrier_address_data = table.Column<string>(type: "jsonb", nullable: true),
+                    shipping_fee = table.Column<decimal>(type: "numeric(18,2)", nullable: false, defaultValue: 0m),
+                    insurance_value = table.Column<decimal>(type: "numeric(18,2)", nullable: false, defaultValue: 0m),
+                    cod_amount = table.Column<decimal>(type: "numeric(18,2)", nullable: false, defaultValue: 0m),
+                    ghn_payment_type = table.Column<string>(type: "character varying(5)", maxLength: 5, nullable: true),
+                    ghn_handling_note = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: true),
+                    extra_data = table.Column<string>(type: "jsonb", nullable: false),
+                    status = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false),
+                    packed_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    packed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    dispatched_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    estimated_delivery_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    delivered_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    modified_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    order_id1 = table.Column<Guid>(type: "uuid", nullable: true),
+                    height_cm = table.Column<int>(type: "integer", nullable: true),
+                    length_cm = table.Column<int>(type: "integer", nullable: true),
+                    weight_grams = table.Column<int>(type: "integer", nullable: false),
+                    width_cm = table.Column<int>(type: "integer", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_outbound_shipments", x => x.id);
+                    table.CheckConstraint("chk_outbound_shipments_cod_amount", "cod_amount >= 0");
+                    table.CheckConstraint("chk_outbound_shipments_insurance_value", "insurance_value >= 0");
+                    table.CheckConstraint("chk_outbound_shipments_shipping_fee", "shipping_fee >= 0");
+                    table.ForeignKey(
+                        name: "fk_outbound_shipments_orders_order_id",
+                        column: x => x.order_id,
+                        principalTable: "orders",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_outbound_shipments_orders_order_id1",
+                        column: x => x.order_id1,
+                        principalTable: "orders",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_outbound_shipments_warehouse_item_warehouse_item_id",
+                        column: x => x.warehouse_item_id,
+                        principalTable: "warehouse_items",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "warehouse_inspections",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    warehouse_item_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    inbound_shipment_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    item_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    declared_condition = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    condition_on_arrival = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    inspection_notes = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    evidence_json = table.Column<string>(type: "jsonb", nullable: false),
+                    decision_status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    decision_reason = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    inspected_by = table.Column<Guid>(type: "uuid", nullable: false),
+                    inspected_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    reviewed_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    reviewed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    seller_confirmed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    modified_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_warehouse_inspections", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_warehouse_inspections_inbound_shipments_inbound_shipment_id",
+                        column: x => x.inbound_shipment_id,
+                        principalTable: "inbound_shipments",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_warehouse_inspections_warehouse_item_warehouse_item_id",
+                        column: x => x.warehouse_item_id,
+                        principalTable: "warehouse_items",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "warehouse_item_media",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    warehouse_item_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    resource_type = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    is_primary = table.Column<bool>(type: "boolean", nullable: false),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    bytes = table.Column<long>(type: "bigint", nullable: true),
+                    duration_seconds = table.Column<double>(type: "double precision", nullable: true),
+                    file_name = table.Column<string>(type: "text", nullable: true),
+                    format = table.Column<string>(type: "text", nullable: true),
+                    height = table.Column<int>(type: "integer", nullable: true),
+                    secure_url = table.Column<string>(type: "text", nullable: false),
+                    width = table.Column<int>(type: "integer", nullable: true),
+                    folder = table.Column<string>(type: "text", nullable: false),
+                    public_id = table.Column<string>(type: "text", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_warehouse_item_media", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_warehouse_item_media_warehouse_item_warehouse_item_id",
+                        column: x => x.warehouse_item_id,
+                        principalTable: "warehouse_items",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "auction_price_history",
                 columns: table => new
                 {
@@ -2472,6 +2506,43 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         name: "fk_bid_events_bids_bid_id",
                         column: x => x.bid_id,
                         principalTable: "bids",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "shipment_tracking_events",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    shipment_type = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
+                    shipment_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    provider_code = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    carrier_status_raw = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    carrier_status_desc = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    normalized_status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    location = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    reason_code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    reason_description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    event_time = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    raw_payload = table.Column<string>(type: "jsonb", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    inbound_shipment_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    outbound_shipment_id = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_shipment_tracking_events", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_shipment_tracking_events_inbound_shipments_inbound_shipment",
+                        column: x => x.inbound_shipment_id,
+                        principalTable: "inbound_shipments",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_shipment_tracking_events_outbound_shipments_outbound_shipme",
+                        column: x => x.outbound_shipment_id,
+                        principalTable: "outbound_shipments",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -2824,6 +2895,11 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 column: "seller_id");
 
             migrationBuilder.CreateIndex(
+                name: "idx_inbound_shipments_shipment_mode",
+                table: "inbound_shipments",
+                column: "shipment_mode");
+
+            migrationBuilder.CreateIndex(
                 name: "idx_inbound_shipments_status",
                 table: "inbound_shipments",
                 column: "status");
@@ -2833,6 +2909,16 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 table: "inbound_shipments",
                 column: "client_order_code",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_inbound_shipments_item_id",
+                table: "inbound_shipments",
+                column: "item_id1");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_inbound_shipments_seller_id",
+                table: "inbound_shipments",
+                column: "seller_id1");
 
             migrationBuilder.CreateIndex(
                 name: "ix_item_media_item_id",
@@ -3008,6 +3094,11 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 table: "outbound_shipments",
                 column: "warehouse_item_id",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_outbound_shipments_order_id",
+                table: "outbound_shipments",
+                column: "order_id1");
 
             migrationBuilder.CreateIndex(
                 name: "idx_outbox_cleanup",
@@ -3460,6 +3551,11 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 column: "item_id");
 
             migrationBuilder.CreateIndex(
+                name: "idx_warehouse_item_media_warehouse_item_id",
+                table: "warehouse_item_media",
+                column: "warehouse_item_id");
+
+            migrationBuilder.CreateIndex(
                 name: "idx_unique_warehouse_items_inbound_shipment_id",
                 table: "warehouse_items",
                 column: "inbound_shipment_id",
@@ -3480,6 +3576,16 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 table: "warehouse_items",
                 column: "storage_location_id",
                 filter: "storage_location_id IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_warehouse_items_inspected_by",
+                table: "warehouse_items",
+                column: "inspected_by");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_warehouse_items_item_id",
+                table: "warehouse_items",
+                column: "item_id1");
 
             migrationBuilder.CreateIndex(
                 name: "idx_unique_warehouse_storage_locations_label",
@@ -3912,6 +4018,9 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 name: "warehouse_inspections");
 
             migrationBuilder.DropTable(
+                name: "warehouse_item_media");
+
+            migrationBuilder.DropTable(
                 name: "withdrawal_requests");
 
             migrationBuilder.DropTable(
@@ -3974,9 +4083,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 name: "transactions");
 
             migrationBuilder.DropTable(
-                name: "users");
-
-            migrationBuilder.DropTable(
                 name: "auctions");
 
             migrationBuilder.DropTable(
@@ -3993,6 +4099,9 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "items");
+
+            migrationBuilder.DropTable(
+                name: "users");
 
             migrationBuilder.DropTable(
                 name: "categories");
