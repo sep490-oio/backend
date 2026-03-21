@@ -47,6 +47,7 @@ internal sealed class GetAuctionByIdQueryHandler
                 .Include(a => a.BuyNowReservations)
                 .Include(a => a.PriceHistories.OrderByDescending(ph => ph.CreatedAt))
                 .Include(x => x.Item)
+                .ThenInclude(x => x.Media)
                 .AsSplitQuery(),
             cancellationToken: cancellationToken);
 

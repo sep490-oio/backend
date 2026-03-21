@@ -8,7 +8,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Media;
-using OIO.Domain.SeedWork.Errors;
 using OIO.Infrastructure.Settings;
 using Error = OIO.Domain.SeedWork.Errors.Error;
 
