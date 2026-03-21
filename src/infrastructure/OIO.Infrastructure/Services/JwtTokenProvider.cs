@@ -66,13 +66,14 @@ internal sealed class JwtTokenProvider : IJwtTokenProvider
         return rawToken;
     }
 
-    public string GenerateTwoFactorJwt(UserId userId, DateTime nowUtc)
+    public string GenerateTwoFactorJwt(UserId userId, Guid deviceId, DateTime nowUtc)
     {
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, userId.ToString()),
             new(JwtRegisteredClaimNames.Jti, $"{Guid.CreateVersion7()}"),
             new("purpose", "2fa_verification"),
+            new(CustomClaimType.DeviceId, $"{deviceId}"),
             new(JwtRegisteredClaimNames.Iat,
                 new DateTimeOffset(nowUtc).ToUnixTimeSeconds().ToString(),
                 ClaimValueTypes.Integer64)

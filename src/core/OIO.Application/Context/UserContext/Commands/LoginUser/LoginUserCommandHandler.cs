@@ -99,7 +99,7 @@ internal sealed class LoginUserCommandHandler
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             // Generate limited 2FA token
-            var twoFactorToken = _tokenProvider.GenerateTwoFactorJwt(user.Id, nowUtc);
+            var twoFactorToken = _tokenProvider.GenerateTwoFactorJwt(user.Id, request.DeviceId, nowUtc);
 
             return new AuthTokenDto(
                 AccessToken: twoFactorToken,

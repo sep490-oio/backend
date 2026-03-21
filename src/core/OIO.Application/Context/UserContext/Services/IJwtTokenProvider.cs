@@ -15,5 +15,5 @@ public interface IJwtTokenProvider
     
     string Generate();
 
-    string GenerateTwoFactorJwt(UserId userId, DateTime now);
+    string GenerateTwoFactorJwt(UserId userId, Guid deviceId, DateTime now);
 }
