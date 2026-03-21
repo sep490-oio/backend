@@ -139,6 +139,7 @@ public static class DependencyInjection
         services.AddProblemDetails(options =>
                 options.CustomizeProblemDetails = ctx =>
                 {
+                    ctx.HttpContext.Response.StatusCode = ctx.ProblemDetails.Status ?? StatusCodes.Status500InternalServerError;
                     ctx.ProblemDetails.Instance = $"{ctx.HttpContext.Request.Method} {ctx.HttpContext.Request.Path}";
                     ctx.ProblemDetails.Extensions.TryAdd("requestId", ctx.HttpContext.TraceIdentifier);
                     var activity = ctx.HttpContext.Features.Get<IHttpActivityFeature>()?.Activity;
