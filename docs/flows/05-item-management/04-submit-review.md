@@ -14,10 +14,6 @@ If the item is rejected, the seller can resubmit it (which increments `Resubmiss
 ## Submit Decision Tree
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A[Seller calls POST /submit] --> B{verifyByPlatform?}
 

@@ -13,10 +13,6 @@ An `Item` can follow one of two review paths after submission:
 ## Item Status State Machine
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Draft : Item.Create()
 

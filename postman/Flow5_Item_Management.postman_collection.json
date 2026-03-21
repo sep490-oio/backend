@@ -6,18 +6,54 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "itemMediaId", "value": "" },
-    { "key": "secondMediaId", "value": "" },
-    { "key": "questionId", "value": "" },
-    { "key": "itemMediaUploadId", "value": "" },
-    { "key": "shipmentId", "value": "" },
-    { "key": "cloudinarySignature", "value": "" },
-    { "key": "cloudinaryTimestamp", "value": "" },
-    { "key": "cloudinaryApiKey", "value": "" },
-    { "key": "cloudinaryPublicId", "value": "" },
-    { "key": "cloudinaryFolder", "value": "" },
-    { "key": "uploadUrl", "value": "" },
-    { "key": "confirmedSecureUrl", "value": "" }
+    {
+      "key": "itemMediaId",
+      "value": ""
+    },
+    {
+      "key": "secondMediaId",
+      "value": ""
+    },
+    {
+      "key": "questionId",
+      "value": ""
+    },
+    {
+      "key": "itemMediaUploadId",
+      "value": ""
+    },
+    {
+      "key": "shipmentId",
+      "value": ""
+    },
+    {
+      "key": "cloudinarySignature",
+      "value": ""
+    },
+    {
+      "key": "cloudinaryTimestamp",
+      "value": ""
+    },
+    {
+      "key": "cloudinaryApiKey",
+      "value": ""
+    },
+    {
+      "key": "cloudinaryPublicId",
+      "value": ""
+    },
+    {
+      "key": "cloudinaryFolder",
+      "value": ""
+    },
+    {
+      "key": "uploadUrl",
+      "value": ""
+    },
+    {
+      "key": "confirmedSecureUrl",
+      "value": ""
+    }
   ],
   "item": [
     {
@@ -28,16 +64,30 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -66,11 +116,19 @@
           "request": {
             "method": "GET",
             "header": [],
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "url": {
               "raw": "{{baseUrl}}/api/items/{{itemId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "{{itemId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "{{itemId}}"
+              ]
             }
           },
           "event": [
@@ -99,15 +157,33 @@
             "header": [],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items/my?pageNumber=1&pageSize=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "my"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "my"
+              ],
               "query": [
-                { "key": "pageNumber", "value": "1" },
-                { "key": "pageSize", "value": "10" }
+                {
+                  "key": "pageNumber",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
               ]
             }
           },
@@ -135,14 +211,27 @@
           "request": {
             "method": "GET",
             "header": [],
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "url": {
               "raw": "{{baseUrl}}/api/items?pageNumber=1&pageSize=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items"
+              ],
               "query": [
-                { "key": "pageNumber", "value": "1" },
-                { "key": "pageSize", "value": "10" }
+                {
+                  "key": "pageNumber",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
               ]
             }
           },
@@ -170,17 +259,35 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
             ],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/media/upload-signature",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "media", "upload-signature"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "media",
+                "upload-signature"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -214,21 +321,49 @@
           "request": {
             "method": "POST",
             "header": [],
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "url": {
               "raw": "{{uploadUrl}}",
-              "host": ["{{uploadUrl}}"]
+              "host": [
+                "{{uploadUrl}}"
+              ]
             },
             "description": "Manual: upload image to Cloudinary",
             "body": {
               "mode": "formdata",
               "formdata": [
-                { "key": "file", "type": "file", "src": "" },
-                { "key": "signature", "value": "{{cloudinarySignature}}", "type": "text" },
-                { "key": "timestamp", "value": "{{cloudinaryTimestamp}}", "type": "text" },
-                { "key": "api_key", "value": "{{cloudinaryApiKey}}", "type": "text" },
-                { "key": "public_id", "value": "{{cloudinaryPublicId}}", "type": "text" },
-                { "key": "folder", "value": "{{cloudinaryFolder}}", "type": "text" }
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "signature",
+                  "value": "{{cloudinarySignature}}",
+                  "type": "text"
+                },
+                {
+                  "key": "timestamp",
+                  "value": "{{cloudinaryTimestamp}}",
+                  "type": "text"
+                },
+                {
+                  "key": "api_key",
+                  "value": "{{cloudinaryApiKey}}",
+                  "type": "text"
+                },
+                {
+                  "key": "public_id",
+                  "value": "{{cloudinaryPublicId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "folder",
+                  "value": "{{cloudinaryFolder}}",
+                  "type": "text"
+                }
               ]
             }
           },
@@ -254,21 +389,39 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
             ],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/media/confirm",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "media", "confirm"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "media",
+                "confirm"
+              ]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"publicId\": \"{{cloudinaryPublicId}}\",\n  \"secureUrl\": \"{{confirmedSecureUrl}}\",\n  \"resourceType\": \"image\",\n  \"format\": \"jpg\",\n  \"originalFileName\": \"watch-photo.jpg\"\n}"
+              "raw": "{\n  \"mediaUploadId\": \"{{mediaUploadId}}\",\n  \"publicId\": \"{{cloudinaryPublicId}}\",\n  \"secureUrl\": \"{{confirmedSecureUrl}}\",\n  \"bytes\": 12345,\n  \"format\": \"jpg\"\n}"
             }
           },
           "event": [
@@ -293,16 +446,32 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items/{{itemId}}/media",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "{{itemId}}", "media"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "{{itemId}}",
+                "media"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -331,16 +500,32 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items/{{itemId}}/media",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "{{itemId}}", "media"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "{{itemId}}",
+                "media"
+              ]
             },
             "description": "Requires second upload. Use signature from a new request.",
             "body": {
@@ -372,12 +557,27 @@
             "header": [],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items/{{itemId}}/media/{{secondMediaId}}/primary",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "{{itemId}}", "media", "{{secondMediaId}}", "primary"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "{{itemId}}",
+                "media",
+                "{{secondMediaId}}",
+                "primary"
+              ]
             }
           },
           "event": [
@@ -399,16 +599,33 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items/{{itemId}}/media/reorder",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "{{itemId}}", "media", "reorder"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "{{itemId}}",
+                "media",
+                "reorder"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -436,12 +653,26 @@
             "header": [],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items/{{itemId}}/media/{{secondMediaId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "{{itemId}}", "media", "{{secondMediaId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "{{itemId}}",
+                "media",
+                "{{secondMediaId}}"
+              ]
             }
           },
           "event": [
@@ -465,12 +696,24 @@
             "header": [],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items/{{itemId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "{{itemId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "{{itemId}}"
+              ]
             }
           },
           "event": [
@@ -502,16 +745,32 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items/{{itemId}}/questions",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "{{itemId}}", "questions"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "{{itemId}}",
+                "questions"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -542,15 +801,34 @@
             "header": [],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items/{{itemId}}/questions?pageNumber=1&pageSize=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "{{itemId}}", "questions"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "{{itemId}}",
+                "questions"
+              ],
               "query": [
-                { "key": "pageNumber", "value": "1" },
-                { "key": "pageSize", "value": "10" }
+                {
+                  "key": "pageNumber",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
               ]
             }
           },
@@ -578,16 +856,34 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items/{{itemId}}/questions/{{questionId}}/answer",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "{{itemId}}", "questions", "{{questionId}}", "answer"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "{{itemId}}",
+                "questions",
+                "{{questionId}}",
+                "answer"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -618,16 +914,32 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items/{{itemId}}/submit",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "{{itemId}}", "submit"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "{{itemId}}",
+                "submit"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -655,12 +967,24 @@
             "header": [],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items/{{itemId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "{{itemId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "{{itemId}}"
+              ]
             }
           },
           "event": [
@@ -694,15 +1018,34 @@
             "header": [],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/admin/items/review-queue?pageNumber=1&pageSize=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "admin", "items", "review-queue"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "items",
+                "review-queue"
+              ],
               "query": [
-                { "key": "pageNumber", "value": "1" },
-                { "key": "pageSize", "value": "10" }
+                {
+                  "key": "pageNumber",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
               ]
             }
           },
@@ -727,12 +1070,25 @@
             "header": [],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/admin/items/{{itemId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "admin", "items", "{{itemId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "items",
+                "{{itemId}}"
+              ]
             }
           },
           "event": [
@@ -754,16 +1110,33 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/admin/items/{{itemId}}/assign",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "admin", "items", "{{itemId}}", "assign"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "items",
+                "{{itemId}}",
+                "assign"
+              ]
             },
             "description": "Use admin userId",
             "body": {
@@ -790,16 +1163,33 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/admin/items/{{itemId}}/reject",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "admin", "items", "{{itemId}}", "reject"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "items",
+                "{{itemId}}",
+                "reject"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -825,16 +1215,32 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items/{{itemId}}/resubmit",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "{{itemId}}", "resubmit"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "{{itemId}}",
+                "resubmit"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -862,12 +1268,26 @@
             "header": [],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/admin/items/{{itemId}}/approve",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "admin", "items", "{{itemId}}", "approve"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "items",
+                "{{itemId}}",
+                "approve"
+              ]
             }
           },
           "event": [
@@ -891,12 +1311,26 @@
             "header": [],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/admin/items/{{itemId}}/reviews",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "admin", "items", "{{itemId}}", "reviews"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "items",
+                "{{itemId}}",
+                "reviews"
+              ]
             }
           },
           "event": [
@@ -928,16 +1362,32 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items/{{itemId}}/submit",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "{{itemId}}", "submit"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "{{itemId}}",
+                "submit"
+              ]
             },
             "description": "Submit another item for platform verification",
             "body": {
@@ -964,16 +1414,32 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items/{{itemId}}/shipping",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "{{itemId}}", "shipping"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "{{itemId}}",
+                "shipping"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -1004,12 +1470,25 @@
             "header": [],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/inspection-queue",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "warehouse", "inbound-shipments", "inspection-queue"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "warehouse",
+                "inbound-shipments",
+                "inspection-queue"
+              ]
             }
           },
           "event": [
@@ -1031,16 +1510,33 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/{{shipmentId}}/inspect",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "warehouse", "inbound-shipments", "{{shipmentId}}", "inspect"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "warehouse",
+                "inbound-shipments",
+                "{{shipmentId}}",
+                "inspect"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -1066,16 +1562,33 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/warehouse/inbound-shipments/{{shipmentId}}/review",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "warehouse", "inbound-shipments", "{{shipmentId}}", "review"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "warehouse",
+                "inbound-shipments",
+                "{{shipmentId}}",
+                "review"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -1103,12 +1616,25 @@
             "header": [],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items/{{itemId}}/confirm-inspected-condition",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "{{itemId}}", "confirm-inspected-condition"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "{{itemId}}",
+                "confirm-inspected-condition"
+              ]
             }
           },
           "event": [
@@ -1137,12 +1663,25 @@
             "header": [],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items/{{itemId}}/activate",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "{{itemId}}", "activate"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "{{itemId}}",
+                "activate"
+              ]
             }
           },
           "event": [
@@ -1164,16 +1703,32 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items/{{itemId}}/auctions",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "{{itemId}}", "auctions"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "{{itemId}}",
+                "auctions"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -1204,12 +1759,24 @@
             "header": [],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items/{{itemId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "{{itemId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "{{itemId}}"
+              ]
             }
           },
           "event": [
@@ -1236,16 +1803,32 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/items/{{itemId}}/submit",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "items", "{{itemId}}", "submit"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "{{itemId}}",
+                "submit"
+              ]
             },
             "description": "Submit without media or wrong status",
             "body": {

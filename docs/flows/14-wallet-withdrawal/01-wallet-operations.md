@@ -3,10 +3,6 @@
 ## Five Core Operations
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     subgraph Wallet["Wallet (AvailableBalance / PendingBalance)"]
         AB["AvailableBalance"]

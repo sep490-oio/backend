@@ -11,11 +11,12 @@
     { "key": "sealedBidId", "value": "" },
     { "key": "runnerUpOfferId", "value": "" },
     { "key": "inspectionUploadId", "value": "" },
-    { "key": "shipmentId", "value": "" }
+    { "key": "shipmentId", "value": "" },
+    { "key": "mediaUploadId", "value": "" }
   ],
   "item": [
     {
-      "name": "01 — Create & View",
+      "name": "01 — Create Item & Auction",
       "item": [
         {
           "name": "Create Auction",
@@ -53,6 +54,165 @@
                   "if (json.itemId) {",
                   "    pm.environment.set('itemId', json.itemId);",
                   "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Upload Signature (Item Media)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/media/upload-signature",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "media", "upload-signature"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"context\": \"item_image\",\n  \"fileName\": \"item-photo.jpg\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('cloudinarySignature', json.signature);",
+                  "pm.collectionVariables.set('cloudinaryTimestamp', json.timestamp);",
+                  "pm.collectionVariables.set('cloudinaryApiKey', json.apiKey);",
+                  "pm.collectionVariables.set('cloudinaryPublicId', json.publicId);",
+                  "pm.collectionVariables.set('cloudinaryFolder', json.folder);",
+                  "pm.collectionVariables.set('uploadUrl', json.uploadUrl);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upload to Cloudinary (Manual)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": { "type": "noauth" },
+            "url": {
+              "raw": "{{uploadUrl}}",
+              "host": ["{{uploadUrl}}"]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "" },
+                { "key": "signature", "value": "{{cloudinarySignature}}", "type": "text" },
+                { "key": "timestamp", "value": "{{cloudinaryTimestamp}}", "type": "text" },
+                { "key": "api_key", "value": "{{cloudinaryApiKey}}", "type": "text" },
+                { "key": "public_id", "value": "{{cloudinaryPublicId}}", "type": "text" },
+                { "key": "folder", "value": "{{cloudinaryFolder}}", "type": "text" }
+              ]
+            },
+            "description": "Manual: upload item photo to Cloudinary. Select a file in the 'file' field before sending."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Upload successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('confirmedSecureUrl', json.secure_url);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm Media Upload (Item)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/media/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "media", "confirm"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"publicId\": \"{{cloudinaryPublicId}}\",\n  \"secureUrl\": \"{{confirmedSecureUrl}}\",\n  \"resourceType\": \"image\",\n  \"format\": \"jpg\",\n  \"width\": 1024,\n  \"height\": 768,\n  \"bytes\": 102400\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('mediaUploadId', json.id || json.uploadId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Media to Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/media",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items", "{{itemId}}", "media"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"uploadId\": \"{{mediaUploadId}}\"\n}"
+            },
+            "description": "Attach the confirmed media upload to the item."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 or 201', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});"
                 ]
               }
             }
@@ -150,98 +310,29 @@
       ]
     },
     {
-      "name": "02 — Update & Timing",
+      "name": "02 — Item Approval Pipeline",
       "item": [
         {
-          "name": "Update Auction",
-          "request": {
-            "method": "PUT",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "auth": {
-              "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "auctions", "{{auctionId}}"]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"startingPrice\": 150000,\n  \"bidIncrement\": 15000\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Set Auction Timing",
-          "request": {
-            "method": "PUT",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "auth": {
-              "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/timing",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "auctions", "{{auctionId}}", "timing"]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"startTime\": \"future+1h\",\n  \"endTime\": \"future+25h\",\n  \"qualificationStartAt\": \"future+30m\",\n  \"qualificationEndAt\": \"future+55m\",\n  \"autoExtend\": true,\n  \"extensionMinutes\": 5\n}"
-            },
-            "description": "Set dates to future. Replace with actual ISO 8601 dates before running (e.g. 2026-03-21T10:00:00Z)."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "03 — Submit & Admin Review",
-      "item": [
-        {
-          "name": "Submit Auction for Review",
+          "name": "Submit Item",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
             "auth": {
               "type": "bearer",
               "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
             },
             "url": {
-              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/submit",
+              "raw": "{{baseUrl}}/api/items/{{itemId}}/submit",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "auctions", "{{auctionId}}", "submit"]
-            }
+              "path": ["api", "items", "{{itemId}}", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verifyByPlatform\": false\n}"
+            },
+            "description": "Submit item for review: Draft → PendingReview."
           },
           "event": [
             {
@@ -251,40 +342,6 @@
                 "exec": [
                   "pm.test('Status is 204', function () {",
                   "    pm.response.to.have.status(204);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Get Auction — Verify Submitted",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "auth": {
-              "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "auctions", "{{auctionId}}"]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Auction is submitted/pending', function () {",
-                  "    const json = pm.response.json();",
-                  "    console.log('Auction status:', json.status);",
                   "});"
                 ]
               }
@@ -333,7 +390,78 @@
               "raw": "{{baseUrl}}/api/admin/items/{{itemId}}/approve",
               "host": ["{{baseUrl}}"],
               "path": ["api", "admin", "items", "{{itemId}}", "approve"]
+            },
+            "description": "Admin approves item: PendingReview → Approved."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
             }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 — Auction Submit & Configuration",
+      "item": [
+        {
+          "name": "Update Auction",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startingPrice\": 150000,\n  \"bidIncrement\": 15000\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit Auction for Review",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auctions", "{{auctionId}}", "submit"]
+            },
+            "description": "Submit auction: Draft → Approved (requires item to be Approved first)."
           },
           "event": [
             {
@@ -384,7 +512,7 @@
           ]
         },
         {
-          "name": "Set Timing After Approval",
+          "name": "Set Auction Timing",
           "request": {
             "method": "PUT",
             "header": [
@@ -403,7 +531,7 @@
               "mode": "raw",
               "raw": "{\n  \"startTime\": \"future+1h\",\n  \"endTime\": \"future+25h\",\n  \"qualificationStartAt\": \"future+30m\",\n  \"qualificationEndAt\": \"future+55m\",\n  \"autoExtend\": true,\n  \"extensionMinutes\": 5\n}"
             },
-            "description": "Set dates to future. Replace with actual ISO 8601 dates before running."
+            "description": "Set dates to future. Replace with actual ISO 8601 dates before running (e.g. 2026-03-21T10:00:00Z). Approved → Scheduled."
           },
           "event": [
             {
@@ -456,7 +584,7 @@
       ]
     },
     {
-      "name": "04 — Publish",
+      "name": "04 — Publish & Activate",
       "item": [
         {
           "name": "Publish Auction",
@@ -471,7 +599,8 @@
               "raw": "{{baseUrl}}/api/auctions/{{auctionId}}/publish",
               "host": ["{{baseUrl}}"],
               "path": ["api", "auctions", "{{auctionId}}", "publish"]
-            }
+            },
+            "description": "Publish auction: Scheduled → Active."
           },
           "event": [
             {

@@ -4,8 +4,10 @@
 
 Two endpoints allow sellers to modify auction configuration after creation:
 
-1. **`PUT /api/auctions/{auctionId}`** -- General update of pricing, type, and optionally timing. Allowed in Draft, Pending, Approved, and Scheduled states (with restrictions).
+1. **`PUT /api/auctions/{auctionId}`** -- General update of pricing, type, and optionally timing. Allowed in Draft, Approved, and Scheduled states (with restrictions).
 2. **`PUT /api/auctions/{auctionId}/timing`** -- Dedicated timing endpoint, only available when status is `Approved`. Transitions the auction to `Scheduled`.
+
+> **Prerequisite:** The `SetAuctionTiming` endpoint requires the auction to already be in `Approved` status. This means the auction must first be submitted via `POST /api/auctions/{id}/submit` (which itself requires the item to be `Approved`). You cannot set timing on a `Draft` auction -- submit it first.
 
 **Source files:**
 

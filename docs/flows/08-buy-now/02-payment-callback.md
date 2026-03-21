@@ -3,10 +3,6 @@
 ## Callback Decision Tree
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     IPN[VNPay IPN Callback] --> Parse[Parse & validate signature]
     Parse --> FindTx[Find Transaction by TxnRef]

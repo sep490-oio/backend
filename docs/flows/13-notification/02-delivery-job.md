@@ -3,10 +3,6 @@
 ## Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A[ProcessNotificationDeliveriesJob.Execute] --> B[now = DateTime.UtcNow]
     B --> C["Query: (Status==Pending && ScheduledAt<=now) OR (Status==Failed && NextRetryAt<=now && AttemptCount < MaxAttempts)"]

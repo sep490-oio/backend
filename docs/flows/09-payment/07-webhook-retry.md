@@ -14,10 +14,6 @@ VNPay IPN callbacks are persisted as `GatewayWebhookEvent` entities and processe
 ## Retry Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     Start([ProcessGatewayWebhooksJob<br/>Every 10 seconds]) --> Query[Query DB:<br/>ProcessingStatus = Pending<br/>AND NextRetryAt <= now<br/>ORDER BY CreatedAt ASC<br/>TAKE 50]
 

@@ -3,10 +3,6 @@
 ## Finalization Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     Entry[FinalizeBuyNowReservation<br/>reservationId, nowUtc, ipAddress?] --> FindRes[FindBuyNowReservation]
     FindRes --> CheckPending{reservation.IsPendingPayment?}

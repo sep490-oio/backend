@@ -124,10 +124,6 @@ Permission: Warehouse.ManageLocations
 ## IsOccupied Lifecycle
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart LR
     Create[Create Location] -->|IsOccupied = false| Vacant[Vacant]
     Vacant -->|StoreWarehouseItem: location.MarkOccupied| Occupied[Occupied]

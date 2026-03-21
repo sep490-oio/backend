@@ -16,10 +16,6 @@ Both jobs run every **15 minutes**, are marked `[DisallowConcurrentExecution]`, 
 ### Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     Start([PendingUploadRelocationJob.Execute]) --> Query[Query candidates:<br/>IsLinked = true<br/>RelocatedAt = null<br/>Folder contains '/pending/'<br/>NextRelocationAttemptAt is null or <= now<br/>Order by earliest pending<br/>Take 50]
     Query --> Check{Candidates > 0?}
@@ -117,10 +113,6 @@ After renaming on Cloudinary, the service updates the media reference on the lin
 ### Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     Start([PendingUploadCleanupJob.Execute]) --> ComputeThresholds[Compute thresholds:<br/>orphanThreshold = now - OrphanExpiration<br/>linkedRetentionThreshold = now - LinkedRecordRetention]
 

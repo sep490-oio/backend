@@ -7,10 +7,6 @@
 ## Inspection Queue Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A["GET /api/warehouse/inbound-shipments/inspection-queue"]
     A --> B{Categorize shipments}

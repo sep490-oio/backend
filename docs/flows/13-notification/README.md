@@ -5,10 +5,6 @@
 ### Notification Status
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Unread : Notification.Create()
     Unread --> Read : MarkAsRead(readAt)
@@ -19,10 +15,6 @@ stateDiagram-v2
 ### Delivery Status
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Pending : NotificationDelivery.Create()
     Pending --> Sent : MarkAsSent(sentAt)

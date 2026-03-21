@@ -11,10 +11,6 @@
 ## Processing Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     Start([ProcessVnPayCallbackCommand]) --> ValidateSig[_paymentGateway.ProcessCallback<br/>Validate HMAC-SHA512 signature<br/>Parse vnp_TxnRef, vnp_ResponseCode,<br/>vnp_Token, vnp_CardNumber, etc.]
     ValidateSig -->|Invalid| ErrSig[Error: InvalidSignature]

@@ -7,10 +7,6 @@ Trigger and resolve auction emergencies. An emergency terminates the auction, ca
 ## Emergency Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A[Admin triggers emergency] --> B[Validate: no shipment in PickedUp/InTransit/Delivered/Returning/Returned]
     B -->|Blocked| X[Return EmergencyBlockedByShipment error]

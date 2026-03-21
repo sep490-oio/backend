@@ -85,7 +85,7 @@ internal sealed class AuctionDraftCreationService(IDbContext dbContext)
         if (pricingResult.IsFailure)
             return pricingResult.Error;
 
-        var auctionType = Domain.Context.AuctionContext.Enums.AuctionType.FromId(request.AuctionType);
+        var auctionType = AuctionType.FromId(request.AuctionType);
         if (auctionType.HasNoValue)
             return AuctionErrors.Auction.InvalidAuctionType;
 

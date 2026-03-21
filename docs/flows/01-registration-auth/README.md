@@ -17,10 +17,6 @@ Module Registration & Authentication cua OIO Auction Platform quan ly toan bo vo
 ### 1.1 User State Machine
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Unregistered
     Unregistered --> Inactive : POST /api/auth/register<br/>User.Create() sets Status=Inactive
@@ -45,10 +41,6 @@ stateDiagram-v2
 ### 1.2 Session State Machine
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Login : POST /api/auth/login<br/>or POST /api/auth/two-factor/verify
     Login --> ActiveSession : CreateSession()<br/>IsActive=true, ExpiresAt=now+sliding, AbsoluteExpiresAt=now+absolute
@@ -74,10 +66,6 @@ stateDiagram-v2
 ### 1.3 2FA State Machine
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Disabled : TwoFactorEnabled=false<br/>TwoFactorProvider=None
     Disabled --> SetupPending : POST /api/me/two-factor/setup<br/>SetupTotp() stores PendingTwoFactorSecret

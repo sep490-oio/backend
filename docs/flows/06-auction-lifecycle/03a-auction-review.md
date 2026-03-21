@@ -25,10 +25,6 @@ Before an auction can proceed from Draft, the underlying **Item** must be approv
 ## Review Paths
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     START[Item submitted for review] --> CHECK{VerifyByPlatform?}
 

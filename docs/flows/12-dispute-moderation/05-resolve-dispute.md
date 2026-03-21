@@ -3,10 +3,6 @@
 ## Resolution Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A["POST /api/admin/disputes/{id}/resolve"] --> B["Load Dispute + StatusHistory"]
     B --> C{"Dispute found?"}

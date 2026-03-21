@@ -3,10 +3,6 @@
 ## Alert Lifecycle
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     subgraph AutoSources["Auto-created Alerts"]
         COL[ScanActiveAuctionsForCollusionJob\nevery 5 min\nAlertTypes: seller_bidder_same_device,\nseller_bidder_same_ip, top_bidders_same_device,\ntop_bidders_same_ip, ping_pong_bidding,\nrepeated_pair]

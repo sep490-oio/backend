@@ -80,10 +80,6 @@ sequenceDiagram
 ## State Diagram — Inspection Sub-States
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> PendingVerify: item.Submit(verifyByPlatform=true)
 

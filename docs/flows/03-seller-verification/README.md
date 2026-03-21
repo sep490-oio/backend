@@ -11,10 +11,6 @@ This module covers the full journey from identity verification to becoming an ac
 The `IdentityVerification` aggregate tracks status through seven states defined in `IdentityVerificationStatus`.
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Pending : Create verification
     Pending --> Submitted : Submit (documents attached)
@@ -49,10 +45,6 @@ stateDiagram-v2
 After identity verification is approved, users can create a `SellerProfile`. Its status is managed independently.
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Pending : Create seller profile (requires approved verification)
     Pending --> Verified : Admin verifies

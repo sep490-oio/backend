@@ -9,10 +9,6 @@ This document consolidates the security architecture of the OIO Auction Platform
 ## Security Layers
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A["HTTP Request"] --> B["CORS Middleware"]
     B --> C["Auth Middleware"]
@@ -28,10 +24,6 @@ flowchart TD
 ## Anti-Theft Detection Chain
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A["Token Rotation Request"] --> B{"Device ID matches<br/>session DeviceId?"}
     B -- No --> C["Return User.DeviceMismatch<br/>Session revoked for security"]

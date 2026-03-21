@@ -9,10 +9,6 @@ The `EscrowSettlementService` handles the final disposition of escrowed funds: r
 ## Settlement Decision Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A[Order with Holding escrows] --> B{Settlement trigger}
     B -- "Decision window expired<br/>(no return/dispute)" --> C[ReleaseToSellerAsync]

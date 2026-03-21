@@ -9,10 +9,6 @@ OIO uses a **session-based refresh token family** model. Each login creates a `U
 ## Session Lifecycle
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Active : UserSession.Create()
     Active --> Extended : RotateToken() — sliding window reset
@@ -31,10 +27,6 @@ stateDiagram-v2
 ## Cleanup Job — 4 Phases
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     START["ExpiredSessionCleanupJob (every 6h)"] --> P1
     P1["Phase 1: Revoke absolute-expired sessions<br/>WHERE IsActive AND AbsoluteExpiresAt <= now"] --> P2

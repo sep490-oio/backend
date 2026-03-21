@@ -21,10 +21,6 @@ Activation is the transition from `Scheduled` to `Active`. It happens either imm
 ## Activation Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     TRIGGER["ActivateAuctionJob fires at StartTime<br/>JobKey: activate-{auctionId}"] --> LOAD[Load auction with Deposits + Participants]
     LOAD --> STATUS_CHECK{Status == Scheduled?}

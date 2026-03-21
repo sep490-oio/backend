@@ -3,10 +3,6 @@
 ## VNPay IPN Callback Flow for Order Payments
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A[VNPay IPN callback] --> B[ProcessVnPayCallbackCommand]
     B --> C[Parse & validate signature]

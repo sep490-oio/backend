@@ -4,6 +4,21 @@
 
 After configuring pricing and (optionally) timing, the seller **submits** the auction configuration, then **publishes** it to make it live. These are two distinct steps with different preconditions and outcomes.
 
+> **Item Approval Prerequisite:** The auction's item **must** be in `Approved` status before submitting the auction. The typical prerequisite flow is:
+> 1. `POST /api/items/{itemId}/submit` -- Item transitions to `PendingReview`
+> 2. `POST /api/admin/items/{itemId}/approve` -- Item transitions to `Approved`
+>
+> Attempting to submit an auction whose item is not `Approved` returns error `Item.InvalidState`.
+
+### Two Submit Outcomes
+
+Submitting an auction from `Draft` status produces one of two results depending on whether timing (AuctionInfo) has been configured:
+
+| Condition | Resulting Status | Next Step |
+|-----------|-----------------|-----------|
+| `AuctionInfo` is **null** (no timing) | `Approved` | Set timing via `PUT /api/auctions/{id}/timing` to reach `Scheduled` |
+| `AuctionInfo` is **not null** (timing set) | `Scheduled` | Publish via `POST /api/auctions/{id}/publish` |
+
 **Source files:**
 
 | Concern | Path |
@@ -20,10 +35,6 @@ After configuring pricing and (optionally) timing, the seller **submits** the au
 ## Submit Decision Tree
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A[POST /api/auctions/auctionId/submit] --> B{Status == Draft?}
     B -- No --> ERR1[Error: Auction.CannotSubmit]

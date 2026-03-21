@@ -7,10 +7,6 @@ Admin endpoints for viewing payment summaries, platform wallet, transactions, es
 ## Withdrawal Approval Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A[User creates withdrawal request] --> B[Status: Pending]
     B --> C{Admin decision}

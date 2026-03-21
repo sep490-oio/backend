@@ -8,10 +8,6 @@
 ## Decision Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A["POST /api/warehouse/inbound-shipments/{id}/review"]
     A --> B{Decision?}

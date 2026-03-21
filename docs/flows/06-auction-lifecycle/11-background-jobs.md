@@ -23,10 +23,6 @@ Three are Quartz.NET scheduled jobs; one is a Quartz.NET polling job; one is a .
 ## Flowchart
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TB
     subgraph PerAuctionTimers["Per-Auction Timers (Quartz, auction-lifecycle group)"]
         direction TB

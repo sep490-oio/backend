@@ -14,10 +14,6 @@
 ## Reconciliation Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     Start([GatewayReconciliationJob<br/>Every 15 minutes]) --> Send[Send ProcessGatewayReconciliationCommand<br/>BatchSize = 100]
 

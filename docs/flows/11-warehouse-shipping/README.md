@@ -10,10 +10,6 @@
 ### 1.1 InboundShipment Status
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> AwaitingPickup : Create()
     AwaitingPickup --> InTransit : RecordTrackingEvent(picked_up / in_transit / delayed)
@@ -39,10 +35,6 @@ stateDiagram-v2
 ### 1.2 OutboundShipment Status
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Pending : Create()
     Pending --> Booked : RecordBooked(trackingNumber)
@@ -66,10 +58,6 @@ stateDiagram-v2
 ### 1.3 WarehouseItem Status
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Pending : Create()
     Pending --> Received : MarkReceived()

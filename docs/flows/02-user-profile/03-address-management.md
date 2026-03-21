@@ -9,10 +9,6 @@ Each user can maintain up to **10 addresses** in their address book. Addresses a
 ## Address Operations Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A[Client] --> B{Operation?}
     B -->|POST /addresses| C[Add Address]

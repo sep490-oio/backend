@@ -7,10 +7,6 @@ This document covers the verification submission endpoint and the asynchronous e
 ## eKYC Decision Tree
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A[Verification Submitted] --> B{Required docs present?<br/>id_front + selfie}
     B -- No --> MR1[MoveToReview<br/>score = 0<br/>Manual review required]

@@ -9,10 +9,6 @@ Four anonymous endpoints expose the category tree. Clients navigate from a flat/
 ## Category Navigation Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart LR
     ROOT["GET /api/categories\n(paginated root list)"]
     BY_ID["GET /api/categories/{id}"]

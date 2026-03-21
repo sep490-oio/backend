@@ -125,10 +125,6 @@ sequenceDiagram
 ## Token Family Chain
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     S["UserSession<br/>(DeviceId, SlidingExpiry, AbsoluteExpiry)"]
 

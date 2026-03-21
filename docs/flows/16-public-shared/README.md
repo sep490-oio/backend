@@ -18,10 +18,6 @@ These endpoints power storefront browsing, category navigation, seller discovery
 ## Endpoint Map
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TB
     subgraph Categories["Categories (4 endpoints) -- Anonymous"]
         CAT_ALL["GET /api/categories"]

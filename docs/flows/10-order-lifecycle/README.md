@@ -3,10 +3,6 @@
 ## 1. Order State Machine
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> PendingPayment : Order.Create()
     PendingPayment --> Paid : MarkAsPaid()
@@ -40,10 +36,6 @@ stateDiagram-v2
 ## 2. Order Return State Machine
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Requested : OrderReturn.Create()
     Requested --> Approved : Approve()

@@ -3,10 +3,6 @@
 ## Withdrawal State Machine
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Pending : User creates withdrawal
     Pending --> Approved : Admin approves
@@ -23,10 +19,6 @@ stateDiagram-v2
 ## Wallet Balance Model
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart LR
     subgraph Wallet
         AB[AvailableBalance]

@@ -5,10 +5,6 @@
 The `CreateVnPayPaymentUrlCommandHandler` routes to one of three VNPay commands based on the request parameters:
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     Start[CreateVnPayPaymentUrlCommand] --> HasMethodId{request.PaymentMethodId<br/>is not null?}
     HasMethodId -->|Yes| LoadPM[Load PaymentMethod<br/>where Id = PaymentMethodId<br/>AND UserId = currentUser<br/>AND IsActive AND Type = VnPay]

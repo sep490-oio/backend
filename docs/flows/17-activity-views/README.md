@@ -17,10 +17,6 @@ The views split into **buyer-oriented** and **seller-oriented** groups:
 ## Architecture Map
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     subgraph MyAuctions["My Auctions (seller)"]
         MA[GET /api/me/auctions]

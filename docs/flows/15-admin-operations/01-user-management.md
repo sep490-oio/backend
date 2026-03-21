@@ -9,10 +9,6 @@ Admin user management covers creating users, listing/viewing users, changing use
 ## User Status State Diagram
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Active : User created / email confirmed
 

@@ -18,10 +18,6 @@ All buy-now logic lives in the `Auction` aggregate (`InitiateBuyNowReservation`,
 ## Reservation State Machine
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> PendingPayment : Auction.InitiateBuyNowReservation()
 

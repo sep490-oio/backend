@@ -5,10 +5,6 @@
 ### Report Lifecycle
 
 ```stateDiagram-v2
----
-config:
-  layout: elk
----
     [*] --> Open : Create()
     Open --> UnderReview : Assign(adminId)
     UnderReview --> ActionTaken : Resolve(dismissed=false)
@@ -22,10 +18,6 @@ config:
 ### Dispute Lifecycle
 
 ```stateDiagram-v2
----
-config:
-  layout: elk
----
     [*] --> Draft
     [*] --> Open : Create() / CreateForVerification()
     Draft --> Open
@@ -46,10 +38,6 @@ config:
 ### Monitoring Alert Lifecycle
 
 ```stateDiagram-v2
----
-config:
-  layout: elk
----
     [*] --> Open : Create()
     Open --> Acknowledged : Acknowledge(adminId, notes)
     Acknowledged --> Resolved : Resolve(ignored=false)

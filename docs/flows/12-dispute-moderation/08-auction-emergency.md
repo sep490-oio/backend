@@ -3,10 +3,6 @@
 ## Emergency Escalation & Bid Cancellation Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     subgraph EscalateReport["Escalate Report to Emergency"]
         A[POST /api/admin/reports/{id}/escalate-emergency] --> B{EntityType == Auction?}

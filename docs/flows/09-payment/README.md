@@ -9,10 +9,6 @@ The Payment module handles all monetary transactions in the OIO Auction Platform
 ## Transaction State Machine
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Pending : Transaction.Create()
     Pending --> Processing : MarkAsProcessing()<br/>Sent to VNPay
@@ -32,10 +28,6 @@ stateDiagram-v2
 ## Escrow State Machine
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Holding : Escrow.Create(orderId, holdTransactionId, amount, currency, now)
     Holding --> ReleasedToSeller : ReleaseToSeller(releaseTransactionId, createdBy, now)<br/>EscrowReleasedToSellerDomainEvent

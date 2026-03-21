@@ -9,10 +9,6 @@ Key wallet integration: when configuring an auto-bid, the **hold delta** (differ
 ## Auto-Bid Cascade
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     Start[PlaceBid completes] --> GetEligible[Get eligible AutoBids<br/>exclude current bidder<br/>order by MaxAmount DESC, CreatedAt ASC]
     GetEligible --> CheckEmpty{Any eligible?}

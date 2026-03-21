@@ -11,10 +11,6 @@
 ## Payment Method Decision Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     Start([POST /api/payments/checkout]) --> LoadOrder[Load Order by OrderId]
     LoadOrder -->|Not found| ErrNotFound[Error: Order.NotFound]

@@ -3,10 +3,6 @@
 ## Job Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     Start[ExpireBuyNowReservationsJob<br/>BackgroundService] --> Loop[While not cancelled]
     Loop --> TryExpire[ExpireReservationsAsync]

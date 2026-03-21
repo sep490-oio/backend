@@ -3,10 +3,6 @@
 ## Payment Method Decision Tree
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A[POST /api/payments/checkout] --> B[Load Order by OrderId]
     B --> C[order.InitializePayment now]

@@ -18,10 +18,6 @@ After an order is delivered, a decision window gives the buyer time to request a
 ## Job Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A[Job tick every 10 min] --> B[Query candidate orders]
     B --> C{Filters}

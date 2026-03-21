@@ -3,10 +3,6 @@
 ## Job Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A[CancelExpiredOrdersJob tick every 5 min] --> B[Query: Status=PendingPayment AND PaymentDueAt < now]
     B --> C[Take 100 batch]

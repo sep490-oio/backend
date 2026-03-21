@@ -3,10 +3,6 @@
 ## Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A[Domain Event raised] --> B[EventHandler: INotificationHandler&lt;TEvent&gt;]
     B --> C[NotificationDispatch.DispatchAsync]

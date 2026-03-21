@@ -11,10 +11,6 @@ The method is called only when `reservation.DepositAppliedAmount.Amount > 0`.
 ## Deposit Funding Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     Start[HandleAuctionBuyNowAsync] --> CheckDeposit{reservation.DepositAppliedAmount > 0?}
     CheckDeposit -->|No| MarkPaid[order.MarkAsPaid]

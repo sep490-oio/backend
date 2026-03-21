@@ -19,10 +19,6 @@ The OIO platform uses a **Cloudinary signed direct upload** pattern. The server 
 ## MediaUpload State Machine
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Pending : POST /api/media/upload‑signature
     Pending --> Confirmed : POST /api/media/confirm

@@ -3,10 +3,6 @@
 ## Admin Report Workflow
 
 ```flowchart
----
-config:
-  layout: elk
----
 flowchart TD
     A[GET /api/admin/reports<br/>Filter: status, entityType, entityId] --> B{Select Report}
     B --> C[POST .../assign<br/>AssignedToUserId]

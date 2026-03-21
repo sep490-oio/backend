@@ -9,10 +9,6 @@ Users with an approved identity verification can create a seller profile to begi
 ## Seller Profile Status Lifecycle
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Pending : Create seller profile
     Pending --> Verified : Admin verifies

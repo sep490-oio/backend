@@ -17,10 +17,6 @@ Key capabilities:
 ### Phone Number Verification
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Unset : Account created
     Unset --> SetUnconfirmed : PUT /api/me/phone

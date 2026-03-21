@@ -5,10 +5,6 @@ Receives carrier status-update webhooks from GHN, normalizes statuses, and auto-
 ## Webhook Processing Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     GHN[GHN sends POST /webhooks/ghn] --> ReadBody[Read raw body from HttpRequest]
     ReadBody --> EmptyCheck{Body empty?}

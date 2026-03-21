@@ -75,10 +75,6 @@ sequenceDiagram
 ## BuyNowReservation State Machine
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> PendingPayment : Create reservation
 

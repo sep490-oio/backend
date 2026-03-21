@@ -15,10 +15,6 @@ All role/permission management operations enforce escalation prevention and inva
 ## Permission Model
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     User["User"]
     Role["Role<br/>(name, level)"]

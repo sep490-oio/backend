@@ -22,19 +22,12 @@ The Auction Lifecycle module governs every auction from initial **Draft** creati
 Every legal transition is defined in `AuctionStatus.CanTransitionTo()`. The diagram below maps every `(source, target) => true` branch.
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Draft
 
-    Draft --> Pending : SubmitConfiguration() <br/> [Info is null]
-    Draft --> Scheduled : SubmitConfiguration() <br/> [Info is not null]
+    Draft --> Approved : SubmitConfiguration() <br/> [Info is null, Item Approved]
+    Draft --> Scheduled : SubmitConfiguration() <br/> [Info is not null, Item Approved]
     Draft --> Cancelled : CancelAuction()
-
-    Pending --> Approved : MarkApproved()
-    Pending --> Cancelled : CancelAuction()
 
     Approved --> Scheduled : SetTiming() / UpdateConfiguration()
     Approved --> Cancelled : CancelAuction()
@@ -61,6 +54,8 @@ stateDiagram-v2
     PaymentDefaulted --> Terminated : Admin terminate
 ```
 
+> **Prerequisite: Item Approval.** Before an auction can be submitted (`POST /api/auctions/{id}/submit`), the associated item **must** be in `Approved` status. The typical prerequisite flow is: `POST /api/items/{itemId}/submit` (Item -> PendingReview) then `POST /api/admin/items/{itemId}/approve` (Item -> Approved). Submitting an auction whose item is not Approved returns `Item.InvalidState`.
+
 ---
 
 ## End-to-End Lifecycle Sequence
@@ -69,19 +64,35 @@ stateDiagram-v2
 sequenceDiagram
     participant Seller
     participant API
+    participant Admin
     participant Auction
     participant Scheduler
     participant Bidder
 
+    Note over Seller,Auction: Phase 1 -- Create & Configure Draft
     Seller->>API: POST /api/auctions (create draft)
     API->>Auction: Auction.Create() -> Draft
 
     Seller->>API: PUT /api/auctions/{id} (update pricing/type)
     API->>Auction: UpdateConfiguration()
 
-    Seller->>API: PUT /api/auctions/{id}/timing (set schedule)
-    API->>Auction: SetTiming() -> Scheduled
+    Note over Seller,Admin: Phase 2 -- Item Approval (prerequisite for submit)
+    Seller->>API: POST /api/items/{itemId}/submit
+    API-->>Admin: Item -> PendingReview
+    Admin->>API: POST /api/admin/items/{itemId}/approve
+    API-->>Auction: Item -> Approved
 
+    Note over Seller,Scheduler: Phase 3 -- Submit & Schedule
+    Seller->>API: POST /api/auctions/{id}/submit
+    alt AuctionInfo is null (no timing)
+        API->>Auction: SubmitConfiguration() -> Approved
+        Seller->>API: PUT /api/auctions/{id}/timing (set schedule)
+        API->>Auction: SetTiming() -> Scheduled
+    else AuctionInfo is not null (timing set)
+        API->>Auction: SubmitConfiguration() -> Scheduled
+    end
+
+    Note over Seller,Scheduler: Phase 4 -- Publish & Activate
     Seller->>API: POST /api/auctions/{id}/publish
     API->>Auction: Publish()
     alt startTime already passed
@@ -93,6 +104,7 @@ sequenceDiagram
         Auction->>Scheduler: ScheduleEndAsync()
     end
 
+    Note over Bidder,Scheduler: Phase 5 -- Bidding & Resolution
     Bidder->>API: POST /api/auctions/{id}/bids
     API->>Auction: PlaceBid() -> BidPlacedEvent
     Auction->>Auction: TryAutoExtend() if ending soon
@@ -151,9 +163,9 @@ sequenceDiagram
 |---|------|-------|
 | 0 | [README.md](./README.md) | This overview |
 | 1 | [01-create-auction.md](./01-create-auction.md) | Create auction + read endpoints |
-| 2 | [02-update-timing.md](./02-update-timing.md) | Update auction + set timing |
-| 3 | [03-submit-publish.md](./03-submit-publish.md) | Submit + publish flow |
-| 4 | [03a-auction-review.md](./03a-auction-review.md) | Item & auction review (admin + platform inspection) |
+| 2 | [03-submit-publish.md](./03-submit-publish.md) | Submit auction (requires Item Approved) + publish flow |
+| 3 | [03a-auction-review.md](./03a-auction-review.md) | Item & auction review (admin + platform inspection) |
+| 4 | [02-update-timing.md](./02-update-timing.md) | Update auction + set timing (requires Approved status) |
 | 5 | [04-activation.md](./04-activation.md) | Scheduled -> Active activation |
 | 6 | [05-auto-extension.md](./05-auto-extension.md) | Auto-extension on late bids |
 
@@ -178,10 +190,10 @@ All events are defined in `AuctionEvents.cs` as sealed records extending `Domain
 | Event | Raised When |
 |-------|-------------|
 | `AuctionCreatedEvent` | `Auction.Create()` -- new draft created |
-| `AuctionSubmittedEvent` | `SubmitConfiguration()` -- draft submitted |
+| `AuctionSubmittedEvent` | `SubmitConfiguration()` -- draft submitted (-> Approved or Scheduled) |
 | `AuctionApprovedEvent` | `MarkApproved()` -- admin approves |
 | `AuctionRejectedEvent` | `MarkRejected()` -- admin rejects |
-| `AuctionScheduledEvent` | `SubmitConfiguration()` or `SetTiming()` -- timing set, status -> Scheduled |
+| `AuctionScheduledEvent` | `SubmitConfiguration()` (with timing) or `SetTiming()` -- status -> Scheduled |
 | `AuctionStartedEvent` | `Start()` -- auction goes Active |
 | `BidPlacedEvent` | `PlaceBid()` -- new bid recorded |
 | `OutbidEvent` | `PlaceBid()` -- previous winning bidder is outbid |
@@ -212,8 +224,8 @@ Defined in `AuctionStatus.cs` as `EnumValueObject<AuctionStatus>`.
 | Value | String ID | Description |
 |-------|-----------|-------------|
 | `Draft` | `draft` | Initial state after creation |
-| `Pending` | `pending` | Submitted without timing (awaiting approval) |
-| `Approved` | `approved` | Item/auction approved, awaiting timing |
+| `Pending` | `pending` | Legacy / reserved status (not used in current submit flow) |
+| `Approved` | `approved` | Auction submitted without timing, awaiting timing configuration |
 | `Scheduled` | `scheduled` | Timing set, waiting for start time |
 | `Active` | `active` | Auction is live, accepting bids |
 | `Ended` | `ended` | Bidding closed, pending resolution |

@@ -3,10 +3,6 @@
 ## Channel Routing
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A[NotificationRoutingService.Route] --> B[Resolve enabled channels from preference]
     B --> C{Email enabled?}

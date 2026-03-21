@@ -114,10 +114,6 @@ sequenceDiagram
 ## 2FA State Machine
 
 ```mermaid
----
-config:
-  layout: elk
----
 stateDiagram-v2
     [*] --> Disabled: User created (TwoFactorEnabled=false)
 

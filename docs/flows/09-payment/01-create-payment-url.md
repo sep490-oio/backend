@@ -11,10 +11,6 @@
 ## Decision Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     Start([POST /api/payments/vnpay/create-url]) --> ParsePurpose[Parse PaymentPurpose from request.Purpose]
 

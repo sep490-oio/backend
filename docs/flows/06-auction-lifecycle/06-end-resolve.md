@@ -9,10 +9,6 @@ When an auction's `endTime` arrives, the system automatically ends the auction a
 ## End Resolution Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A[EndAuctionJob fires at endTime] --> B[Send EndAuctionCommand]
     B --> C{Auction status == Active?}

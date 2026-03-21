@@ -9,10 +9,6 @@ Item review is the admin moderation process for seller-submitted items. Items in
 ## Review Flow
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     Draft["Draft"]
     PendingReview["PendingReview"]

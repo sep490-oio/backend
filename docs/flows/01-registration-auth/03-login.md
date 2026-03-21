@@ -84,10 +84,6 @@ sequenceDiagram
 ### Account Resolution Decision Tree
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     A[Input: Account string] --> B{Contains '@'?}
     B -->|Yes| C[Email path]

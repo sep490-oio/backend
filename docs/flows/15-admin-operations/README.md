@@ -11,10 +11,6 @@ The admin role (level 100) has access to **all** permissions in the system. The 
 ## Sub-Group Overview
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     Admin["Admin Operations<br/>55 endpoints"]
 
