@@ -44,6 +44,6 @@ public sealed class CurrentUser : ICurrentUser
     public bool IsAuthenticated => _httpContextAccessor.HttpContext?.User.Identity?.IsAuthenticated ?? false;
 
     public bool IsInRole(string roleName) =>
-        _httpContextAccessor.HttpContext?.User.IsInRole(roleName.ToUpperInvariant()) ?? false;
+        _httpContextAccessor.HttpContext?.User.IsInRole(roleName) ?? false;
 
 }
