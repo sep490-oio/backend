@@ -132,6 +132,7 @@ internal static class PaymentReadModelMapper
             Id: walletTransaction.Id.Value,
             Type: walletTransaction.Type.Id,
             Amount: walletTransaction.Amount,
+            Status: walletTransaction.Transaction?.Status.Id,
             Currency: currency,
             BalanceBefore: walletTransaction.BalanceBefore,
             BalanceAfter: walletTransaction.BalanceAfter,

@@ -5,6 +5,7 @@ public sealed record WalletTransactionDto(
     string Type,
     decimal Amount,
     string Currency,
+    string? Status,
     decimal BalanceBefore,
     decimal BalanceAfter,
     string? Description,
