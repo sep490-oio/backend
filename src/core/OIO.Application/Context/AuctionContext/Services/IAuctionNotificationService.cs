@@ -74,4 +74,20 @@ public interface IAuctionNotificationService
         Guid auctionId,
         AuctionCancelledNotification notification,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Broadcast question asked to item group.
+    /// </summary>
+    Task NotifyQuestionAskedAsync(
+        Guid itemId,
+        ItemQuestionNotification notification,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Broadcast question answered to item group.
+    /// </summary>
+    Task NotifyQuestionAnsweredAsync(
+        Guid itemId,
+        ItemQuestionNotification notification,
+        CancellationToken cancellationToken = default);
 }

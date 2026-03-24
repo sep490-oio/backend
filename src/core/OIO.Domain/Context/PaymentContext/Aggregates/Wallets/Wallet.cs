@@ -29,6 +29,24 @@ public sealed class Wallet : AggregateRoot<WalletId>, IAuditableEntity, IVersion
 
     private Wallet() { }
 
+    public UnitResult<Error> Activate(DateTime nowUtc)
+    {
+        if (IsActive)
+            return UnitResult.Success<Error>();
+
+        IsActive = true;
+        ModifiedAt = nowUtc;
+        return UnitResult.Success<Error>();
+    }
+
+    private UnitResult<Error> EnsureActive()
+    {
+        if (!IsActive)
+            return Error.Conflict("Wallet.NotActive", "Wallet is not active. Please deposit funds to activate.");
+
+        return UnitResult.Success<Error>();
+    }
+
     public static Wallet Create(
         UserId userId,
         Currency currency,
@@ -69,6 +87,9 @@ public sealed class Wallet : AggregateRoot<WalletId>, IAuditableEntity, IVersion
         string? description,
         DateTime nowUtc)
     {
+        if (!IsActive)
+            Activate(nowUtc);
+
         var balanceBefore = WalletFunds.BalanceAmount;
 
         var creditResult = WalletFunds.Credit(amount);
@@ -105,6 +126,10 @@ public sealed class Wallet : AggregateRoot<WalletId>, IAuditableEntity, IVersion
         string? description,
         DateTime nowUtc)
     {
+        var activeCheck = EnsureActive();
+        if (activeCheck.IsFailure)
+            return activeCheck.Error;
+
         var balanceBefore = WalletFunds.BalanceAmount;
 
         var debitResult = WalletFunds.Debit(amount);
@@ -141,6 +166,10 @@ public sealed class Wallet : AggregateRoot<WalletId>, IAuditableEntity, IVersion
         string? description,
         DateTime nowUtc)
     {
+        var activeCheck = EnsureActive();
+        if (activeCheck.IsFailure)
+            return activeCheck.Error;
+
         var balanceBefore = WalletFunds.BalanceAmount;
 
         var holdResult = WalletFunds.AddPending(amount);
@@ -177,6 +206,10 @@ public sealed class Wallet : AggregateRoot<WalletId>, IAuditableEntity, IVersion
         string? description,
         DateTime nowUtc)
     {
+        var activeCheck = EnsureActive();
+        if (activeCheck.IsFailure)
+            return activeCheck.Error;
+
         var balanceBefore = WalletFunds.BalanceAmount;
 
         var unholdResult = WalletFunds.ReleasePending(amount);
@@ -213,6 +246,10 @@ public sealed class Wallet : AggregateRoot<WalletId>, IAuditableEntity, IVersion
         string? description,
         DateTime nowUtc)
     {
+        var activeCheck = EnsureActive();
+        if (activeCheck.IsFailure)
+            return activeCheck.Error;
+
         var balanceBefore = WalletFunds.BalanceAmount;
 
         var debitPendingResult = WalletFunds.DebitPending(amount);

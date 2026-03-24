@@ -23,6 +23,10 @@ public interface IAuctionHubClient
     // ==================== Price Update ====================
     Task PriceUpdated(PriceUpdateNotification notification);
 
+    // ==================== Q&A ====================
+    Task QuestionAsked(ItemQuestionNotification notification);
+    Task QuestionAnswered(ItemQuestionNotification notification);
+
     // ==================== Error ====================
     Task Error(ErrorNotification notification);
 }
@@ -96,6 +100,16 @@ public sealed record PriceUpdateNotification(
     decimal MinimumNextBid,
     int TotalBids,
     TimeSpan RemainingTime);
+
+public sealed record ItemQuestionNotification(
+    Guid ItemId,
+    Guid QuestionId,
+    Guid AskerId,
+    string AskerDisplayName,
+    string Question,
+    string? Answer,
+    bool IsPublic,
+    DateTime CreatedAt);
 
 public sealed record ErrorNotification(
     string Code,

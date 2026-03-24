@@ -2,11 +2,16 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Data;
+using OIO.Application.Context.AuctionContext.EventHandlers;
+using OIO.Application.Context.AuctionContext.Hubs;
+using OIO.Application.Context.AuctionContext.Services;
 using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items.Events;
 using OIO.Domain.Context.NotificationContext.Enums;
 using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
+using OIO.Domain.Context.UserContext.Aggregates.Users;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 
 namespace OIO.Application.Context.NotificationContext.EventHandlers;
 
@@ -15,15 +20,18 @@ internal sealed class ItemQuestionAskedNotificationHandler
 {
     private readonly IDbContext _dbContext;
     private readonly ISender _sender;
+    private readonly IAuctionNotificationService _auctionNotificationService;
     private readonly ILogger<ItemQuestionAskedNotificationHandler> _logger;
 
     public ItemQuestionAskedNotificationHandler(
         IDbContext dbContext,
         ISender sender,
+        IAuctionNotificationService auctionNotificationService,
         ILogger<ItemQuestionAskedNotificationHandler> logger)
     {
         _dbContext = dbContext;
         _sender = sender;
+        _auctionNotificationService = auctionNotificationService;
         _logger = logger;
     }
 
@@ -31,6 +39,7 @@ internal sealed class ItemQuestionAskedNotificationHandler
     {
         var itemId = ItemId.From(Guid.Parse(notification.ItemId));
         var questionId = ItemQuestionId.From(Guid.Parse(notification.QuestionId));
+        var askerId = UserId.From(Guid.Parse(notification.AskerId));
 
         var item = await _dbContext.Set<Item>()
             .AsNoTracking()
@@ -56,6 +65,14 @@ internal sealed class ItemQuestionAskedNotificationHandler
             return;
         }
 
+        var asker = await _dbContext.GetByIdAsync<User, UserId>(
+            askerId,
+            queryBuilder: query => query
+                .AsNoTracking()
+                .Include(u => u.Profile),
+            cancellationToken: cancellationToken);
+
+        // Dispatch persistent notification to seller
         await NotificationDispatch.DispatchAsync(
             _sender,
             _logger,
@@ -76,6 +93,20 @@ internal sealed class ItemQuestionAskedNotificationHandler
                     questionPreview = TrimPreview(question.Question)
                 })),
             cancellationToken);
+
+        // Broadcast real-time Q&A notification to item group
+        await _auctionNotificationService.NotifyQuestionAskedAsync(
+            item.Id.Value,
+            new ItemQuestionNotification(
+                ItemId: item.Id.Value,
+                QuestionId: question.Id.Value,
+                AskerId: question.AskerId.Value,
+                AskerDisplayName: AuctionNotificationDisplayNames.Resolve(asker),
+                Question: question.Question,
+                Answer: question.Answer,
+                IsPublic: question.IsPublic,
+                CreatedAt: question.CreatedAt),
+            cancellationToken);
     }
 
     private static string TrimPreview(string value)
@@ -90,15 +121,18 @@ internal sealed class ItemQuestionAnsweredNotificationHandler
 {
     private readonly IDbContext _dbContext;
     private readonly ISender _sender;
+    private readonly IAuctionNotificationService _auctionNotificationService;
     private readonly ILogger<ItemQuestionAnsweredNotificationHandler> _logger;
 
     public ItemQuestionAnsweredNotificationHandler(
         IDbContext dbContext,
         ISender sender,
+        IAuctionNotificationService auctionNotificationService,
         ILogger<ItemQuestionAnsweredNotificationHandler> logger)
     {
         _dbContext = dbContext;
         _sender = sender;
+        _auctionNotificationService = auctionNotificationService;
         _logger = logger;
     }
 
@@ -106,6 +140,7 @@ internal sealed class ItemQuestionAnsweredNotificationHandler
     {
         var itemId = ItemId.From(Guid.Parse(notification.ItemId));
         var questionId = ItemQuestionId.From(Guid.Parse(notification.QuestionId));
+        var askerId = UserId.From(Guid.Parse(notification.AskerId));
 
         var item = await _dbContext.Set<Item>()
             .AsNoTracking()
@@ -131,6 +166,14 @@ internal sealed class ItemQuestionAnsweredNotificationHandler
             return;
         }
 
+        var asker = await _dbContext.GetByIdAsync<User, UserId>(
+            askerId,
+            queryBuilder: query => query
+                .AsNoTracking()
+                .Include(u => u.Profile),
+            cancellationToken: cancellationToken);
+
+        // Dispatch persistent notification to asker
         await NotificationDispatch.DispatchAsync(
             _sender,
             _logger,
@@ -149,6 +192,20 @@ internal sealed class ItemQuestionAnsweredNotificationHandler
                     questionId = question.Id.Value,
                     askerId = question.AskerId.Value
                 })),
+            cancellationToken);
+
+        // Broadcast real-time Q&A notification to item group
+        await _auctionNotificationService.NotifyQuestionAnsweredAsync(
+            item.Id.Value,
+            new ItemQuestionNotification(
+                ItemId: item.Id.Value,
+                QuestionId: question.Id.Value,
+                AskerId: question.AskerId.Value,
+                AskerDisplayName: AuctionNotificationDisplayNames.Resolve(asker),
+                Question: question.Question,
+                Answer: question.Answer,
+                IsPublic: question.IsPublic,
+                CreatedAt: question.CreatedAt),
             cancellationToken);
     }
 }

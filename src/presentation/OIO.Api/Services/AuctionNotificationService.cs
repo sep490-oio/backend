@@ -114,7 +114,7 @@ internal sealed class AuctionNotificationService : IAuctionNotificationService
     }
 
     public async Task NotifyAuctionCancelledAsync(
-        Guid auctionId, 
+        Guid auctionId,
         AuctionCancelledNotification notification,
         CancellationToken cancellationToken = default)
     {
@@ -122,5 +122,27 @@ internal sealed class AuctionNotificationService : IAuctionNotificationService
             .Clients
             .Group(AuctionHub.AuctionGroupName(auctionId))
             .AuctionCancelled(notification);
+    }
+
+    public async Task NotifyQuestionAskedAsync(
+        Guid itemId,
+        ItemQuestionNotification notification,
+        CancellationToken cancellationToken = default)
+    {
+        await _hubContext
+            .Clients
+            .Group(AuctionHub.ItemGroupName(itemId))
+            .QuestionAsked(notification);
+    }
+
+    public async Task NotifyQuestionAnsweredAsync(
+        Guid itemId,
+        ItemQuestionNotification notification,
+        CancellationToken cancellationToken = default)
+    {
+        await _hubContext
+            .Clients
+            .Group(AuctionHub.ItemGroupName(itemId))
+            .QuestionAnswered(notification);
     }
 }

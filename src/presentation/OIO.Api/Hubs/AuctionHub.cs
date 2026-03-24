@@ -49,6 +49,22 @@ public sealed class AuctionHub : Hub<IAuctionHubClient>
             AuctionGroupName(auctionId));
     }
 
+    // ==================== Item Q&A ====================
+
+    public async Task JoinItem(Guid itemId)
+    {
+        await Groups.AddToGroupAsync(
+            Context.ConnectionId,
+            ItemGroupName(itemId));
+    }
+
+    public async Task LeaveItem(Guid itemId)
+    {
+        await Groups.RemoveFromGroupAsync(
+            Context.ConnectionId,
+            ItemGroupName(itemId));
+    }
+
     // ==================== Bidding ====================
 
     [HasPermission(App.Permissions.Catalogs.Auctions.Bid)]
@@ -135,6 +151,7 @@ public sealed class AuctionHub : Hub<IAuctionHubClient>
     }
 
     public static string AuctionGroupName(Guid auctionId) => $"auction:{auctionId}";
+    public static string ItemGroupName(Guid itemId) => $"item:{itemId}";
     public static string UserGroupName(Guid userId) => $"user:{userId}";
 
     private static ErrorNotification ToErrorNotification(Error error)

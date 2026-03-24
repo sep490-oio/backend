@@ -13,7 +13,7 @@ namespace OIO.Application.Context.AuctionContext.Services;
 internal sealed class AuctionActivationService
 {
     internal const string NoEligibleParticipantsAutoCancelReason =
-        "Auction automatically cancelled because no bid-eligible participants were present at the scheduled start time.";
+        "Auction automatically cancelled because fewer than 2 bid-eligible participants were present at the scheduled start time.";
 
     private readonly IDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;

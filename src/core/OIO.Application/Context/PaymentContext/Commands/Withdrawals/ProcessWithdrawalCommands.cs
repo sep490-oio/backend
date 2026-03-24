@@ -126,3 +126,74 @@ internal sealed class RejectWithdrawalCommandHandler
         return UnitResult.Success<Error>();
     }
 }
+
+// ─── Complete Withdrawal ────────────────────────────────────────────
+
+public sealed record CompleteWithdrawalCommand(Guid WithdrawalRequestId) : ICommand;
+
+internal sealed class CompleteWithdrawalCommandHandler
+    : ICommandHandler<CompleteWithdrawalCommand>
+{
+    private readonly IDbContext _dbContext;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IClock _clock;
+    private readonly ICurrentUser _currentUser;
+
+    public CompleteWithdrawalCommandHandler(
+        IDbContext dbContext,
+        IUnitOfWork unitOfWork,
+        IClock clock,
+        ICurrentUser currentUser)
+    {
+        _dbContext = dbContext;
+        _unitOfWork = unitOfWork;
+        _clock = clock;
+        _currentUser = currentUser;
+    }
+
+    public async Task<UnitResult<Error>> Handle(
+        CompleteWithdrawalCommand request,
+        CancellationToken cancellationToken)
+    {
+        var now = _clock.UtcNow;
+        var withdrawalRequestId = WithdrawalRequestId.From(request.WithdrawalRequestId);
+
+        var withdrawal = await _dbContext.Set<WithdrawalRequest>()
+            .FirstOrDefaultAsync(w => w.Id == withdrawalRequestId, cancellationToken);
+
+        if (withdrawal is null)
+            return Error.NotFound("Withdrawal.NotFound", $"Withdrawal request {request.WithdrawalRequestId} not found.");
+
+        // Mark as processing first if currently approved
+        if (withdrawal.Status == WithdrawalStatus.Approved)
+        {
+            var processingResult = withdrawal.MarkAsProcessing();
+            if (processingResult.IsFailure)
+                return processingResult.Error;
+        }
+
+        // Mark as completed
+        var completeResult = withdrawal.MarkAsCompleted(now);
+        if (completeResult.IsFailure)
+            return completeResult.Error;
+
+        // Permanently debit the held amount from wallet
+        var wallet = await _dbContext.Set<Wallet>()
+            .FirstOrDefaultAsync(w => w.Id == withdrawal.WalletId, cancellationToken);
+
+        if (wallet is null)
+            return Error.NotFound("Wallet.NotFound", "Wallet not found for withdrawal.");
+
+        var debitResult = wallet.DebitPending(
+            withdrawal.Amount,
+            transactionId: null,
+            description: $"Withdrawal completed - {withdrawal.Amount}",
+            nowUtc: now);
+
+        if (debitResult.IsFailure)
+            return Error.Conflict("Wallet.DebitPendingFailed", debitResult.Error.Message);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return UnitResult.Success<Error>();
+    }
+}

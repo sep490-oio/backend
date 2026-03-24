@@ -20,7 +20,7 @@ public class AuctionJobSetup : IConfigureOptions<QuartzOptions>
             .ForJob(FallbackJobKey)
             .WithIdentity(FallbackJobTriggerIdentity, FallbackJobKey.Group)
             .WithSimpleSchedule(x => x
-                .WithIntervalInSeconds(60)
+                .WithIntervalInSeconds(15)
                 .RepeatForever()
                 .WithMisfireHandlingInstructionFireNow()));
     }

@@ -11,6 +11,8 @@ public static partial class ApiEndpoint
             public const string RequestSignature = $"{Base}/upload-signature";
             public const string Confirm = $"{Base}/confirm";
             public const string Contexts = $"{Base}/contexts";
+            public const string BatchRequestSignature = $"{Base}/batch-upload-signatures";
+            public const string BatchConfirm = $"{Base}/batch-confirm";
         }
         
         public static class Terms
@@ -105,6 +107,7 @@ public static partial class ApiEndpoint
 
             public const string Create = Base;
             public const string GetAll = Base;
+            public const string GetPublic = $"{Base}/public";
             public const string GetById = $"{Base}/{{itemId:guid}}";
             public const string Submit = $"{Base}/{{itemId:guid}}/submit";
             public const string Activate = $"{Base}/{{itemId:guid}}/activate";
@@ -114,6 +117,7 @@ public static partial class ApiEndpoint
 
             // Images
             public const string AddMedia = $"{Base}/{{itemId:guid}}/media";
+            public const string BatchAddMedia = $"{Base}/{{itemId:guid}}/media/batch";
             public const string RemoveMedia = $"{Base}/{{itemId:guid}}/media/{{mediaId:guid}}";
             public const string SetPrimaryImage = $"{Base}/{{itemId:guid}}/media/{{mediaId:guid}}/primary";
             public const string ReorderMedia = $"{Base}/{{itemId:guid}}/media/reorder";
@@ -161,6 +165,7 @@ public static partial class ApiEndpoint
             // Watch
             public const string Watch = $"{Base}/{{auctionId:guid}}/watch";
             public const string Unwatch = $"{Base}/{{auctionId:guid}}/watch";
+            public const string Deposit = $"{Base}/{{auctionId:guid}}/deposit";
         }
 
         public static class Categories
@@ -245,6 +250,7 @@ public static partial class ApiEndpoint
             public const string GetEscrowById = $"{Base}/escrows/{{escrowId:guid}}";
             public const string GetSummary = $"{Base}/summary";
             public const string GetPlatformWallet = $"{Base}/platform-wallet";
+            public const string CompleteWithdrawal = $"{Base}/withdrawals/{{withdrawalId:guid}}/complete";
         }
 
         public static class Orders

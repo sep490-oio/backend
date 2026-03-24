@@ -64,6 +64,8 @@ public static partial class ApiEndpoint
             public const string RequestUploadSignature = nameof(RequestUploadSignature);
             public const string ConfirmUpload = nameof(ConfirmUpload);
             public const string GetUploadContexts = nameof(GetUploadContexts);
+            public const string BatchRequestUploadSignature = nameof(BatchRequestUploadSignature);
+            public const string BatchConfirmUpload = nameof(BatchConfirmUpload);
         }
 
         public static class Admins
@@ -140,6 +142,7 @@ public static partial class ApiEndpoint
         {
             public const string CreateItem = nameof(CreateItem);
             public const string GetAllItems = nameof(GetAllItems);
+            public const string GetPublicItems = nameof(GetPublicItems);
             public const string GetItemById = nameof(GetItemById);
             public const string GetMyItems = nameof(GetMyItems);
             public const string SubmitItem = nameof(SubmitItem);
@@ -149,6 +152,7 @@ public static partial class ApiEndpoint
             public const string ChooseItemShipping = nameof(ChooseItemShipping);
             public const string CreateAuctionFromItem = nameof(CreateAuctionFromItem);
             public const string AddItemMedia = nameof(AddItemMedia);
+            public const string BatchAddItemMedia = nameof(BatchAddItemMedia);
             public const string RemoveItemMedia = nameof(RemoveItemMedia);
             public const string SetPrimaryItemImage = nameof(SetPrimaryItemImage);
             public const string ReorderItemMedia = nameof(ReorderItemMedia);
@@ -182,6 +186,7 @@ public static partial class ApiEndpoint
             public const string GetMyAutoBid = nameof(GetMyAutoBid);
             public const string WatchAuction = nameof(WatchAuction);
             public const string UnwatchAuction = nameof(UnwatchAuction);
+            public const string DepositFromWallet = nameof(DepositFromWallet);
         }
 
         public static class Categories
@@ -258,6 +263,7 @@ public static partial class ApiEndpoint
             public const string GetEscrowById = nameof(GetEscrowById);
             public const string GetSummary = nameof(GetSummary);
             public const string GetPlatformWallet = nameof(GetPlatformWallet);
+            public const string CompleteWithdrawal = nameof(CompleteWithdrawal);
         }
 
         public static class Orders

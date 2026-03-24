@@ -312,9 +312,8 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
                     store.UseSystemTextJsonSerializer();
                 });
 
-                var scheduler = Guid.NewGuid();
-                options.SchedulerId = $"default-id-{scheduler}";
-                options.SchedulerName = $"default-name-{scheduler}";
+                options.SchedulerId = "oio-scheduler";
+                options.SchedulerName = "oio-scheduler";
             });
 
             services.AddQuartzHostedService(options =>

@@ -343,7 +343,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
     public bool HasBidEligibleParticipants(DateTime nowUtc)
     {
-        return _participants.Any(participant => IsBidEligibleParticipant(participant, nowUtc));
+        return _participants.Count(participant => IsBidEligibleParticipant(participant, nowUtc)) >= 2;
     }
     
     /// <summary>
@@ -965,6 +965,13 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         if (result.IsFailure)
             return result.Error;
 
+        // Ensure currency matches auction currency before any Money comparison
+        if (maxAmount.Currency != Pricing.Currency)
+            return Money.Errors.CurrencyMismatch(Pricing.Currency.Id, maxAmount.Currency.Id);
+
+        if (incrementAmount is not null && incrementAmount.Currency != Pricing.Currency)
+            return Money.Errors.CurrencyMismatch(Pricing.Currency.Id, incrementAmount.Currency.Id);
+
         var validationResult = AutoBid.Check(isInvariant: true)
             .Field(maxAmount, x => x.Budget.MaxAmount)
             .GreaterThanOrEqual(GetMinimumBidAmount())
@@ -1260,7 +1267,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
                 return error;
             }
             
-            var placeResult = PlaceAutoBidInternal(currentAttacker, bidAmount, nowUtc);
+            var placeResult = PlaceAutoBidInternal(currentAttacker, bidAmount, nowUtc, raiseOutbidEvent: false);
 
             if (placeResult.IsFailure)
             {
@@ -1272,21 +1279,39 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
             // Check if defender can still respond
             var nextMinimum = GetMinimumBidAmount();
-            
+
             if (!currentAttacker.CanBid(nextMinimum))
             {
                 currentAttacker.MarkAsOutbid(nowUtc);
                 break;
             }
         }
-        
+
+        // Raise a single OutbidEvent for the battle loser
+        var winningBid = GetCurrentWinningBid();
+        if (winningBid is not null)
+        {
+            // currentAttacker is the last one who failed CanBid → the loser
+            if (currentAttacker.BidderId != winningBid.BidderId)
+            {
+                RaiseDomainEvent(new OutbidEvent(
+                    AuctionId: $"{Id}",
+                    OutbidBidderId: $"{currentAttacker.BidderId}",
+                    NewHighBidderId: $"{winningBid.BidderId}",
+                    NewHighestBid: Pricing.CurrentAmount,
+                    OutbidAmount: Pricing.CurrentAmount,
+                    OccurredAt: nowUtc));
+            }
+        }
+
         return UnitResult.Success<Error>();
     }
     
     private UnitResult<Error> PlaceAutoBidInternal(
         AutoBid autoBid,
         Money bidAmount,
-        DateTime nowUtc)
+        DateTime nowUtc,
+        bool raiseOutbidEvent = true)
     {
         // 1. Validate BEFORE mutating — ensure pricing and budget are valid
         var pricingCheck = Pricing.WithNewBid(bidAmount.Amount, GetMinimumBidAmount().Amount);
@@ -1334,7 +1359,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             BidTime: bid.CreatedAt,
             nowUtc));
 
-        if (previousBidderId.HasValue && previousBidderId.Value != autoBid.BidderId)
+        if (raiseOutbidEvent && previousBidderId.HasValue && previousBidderId.Value != autoBid.BidderId)
         {
             RaiseDomainEvent(new OutbidEvent(
                 AuctionId: $"{Id}",
