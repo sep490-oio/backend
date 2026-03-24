@@ -115,6 +115,9 @@ public static partial class App
                     // Notification Preferences
                     Permissions.Catalogs.Me.ReadNotificationPreferences,
                     Permissions.Catalogs.Me.ManageNotificationPreferences,
+
+                    // Warehouse
+                    Permissions.Catalogs.Warehouse.ReadShipments,
                 ],
 
                 [Seller] =
@@ -171,6 +174,11 @@ public static partial class App
                     // Notification Preferences
                     Permissions.Catalogs.Me.ReadNotificationPreferences,
                     Permissions.Catalogs.Me.ManageNotificationPreferences,
+
+                    // Warehouse
+                    Permissions.Catalogs.Warehouse.ReadShipments,
+                    Permissions.Catalogs.Warehouse.BookInbound,
+                    Permissions.Catalogs.Warehouse.SelfShipOutbound,
                 ],
 
                 [Inspector] =
@@ -189,6 +197,10 @@ public static partial class App
                     Permissions.Catalogs.Warehouse.ReadShipments,
                     Permissions.Catalogs.Warehouse.Inspect,
                     Permissions.Catalogs.Warehouse.Store,
+                    Permissions.Catalogs.Warehouse.BookInbound,
+                    Permissions.Catalogs.Warehouse.BookOutbound,
+                    Permissions.Catalogs.Warehouse.UpdateExternalStatus,
+                    Permissions.Catalogs.Warehouse.ManageLocations,
                 ],
 
                 [Admin] = Permissions.Catalogs.All
