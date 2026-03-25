@@ -89,6 +89,8 @@ public static partial class App
                 public const string ReadShipments    = "warehouse:shipments:read";
                 public const string UpdateExternalStatus = "warehouse:inbound:update-external-status";
                 public const string SelfShipOutbound = "warehouse:outbound:self-ship";
+                public const string CalculateShippingFee = "warehouse:shipping:calculate-fee";
+                public const string CalculateLeadTime    = "warehouse:shipping:calculate-lead-time";
             }
 
             // ==================== Media ====================
@@ -223,6 +225,8 @@ public static partial class App
                 Warehouse.ReadShipments,
                 Warehouse.UpdateExternalStatus,
                 Warehouse.SelfShipOutbound,
+                Warehouse.CalculateShippingFee,
+                Warehouse.CalculateLeadTime,
 
 
                 // Categories
@@ -376,6 +380,8 @@ public static partial class App
                 public static readonly Permission ReadShipments = Permission.Create(Catalogs.Warehouse.ReadShipments);
                 public static readonly Permission UpdateExternalStatus = Permission.Create(Catalogs.Warehouse.UpdateExternalStatus);
                 public static readonly Permission SelfShipOutbound = Permission.Create(Catalogs.Warehouse.SelfShipOutbound);
+                public static readonly Permission CalculateShippingFee = Permission.Create(Catalogs.Warehouse.CalculateShippingFee);
+                public static readonly Permission CalculateLeadTime    = Permission.Create(Catalogs.Warehouse.CalculateLeadTime);
             }
             
             public static class Categories
@@ -451,6 +457,8 @@ public static partial class App
                 [Catalogs.Warehouse.ReadShipments] = Warehouse.ReadShipments,
                 [Catalogs.Warehouse.UpdateExternalStatus] = Warehouse.UpdateExternalStatus,
                 [Catalogs.Warehouse.SelfShipOutbound] = Warehouse.SelfShipOutbound,
+                [Catalogs.Warehouse.CalculateShippingFee] = Warehouse.CalculateShippingFee,
+                [Catalogs.Warehouse.CalculateLeadTime] = Warehouse.CalculateLeadTime,
 
                 
                 // Media
