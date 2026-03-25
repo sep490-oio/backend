@@ -231,6 +231,8 @@ public static partial class ApiEndpoint
             public const string GetInboundShipmentQrCode       = nameof(GetInboundShipmentQrCode);
             public const string InspectWarehouseItemMultipart = nameof(InspectWarehouseItemMultipart);
             public const string SelfShipOrder = nameof(SelfShipOrder);
+            public const string CalculateShippingFee = nameof(CalculateShippingFee);
+            public const string CalculateLeadTime    = nameof(CalculateLeadTime);
         }
 
         public static class VnPay
