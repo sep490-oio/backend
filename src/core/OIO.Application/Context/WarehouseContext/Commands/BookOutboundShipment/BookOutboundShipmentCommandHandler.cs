@@ -7,6 +7,7 @@ using OIO.Application.Abstractions.Shipping;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Application.Context.WarehouseContext.Mappings;
+using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments;
 using OIO.Domain.Context.WarehouseContext.Aggregates.ShippingProviders;
@@ -61,6 +62,23 @@ internal sealed class BookOutboundShipmentCommandHandler
         if (warehouseItem.Status != WarehouseItemStatus.Received)
             return WarehouseErrors.WarehouseItem.NotAvailable;
 
+        // ── 1b. Check for existing outbound shipment for the order ────────────
+        var orderId = OrderId.From(request.OrderId);
+        var hasActiveOutbound = await _dbContext.Set<OutboundShipment>()
+            .AnyAsync(s => s.OrderId == orderId && 
+                           s.Status != OutboundShipmentStatus.Cancelled && 
+                           s.Status != OutboundShipmentStatus.Failed && 
+                           s.Status != OutboundShipmentStatus.Returned, 
+                      cancellationToken);
+
+        if (hasActiveOutbound)
+            return WarehouseErrors.OutboundShipment.AlreadyExists(request.OrderId.ToString());
+
+        // ── 1c. Load Order for fallback shipping address ──────────────────────
+        var order = await _dbContext.GetByIdAsync<Order, OrderId>(orderId, cancellationToken: cancellationToken);
+        if (order is null)
+            return Error.NotFound("Order.NotFound", $"Order '{request.OrderId}' was not found.");
+
         // ── 2. Load ShippingProviderConfig ────────────────────────────────────
         ShippingProviderConfig? config;
 
@@ -111,18 +129,25 @@ internal sealed class BookOutboundShipmentCommandHandler
 
         // ── 6. Call carrier API ───────────────────────────────────────────────
         // Sender   = warehouse (pick* fields from config)
-        // Recipient = buyer address (from command)
+        // Recipient = buyer address (from command, fallback to order)
+        var recipientName     = string.IsNullOrWhiteSpace(request.RecipientName) ? order.Shipping.RecipientName : request.RecipientName;
+        var recipientPhone    = string.IsNullOrWhiteSpace(request.RecipientPhone) ? order.Shipping.Phone : request.RecipientPhone;
+        var recipientAddress  = string.IsNullOrWhiteSpace(request.RecipientAddress) ? order.Shipping.Address : request.RecipientAddress;
+        var recipientWard     = string.IsNullOrWhiteSpace(request.RecipientWard) ? order.Shipping.Ward : request.RecipientWard;
+        var recipientDistrict = string.IsNullOrWhiteSpace(request.RecipientDistrict) ? order.Shipping.District : request.RecipientDistrict;
+        var recipientProvince = string.IsNullOrWhiteSpace(request.RecipientProvince) ? order.Shipping.City : request.RecipientProvince;
+
         var bookingRequest = new BookShipmentRequest
         {
             ClientOrderCode = clientOrderCode,
 
             // Buyer is the delivery destination
-            RecipientName                  = request.RecipientName,
-            RecipientPhone                 = request.RecipientPhone,
-            RecipientAddress               = request.RecipientAddress,
-            RecipientWard                  = request.RecipientWard,
-            RecipientDistrict              = request.RecipientDistrict,
-            RecipientProvince              = request.RecipientProvince,
+            RecipientName                  = recipientName,
+            RecipientPhone                 = recipientPhone,
+            RecipientAddress               = recipientAddress,
+            RecipientWard                  = recipientWard,
+            RecipientDistrict              = recipientDistrict,
+            RecipientProvince              = recipientProvince,
             RecipientCarrierAddressDataJson = request.RecipientCarrierAddressDataJson,
 
             // Warehouse is the pickup point — no sender override needed
