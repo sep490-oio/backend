@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Json;
+using System.Net.Http.Json;
 using System.Text.Json;
 using CSharpFunctionalExtensions;
 using MediatR;
@@ -284,6 +284,71 @@ internal sealed class GhnShippingProvider : IShippingProvider
             _logger.LogError(ex, "GHN CalculateFeeAsync exception");
             return Error.Unexpected(
                 code: "Ghn.CalculateFee.Exception",
+                description: ex.Message);
+        }
+    }
+
+    // ============================================================
+    // CalculateExpectedDeliveryTimeAsync
+    // ============================================================
+
+    public async Task<Result<DateTime?, Error>> CalculateExpectedDeliveryTimeAsync(
+        CalculateExpectedDeliveryTimeRequest request,
+        ShippingProviderConfig config,
+        CancellationToken ct = default)
+    {
+        var credsResult = ParseCredentials(config);
+        if (credsResult.IsFailure) return credsResult.Error;
+
+        var creds = credsResult.Value;
+
+        var toAddrResult = ParseCarrierAddressData(request.RecipientCarrierAddressDataJson, "RecipientCarrierAddressDataJson");
+        if (toAddrResult.IsFailure) return toAddrResult.Error;
+        var (toDistrictId, toWardCode) = toAddrResult.Value;
+
+        var fromAddrResult = ParseCarrierAddressData(request.SenderCarrierAddressDataJson, "SenderCarrierAddressDataJson");
+        if (fromAddrResult.IsFailure) return fromAddrResult.Error;
+        var (fromDistrictId, fromWardCode) = fromAddrResult.Value;
+
+        var ghnRequest = new GhnExpectedDeliveryTimeRequest
+        {
+            FromDistrictId = fromDistrictId,
+            FromWardCode   = fromWardCode,
+            ToDistrictId   = toDistrictId,
+            ToWardCode     = toWardCode
+        };
+
+        using var http = BuildClient(config, creds);
+
+        try
+        {
+            var response = await http.PostAsJsonAsync(
+                "/shiip/public-api/v2/shipping-order/leadtime",
+                ghnRequest,
+                ct);
+
+            var body = await response.Content.ReadAsStringAsync(ct);
+
+            if (!response.IsSuccessStatusCode)
+                return Error.Unexpected(
+                    code: "Ghn.CalculateExpectedDeliveryTime.HttpError",
+                    description: $"GHN returned HTTP {(int)response.StatusCode}: {body}");
+
+            var result = JsonSerializer.Deserialize<GhnExpectedDeliveryTimeResponse>(body, _jsonOptions);
+
+            if (result is null || result.Code != 200 || result.Data is null)
+                return Error.Unexpected(
+                    code: "Ghn.CalculateExpectedDeliveryTime.ApiError",
+                    description: $"GHN error {result?.Code}: {result?.Message}");
+
+            var estimatedDelivery = DateTimeOffset.FromUnixTimeSeconds(result.Data.Leadtime).UtcDateTime;
+            return estimatedDelivery;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "GHN CalculateExpectedDeliveryTimeAsync exception");
+            return Error.Unexpected(
+                code: "Ghn.CalculateExpectedDeliveryTime.Exception",
                 description: ex.Message);
         }
     }
