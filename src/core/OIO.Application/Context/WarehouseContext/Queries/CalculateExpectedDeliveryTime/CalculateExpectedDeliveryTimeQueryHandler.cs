@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Shipping;
 using OIO.Domain.Context.WarehouseContext.Aggregates.ShippingProviders;
+using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.WarehouseContext.Queries.CalculateExpectedDeliveryTime;
@@ -22,8 +23,12 @@ internal sealed class CalculateExpectedDeliveryTimeQueryHandler : IRequestHandle
     public async Task<Result<DateTime?, Error>> Handle(CalculateExpectedDeliveryTimeQuery request, CancellationToken cancellationToken)
     {
         // 1. Load config for the provider
+        var providerCode = ShippingProviderCode.FromId(request.ProviderCode);
+        if (providerCode.HasNoValue)
+            return Error.NotFound("ShippingProviderConfig.NotFound", $"Config for provider '{request.ProviderCode}' was not found.");
+
         var config = await _dbContext.Set<ShippingProviderConfig>()
-            .FirstOrDefaultAsync(c => c.ProviderCode == request.ProviderCode, cancellationToken);
+            .FirstOrDefaultAsync(c => c.ProviderCode == providerCode.Value, cancellationToken);
 
         if (config is null)
             return Error.NotFound("ShippingProviderConfig.NotFound", $"Config for provider '{request.ProviderCode}' was not found.");
