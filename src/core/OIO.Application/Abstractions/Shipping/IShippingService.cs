@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using MediatR;
 using OIO.Domain.Context.WarehouseContext.Aggregates.ShippingProviders;
 using OIO.Domain.SeedWork.Errors;
@@ -101,4 +101,18 @@ public interface IShippingService
         string                 carrierTrackingNumber,
         ShippingProviderConfig config,
         CancellationToken      ct = default);
+
+    /// <summary>Calculates shipping fee before booking.</summary>
+    Task<Result<decimal, Error>> CalculateFeeAsync(
+        string                 providerCode,
+        CalculateFeeRequest    request,
+        ShippingProviderConfig config,
+        CancellationToken      ct = default);
+
+    /// <summary>Calculates expected delivery time before booking.</summary>
+    Task<Result<DateTime?, Error>> CalculateExpectedDeliveryTimeAsync(
+        string                               providerCode,
+        CalculateExpectedDeliveryTimeRequest request,
+        ShippingProviderConfig               config,
+        CancellationToken                    ct = default);
 }
