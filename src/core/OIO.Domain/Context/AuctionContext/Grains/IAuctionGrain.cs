@@ -56,4 +56,10 @@ public interface IAuctionGrain : IGrainWithGuidKey
         CancellationToken cancellationToken = default);
 
     Task<Result<AuctionSnapshotGrain, Error>> GetSnapshotAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Invalidate cached auction state. Call after external mutations (e.g. deposit from wallet, VNPay callback)
+    /// that modify auction-related data outside the grain.
+    /// </summary>
+    Task InvalidateCacheAsync();
 }

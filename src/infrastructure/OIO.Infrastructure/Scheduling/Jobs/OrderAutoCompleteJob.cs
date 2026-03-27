@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
+using OIO.Application.Context.OrderContext.Services;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.Enums;
 using Quartz;
@@ -12,13 +13,21 @@ namespace OIO.Infrastructure.Scheduling.Jobs;
 internal sealed class OrderAutoCompleteJob : IJob
 {
     private readonly IDbContext _dbContext;
-    // private readonly ISender _sender;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly EscrowSettlementService _escrowSettlementService;
     private readonly IClock _clock;
     private readonly ILogger<OrderAutoCompleteJob> _logger;
 
-    public OrderAutoCompleteJob(IDbContext dbContext, IClock clock, ILogger<OrderAutoCompleteJob> logger)
+    public OrderAutoCompleteJob(
+        IDbContext dbContext,
+        IUnitOfWork unitOfWork,
+        EscrowSettlementService escrowSettlementService,
+        IClock clock,
+        ILogger<OrderAutoCompleteJob> logger)
     {
         _dbContext = dbContext;
+        _unitOfWork = unitOfWork;
+        _escrowSettlementService = escrowSettlementService;
         _clock = clock;
         _logger = logger;
     }
@@ -27,27 +36,54 @@ internal sealed class OrderAutoCompleteJob : IJob
     {
         _logger.LogInformation("Starting OrderAutoCompleteJob...");
 
+        var ct = context.CancellationToken;
         var now = _clock.UtcNow;
         var thresholdDate = now.AddDays(-3);
 
         // Find all orders that are Delivered and have been past the 3-day window
-        var eligibleOrders = await _dbContext.Set<Order>()
+        // Load IDs only for memory efficiency (T007)
+        var eligibleOrderIds = await _dbContext.Set<Order>()
             .Where(o => o.Status == OrderStatus.Delivered && o.DeliveredAt <= thresholdDate)
             .Select(o => o.Id)
-            .ToListAsync(context.CancellationToken);
+            .ToListAsync(ct);
 
-        _logger.LogInformation("Found {Count} orders eligible for auto-completion.", eligibleOrders.Count);
+        _logger.LogInformation("Found {Count} orders eligible for auto-completion.", eligibleOrderIds.Count);
 
-        foreach (var orderId in eligibleOrders)
+        foreach (var orderId in eligibleOrderIds)
         {
-            // TODO: Because we are only working on the Warehouse scope, the actual transition
-            // logic and payment integration to sellers will need to be implemented within OrderContext.
-            
-            // Expected Implementation:
-            // var command = new CompleteOrderCommand(orderId);
-            // await _sender.Send(command, context.CancellationToken);
-            
-            _logger.LogInformation("TODO: Trigger auto-completion for Order {OrderId}", orderId);
+            try
+            {
+                // Load full entity inside the loop (memory efficient for large batches)
+                var order = await _dbContext.Set<Order>()
+                    .FirstOrDefaultAsync(o => o.Id == orderId, ct);
+
+                if (order is null)
+                {
+                    _logger.LogWarning("Order {OrderId} not found, skipping.", orderId);
+                    continue;
+                }
+
+                // EscrowSettlementService.ReleaseToSellerAsync handles both order.Complete()
+                // and escrow release in a single operation — no need to call Complete() separately.
+                var releaseResult = await _escrowSettlementService.ReleaseToSellerAsync(
+                    order, "Auto-completed: decision window expired", null, ct);
+
+                if (releaseResult.IsFailure)
+                {
+                    _logger.LogWarning(
+                        "Failed to release escrow for Order {OrderId}: {Error}",
+                        orderId, releaseResult.Error);
+                    continue;
+                }
+
+                await _unitOfWork.SaveChangesAsync(ct);
+
+                _logger.LogInformation("Auto-completed Order {OrderId}", orderId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error auto-completing Order {OrderId}", orderId);
+            }
         }
 
         _logger.LogInformation("OrderAutoCompleteJob finished.");

@@ -1,0 +1,58 @@
+@using OIO.Infrastructure.Mail.RazorEmails.Rendering.ViewModels
+
+<LayoutView Layout="@typeof(MainLayout)">
+    <h2 style="margin:0 0 16px; font-size:24px; line-height:1.3; font-weight:700; color:#111827;">
+        @Model.Title
+    </h2>
+
+    @if (!string.IsNullOrEmpty(Model.UserName))
+    {
+        <p style="margin:0 0 12px; font-size:14px; line-height:1.7; color:#374151;">
+            Hello <strong style="color:#111827;">@Model.UserName</strong>,
+        </p>
+    }
+
+    <p style="margin:0 0 20px; font-size:14px; line-height:1.7; color:#374151;">
+        @Model.Message
+    </p>
+
+    @if (!string.IsNullOrEmpty(Model.ItemName) || Model.Amount.HasValue || !string.IsNullOrEmpty(Model.OrderStatus))
+    {
+        <table style="width:100%; border-collapse:separate; border-spacing:0; margin:0 0 24px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;">
+            @if (!string.IsNullOrEmpty(Model.ItemName))
+            {
+                <tr>
+                    <td style="padding:14px 16px; font-size:14px; color:#6b7280; border-bottom:1px solid #e5e7eb; width:42%;">Item</td>
+                    <td style="padding:14px 16px; font-size:14px; font-weight:600; color:#111827; border-bottom:1px solid #e5e7eb;">@Model.ItemName</td>
+                </tr>
+            }
+            @if (Model.Amount.HasValue)
+            {
+                <tr>
+                    <td style="padding:14px 16px; font-size:14px; color:#6b7280; border-bottom:1px solid #e5e7eb; width:42%;">Amount</td>
+                    <td style="padding:14px 16px; font-size:14px; font-weight:700; color:#111827; border-bottom:1px solid #e5e7eb;">@Model.Amount.Value.ToString("N0") @(Model.Currency ?? "VND")</td>
+                </tr>
+            }
+            @if (!string.IsNullOrEmpty(Model.OrderStatus))
+            {
+                <tr>
+                    <td style="padding:14px 16px; font-size:14px; color:#6b7280; width:42%;">Status</td>
+                    <td style="padding:14px 16px; font-size:14px; font-weight:600; color:#111827;">@Model.OrderStatus</td>
+                </tr>
+            }
+        </table>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.ActionUrl))
+    {
+        <a href="@Model.ActionUrl"
+           style="display:inline-block; padding:12px 24px; background:#111827; color:#ffffff; text-decoration:none; border-radius:10px; font-size:14px; font-weight:600;">
+            View Order
+        </a>
+    }
+</LayoutView>
+
+@code {
+    [Parameter]
+    public OrderNotificationMailViewModel Model { get; set; } = null!;
+}

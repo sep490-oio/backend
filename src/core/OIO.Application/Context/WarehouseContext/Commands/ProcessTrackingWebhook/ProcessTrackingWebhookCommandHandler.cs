@@ -8,6 +8,7 @@ using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments;
 using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.Context.WarehouseContext.Errors;
 using OIO.Domain.Context.WarehouseContext.ValueObjects;
+using Microsoft.Extensions.Logging;
 using OIO.Domain.SeedWork.Errors;
 using e = OIO.Domain.SeedWork.Errors.Error;
 
@@ -19,15 +20,18 @@ internal sealed class ProcessTrackingWebhookCommandHandler
     private readonly IDbContext  _dbContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock      _clock;
+    private readonly ILogger<ProcessTrackingWebhookCommandHandler> _logger;
 
     public ProcessTrackingWebhookCommandHandler(
         IDbContext  dbContext,
         IUnitOfWork unitOfWork,
-        IClock      clock)
+        IClock      clock,
+        ILogger<ProcessTrackingWebhookCommandHandler> logger)
     {
         _dbContext  = dbContext;
         _unitOfWork = unitOfWork;
         _clock      = clock;
+        _logger     = logger;
     }
 
     public async Task<UnitResult<e>> Handle(
@@ -100,6 +104,19 @@ internal sealed class ProcessTrackingWebhookCommandHandler
 
         if (result.IsFailure) return result.Error;
 
+        // If normalized status indicates arrival, also record arrived to trigger domain event
+        if (normalizedStatus == NormalizedTrackingStatus.Arrived &&
+            shipment.Status != InboundShipmentStatus.Arrived)
+        {
+            var arrivedResult = shipment.RecordArrived(now);
+            if (arrivedResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "RecordArrived failed for inbound shipment {ShipmentId}: {Error}",
+                    shipment.Id, arrivedResult.Error);
+            }
+        }
+
         _dbContext.Update(shipment);
         await _unitOfWork.SaveChangesAsync(ct);
 
@@ -162,6 +179,19 @@ internal sealed class ProcessTrackingWebhookCommandHandler
                 request.ReasonDescription, request.EventTime, rawPayload, now);
 
             if (result.IsFailure) return result.Error;
+
+            // If arrived, trigger domain event (matching primary path behavior)
+            if (normalizedStatus == NormalizedTrackingStatus.Arrived &&
+                inbound.Status != InboundShipmentStatus.Arrived)
+            {
+                var arrivedResult = inbound.RecordArrived(now);
+                if (arrivedResult.IsFailure)
+                {
+                    _logger.LogWarning(
+                        "RecordArrived failed for inbound shipment {ShipmentId} (carrier fallback): {Error}",
+                        inbound.Id, arrivedResult.Error);
+                }
+            }
 
             _dbContext.Update(inbound);
             await _unitOfWork.SaveChangesAsync(ct);

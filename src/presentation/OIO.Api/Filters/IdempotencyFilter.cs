@@ -129,7 +129,7 @@ public static class IdempotencyHttpPolicies
             ErrorFactory: CreateMediaError,
             SuccessResultKind: IdempotencySuccessResultKind.Created);
 
-    public static IdempotencyEndpointPolicy<BidDto> PlaceBid() =>
+    public static IdempotencyEndpointPolicy<PlaceBidResultDto> PlaceBid() =>
         new(
             CacheKeyPrefixFactory: (context, currentUser) =>
             {

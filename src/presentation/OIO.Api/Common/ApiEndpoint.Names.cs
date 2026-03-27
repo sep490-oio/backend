@@ -15,6 +15,7 @@ public static partial class ApiEndpoint
             public const string GetMyAuctions = nameof(GetMyAuctions);
             public const string GetMyBids = nameof(GetMyBids);
             public const string GetMyAuctionWatchlist = nameof(GetMyAuctionWatchlist);
+            public const string GetMyPendingWinnerOffers = nameof(GetMyPendingWinnerOffers);
             public const string AddAddress = nameof(AddAddress);
             public const string ChangePassword = nameof(ChangePassword);
             public const string ConfirmPhoneNumber = nameof(ConfirmPhoneNumber);
@@ -186,6 +187,8 @@ public static partial class ApiEndpoint
             public const string GetMyAutoBid = nameof(GetMyAutoBid);
             public const string WatchAuction = nameof(WatchAuction);
             public const string UnwatchAuction = nameof(UnwatchAuction);
+            public const string UpdateWatcherPreferences = nameof(UpdateWatcherPreferences);
+            public const string RecordAuctionView = nameof(RecordAuctionView);
             public const string DepositFromWallet = nameof(DepositFromWallet);
         }
 
@@ -201,8 +204,15 @@ public static partial class ApiEndpoint
         
         public static class Sellers
         {
+            public const string GetSellers = nameof(GetSellers);
             public const string GetSellerById = nameof(GetSellerById);
             public const string GetSellerItems = nameof(GetSellerItems);
+        }
+
+        public static class Reviews
+        {
+            public const string CreateSellerReview = nameof(CreateSellerReview);
+            public const string GetSellerReviews = nameof(GetSellerReviews);
         }
 
         public static class Warehouse

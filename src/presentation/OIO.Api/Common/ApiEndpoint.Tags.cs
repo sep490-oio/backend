@@ -23,5 +23,6 @@ public static partial class ApiEndpoint
         public const string Reports = nameof(Reports);
         public const string Disputes = nameof(Disputes);
         public const string Notifications = nameof(Notifications);
+        public const string Reviews = nameof(Reviews);
     }
 }

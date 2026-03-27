@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
+using OIO.Application.Context.UserContext.Services;
 using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Application.Context.WarehouseContext.Mappings;
 using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
@@ -14,7 +15,7 @@ namespace OIO.Application.Context.WarehouseContext.Queries.GetInboundShipmentByI
 public sealed record GetInboundShipmentByIdQuery(Guid ShipmentId)
     : IQuery<InboundShipmentDto>;
 
-internal sealed class GetInboundShipmentByIdQueryHandler(IDbContext db)
+internal sealed class GetInboundShipmentByIdQueryHandler(IDbContext db, ICurrentUser currentUser)
     : IQueryHandler<GetInboundShipmentByIdQuery, InboundShipmentDto>
 {
     public async Task<Result<InboundShipmentDto, Error>> Handle(
@@ -28,6 +29,10 @@ internal sealed class GetInboundShipmentByIdQueryHandler(IDbContext db)
             .FirstOrDefaultAsync(s => s.Id == shipmentId, cancellationToken);
 
         if (shipment is null)
+            return WarehouseErrors.InboundShipment.NotFound(request.ShipmentId.ToString());
+
+        // Ownership check — seller can only view their own shipments
+        if (shipment.SellerId != currentUser.UserId)
             return WarehouseErrors.InboundShipment.NotFound(request.ShipmentId.ToString());
 
         return shipment.ToDto();

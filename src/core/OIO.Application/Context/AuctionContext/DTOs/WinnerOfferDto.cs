@@ -1,11 +1,11 @@
 namespace OIO.Application.Context.AuctionContext.DTOs;
 
 public sealed record WinnerOfferDto(
-    Guid Id,
+    Guid OfferId,
     Guid AuctionId,
-    Guid UserId,
-    int RankNo,
+    string AuctionTitle,
+    decimal OfferAmount,
+    string Currency,
     string Status,
-    DateTime OfferedAt,
     DateTime? ExpiresAt,
-    DateTime? RespondedAt);
+    DateTime CreatedAt);

@@ -5,11 +5,15 @@ using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Context.AuctionContext.Hubs;
 using OIO.Application.Context.AuctionContext.Services;
+using OIO.Application.Context.NotificationContext;
+using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
+using OIO.Application.Context.NotificationContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Events;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.ModerationContext.Aggregates;
 using OIO.Domain.Context.ModerationContext.Enums;
+using OIO.Domain.Context.NotificationContext.Enums;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 
@@ -24,6 +28,7 @@ internal sealed class BidPlacedEventHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly IRuntimeSettings _runtimeSettings;
     private readonly IAuctionNotificationService _notificationService;
+    private readonly ISender _sender;
     private readonly ILogger<BidPlacedEventHandler> _logger;
 
     public BidPlacedEventHandler(
@@ -31,12 +36,14 @@ internal sealed class BidPlacedEventHandler
         IUnitOfWork unitOfWork,
         IRuntimeSettings runtimeSettings,
         IAuctionNotificationService notificationService,
+        ISender sender,
         ILogger<BidPlacedEventHandler> logger)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _runtimeSettings = runtimeSettings;
         _notificationService = notificationService;
+        _sender = sender;
         _logger = logger;
     }
 
@@ -49,7 +56,9 @@ internal sealed class BidPlacedEventHandler
             auctionId,
             queryBuilder: query => query
                 .AsNoTracking()
-                .Include(a => a.Bids),
+                .Include(a => a.Bids)
+                .Include(a => a.Watchers)
+                .Include(a => a.Item),
             cancellationToken: ct);
 
         if (auction is null)
@@ -88,6 +97,39 @@ internal sealed class BidPlacedEventHandler
                 Timestamp: new DateTimeOffset(
                     DateTime.SpecifyKind(notification.BidTime, DateTimeKind.Utc))),
             ct);
+
+        // Notify watchers with NotifyOnBid enabled
+        var sellerId = auction.Item?.SellerId;
+        var watcherUserIds = auction.Watchers
+            .Where(w => w.NotifyOnBid && w.UserId != bidderId && (sellerId == null || w.UserId != sellerId))
+            .Select(w => w.UserId.Value)
+            .Distinct()
+            .ToList();
+
+        var itemTitle = auction.Item?.Title?.Value ?? "Auction";
+        foreach (var watcherUserId in watcherUserIds)
+        {
+            await NotificationDispatch.DispatchAsync(
+                _sender,
+                _logger,
+                new CreateNotificationCommand(
+                    UserId: watcherUserId,
+                    NotificationType: "auction",
+                    EventType: "auction_bid_placed",
+                    Title: "Gia moi tren phien dau gia ban theo doi",
+                    Message: $"Phien dau gia \"{itemTitle}\" da co gia moi: {notification.Amount}.",
+                    Priority: NotificationPriority.Normal,
+                    EntityType: "Auction",
+                    EntityId: auctionId.Value,
+                    Metadata: NotificationDispatch.SerializeMetadata(new
+                    {
+                        auctionId = auctionId.Value,
+                        bidAmount = notification.Amount,
+                        currentPrice = auction.Pricing.CurrentAmount,
+                        currency = auction.Pricing.Currency.Id
+                    })),
+                ct);
+        }
 
         await CreateBidBurstAlertIfNeededAsync(notification, ct);
     }

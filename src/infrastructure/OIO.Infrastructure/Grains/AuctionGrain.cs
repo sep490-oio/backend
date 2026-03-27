@@ -557,6 +557,12 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
         DiscardLoadedAuction();
     }
 
+    public Task InvalidateCacheAsync()
+    {
+        DiscardLoadedAuction();
+        return Task.CompletedTask;
+    }
+
     private void DiscardLoadedAuction()
     {
         if (_dbContext is DbContext efContext)

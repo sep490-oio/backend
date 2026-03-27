@@ -205,12 +205,51 @@ internal sealed class AuctionSoldEventHandler
                 cancellationToken);
         }
 
+        // Notify losing bidders (participants who bid but didn't win)
+        var losingBidderIds = auction.Bids
+            .Select(b => b.BidderId)
+            .Distinct()
+            .Where(id => id != winnerId && id != sellerId)
+            .Select(id => id.Value)
+            .ToList();
+
+        foreach (var losingBidderId in losingBidderIds)
+        {
+            // Skip if already notified as a watcher
+            if (watcherUserIds.Contains(losingBidderId))
+                continue;
+
+            await NotificationDispatch.DispatchAsync(
+                _sender,
+                _logger,
+                new CreateNotificationCommand(
+                    UserId: losingBidderId,
+                    NotificationType: "auction",
+                    EventType: "auction_lost",
+                    Title: "Phien dau gia da ket thuc",
+                    Message:
+                        $"Phien dau gia \"{auction.Item.Title.Value}\" da ket thuc. " +
+                        $"Ban khong thang. Tien dat coc se duoc hoan tra.",
+                    Priority: NotificationPriority.Normal,
+                    EntityType: "Auction",
+                    EntityId: auctionId.Value,
+                    Metadata: NotificationDispatch.SerializeMetadata(new
+                    {
+                        auctionId = auctionId.Value,
+                        finalPrice = notification.FinalPrice,
+                        currency = notification.Currency,
+                        depositRefund = true
+                    })),
+                cancellationToken);
+        }
+
         _logger.LogInformation(
-            "AuctionSold notifications created. Auction={AuctionId}, Winner={WinnerId}, Order={OrderId}, Watchers={WatcherCount}.",
+            "AuctionSold notifications created. Auction={AuctionId}, Winner={WinnerId}, Order={OrderId}, Watchers={WatcherCount}, LosingBidders={LosingCount}.",
             notification.AuctionId,
             notification.WinnerId,
             order?.Id.Value,
-            watcherUserIds.Count);
+            watcherUserIds.Count,
+            losingBidderIds.Count);
     }
 
     private async Task<Order?> EnsureOrderAsync(

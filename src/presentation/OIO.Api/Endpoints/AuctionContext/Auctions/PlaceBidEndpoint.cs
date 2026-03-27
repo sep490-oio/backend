@@ -32,7 +32,7 @@ public sealed class PlaceBidEndpoint : IEndpoint
 
                 return await sender.Send(command, ct);
             })
-            .AddEndpointFilter(new IdempotencyFilter<BidDto>(
+            .AddEndpointFilter(new IdempotencyFilter<PlaceBidResultDto>(
                 IdempotencyHttpPolicies.PlaceBid()))
             .RequireAuthorization(App.Permissions.Catalogs.Auctions.Bid)
             .WithName(ApiEndpoint.Names.Auctions.PlaceBid)

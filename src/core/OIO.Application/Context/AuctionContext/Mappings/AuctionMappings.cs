@@ -29,12 +29,14 @@ internal static class AuctionMappings
             Status: auction.Status.Id,
             BidCount: auction.BidCount,
             WatchCount: auction.WatchCount,
+            ViewCount: auction.ViewCount,
             StartTime: auction.Info?.StartTime,
             EndTime: auction.Info?.EndTime,
             RemainingTime: auction.Info?.RemainingTime(nowUtc),
             IsEndingSoon: auction.Info is not null ? auction.IsEndingSoon(nowUtc, extensionThresholdMinutes) : null,
             IsFeatured: auction.IsFeatured,
-            SellerId: auction.Item.SellerId.Value);
+            SellerId: auction.Item.SellerId.Value,
+            ItemStatus: auction.Item.Status.Id);
     }
 
     public static AuctionDto ToDto(this Auction auction, DateTime nowUtc, TimeSpan extensionThresholdMinutes)
@@ -92,6 +94,7 @@ internal static class AuctionMappings
             .Map(x => x.Status, x => x.Status.Id)
             .Map(x => x.BidCount, x => x.BidCount)
             .Map(x => x.WatchCount, x => x.WatchCount)
+            .Map(x => x.ViewCount, x => x.ViewCount)
             .Map(x => x.StartTime, x => x.Info!.StartTime)
             .Map(x => x.EndTime, x => x.Info!.EndTime)
             .Map(x => x.IsFeatured, x => x.IsFeatured)

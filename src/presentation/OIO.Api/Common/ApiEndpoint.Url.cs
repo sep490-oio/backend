@@ -165,7 +165,9 @@ public static partial class ApiEndpoint
             // Watch
             public const string Watch = $"{Base}/{{auctionId:guid}}/watch";
             public const string Unwatch = $"{Base}/{{auctionId:guid}}/watch";
+            public const string WatchPreferences = $"{Base}/{{auctionId:guid}}/watch/preferences";
             public const string Deposit = $"{Base}/{{auctionId:guid}}/deposit";
+            public const string RecordView = $"{Base}/{{auctionId:guid}}/view";
         }
 
         public static class Categories
@@ -184,8 +186,17 @@ public static partial class ApiEndpoint
         {
             private const string Base = "api/sellers";
 
+            public const string GetAll = Base;
             public const string GetById = $"{Base}/{{sellerId:guid}}";
             public const string GetItems = $"{Base}/{{sellerId:guid}}/items";
+        }
+
+        public static class Reviews
+        {
+            private const string Base = "api/reviews";
+
+            public const string Create = Base;
+            public const string GetBySeller = "api/sellers/{sellerId:guid}/reviews";
         }
 
         public static class Warehouse
@@ -272,6 +283,7 @@ public static partial class ApiEndpoint
             public const string MyAuctions = $"{Base}/auctions";
             public const string MyBids = $"{Base}/bids";
             public const string MyAuctionWatchlist = $"{Base}/auctions/watch-list";
+            public const string MyPendingWinnerOffers = $"{Base}/winner-offers";
             public const string AddAddress = $"{Base}/addresses";
             public const string ChangePassword = $"{Base}/password";
             public const string ConfirmPhoneNumber = $"{Base}/phone/confirm";

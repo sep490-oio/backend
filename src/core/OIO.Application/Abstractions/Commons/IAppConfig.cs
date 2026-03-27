@@ -110,6 +110,7 @@ public sealed class OrderOptions
     public const string SectionName = "Order";
 
     public int ReturnDecisionWindowDays { get; set; } = 7;
+    public int PaymentDeadlineHours { get; set; } = 48;
 }
 
 public sealed class UploadContextOption

@@ -40,4 +40,41 @@ public sealed class SellerReview : AggregateRoot<SellerReviewId>, IAuditableEnti
     public IReadOnlyCollection<ReviewReport> Reports => _reports.AsReadOnly();
 
     private SellerReview() { }
+
+    public static SellerReview Create(
+        OrderId orderId,
+        AuctionId auctionId,
+        UserId reviewerId,
+        UserId sellerId,
+        Rating overallRating,
+        Rating? communicationRating,
+        Rating? shippingSpeedRating,
+        Rating? itemAccuracyRating,
+        string? title,
+        string? comment,
+        bool isVerifiedPurchase,
+        DateTime createdAt)
+    {
+        var review = new SellerReview
+        {
+            Id = SellerReviewId.From(Guid.NewGuid()),
+            OrderId = orderId,
+            AuctionId = auctionId,
+            ReviewerId = reviewerId,
+            SellerId = sellerId,
+            OverallRating = overallRating,
+            CommunicationRating = communicationRating,
+            ShippingSpeedRating = shippingSpeedRating,
+            ItemAccuracyRating = itemAccuracyRating,
+            Title = title,
+            Comment = comment,
+            IsVerifiedPurchase = isVerifiedPurchase,
+            Status = ReviewStatus.Published,
+            HelpfulCount = 0,
+            NotHelpfulCount = 0,
+            CreatedAt = createdAt
+        };
+
+        return review;
+    }
 }

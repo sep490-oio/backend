@@ -1,3 +1,4 @@
+using OIO.Application.Abstractions.Sorting;
 using OIO.Application.Context.UserContext.DTOs;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 
@@ -32,4 +33,12 @@ public static class SellerProfileMappings
             TrustScore: p.TrustScoreOverall,
             CreatedAt: p.CreatedAt);
     }
+    
+    public static readonly SortMappingDefinition PublicSellerProfileDtoSortMapping =
+        SortMappingBuilder<PublicSellerProfileDto, SellerProfile>.Create()
+            .Map(dto => dto.TrustScore, entity => entity.TrustScoreOverall)
+            .Map(dto => dto.TotalSalesCount, entity => entity.TotalSalesCount)
+            .Map(dto => dto.StoreName, entity => entity.StoreName)
+            .Map(dto => dto.CreatedAt, entity => entity.CreatedAt)
+            .Build();
 }

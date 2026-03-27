@@ -17,19 +17,22 @@ public class UserMailNotifier : IUserMailNotifier
     private readonly RazorViewRenderer _renderer;
     private readonly IClock _clock;
     private readonly ILogger<UserMailNotifier> _logger;
-    
+    private readonly IRuntimeSettings _runtimeSettings;
+
     public UserMailNotifier(
         IAppInfo appInfo,
         IMailSender mailSender,
         RazorViewRenderer renderer,
         IClock clock,
-        ILogger<UserMailNotifier> logger)
+        ILogger<UserMailNotifier> logger,
+        IRuntimeSettings runtimeSettings)
     {
         _appInfo = appInfo;
         _mailSender = mailSender;
         _renderer = renderer;
         _clock = clock;
         _logger = logger;
+        _runtimeSettings = runtimeSettings;
     }
     
     public async Task SendWelcomeVerifyAsync(
@@ -85,7 +88,7 @@ public class UserMailNotifier : IUserMailNotifier
                 ExpiredAt = tokenExpiry.ToString("dddd, dd MMMM yyyy hh:mm tt")
             });
 
-        var subject = $"{_appInfo.AppName} — Reset your password";
+        var subject = $"{_appInfo.AppName} ï¿½ Reset your password";
 
         await SendAsync(
             to: toEmail,
@@ -116,7 +119,7 @@ public class UserMailNotifier : IUserMailNotifier
                 ExpiredAt = tokenExpiry.ToString("dddd, dd MMMM yyyy hh:mm tt")
             });
 
-        var subject = $"{_appInfo.AppName} — Verify your email";
+        var subject = $"{_appInfo.AppName} ï¿½ Verify your email";
         
         await SendAsync(
             to: toEmail,
@@ -137,7 +140,7 @@ public class UserMailNotifier : IUserMailNotifier
                 ChangedAt = _clock.UtcNow
             });
 
-        var subject = $"{_appInfo.AppName} — Your password was changed";
+        var subject = $"{_appInfo.AppName} ï¿½ Your password was changed";
         
         await SendAsync(
             to: toEmail,
@@ -259,7 +262,7 @@ public class UserMailNotifier : IUserMailNotifier
                 Currency = currency
             });
         
-        var subject = $"{_appInfo.AppName} - You've been outbid! — {auctionTitle}";
+        var subject = $"{_appInfo.AppName} - You've been outbid! ï¿½ {auctionTitle}";
         
         await SendAsync(
             to: toEmail,
@@ -278,12 +281,10 @@ public class UserMailNotifier : IUserMailNotifier
         string paymentUrl,
         CancellationToken cancellationToken = default)
     {
-        //TODO FE should provide the payment url, but for now we build it here
-        var payment = BuildFrontendUrl("orders/payment", new()
-        {
-            ["auctionId"] = auctionId,
-        });
-        
+        var payment = BuildFrontendUrl("me/orders", null);
+
+        var deadlineHours = _runtimeSettings.Order.PaymentDeadlineHours;
+
         var html = await _renderer.Render<AuctionWonMail, AuctionWonMailViewModel>(
             new AuctionWonMailViewModel
             {
@@ -292,11 +293,11 @@ public class UserMailNotifier : IUserMailNotifier
                 AuctionTitle = auctionTitle,
                 FinalPrice = finalPrice,
                 Currency = currency,
-                PaymentUrl = paymentUrl,
-                PaymentDeadlineHours = 48 //TODO: make it configurable
+                PaymentUrl = payment,
+                PaymentDeadlineHours = deadlineHours
             });
         
-        var subject = $"{_appInfo.AppName} - Congratulations! You won the auction — {auctionTitle}";
+        var subject = $"{_appInfo.AppName} - Congratulations! You won the auction ï¿½ {auctionTitle}";
         
         await SendAsync(
             to: toEmail,
@@ -327,7 +328,7 @@ public class UserMailNotifier : IUserMailNotifier
                 WinnerName = winnerName
             });
         
-        var subject = $"{_appInfo.AppName} - Your item was sold! — {auctionTitle}";
+        var subject = $"{_appInfo.AppName} - Your item was sold! ï¿½ {auctionTitle}";
         
         await SendAsync(
             to: toEmail,
@@ -365,7 +366,7 @@ public class UserMailNotifier : IUserMailNotifier
                 RelistUrl = relistUrl
             });
         
-        var subject = $"{_appInfo.AppName} - Your auction ended without a winner — {auctionTitle}";
+        var subject = $"{_appInfo.AppName} - Your auction ended without a winner ï¿½ {auctionTitle}";
         
         await SendAsync(
             to: toEmail,
@@ -395,7 +396,7 @@ public class UserMailNotifier : IUserMailNotifier
                 HasWinner = hasWinner
             });
         
-        var subject = $"{_appInfo.AppName} - An auction you watched has ended — {auctionTitle}";
+        var subject = $"{_appInfo.AppName} - An auction you watched has ended ï¿½ {auctionTitle}";
         
         await SendAsync(
             to: toEmail,
@@ -421,7 +422,7 @@ public class UserMailNotifier : IUserMailNotifier
                 Reason = reason
             });
         
-        var subject = $"{_appInfo.AppName} - An auction you participated in has been cancelled — {auctionTitle}";
+        var subject = $"{_appInfo.AppName} - An auction you participated in has been cancelled ï¿½ {auctionTitle}";
         
         await SendAsync(
             to: toEmail,

@@ -1,7 +1,9 @@
 ﻿using System.Linq.Dynamic.Core;
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Sorting;
+using OIO.Domain.SeedWork.Utils;
 
 namespace OIO.Application.Extensions;
 
@@ -26,6 +28,12 @@ public static class QueryableExtensions
                 .ToListAsync(cancellation);
             return items.ToPagedList(totalCount, pagedParameter);
         }
+        
+        public IQueryable<T> ApplySort(
+            ISortByParameter orderByParameter,
+            ISortMappingDefinition mappingsDefinition,
+            Expression<Func<T, object?>> propertyName)
+        => query.ApplySort(orderByParameter, mappingsDefinition, propertyName.GetOrAddName());
 
         public IQueryable<T> ApplySort(
             ISortByParameter orderByParameter,

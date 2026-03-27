@@ -47,8 +47,8 @@ internal sealed class GetAuctionsQueryHandler
         // Status filter
         if (!string.IsNullOrWhiteSpace(parameters.Status) && AuctionStatus.Is(parameters.Status))
         {
-            var status = AuctionStatus.FromId(parameters.Status);
-            query = query.Where(x => x.Status == status.Value);
+            var status = AuctionStatus.FromId(parameters.Status).Value;
+            query = query.Where(x => x.Status == status);
         }
         else
         {

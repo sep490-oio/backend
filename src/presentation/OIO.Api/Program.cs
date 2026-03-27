@@ -76,6 +76,7 @@ app.MapEndpoints();
 app.MapHub<AuctionHub>("/hubs/auction");
 app.MapHub<DisputeHub>("/hubs/disputes");
 app.MapHub<NotificationHub>("/hubs/notifications");
+app.MapHub<UserHub>("/hubs/user");
 
 app.MapHealthChecks("health", new HealthCheckOptions
 {

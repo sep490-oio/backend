@@ -22,7 +22,7 @@ public sealed record PlaceBidCommand(
     Guid AuctionId,
     decimal Amount,
     string Currency,
-    IPAddress? IpAddress) : ICommand<BidDto>, IHasValidate
+    IPAddress? IpAddress) : ICommand<PlaceBidResultDto>, IHasValidate
 {
     public ViolationsError Validate()
     {
@@ -41,7 +41,7 @@ public sealed record PlaceBidCommand(
 }
 
 internal sealed class PlaceBidCommandHandler
-    : ICommandHandler<PlaceBidCommand, BidDto>
+    : ICommandHandler<PlaceBidCommand, PlaceBidResultDto>
 {
     private static readonly TimeSpan InvalidBidWindow = TimeSpan.FromMinutes(10);
 
@@ -65,7 +65,7 @@ internal sealed class PlaceBidCommandHandler
         _runtimeSettings = runtimeSettings;
     }
 
-    public async Task<Result<BidDto, Error>> Handle(
+    public async Task<Result<PlaceBidResultDto, Error>> Handle(
         PlaceBidCommand request,
         CancellationToken cancellationToken)
     {
@@ -77,6 +77,12 @@ internal sealed class PlaceBidCommandHandler
             await TrackInvalidBidAttemptAsync(request, error, cancellationToken);
             return error;
         }
+
+        // Capture snapshot before bid to compare afterwards
+        var (_, snapshotBeforeFailure, snapshotBefore, snapshotBeforeError) =
+            await grain.GetSnapshotAsync(cancellationToken);
+
+        var bidCountBefore = snapshotBeforeFailure ? 0 : snapshotBefore.BidCount;
 
         (_, isFailure, var bid, error) = await grain.PlaceBidAsync(
             _currentUser.UserId.Value,
@@ -90,7 +96,22 @@ internal sealed class PlaceBidCommandHandler
             return error;
         }
 
-        return new BidDto(
+        // Get snapshot after bid placement to determine cascade info
+        var (_, snapshotAfterFailure, snapshotAfter, _) =
+            await grain.GetSnapshotAsync(cancellationToken);
+
+        var bidCountAfter = snapshotAfterFailure ? bidCountBefore + 1 : snapshotAfter.BidCount;
+        var finalPrice = snapshotAfterFailure ? bid.Amount.Amount : snapshotAfter.CurrentPrice;
+        var currentWinnerId = snapshotAfterFailure ? (Guid?)null : snapshotAfter.WinnerId;
+
+        // Auto-bids cascaded = total new bids minus the original manual bid
+        var autoBidsCascaded = Math.Max(0, bidCountAfter - bidCountBefore - 1);
+
+        // The bidder was immediately outbid if the current winner is not the bidder
+        var wasImmediatelyOutbid = currentWinnerId.HasValue &&
+                                   currentWinnerId.Value != _currentUser.UserId.Value;
+
+        var bidDto = new BidDto(
             Id: bid.Id,
             AuctionId: bid.AuctionId,
             BidderId: bid.BidderId,
@@ -98,6 +119,12 @@ internal sealed class PlaceBidCommandHandler
             IsAutoBid: bid.IsAutoBid,
             Status: bid.Status,
             CreatedAt: bid.CreatedAt);
+
+        return new PlaceBidResultDto(
+            Bid: bidDto,
+            AutoBidsCascaded: autoBidsCascaded,
+            FinalPrice: finalPrice,
+            WasImmediatelyOutbid: wasImmediatelyOutbid);
     }
 
     private async Task TrackInvalidBidAttemptAsync(

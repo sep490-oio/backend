@@ -106,6 +106,7 @@ public sealed class NormalizedTrackingStatus : EnumValueObject<NormalizedTrackin
     public static readonly NormalizedTrackingStatus Returning  = new("returning");
     public static readonly NormalizedTrackingStatus Returned   = new("returned");
     public static readonly NormalizedTrackingStatus Cancelled  = new("cancelled");
+    public static readonly NormalizedTrackingStatus Arrived  = new("arrived");
 
     private NormalizedTrackingStatus(string id) : base(id) { }
 }

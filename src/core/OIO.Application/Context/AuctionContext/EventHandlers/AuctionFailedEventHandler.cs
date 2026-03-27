@@ -120,8 +120,43 @@ internal sealed class AuctionFailedEventHandler
                 cancellationToken);
         }
 
+        // Notify all bidders that the auction failed (deposit will be refunded)
+        var bidderIds = auction.Bids
+            .Select(b => b.BidderId.Value)
+            .Distinct()
+            .Where(id => id != sellerId.Value)
+            .ToList();
+
+        foreach (var bidderId in bidderIds)
+        {
+            if (watcherUserIds.Contains(bidderId))
+                continue;
+
+            await NotificationDispatch.DispatchAsync(
+                _sender,
+                _logger,
+                new CreateNotificationCommand(
+                    UserId: bidderId,
+                    NotificationType: "auction",
+                    EventType: "auction_lost",
+                    Title: "Phien dau gia da ket thuc",
+                    Message:
+                        $"Phien dau gia \"{auction.Item.Title.Value}\" da ket thuc khong co nguoi thang. " +
+                        $"Tien dat coc se duoc hoan tra.",
+                    Priority: NotificationPriority.Normal,
+                    EntityType: "Auction",
+                    EntityId: auctionId.Value,
+                    Metadata: NotificationDispatch.SerializeMetadata(new
+                    {
+                        auctionId = auctionId.Value,
+                        reason = notification.Reason,
+                        depositRefund = true
+                    })),
+                cancellationToken);
+        }
+
         _logger.LogInformation(
-            "AuctionFailed notifications created. Auction={AuctionId}, Reason={Reason}, Watchers={WatcherCount}.",
-            notification.AuctionId, notification.Reason, watcherUserIds.Count);
+            "AuctionFailed notifications created. Auction={AuctionId}, Reason={Reason}, Watchers={WatcherCount}, Bidders={BidderCount}.",
+            notification.AuctionId, notification.Reason, watcherUserIds.Count, bidderIds.Count);
     }
 }

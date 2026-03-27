@@ -4,9 +4,13 @@ using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Context.AuctionContext.Hubs;
 using OIO.Application.Context.AuctionContext.Services;
+using OIO.Application.Context.NotificationContext;
+using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
+using OIO.Application.Context.NotificationContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Events;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.NotificationContext.Enums;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 
@@ -17,15 +21,18 @@ internal sealed class OutbidEventHandler
 {
     private readonly IDbContext _dbContext;
     private readonly IAuctionNotificationService _notificationService;
+    private readonly ISender _sender;
     private readonly ILogger<OutbidEventHandler> _logger;
 
     public OutbidEventHandler(
         IDbContext dbContext,
         IAuctionNotificationService notificationService,
+        ISender sender,
         ILogger<OutbidEventHandler> logger)
     {
         _dbContext = dbContext;
         _notificationService = notificationService;
+        _sender = sender;
         _logger = logger;
     }
 
@@ -69,6 +76,29 @@ internal sealed class OutbidEventHandler
                 NewHighAmount: auction.Pricing.CurrentAmount,
                 MinimumNextBid: auction.GetMinimumBidAmount().Amount,
                 NewHighBidderDisplayName: AuctionNotificationDisplayNames.Resolve(highBidder)),
+            ct);
+
+        // Create persistent bell notification for outbid bidder
+        var itemTitle = auction.Item?.Title?.Value ?? "Auction";
+        await NotificationDispatch.DispatchAsync(
+            _sender,
+            _logger,
+            new CreateNotificationCommand(
+                UserId: Guid.Parse(notification.OutbidBidderId),
+                NotificationType: "auction",
+                EventType: "auction_outbid",
+                Title: "Ban da bi vuot gia!",
+                Message: $"Phien dau gia \"{itemTitle}\" da co gia moi: {auction.Pricing.CurrentAmount}. Dat gia cao hon de gianh lai.",
+                Priority: NotificationPriority.High,
+                EntityType: "Auction",
+                EntityId: auctionId.Value,
+                Metadata: NotificationDispatch.SerializeMetadata(new
+                {
+                    auctionId = auctionId.Value,
+                    newHighAmount = auction.Pricing.CurrentAmount,
+                    minimumNextBid = auction.GetMinimumBidAmount().Amount,
+                    currency = auction.Pricing.Currency.Id
+                })),
             ct);
     }
 }

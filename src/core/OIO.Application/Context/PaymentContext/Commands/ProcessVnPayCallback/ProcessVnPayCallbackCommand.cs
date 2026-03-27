@@ -7,6 +7,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Abstractions.Payment;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Errors;
+using OIO.Domain.Context.AuctionContext.Grains;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.ValueObjects;
@@ -44,6 +45,7 @@ internal sealed class ProcessVnPayCallbackCommandHandler
     private readonly IDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
+    private readonly IGrainFactory _grainFactory;
     private readonly ILogger<ProcessVnPayCallbackCommandHandler> _logger;
 
     public ProcessVnPayCallbackCommandHandler(
@@ -51,12 +53,14 @@ internal sealed class ProcessVnPayCallbackCommandHandler
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         IClock clock,
+        IGrainFactory grainFactory,
         ILogger<ProcessVnPayCallbackCommandHandler> logger)
     {
         _paymentGateway = paymentGateway;
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _clock = clock;
+        _grainFactory = grainFactory;
         _logger = logger;
     }
 
@@ -324,6 +328,10 @@ internal sealed class ProcessVnPayCallbackCommandHandler
             transaction.AuctionId.Value.Value,
             transaction.UserId.Value,
             transaction.TransactionNumber.Value);
+
+        // Invalidate grain cache so subsequent bids see the new deposit
+        var grain = _grainFactory.GetGrain<IAuctionGrain>(transaction.AuctionId.Value.Value);
+        await grain.InvalidateCacheAsync();
 
         return UnitResult.Success<Error>();
     }

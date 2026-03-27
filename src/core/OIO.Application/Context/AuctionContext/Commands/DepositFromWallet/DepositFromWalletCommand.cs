@@ -7,6 +7,7 @@ using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.Errors;
+using OIO.Domain.Context.AuctionContext.Grains;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
 using OIO.Domain.Context.Shared.ValueObjects;
@@ -34,7 +35,8 @@ internal sealed class DepositFromWalletCommandHandler(
     IDbContext dbContext,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    IClock clock)
+    IClock clock,
+    IGrainFactory grainFactory)
     : ICommandHandler<DepositFromWalletCommand>
 {
     public async Task<UnitResult<Error>> Handle(
@@ -124,6 +126,10 @@ internal sealed class DepositFromWalletCommandHandler(
 
         dbContext.Insert(depositResult.Value);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // Invalidate grain cache so subsequent bids see the new deposit
+        var grain = grainFactory.GetGrain<IAuctionGrain>(request.AuctionId);
+        await grain.InvalidateCacheAsync();
 
         return UnitResult.Success<Error>();
     }

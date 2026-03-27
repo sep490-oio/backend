@@ -12,6 +12,7 @@ using OIO.Api.Services;
 using OIO.Application.Context.AuctionContext.Services;
 using OIO.Application.Context.ModerationContext.Services;
 using OIO.Application.Context.NotificationContext.Services;
+using OIO.Application.Context.UserContext.Hubs;
 using OIO.Infrastructure.Settings;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
@@ -90,6 +91,7 @@ public static class DependencyInjection
         services.AddSingleton<IdempotencyCacheService>();
         services.AddSingleton<AuctionBidIdempotencyHubFilter>();
         services.AddScoped<IAuctionNotificationService, AuctionNotificationService>();
+        services.AddScoped<IUserNotificationService, UserNotificationService>();
         services.AddScoped<INotificationProvider, SignalRNotificationProvider>();
         services.AddScoped<IDisputeRealtimeService, DisputeRealtimeService>();
         services.AddSignalR()

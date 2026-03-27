@@ -13,9 +13,11 @@ public sealed record AuctionListItemDto(
     string Status,
     int BidCount,
     int WatchCount,
+    int ViewCount,
     DateTime? StartTime,
     DateTime? EndTime,
     TimeSpan? RemainingTime,
     bool? IsEndingSoon,
     bool? IsFeatured,
-    Guid SellerId);
+    Guid SellerId,
+    string ItemStatus);

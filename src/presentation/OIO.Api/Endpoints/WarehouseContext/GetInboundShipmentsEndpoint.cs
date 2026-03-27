@@ -10,23 +10,17 @@ namespace OIO.Api.Endpoints.WarehouseContext;
 
 public sealed class GetInboundShipmentsEndpoint : IEndpoint
 {
+    public sealed record Parameters : GetInboundShipmentsQueryFilter;
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet(ApiEndpoint.Url.Warehouse.BookInbound, async (
-                string?   status,
-                Guid?     sellerId,
-                Guid?     itemId,
-                string?   search,
-                DateTime? fromDate,
-                DateTime? toDate,
-                int       page = 1,
-                int       pageSize = 20,
-                ISender sender = default!,
+                [AsParameters] Parameters parameters,
+                ISender sender,
                 CancellationToken ct = default) =>
             {
                 var result = await sender.Send(
                     new GetInboundShipmentsQuery(
-                        status, sellerId, itemId, search, fromDate, toDate, page, pageSize), ct);
+                        parameters), ct);
                 return result.ToOkHttpResult();
             })
             .RequireAuthorization(App.Permissions.Catalogs.Warehouse.ReadShipments)

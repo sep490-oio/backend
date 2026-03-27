@@ -254,7 +254,14 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
         ModifiedAt = now;
 
         if (newStatus == InboundShipmentStatus.Arrived)
+        {
             ArrivedAt = now;
+            RaiseDomainEvent(new InboundShipmentArrivedEvent(
+                Id.ToString(),
+                ProviderCode.Id,
+                CarrierTrackingNumber ?? ClientOrderCode,
+                now));
+        }
 
         return UnitResult.Success<e>();
     }

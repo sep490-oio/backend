@@ -34,10 +34,16 @@ internal sealed class GetMyBidsQueryHandler
         var parameters = request.Parameters;
 
         // Get the latest bid per auction for this bidder
-        // (user may have multiple bids per auction, show only their latest)
+        // Subquery: get the max bid ID per auction (latest = highest ID for same auction)
+        var latestBidIds = _dbContext.Set<Bid>()
+            .AsNoTracking()
+            .Where(bid => bid.BidderId == _currentUser.UserId)
+            .GroupBy(bid => bid.AuctionId)
+            .Select(g => g.OrderByDescending(b => b.CreatedAt).First().Id);
+
         var query = _dbContext.Set<Bid>()
             .AsNoTracking()
-            .Where(bid => bid.BidderId == _currentUser.UserId);
+            .Where(bid => latestBidIds.Contains(bid.Id));
 
         // Status filter
         if (!string.IsNullOrWhiteSpace(parameters.Status))
@@ -45,7 +51,7 @@ internal sealed class GetMyBidsQueryHandler
             var bidStatus = BidStatus.FromId(parameters.Status);
             query = query.Where(b => b.Status == bidStatus);
         }
-        
+
         query = query.ApplySort(parameters, BidMappings.MyBidDtoSortMapping);
 
         var totalCount = await query.CountAsync(cancellationToken);

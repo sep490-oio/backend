@@ -68,7 +68,7 @@ public sealed class AuctionHub : Hub<IAuctionHubClient>
     // ==================== Bidding ====================
 
     [HasPermission(App.Permissions.Catalogs.Auctions.Bid)]
-    public async Task<HubCommandResult<BidDto>> PlaceBid(
+    public async Task<HubCommandResult<PlaceBidResultDto>> PlaceBid(
         Guid auctionId,
         decimal amount,
         string currency,
@@ -78,7 +78,7 @@ public sealed class AuctionHub : Hub<IAuctionHubClient>
         var command = new PlaceBidCommand(auctionId, amount, currency, httpContext?.GetIpAddress());
         var result = await _sender.Send(command, Context.ConnectionAborted);
 
-        return HubCommandResult<BidDto>.FromResult(result);
+        return HubCommandResult<PlaceBidResultDto>.FromResult(result);
     }
 
     [HasPermission(App.Permissions.Catalogs.Auctions.BuyNow)]

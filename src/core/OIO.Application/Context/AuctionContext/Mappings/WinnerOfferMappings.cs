@@ -8,13 +8,13 @@ internal static class WinnerOfferMappings
     public static WinnerOfferDto ToDto(this AuctionWinnerOffer offer)
     {
         return new WinnerOfferDto(
-            Id: offer.Id.Value,
+            OfferId: offer.Id.Value,
             AuctionId: offer.AuctionId.Value,
-            UserId: offer.UserId.Value,
-            RankNo: offer.RankNo,
+            AuctionTitle: offer.Auction.Item.Title.Value,
+            OfferAmount: offer.Auction.Pricing.CurrentAmount,
+            Currency: offer.Auction.Pricing.Currency.Id,
             Status: offer.OfferStatus.Id,
-            OfferedAt: offer.OfferedAt,
             ExpiresAt: offer.ExpiresAt,
-            RespondedAt: offer.RespondedAt);
+            CreatedAt: offer.OfferedAt);
     }
 }

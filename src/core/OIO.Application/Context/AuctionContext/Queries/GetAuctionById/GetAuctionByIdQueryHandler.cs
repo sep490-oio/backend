@@ -6,6 +6,7 @@ using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
+using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
@@ -20,17 +21,20 @@ internal sealed class GetAuctionByIdQueryHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
     private readonly IRuntimeSettings _runtimeSettings;
-    
+    private readonly ICurrentUser _currentUser;
+
     public GetAuctionByIdQueryHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         IClock clock,
-        IRuntimeSettings runtimeSettings)
+        IRuntimeSettings runtimeSettings,
+        ICurrentUser currentUser)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _clock = clock;
         _runtimeSettings = runtimeSettings;
+        _currentUser = currentUser;
     }
 
     public async Task<Result<AuctionDetailDto, Error>> Handle(
@@ -55,10 +59,35 @@ internal sealed class GetAuctionByIdQueryHandler
             return AuctionErrors.Auction.NotFound(auctionId);
 
         var nowUtc = _clock.UtcNow;
-        
-        auction.IncrementView(nowUtc);
-        
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // View count increment moved to RecordAuctionViewCommand (CQRS compliance)
+
+        ParticipantInfoDto? currentUserParticipant = null;
+
+        if (_currentUser.IsAuthenticated)
+        {
+            var userId = _currentUser.UserId;
+
+            var participant = await _dbContext.Set<AuctionParticipant>()
+                .AsNoTracking()
+                .Where(p => p.AuctionId == auctionId && p.UserId == userId)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            var deposit = await _dbContext.Set<AuctionDeposit>()
+                .AsNoTracking()
+                .Where(d => d.AuctionId == auctionId && d.BidderId == userId)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (participant is not null || deposit is not null)
+            {
+                currentUserParticipant = new ParticipantInfoDto(
+                    QualificationStatus: participant?.QualificationStatus.ToString(),
+                    JoinStatus: participant?.JoinStatus.ToString(),
+                    DepositStatus: deposit?.Status.ToString(),
+                    DepositAmount: deposit?.Amount.Amount,
+                    DepositCurrency: deposit?.Amount.Currency.Id);
+            }
+        }
 
         return new AuctionDetailDto(
             Auction: auction.ToDto(nowUtc, _runtimeSettings.Auction.ExtensionThreshold),
@@ -71,7 +100,8 @@ internal sealed class GetAuctionByIdQueryHandler
             PriceHistory: auction.PriceHistories
                 .OrderByDescending(ph => ph.CreatedAt)
                 .Select(ph => ph.ToDto())
-                .ToList());
+                .ToList(),
+            CurrentUserParticipant: currentUserParticipant);
     }
 }
 

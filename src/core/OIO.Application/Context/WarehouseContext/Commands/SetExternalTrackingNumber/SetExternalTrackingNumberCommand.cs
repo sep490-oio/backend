@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
+using OIO.Application.Context.UserContext.Services;
 using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Application.Context.WarehouseContext.Mappings;
 using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
@@ -20,7 +21,8 @@ public sealed record SetExternalTrackingNumberCommand(
 internal sealed class SetExternalTrackingNumberCommandHandler(
     IDbContext db,
     IUnitOfWork unitOfWork,
-    IClock clock)
+    IClock clock,
+    ICurrentUser currentUser)
     : ICommandHandler<SetExternalTrackingNumberCommand, InboundShipmentDto>
 {
     public async Task<Result<InboundShipmentDto, Error>> Handle(
@@ -33,6 +35,10 @@ internal sealed class SetExternalTrackingNumberCommandHandler(
             .FirstOrDefaultAsync(s => s.Id == shipmentId, cancellationToken);
 
         if (shipment is null)
+            return WarehouseErrors.InboundShipment.NotFound(request.ShipmentId.ToString());
+
+        // Ownership check
+        if (shipment.SellerId != currentUser.UserId)
             return WarehouseErrors.InboundShipment.NotFound(request.ShipmentId.ToString());
 
         var result = shipment.SetExternalTrackingNumber(request.TrackingNumber, clock.UtcNow);

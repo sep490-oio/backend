@@ -10,5 +10,6 @@ public class MainLayoutBase : LayoutComponentBase
     [Inject] protected IAppInfo AppInfo { get; set; } = default!;
 
     protected string AppName => AppInfo.AppName;
+    protected string BaseUrl => AppInfo.FeUrl;
     protected int CurrentYear => Clock.UtcNow.Year;
 }

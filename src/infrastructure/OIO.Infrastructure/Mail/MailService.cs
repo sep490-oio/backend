@@ -29,10 +29,10 @@ internal sealed class MailSender : IMailSender
         mimeMessage.To.Add(MailboxAddress.Parse(message.To));
         mimeMessage.Subject = message.Subject;
 
-        mimeMessage.Body = new BodyBuilder
-        {
-            HtmlBody = message.HtmlBody
-        }.ToMessageBody();
+        var bodyBuilder = new BodyBuilder { HtmlBody = message.HtmlBody };
+        if (!string.IsNullOrWhiteSpace(message.TextBody))
+            bodyBuilder.TextBody = message.TextBody;
+        mimeMessage.Body = bodyBuilder.ToMessageBody();
 
         using var client = new SmtpClient();
 
