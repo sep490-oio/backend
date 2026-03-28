@@ -40,6 +40,10 @@
       - database
     restart: unless-stopped
         
+  frontend:
+    image: ghcr.io/sep490-oio/frontend:latest
+    restart: unless-stopped
+
   caddy:
     image: caddy:alpine
     restart: unless-stopped
@@ -47,12 +51,13 @@
       - "80:80"
       - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile  
-      - caddy_data:/data                  
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
       - caddy_config:/config
     depends_on:
       - oio.api
       - seq
+      - frontend
 
   redis:
     image: redis:latest

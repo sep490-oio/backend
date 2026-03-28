@@ -2,6 +2,10 @@ api.newlsun.com {
     reverse_proxy oio.api:8080
 }
 
+newlsun.com {
+    reverse_proxy frontend:80
+}
+
 seq.newlsun.com {
     reverse_proxy seq:80
 }
