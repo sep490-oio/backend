@@ -8,17 +8,16 @@ namespace OIO.Api.Endpoints.ModerationContext.Admins;
 
 public sealed class GetMonitoringAlertsEndpoint : IEndpoint
 {
+    public sealed record Parameters : GetMonitoringAlertsQueryFilter;
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet(ApiEndpoint.Url.Admins.GetMonitoringAlerts, async (
-                string? status,
-                string? entityType,
-                Guid? entityId,
+                [AsParameters] Parameters parameters,
                 ISender sender,
                 CancellationToken ct) =>
             {
                 var result = await sender.Send(
-                    new GetMonitoringAlertsQuery(status, entityType, entityId),
+                    new GetMonitoringAlertsQuery(parameters),
                     ct);
 
                 return result.ToOkHttpResult();
