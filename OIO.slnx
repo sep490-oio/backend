@@ -3,6 +3,7 @@
     <File Path=".env" />
     <File Path=".github/workflows/main.yml" />
     <File Path=".gitignore" />
+    <File Path="Caddyfile" />
     <File Path="compose.override.yaml" />
     <File Path="compose.yaml" />
     <File Path="config/appsettings.Production.json" />

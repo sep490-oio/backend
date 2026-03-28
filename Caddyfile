@@ -2,7 +2,7 @@ api.newlsun.com {
     reverse_proxy oio.api:8080
 }
 
-newlsun.com {
+fe.newlsun.com {
     reverse_proxy frontend:80
 }
 
