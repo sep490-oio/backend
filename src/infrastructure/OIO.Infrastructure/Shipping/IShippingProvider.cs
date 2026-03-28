@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using OIO.Domain.Context.WarehouseContext.Aggregates.ShippingProviders;
@@ -31,6 +31,12 @@ public interface IShippingProvider
         CalculateFeeRequest    request,
         ShippingProviderConfig config,
         CancellationToken      ct = default);
+
+    /// <summary>Calculates expected delivery time before booking.</summary>
+    Task<Result<DateTime?, Error>> CalculateExpectedDeliveryTimeAsync(
+        CalculateExpectedDeliveryTimeRequest request,
+        ShippingProviderConfig               config,
+        CancellationToken                    ct = default);
 
     /// <summary>
     /// Parses and verifies an incoming webhook payload.

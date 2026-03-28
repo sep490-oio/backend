@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace OIO.Infrastructure.Shipping.Ghn;
 
@@ -184,4 +184,31 @@ internal sealed class GhnWebhookPayload
     [JsonPropertyName("WarehouseAddress")] public string? WarehouseAddress { get; init; }
     [JsonPropertyName("CODAmount")]      public decimal? CodAmount    { get; init; }
     [JsonPropertyName("CODTransferDate")] public string? CodTransferDate { get; init; }
+}
+
+// ============================================================
+// Expected Delivery Time
+// POST /shiip/public-api/v2/shipping-order/leadtime
+// ============================================================
+
+internal sealed class GhnExpectedDeliveryTimeRequest
+{
+    [JsonPropertyName("from_district_id")] public required int FromDistrictId { get; init; }
+    [JsonPropertyName("from_ward_code")]   public required string FromWardCode { get; init; }
+    [JsonPropertyName("to_district_id")]   public required int ToDistrictId { get; init; }
+    [JsonPropertyName("to_ward_code")]     public required string ToWardCode { get; init; }
+    [JsonPropertyName("service_id")]       public int ServiceId { get; init; } = 53320; // Default Standard Express
+}
+
+internal sealed class GhnExpectedDeliveryTimeResponse
+{
+    [JsonPropertyName("code")]    public int    Code    { get; init; }
+    [JsonPropertyName("message")] public string Message { get; init; } = "";
+    [JsonPropertyName("data")]    public GhnExpectedDeliveryTimeData? Data { get; init; }
+}
+
+internal sealed class GhnExpectedDeliveryTimeData
+{
+    [JsonPropertyName("leadtime")]   public long Leadtime { get; init; } // Unix timestamp
+    [JsonPropertyName("order_date")] public long OrderDate { get; init; } // Unix timestamp
 }

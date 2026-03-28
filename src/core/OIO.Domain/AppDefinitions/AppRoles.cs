@@ -118,6 +118,8 @@ public static partial class App
 
                     // Warehouse
                     Permissions.Catalogs.Warehouse.ReadShipments,
+                    Permissions.Catalogs.Warehouse.CalculateShippingFee,
+                    Permissions.Catalogs.Warehouse.CalculateLeadTime,
                 ],
 
                 [Seller] =
@@ -175,10 +177,11 @@ public static partial class App
                     Permissions.Catalogs.Me.ReadNotificationPreferences,
                     Permissions.Catalogs.Me.ManageNotificationPreferences,
 
-                    // Warehouse
                     Permissions.Catalogs.Warehouse.ReadShipments,
                     Permissions.Catalogs.Warehouse.BookInbound,
                     Permissions.Catalogs.Warehouse.SelfShipOutbound,
+                    Permissions.Catalogs.Warehouse.CalculateShippingFee,
+                    Permissions.Catalogs.Warehouse.CalculateLeadTime,
                 ],
 
                 [Inspector] =
@@ -201,6 +204,8 @@ public static partial class App
                     Permissions.Catalogs.Warehouse.BookOutbound,
                     Permissions.Catalogs.Warehouse.UpdateExternalStatus,
                     Permissions.Catalogs.Warehouse.ManageLocations,
+                    Permissions.Catalogs.Warehouse.CalculateShippingFee,
+                    Permissions.Catalogs.Warehouse.CalculateLeadTime,
                 ],
 
                 [Admin] = Permissions.Catalogs.All

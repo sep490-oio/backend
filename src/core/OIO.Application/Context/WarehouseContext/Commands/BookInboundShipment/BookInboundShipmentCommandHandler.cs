@@ -57,6 +57,16 @@ internal sealed class BookInboundShipmentCommandHandler
         if (dimensionsResult.IsFailure) return dimensionsResult.Error;
         var dimensions = dimensionsResult.Value;
 
+        // ── 1b. Check for existing active inbound shipment for the same item ────── 
+        var hasActiveInbound = await _dbContext.Set<InboundShipment>()
+            .AnyAsync(s => s.ItemId == request.ItemId &&
+                           s.Status != InboundShipmentStatus.Cancelled &&
+                           s.Status != InboundShipmentStatus.Failed,
+                      cancellationToken);
+
+        if (hasActiveInbound)
+            return WarehouseErrors.InboundShipment.AlreadyExists(request.ItemId.ToString());
+
         // ── 2. Resolve Sender Address ─────────────────────────────────────────
         var senderName      = request.SenderName;
         var senderPhone     = request.SenderPhone;

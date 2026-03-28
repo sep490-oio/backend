@@ -175,6 +175,7 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
         if (Status != WarehouseItemStatus.Received)
             return WarehouseErrors.WarehouseItem.NotAvailable;
 
+        Status     = WarehouseItemStatus.Reserved;
         ModifiedAt = now;
 
         RaiseDomainEvent(new WarehouseItemReservedEvent(

@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using MediatR;
 using OIO.Application.Abstractions.Shipping;
 using OIO.Domain.Context.WarehouseContext.Aggregates.ShippingProviders;
@@ -92,5 +92,52 @@ internal sealed class ShippingService : IShippingService
         if (providerResult.IsFailure) return providerResult.Error;
 
         return await providerResult.Value.CancelShipmentAsync(carrierTrackingNumber, config, ct);
+    }
+
+    public async Task<Result<decimal, Error>> CalculateFeeAsync(
+        string                                            providerCode,
+        OIO.Application.Abstractions.Shipping.CalculateFeeRequest request,
+        ShippingProviderConfig                            config,
+        CancellationToken                                 ct = default)
+    {
+        var providerResult = _selector.Select(providerCode);
+        if (providerResult.IsFailure) return providerResult.Error;
+
+        var infraRequest = new OIO.Infrastructure.Shipping.CalculateFeeRequest
+        {
+            WeightGrams                     = request.WeightGrams,
+            InsuranceValue                  = request.InsuranceValue,
+            CodAmount                       = request.CodAmount,
+            RecipientDistrict               = request.RecipientDistrict,
+            RecipientProvince               = request.RecipientProvince,
+            RecipientCarrierAddressDataJson = request.RecipientCarrierAddressDataJson,
+            LengthCm                        = request.LengthCm,
+            WidthCm                         = request.WidthCm,
+            HeightCm                        = request.HeightCm
+        };
+
+        return await providerResult.Value.CalculateFeeAsync(infraRequest, config, ct);
+    }
+
+    public async Task<Result<DateTime?, Error>> CalculateExpectedDeliveryTimeAsync(
+        string                                                              providerCode,
+        OIO.Application.Abstractions.Shipping.CalculateExpectedDeliveryTimeRequest  request,
+        ShippingProviderConfig                                              config,
+        CancellationToken                                                   ct = default)
+    {
+        var providerResult = _selector.Select(providerCode);
+        if (providerResult.IsFailure) return providerResult.Error;
+
+        var infraRequest = new OIO.Infrastructure.Shipping.CalculateExpectedDeliveryTimeRequest
+        {
+            SenderDistrict                  = request.SenderDistrict,
+            SenderProvince                  = request.SenderProvince,
+            SenderCarrierAddressDataJson    = request.SenderCarrierAddressDataJson,
+            RecipientDistrict               = request.RecipientDistrict,
+            RecipientProvince               = request.RecipientProvince,
+            RecipientCarrierAddressDataJson = request.RecipientCarrierAddressDataJson
+        };
+
+        return await providerResult.Value.CalculateExpectedDeliveryTimeAsync(infraRequest, config, ct);
     }
 }

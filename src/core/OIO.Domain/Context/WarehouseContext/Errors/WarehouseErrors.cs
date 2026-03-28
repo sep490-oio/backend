@@ -62,6 +62,10 @@ public static class WarehouseErrors
             "SenderAddress",
             "InboundShipment.SenderAddressMissingAndNoDefault",
             "Sender address information is missing, and the user has no default address configured.");
+
+        public static Error AlreadyExists(string itemId) => Error.Conflict(
+            code: "InboundShipment.AlreadyExists",
+            description: $"An active inbound shipment already exists for item '{itemId}'.");
     }
 
     public static class WarehouseItem
