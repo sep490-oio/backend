@@ -14,11 +14,13 @@ using OIO.Domain.Context.WarehouseContext.Errors;
 using OIO.Domain.Context.WarehouseContext.ValueObjects;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.SeedWork.Errors;
+using Item = OIO.Domain.Context.CatalogContext.Aggregates.Items.Item;
+using ItemId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId;
 
 namespace OIO.Application.Context.WarehouseContext.Commands.BookInboundShipment;
 
 internal sealed class BookInboundShipmentCommandHandler
-    : ICommandHandler<BookInboundShipmentCommand, InboundShipmentDto>
+    : ICommandHandler<BookInboundShipmentCommand, List<InboundShipmentDto>>
 {
     private readonly IDbContext       _dbContext;
     private readonly IUnitOfWork      _unitOfWork;
@@ -40,14 +42,14 @@ internal sealed class BookInboundShipmentCommandHandler
         _clock           = clock;
     }
 
-    public async Task<Result<InboundShipmentDto, Error>> Handle(
+    public async Task<Result<List<InboundShipmentDto>, Error>> Handle(
         BookInboundShipmentCommand request,
         CancellationToken          cancellationToken)
     {
         var now        = _clock.UtcNow;
         var isExternal = request.ShipmentMode == InboundShipmentMode.ExternalCarrier.Id;
 
-        // ── 1. Build package dimensions ───────────────────────────────────────
+        // ── 1. Build package dimensions (shared for the entire batch) ─────────
         var dimensionsResult = PackageDimensions.Create(
             weightGrams: request.WeightGrams,
             lengthCm:    request.LengthCm,
@@ -57,23 +59,35 @@ internal sealed class BookInboundShipmentCommandHandler
         if (dimensionsResult.IsFailure) return dimensionsResult.Error;
         var dimensions = dimensionsResult.Value;
 
-        // ── 1b. Check for existing active inbound shipment for the same item ────── 
-        var hasActiveInbound = await _dbContext.Set<InboundShipment>()
-            .AnyAsync(s => s.ItemId == request.ItemId &&
-                           s.Status != InboundShipmentStatus.Cancelled &&
-                           s.Status != InboundShipmentStatus.Failed,
-                      cancellationToken);
+        // ── 2. Duplicate check — each ItemId must not have an active inbound ─────
+        // First: check for duplicates within the request itself (prevents same ItemId appearing twice)
+        var distinctItemIds = request.Items.Select(i => i.ItemId).Distinct().ToList();
+        if (distinctItemIds.Count != request.Items.Count)
+            return Error.Validation(
+                "Items",
+                "BookInboundShipment.DuplicateItemId",
+                "The Items list contains duplicate ItemId values. Each item must appear only once.");
 
-        if (hasActiveInbound)
-            return WarehouseErrors.InboundShipment.AlreadyExists(request.ItemId.ToString());
+        // Second: check DB — each ItemId must not already have an active inbound shipment
+        foreach (var item in request.Items)
+        {
+            var hasActive = await _dbContext.Set<InboundShipment>()
+                .AnyAsync(s => s.ItemId == item.ItemId &&
+                               s.Status != InboundShipmentStatus.Cancelled &&
+                               s.Status != InboundShipmentStatus.Failed,
+                          cancellationToken);
 
-        // ── 2. Resolve Sender Address ─────────────────────────────────────────
-        var senderName      = request.SenderName;
-        var senderPhone     = request.SenderPhone;
-        var senderAddress   = request.SenderAddress;
-        var senderWard      = request.SenderWard;
-        var senderDistrict  = request.SenderDistrict;
-        var senderProvince  = request.SenderProvince;
+            if (hasActive)
+                return WarehouseErrors.InboundShipment.AlreadyExists(item.ItemId.ToString());
+        }
+
+        // ── 3. Resolve Sender Address ─────────────────────────────────────────
+        var senderName     = request.SenderName;
+        var senderPhone    = request.SenderPhone;
+        var senderAddress  = request.SenderAddress;
+        var senderWard     = request.SenderWard;
+        var senderDistrict = request.SenderDistrict;
+        var senderProvince = request.SenderProvince;
 
         if (string.IsNullOrWhiteSpace(senderName)    ||
             string.IsNullOrWhiteSpace(senderPhone)   ||
@@ -86,53 +100,57 @@ internal sealed class BookInboundShipmentCommandHandler
                 .FirstOrDefaultAsync(a => a.UserId == _currentUser.UserId && a.IsDefault, cancellationToken);
 
             if (defaultUserAddress is null)
-            {
                 return WarehouseErrors.InboundShipment.SenderAddressMissingAndNoDefault;
-            }
 
-            senderName     = string.IsNullOrWhiteSpace(senderName) ? defaultUserAddress.Recipient.RecipientName : senderName;
-            senderPhone    = string.IsNullOrWhiteSpace(senderPhone) ? defaultUserAddress.Recipient.Phone.Value : senderPhone;
-            senderAddress  = string.IsNullOrWhiteSpace(senderAddress) ? defaultUserAddress.Address.Street : senderAddress;
-            senderWard     = string.IsNullOrWhiteSpace(senderWard) ? defaultUserAddress.Address.Ward : senderWard;
-            senderDistrict = string.IsNullOrWhiteSpace(senderDistrict) ? defaultUserAddress.Address.District : senderDistrict;
-            senderProvince = string.IsNullOrWhiteSpace(senderProvince) ? defaultUserAddress.Address.City : senderProvince;
+            senderName     = string.IsNullOrWhiteSpace(senderName)     ? defaultUserAddress.Recipient.RecipientName : senderName;
+            senderPhone    = string.IsNullOrWhiteSpace(senderPhone)    ? defaultUserAddress.Recipient.Phone.Value    : senderPhone;
+            senderAddress  = string.IsNullOrWhiteSpace(senderAddress)  ? defaultUserAddress.Address.Street          : senderAddress;
+            senderWard     = string.IsNullOrWhiteSpace(senderWard)     ? defaultUserAddress.Address.Ward            : senderWard;
+            senderDistrict = string.IsNullOrWhiteSpace(senderDistrict) ? defaultUserAddress.Address.District        : senderDistrict;
+            senderProvince = string.IsNullOrWhiteSpace(senderProvince) ? defaultUserAddress.Address.City            : senderProvince;
         }
 
-        // ── 3a. External carrier — skip carrier API ───────────────────────────
+        // ── 4a. External carrier — one record per item, each with its own EXT code ─
         if (isExternal)
         {
             if (string.IsNullOrWhiteSpace(request.ExternalCarrierName))
                 return WarehouseErrors.InboundShipment.ExternalCarrierNameRequired;
 
-            var externalCode = $"EXT-{Guid.NewGuid():N}"[..20];
+            var externalShipments = new List<InboundShipment>(request.Items.Count);
 
-            var externalResult = InboundShipment.Create(
-                itemId:              request.ItemId,
-                sellerId:            _currentUser.UserId,
-                providerCode:        ShippingProviderCode.External,
-                clientOrderCode:     externalCode,
-                senderName:          senderName,
-                senderPhone:         senderPhone,
-                senderAddress:       senderAddress,
-                senderWard:          senderWard,
-                senderDistrict:      senderDistrict,
-                senderProvince:      senderProvince,
-                dimensions:          dimensions,
-                now:                 now,
-                shipmentMode:        InboundShipmentMode.ExternalCarrier,
-                externalCarrierName: request.ExternalCarrierName,
-                insuranceValue:      request.InsuranceValue,
-                notes:               request.Notes);
+            foreach (var item in request.Items)
+            {
+                var extCode = $"EXT-{Guid.NewGuid():N}"[..20];
 
-            if (externalResult.IsFailure) return externalResult.Error;
+                var extResult = InboundShipment.Create(
+                    itemId:              item.ItemId,
+                    sellerId:            _currentUser.UserId,
+                    providerCode:        ShippingProviderCode.External,
+                    clientOrderCode:     extCode,
+                    senderName:          senderName,
+                    senderPhone:         senderPhone,
+                    senderAddress:       senderAddress,
+                    senderWard:          senderWard,
+                    senderDistrict:      senderDistrict,
+                    senderProvince:      senderProvince,
+                    dimensions:          dimensions,
+                    now:                 now,
+                    shipmentMode:        InboundShipmentMode.ExternalCarrier,
+                    externalCarrierName: request.ExternalCarrierName,
+                    insuranceValue:      request.InsuranceValue,
+                    notes:               request.Notes);
 
-            _dbContext.Insert(externalResult.Value);
+                if (extResult.IsFailure) return extResult.Error;
+
+                externalShipments.Add(extResult.Value);
+                _dbContext.Insert(extResult.Value);
+            }
+
             await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            return externalResult.Value.ToDto();
+            return externalShipments.Select(s => s.ToDto()).ToList();
         }
 
-        // ── 3b. Platform-managed — load ShippingProviderConfig ────────────────
+        // ── 4b. Platform-managed — load ShippingProviderConfig ────────────────
         ShippingProviderConfig? config;
 
         if (!string.IsNullOrWhiteSpace(request.ProviderCode))
@@ -158,10 +176,19 @@ internal sealed class BookInboundShipmentCommandHandler
                 return WarehouseErrors.ShippingProvider.NoDefaultProvider;
         }
 
-        // ── 4. Generate client order code ─────────────────────────────────────
+        // ── 5. Generate ONE shared client order code for the batch ────────────
         var clientOrderCode = $"INB-{Guid.NewGuid():N}"[..20];
 
-        // ── 5. Call carrier API ───────────────────────────────────────────────
+        // Fetch item titles from catalog to use as Name in the carrier order
+        var catalogItemIds = request.Items.Select(x => ItemId.From(x.ItemId)).ToList();
+        var itemTitlesDict = await _dbContext.Set<Item>()
+            .Where(i => catalogItemIds.Contains(i.Id))
+            .ToDictionaryAsync(i => i.Id.Value, i => i.Title.Value, cancellationToken);
+            
+        // Fallback calculation if ItemPrice is omitting: distribute InsuranceValue evenly
+        var fallbackPricePerItem = Math.Max(0, Math.Round(request.InsuranceValue / request.Items.Count));
+
+        // ── 6. Call carrier API ONCE with all items listed in Items[] ─────────
         // Recipient = warehouse (pick address from config)
         // Sender    = seller's address (carrier picks up FROM seller)
         var bookingRequest = new BookShipmentRequest
@@ -195,17 +222,15 @@ internal sealed class BookInboundShipmentCommandHandler
 
             GhnHandlingNote = request.GhnHandlingNote,
 
-            Items =
-            [
-                new BookShipmentItem
-                {
-                    Name        = request.ItemName,
-                    Code        = clientOrderCode,
-                    Quantity    = 1,
-                    Price       = request.ItemPrice,
-                    WeightGrams = request.WeightGrams
-                }
-            ]
+            // All items declared in a single GHN order
+            Items = request.Items.Select(i => new BookShipmentItem
+            {
+                Name        = itemTitlesDict.GetValueOrDefault(i.ItemId, "Unknown Item"),
+                Code        = clientOrderCode,
+                Quantity    = 1,
+                Price       = i.ItemPrice ?? fallbackPricePerItem,
+                WeightGrams = i.WeightGrams
+            }).ToList()
         };
 
         var bookingResult = await _shippingService.BookShipmentAsync(
@@ -214,40 +239,52 @@ internal sealed class BookInboundShipmentCommandHandler
         if (bookingResult.IsFailure) return bookingResult.Error;
         var booking = bookingResult.Value;
 
-        // ── 6. Create InboundShipment domain entity ───────────────────────────
-        var createResult = InboundShipment.Create(
-            itemId:          request.ItemId,
-            sellerId:        _currentUser.UserId,
-            providerCode:    config.ProviderCode,
-            clientOrderCode: clientOrderCode,
-            senderName:      senderName,
-            senderPhone:     senderPhone,
-            senderAddress:   senderAddress,
-            senderWard:      senderWard,
-            senderDistrict:  senderDistrict,
-            senderProvince:  senderProvince,
-            dimensions:      dimensions,
-            now:             now,
-            shipmentMode:    InboundShipmentMode.PlatformManaged,
-            senderCarrierAddressData: request.SenderCarrierAddressDataJson is not null
-                ? CarrierAddressData.From(request.SenderCarrierAddressDataJson)
-                : null,
-            shippingFee:       booking.ShippingFee,
-            insuranceValue:    request.InsuranceValue,
-            notes:             request.Notes,
-            expectedArrivalAt: booking.EstimatedDeliveryAt);
+        // ── 7. Create ONE InboundShipment per ItemId, all sharing the GHN order ─
+        // ClientOrderCode and CarrierTrackingNumber are identical across the batch.
+        // Staff still processes each shipment independently by its own InboundShipmentId.
+        var senderCarrierData = request.SenderCarrierAddressDataJson is not null
+            ? CarrierAddressData.From(request.SenderCarrierAddressDataJson)
+            : null;
 
-        if (createResult.IsFailure) return createResult.Error;
-        var shipment = createResult.Value;
+        var createdShipments = new List<InboundShipment>(request.Items.Count);
 
-        // ── 7. Record carrier booking ─────────────────────────────────────────
-        var bookedResult = shipment.RecordBooked(booking.CarrierTrackingNumber, now);
-        if (bookedResult.IsFailure) return bookedResult.Error;
+        foreach (var item in request.Items)
+        {
+            var createResult = InboundShipment.Create(
+                itemId:          item.ItemId,
+                sellerId:        _currentUser.UserId,
+                providerCode:    config.ProviderCode,
+                clientOrderCode: clientOrderCode,          // ← shared across batch
+                senderName:      senderName,
+                senderPhone:     senderPhone,
+                senderAddress:   senderAddress,
+                senderWard:      senderWard,
+                senderDistrict:  senderDistrict,
+                senderProvince:  senderProvince,
+                dimensions:      dimensions,
+                now:             now,
+                shipmentMode:    InboundShipmentMode.PlatformManaged,
+                senderCarrierAddressData: senderCarrierData,
+                shippingFee:       booking.ShippingFee,    // ← total fee, denormalized per record
+                insuranceValue:    request.InsuranceValue,
+                notes:             request.Notes,
+                expectedArrivalAt: booking.EstimatedDeliveryAt);
 
-        // ── 8. Persist ────────────────────────────────────────────────────────
-        _dbContext.Insert(shipment);
+            if (createResult.IsFailure) return createResult.Error;
+
+            var shipment = createResult.Value;
+
+            // Sets shared CarrierTrackingNumber on each record
+            var bookedResult = shipment.RecordBooked(booking.CarrierTrackingNumber, now);
+            if (bookedResult.IsFailure) return bookedResult.Error;
+
+            createdShipments.Add(shipment);
+            _dbContext.Insert(shipment);
+        }
+
+        // ── 8. Persist all at once ────────────────────────────────────────────
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return shipment.ToDto();
+        return createdShipments.Select(s => s.ToDto()).ToList();
     }
 }
