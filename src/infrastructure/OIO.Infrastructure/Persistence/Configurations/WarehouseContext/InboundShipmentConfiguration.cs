@@ -171,18 +171,6 @@ internal sealed class InboundShipmentConfiguration : IEntityTypeConfiguration<In
             .HasForeignKey("InboundShipmentId")
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne<Item>()
-            .WithMany()
-            .HasForeignKey("item_id")
-            .IsRequired(false) // Assuming we don't cascade delete shipmnets on item delete
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey("seller_id")
-            .IsRequired(false)
-            .OnDelete(DeleteBehavior.Restrict);
-        
         // NOTE: ClientOrderCode is shared across all InboundShipments in a batch booking.
         // It is NOT unique — N records share the same code (one per batched item).
         builder.HasIndex(e => e.ClientOrderCode)

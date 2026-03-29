@@ -195,12 +195,6 @@ internal sealed class OutboundShipmentConfiguration : IEntityTypeConfiguration<O
             .HasForeignKey("OutboundShipmentId")
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne<Order>()
-            .WithMany()
-            .HasForeignKey("order_id")
-            .IsRequired(false)
-            .OnDelete(DeleteBehavior.Restrict);
-
         // ==================== Indexes ====================
         builder.HasIndex(e => e.ClientOrderCode)
             .IsUnique()
