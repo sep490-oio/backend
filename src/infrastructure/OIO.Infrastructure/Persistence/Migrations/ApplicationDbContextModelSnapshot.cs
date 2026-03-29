@@ -10,7 +10,7 @@ using OIO.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace OIO.Infrastructure.Persistence.Migrations
+namespace OIO.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
     partial class ApplicationDbContextModelSnapshot : ModelSnapshot

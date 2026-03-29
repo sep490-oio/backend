@@ -11,11 +11,11 @@ using OIO.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace OIO.Infrastructure.Persistence.Migrations
+namespace OIO.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260329161724_RemoveCrossContextShadowFKs")]
-    partial class RemoveCrossContextShadowFKs
+    [Migration("20260329162424_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
