@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -40,6 +40,7 @@ public static class DatabaseSeeder
             await SeedShippingProviderConfigsAsync(scope.ServiceProvider);
             await SeedPlatformWalletAsync(dbContext, scope.ServiceProvider, logger);
             await CoreFlowFakeDataSeeder.SeedAsync(dbContext, scope.ServiceProvider, logger);
+            await WarehouseFlowFakeDataSeeder.SeedAsync(dbContext, scope.ServiceProvider, logger);
             logger.LogInformation("Database seeding completed successfully.");
         }
         catch (Exception ex)
