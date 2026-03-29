@@ -183,9 +183,10 @@ internal sealed class InboundShipmentConfiguration : IEntityTypeConfiguration<In
             .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
         
+        // NOTE: ClientOrderCode is shared across all InboundShipments in a batch booking.
+        // It is NOT unique — N records share the same code (one per batched item).
         builder.HasIndex(e => e.ClientOrderCode)
-            .IsUnique()
-            .HasDatabaseName("idx_unique_inbound_shipments_client_order_code");
+            .HasDatabaseName("idx_inbound_shipments_client_order_code");
 
         builder.HasIndex(e => e.CarrierTrackingNumber)
             .HasDatabaseName("idx_inbound_shipments_carrier_tracking_number")
