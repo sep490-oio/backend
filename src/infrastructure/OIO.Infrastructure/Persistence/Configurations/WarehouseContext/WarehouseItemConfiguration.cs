@@ -76,18 +76,6 @@ internal sealed class WarehouseItemConfiguration : IEntityTypeConfiguration<Ware
             .HasForeignKey(e => e.StorageLocationId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        builder.HasOne<Item>()
-            .WithMany()
-            .HasForeignKey("item_id")
-            .IsRequired(false)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey("inspected_by")
-            .IsRequired(false)
-            .OnDelete(DeleteBehavior.Restrict);
-
         builder.HasMany(e => e.Media)
             .WithOne(m => m.WarehouseItem)
             .HasForeignKey(m => m.WarehouseItemId)

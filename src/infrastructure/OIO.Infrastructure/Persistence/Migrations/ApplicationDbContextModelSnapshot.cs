@@ -10,7 +10,7 @@ using OIO.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace OIO.Infrastructure.Persistence.Migrations
+namespace OIO.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
     partial class ApplicationDbContextModelSnapshot : ModelSnapshot
@@ -6498,14 +6498,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(30)")
                         .HasColumnName("status");
 
-                    b.Property<Guid?>("item_id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("item_id");
-
-                    b.Property<Guid?>("seller_id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("seller_id");
-
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Dimensions", "OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments.InboundShipment.Dimensions#PackageDimensions", b1 =>
                         {
                             b1.IsRequired();
@@ -6535,8 +6527,7 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasFilter("carrier_tracking_number IS NOT NULL");
 
                     b.HasIndex("ClientOrderCode")
-                        .IsUnique()
-                        .HasDatabaseName("idx_unique_inbound_shipments_client_order_code");
+                        .HasDatabaseName("idx_inbound_shipments_client_order_code");
 
                     b.HasIndex("ItemId")
                         .HasDatabaseName("idx_inbound_shipments_item_id");
@@ -6550,20 +6541,7 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.HasIndex("Status")
                         .HasDatabaseName("idx_inbound_shipments_status");
 
-                    b.HasIndex("item_id")
-                        .HasDatabaseName("ix_inbound_shipments_item_id");
-
-                    b.HasIndex("seller_id")
-                        .HasDatabaseName("ix_inbound_shipments_seller_id");
-
-                    b.ToTable("inbound_shipments", null, t =>
-                        {
-                            t.Property("item_id")
-                                .HasColumnName("item_id1");
-
-                            t.Property("seller_id")
-                                .HasColumnName("seller_id1");
-                        });
+                    b.ToTable("inbound_shipments", (string)null);
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.OutboundShipment", b =>
@@ -6691,10 +6669,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("warehouse_item_id");
 
-                    b.Property<Guid?>("order_id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("order_id");
-
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Dimensions", "OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.OutboundShipment.Dimensions#PackageDimensions", b1 =>
                         {
                             b1.IsRequired();
@@ -6737,9 +6711,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("idx_unique_outbound_shipments_warehouse_item_id");
 
-                    b.HasIndex("order_id")
-                        .HasDatabaseName("ix_outbound_shipments_order_id");
-
                     b.ToTable("outbound_shipments", null, t =>
                         {
                             t.HasCheckConstraint("chk_outbound_shipments_cod_amount", "cod_amount >= 0");
@@ -6747,9 +6718,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("chk_outbound_shipments_insurance_value", "insurance_value >= 0");
 
                             t.HasCheckConstraint("chk_outbound_shipments_shipping_fee", "shipping_fee >= 0");
-
-                            t.Property("order_id")
-                                .HasColumnName("order_id1");
                         });
                 });
 
@@ -7112,14 +7080,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("storage_location_id");
 
-                    b.Property<Guid?>("inspected_by")
-                        .HasColumnType("uuid")
-                        .HasColumnName("inspected_by");
-
-                    b.Property<Guid?>("item_id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("item_id");
-
                     b.HasKey("Id")
                         .HasName("pk_warehouse_items");
 
@@ -7137,17 +7097,7 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("idx_warehouse_items_storage_location_id")
                         .HasFilter("storage_location_id IS NOT NULL");
 
-                    b.HasIndex("inspected_by")
-                        .HasDatabaseName("ix_warehouse_items_inspected_by");
-
-                    b.HasIndex("item_id")
-                        .HasDatabaseName("ix_warehouse_items_item_id");
-
-                    b.ToTable("warehouse_items", null, t =>
-                        {
-                            t.Property("item_id")
-                                .HasColumnName("item_id1");
-                        });
+                    b.ToTable("warehouse_items", (string)null);
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.WarehouseItemMedia", b =>
@@ -8083,21 +8033,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.Navigation("Verification");
                 });
 
-            modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments.InboundShipment", b =>
-                {
-                    b.HasOne("OIO.Domain.Context.CatalogContext.Aggregates.Items.Item", null)
-                        .WithMany()
-                        .HasForeignKey("item_id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_inbound_shipments_items_item_id");
-
-                    b.HasOne("OIO.Domain.Context.UserContext.Aggregates.Users.User", null)
-                        .WithMany()
-                        .HasForeignKey("seller_id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_inbound_shipments_users_seller_id");
-                });
-
             modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.OutboundShipment", b =>
                 {
                     b.HasOne("OIO.Domain.Context.OrderContext.Aggregates.Orders.Order", "Order")
@@ -8112,12 +8047,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasForeignKey("OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.OutboundShipment", "WarehouseItemId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_outbound_shipments_warehouse_item_warehouse_item_id");
-
-                    b.HasOne("OIO.Domain.Context.OrderContext.Aggregates.Orders.Order", null)
-                        .WithMany()
-                        .HasForeignKey("order_id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_outbound_shipments_orders_order_id1");
 
                     b.Navigation("Order");
                 });
@@ -8168,18 +8097,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasForeignKey("StorageLocationId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_warehouse_items_warehouse_storage_location_storage_location");
-
-                    b.HasOne("OIO.Domain.Context.UserContext.Aggregates.Users.User", null)
-                        .WithMany()
-                        .HasForeignKey("inspected_by")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_warehouse_items_users_inspected_by");
-
-                    b.HasOne("OIO.Domain.Context.CatalogContext.Aggregates.Items.Item", null)
-                        .WithMany()
-                        .HasForeignKey("item_id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_warehouse_items_items_item_id");
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.WarehouseItemMedia", b =>

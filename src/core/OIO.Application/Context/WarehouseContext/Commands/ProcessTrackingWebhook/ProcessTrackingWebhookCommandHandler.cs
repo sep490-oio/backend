@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
@@ -84,40 +84,51 @@ internal sealed class ProcessTrackingWebhookCommandHandler
         DateTime                      now,
         CancellationToken             ct)
     {
-        var shipment = await _dbContext.Set<InboundShipment>()
-            .FirstOrDefaultAsync(s => s.ClientOrderCode == request.ClientOrderCode, ct);
+        // A batch booking creates multiple InboundShipments sharing the same ClientOrderCode.
+        // We must update ALL of them when a webhook event arrives.
+        var shipments = await _dbContext.Set<InboundShipment>()
+            .Where(s => s.ClientOrderCode == request.ClientOrderCode)
+            .ToListAsync(ct);
 
-        if (shipment is null)
+        if (shipments.Count == 0)
             return WarehouseErrors.InboundShipment.NotFound(request.ClientOrderCode ?? "");
 
-        var result = shipment.RecordTrackingEvent(
-            providerCode,
-            request.CarrierStatusRaw,
-            request.CarrierStatusDesc,
-            normalizedStatus,
-            request.Location,
-            request.ReasonCode,
-            request.ReasonDescription,
-            request.EventTime,
-            rawPayload,
-            now);
-
-        if (result.IsFailure) return result.Error;
-
-        // If normalized status indicates arrival, also record arrived to trigger domain event
-        if (normalizedStatus == NormalizedTrackingStatus.Arrived &&
-            shipment.Status != InboundShipmentStatus.Arrived)
+        foreach (var shipment in shipments)
         {
-            var arrivedResult = shipment.RecordArrived(now);
-            if (arrivedResult.IsFailure)
+            var statusBeforeTracking = shipment.Status;
+
+            var result = shipment.RecordTrackingEvent(
+                providerCode,
+                request.CarrierStatusRaw,
+                request.CarrierStatusDesc,
+                normalizedStatus,
+                request.Location,
+                request.ReasonCode,
+                request.ReasonDescription,
+                request.EventTime,
+                rawPayload,
+                now);
+
+            if (result.IsFailure) return result.Error;
+
+            // RecordTrackingEvent already mutates Status internally.
+            // We call RecordArrived separately to raise InboundShipmentArrivedEvent,
+            // but only if the shipment was NOT already Arrived BEFORE this tracking event.
+            if (normalizedStatus == NormalizedTrackingStatus.Arrived &&
+                statusBeforeTracking != InboundShipmentStatus.Arrived)
             {
-                _logger.LogWarning(
-                    "RecordArrived failed for inbound shipment {ShipmentId}: {Error}",
-                    shipment.Id, arrivedResult.Error);
+                var arrivedResult = shipment.RecordArrived(now);
+                if (arrivedResult.IsFailure)
+                {
+                    _logger.LogWarning(
+                        "RecordArrived failed for inbound shipment {ShipmentId}: {Error}",
+                        shipment.Id, arrivedResult.Error);
+                }
             }
+
+            _dbContext.Update(shipment);
         }
 
-        _dbContext.Update(shipment);
         await _unitOfWork.SaveChangesAsync(ct);
 
         return UnitResult.Success<e>();
@@ -168,32 +179,39 @@ internal sealed class ProcessTrackingWebhookCommandHandler
                 code: "Webhook.NoReference",
                 description: "Webhook contains neither a recognizable ClientOrderCode nor a CarrierTrackingNumber.");
 
-        var inbound = await _dbContext.Set<InboundShipment>()
-            .FirstOrDefaultAsync(s => s.CarrierTrackingNumber == request.CarrierTrackingNumber, ct);
+        // Fallback by CarrierTrackingNumber — also handles batches sharing the same GHN order.
+        var inbounds = await _dbContext.Set<InboundShipment>()
+            .Where(s => s.CarrierTrackingNumber == request.CarrierTrackingNumber)
+            .ToListAsync(ct);
 
-        if (inbound is not null)
+        if (inbounds.Count > 0)
         {
-            var result = inbound.RecordTrackingEvent(
-                providerCode, request.CarrierStatusRaw, request.CarrierStatusDesc,
-                normalizedStatus, request.Location, request.ReasonCode,
-                request.ReasonDescription, request.EventTime, rawPayload, now);
-
-            if (result.IsFailure) return result.Error;
-
-            // If arrived, trigger domain event (matching primary path behavior)
-            if (normalizedStatus == NormalizedTrackingStatus.Arrived &&
-                inbound.Status != InboundShipmentStatus.Arrived)
+            foreach (var inbound in inbounds)
             {
-                var arrivedResult = inbound.RecordArrived(now);
-                if (arrivedResult.IsFailure)
+                var statusBeforeTracking = inbound.Status;
+
+                var result = inbound.RecordTrackingEvent(
+                    providerCode, request.CarrierStatusRaw, request.CarrierStatusDesc,
+                    normalizedStatus, request.Location, request.ReasonCode,
+                    request.ReasonDescription, request.EventTime, rawPayload, now);
+
+                if (result.IsFailure) return result.Error;
+
+                if (normalizedStatus == NormalizedTrackingStatus.Arrived &&
+                    statusBeforeTracking != InboundShipmentStatus.Arrived)
                 {
-                    _logger.LogWarning(
-                        "RecordArrived failed for inbound shipment {ShipmentId} (carrier fallback): {Error}",
-                        inbound.Id, arrivedResult.Error);
+                    var arrivedResult = inbound.RecordArrived(now);
+                    if (arrivedResult.IsFailure)
+                    {
+                        _logger.LogWarning(
+                            "RecordArrived failed for inbound shipment {ShipmentId} (carrier fallback): {Error}",
+                            inbound.Id, arrivedResult.Error);
+                    }
                 }
+
+                _dbContext.Update(inbound);
             }
 
-            _dbContext.Update(inbound);
             await _unitOfWork.SaveChangesAsync(ct);
             return UnitResult.Success<e>();
         }
