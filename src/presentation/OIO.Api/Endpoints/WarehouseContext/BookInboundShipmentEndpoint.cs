@@ -1,6 +1,7 @@
-﻿using MediatR;
+using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.WarehouseContext.Commands.BookInboundShipment;
+using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.WarehouseContext;
@@ -20,7 +21,7 @@ public sealed class BookInboundShipmentEndpoint : IEndpoint
             .RequireAuthorization(App.Permissions.Catalogs.Warehouse.BookInbound)
             .WithName(ApiEndpoint.Names.Warehouse.BookInboundShipment)
             .WithTags(ApiEndpoint.Tags.Warehouse)
-            .Produces(StatusCodes.Status201Created)
+            .Produces<List<InboundShipmentDto>>(StatusCodes.Status201Created)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status400BadRequest);
     }

@@ -5,12 +5,25 @@ using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.WarehouseContext.Commands.BookInboundShipment;
 
+/// <summary>
+/// Represents a single item to be included in a batch inbound shipment booking.
+/// ItemName is auto-resolved from the Items table (Item.Title).
+/// </summary>
+public sealed record BookInboundShipmentItem(
+    Guid     ItemId,
+    decimal? ItemPrice,   // Optional: per-item custom price declared to carrier
+    int      WeightGrams  // per-item weight reported to carrier in Items[] metadata
+);
+
+/// <summary>
+/// Books a batch inbound shipment: creates ONE carrier order (GHN) for all items,
+/// but creates ONE InboundShipment record per ItemId so staff can process each item independently.
+/// All records in the batch share the same ClientOrderCode and CarrierTrackingNumber.
+/// </summary>
 public sealed record BookInboundShipmentCommand(
-    Guid    ItemId,
-    int     WeightGrams,
-    decimal InsuranceValue,
-    string  ItemName,
-    decimal ItemPrice,
+    List<BookInboundShipmentItem> Items,
+    int     WeightGrams,       // total package weight sent to carrier
+    decimal InsuranceValue,    // total insurance value for the batch
     string? SenderName                   = null,
     string? SenderPhone                  = null,
     string? SenderAddress                = null,
@@ -26,14 +39,16 @@ public sealed record BookInboundShipmentCommand(
     string? ProviderCode                   = null,   // null = use default active provider
     string? Notes                          = null,
     string? GhnHandlingNote                = null    // CHOTHUHANG | CHOXEMHANGKHONGTHU | KHONGCHOXEMHANG
-) : ICommand<InboundShipmentDto>, IHasValidate
+) : ICommand<List<InboundShipmentDto>>, IHasValidate
 {
-    public ViolationsError Validate() =>
-        BookInboundShipmentCommand.Check()
+    public ViolationsError Validate()
+    {
+        var check = BookInboundShipmentCommand.Check()
             .WithOwnerName("BookInboundShipment")
-            .Field(ItemId).NotEmptyGuid()
+            .Field(Items.Count, nameof(Items)).GreaterThan(0)
             .Field(WeightGrams).GreaterThan(0)
-            .Field(InsuranceValue).NonNegative()
-            .Field(ItemName).NotWhiteSpace()
-            .Field(ItemPrice).NonNegative();
+            .Field(InsuranceValue).NonNegative();
+
+        return check;
+    }
 }
