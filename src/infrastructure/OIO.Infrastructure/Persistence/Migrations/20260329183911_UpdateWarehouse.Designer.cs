@@ -11,11 +11,11 @@ using OIO.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace OIO.Infrastructure.Migrations
+namespace OIO.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260329162424_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260329183911_UpdateWarehouse")]
+    partial class UpdateWarehouse
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
