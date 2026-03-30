@@ -4,6 +4,7 @@ using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.ReviewContext.DTOs;
+using OIO.Application.Extensions;
 using OIO.Domain.Context.ReviewContext.Aggregates;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
@@ -19,6 +20,7 @@ internal sealed class GetSellerReviewsQueryHandler(
         GetSellerReviewsQuery request,
         CancellationToken cancellationToken)
     {
+        var parameters =  request.Parameters;
         var sellerId = UserId.From(request.SellerId);
 
         var query = dbContext.Set<SellerReview>()
@@ -28,12 +30,8 @@ internal sealed class GetSellerReviewsQueryHandler(
 
         var totalCount = await query.CountAsync(cancellationToken);
 
-        var pageNumber = request.PageNumber <= 0 ? 1 : request.PageNumber;
-        var pageSize = request.PageSize <= 0 ? 10 : Math.Min(request.PageSize, PagedParameters.MaxPageSize);
-
         var reviews = await query
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
+            
             .Select(r => new
             {
                 Review = r,
@@ -55,8 +53,8 @@ internal sealed class GetSellerReviewsQueryHandler(
                 x.Review.Title,
                 x.Review.Comment,
                 x.Review.CreatedAt))
-            .ToListAsync(cancellationToken);
+            .ToPagedListAsync(totalCount, parameters, cancellationToken);
 
-        return new PagedList<SellerReviewDto>(reviews, totalCount, pageNumber, pageSize);
+        return reviews;
     }
 }

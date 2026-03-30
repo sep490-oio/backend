@@ -9,11 +9,7 @@ namespace OIO.Api.Endpoints.ReviewContext;
 
 public sealed class GetSellerReviewsEndpoint : IEndpoint
 {
-    public sealed record Parameters
-    {
-        [FromQuery] public int PageNumber { get; init; } = 1;
-        [FromQuery] public int PageSize { get; init; } = 10;
-    }
+    public sealed record Parameters : GetSellerReviewsFilter;
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
@@ -25,8 +21,7 @@ public sealed class GetSellerReviewsEndpoint : IEndpoint
             {
                 var query = new GetSellerReviewsQuery(
                     sellerId,
-                    parameters.PageNumber,
-                    parameters.PageSize);
+                    parameters);
 
                 var result = await sender.Send(query, ct);
 
