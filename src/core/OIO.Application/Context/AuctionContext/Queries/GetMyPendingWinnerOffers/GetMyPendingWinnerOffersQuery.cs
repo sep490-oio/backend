@@ -1,8 +1,10 @@
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.AuctionContext.DTOs;
+using OIO.Application.Extensions;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Enums;
@@ -10,10 +12,11 @@ using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.AuctionContext.Queries.GetMyPendingWinnerOffers;
 
-public sealed record GetMyPendingWinnerOffersQuery : IQuery<List<WinnerOfferDto>>;
+public sealed record GetMyPendingWinnerOffersQuery(GetMyPendingWinnerOffersFilterParameters Parameters) 
+    : IQuery<PagedList<WinnerOfferDto>>;
 
 internal sealed class GetMyPendingWinnerOffersQueryHandler
-    : IQueryHandler<GetMyPendingWinnerOffersQuery, List<WinnerOfferDto>>
+    : IQueryHandler<GetMyPendingWinnerOffersQuery, PagedList<WinnerOfferDto>>
 {
     private readonly IDbContext _dbContext;
     private readonly ICurrentUser _currentUser;
@@ -26,17 +29,23 @@ internal sealed class GetMyPendingWinnerOffersQueryHandler
         _currentUser = currentUser;
     }
 
-    public async Task<Result<List<WinnerOfferDto>, Error>> Handle(
+    public async Task<Result<PagedList<WinnerOfferDto>, Error>> Handle(
         GetMyPendingWinnerOffersQuery request,
         CancellationToken cancellationToken)
     {
-        var offers = await _dbContext.Set<AuctionWinnerOffer>()
+        var parameters = request.Parameters;
+
+        var query = _dbContext.Set<AuctionWinnerOffer>()
             .AsNoTracking()
             .Include(o => o.Auction)
                 .ThenInclude(a => a.Item)
             .Where(o => o.UserId == _currentUser.UserId
                      && o.OfferStatus == WinnerOfferStatus.Pending)
-            .OrderByDescending(o => o.OfferedAt)
+            .OrderByDescending(o => o.OfferedAt);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var offers = await query
             .Select(o => new WinnerOfferDto(
                 o.Id.Value,
                 o.AuctionId.Value,
@@ -46,7 +55,7 @@ internal sealed class GetMyPendingWinnerOffersQueryHandler
                 o.OfferStatus.Id,
                 o.ExpiresAt,
                 o.OfferedAt))
-            .ToListAsync(cancellationToken);
+            .ToPagedListAsync(totalCount, parameters, cancellationToken);
 
         return offers;
     }
