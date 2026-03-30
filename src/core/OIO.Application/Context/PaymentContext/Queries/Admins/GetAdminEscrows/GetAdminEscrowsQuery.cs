@@ -66,11 +66,10 @@ internal sealed class GetAdminEscrowsQueryHandler
         query = query.OrderByDescending(x => x.HeldAt);
 
         var count = await query.CountAsync(cancellationToken);
-        var items = await query.Page(parameters).ToListAsync(cancellationToken);
+        var items = await query
+            .Select(x => x.ToDto())
+            .ToPagedListAsync(count, parameters, cancellationToken);
 
-        return items
-            .Select(PaymentReadModelMapper.ToDto)
-            .ToList()
-            .ToPagedList(count, parameters);
+        return items;
     }
 }

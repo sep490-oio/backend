@@ -10,7 +10,7 @@ namespace OIO.Application.Context.PaymentContext.Queries;
 
 internal static class PaymentReadModelMapper
 {
-    public static WalletSummaryDto ToSummaryDto(Wallet wallet)
+    public static WalletSummaryDto ToSummaryDto(this Wallet wallet)
         => new(
             WalletId: wallet.Id.Value,
             Currency: wallet.WalletFunds.Currency.Id,
@@ -20,7 +20,7 @@ internal static class PaymentReadModelMapper
             IsActive: wallet.IsActive,
             UpdatedAt: wallet.ModifiedAt ?? wallet.CreatedAt);
 
-    public static PaymentMethodDto ToDto(PaymentMethod paymentMethod)
+    public static PaymentMethodDto ToDto(this PaymentMethod paymentMethod)
         => new(
             Id: paymentMethod.Id.Value,
             Type: paymentMethod.Type.Id,
@@ -36,7 +36,7 @@ internal static class PaymentReadModelMapper
             VnPayCardType: paymentMethod.VnPayCardType,
             BankCode: paymentMethod.BankCode);
 
-    public static WithdrawalRequestDto ToDto(WithdrawalRequest withdrawal)
+    public static WithdrawalRequestDto ToDto(this WithdrawalRequest withdrawal)
         => new(
             Id: withdrawal.Id.Value,
             Amount: withdrawal.Amount,
@@ -50,7 +50,7 @@ internal static class PaymentReadModelMapper
             CreatedAt: withdrawal.CreatedAt,
             ProcessedAt: withdrawal.ProcessedAt);
 
-    public static AdminWithdrawalRequestDetailDto ToAdminDetailDto(WithdrawalRequest withdrawal)
+    public static AdminWithdrawalRequestDetailDto ToAdminDetailDto(this WithdrawalRequest withdrawal)
         => new(
             Id: withdrawal.Id.Value,
             UserId: withdrawal.UserId.Value,
@@ -67,7 +67,7 @@ internal static class PaymentReadModelMapper
             CreatedAt: withdrawal.CreatedAt,
             ProcessedAt: withdrawal.ProcessedAt);
 
-    public static PaymentTransactionDto ToDto(Transaction transaction)
+    public static PaymentTransactionDto ToDto(this Transaction transaction)
         => new(
             Id: transaction.Id.Value,
             TransactionNumber: transaction.TransactionNumber.Value,
@@ -84,7 +84,7 @@ internal static class PaymentReadModelMapper
             CreatedAt: transaction.CreatedAt,
             ProcessedAt: transaction.ProcessedAt);
 
-    public static EscrowDto ToDto(Escrow escrow)
+    public static EscrowDto ToDto(this Escrow escrow)
         => new(
             Id: escrow.Id.Value,
             OrderId: escrow.OrderId.Value,
@@ -98,7 +98,7 @@ internal static class PaymentReadModelMapper
             ReleasedAt: escrow.Status == EscrowStatus.RefundedToBuyer ? null : escrow.ReleasedAt,
             RefundedAt: escrow.Status == EscrowStatus.RefundedToBuyer ? escrow.ReleasedAt : null);
 
-    public static EscrowDetailDto ToDetailDto(Escrow escrow)
+    public static EscrowDetailDto ToDetailDto(this Escrow escrow)
         => new(
             Id: escrow.Id.Value,
             OrderId: escrow.OrderId.Value,
@@ -124,7 +124,7 @@ internal static class PaymentReadModelMapper
                     CreatedAt: x.CreatedAt))
                 .ToList());
 
-    public static WalletTransactionDto ToDto(WalletTransaction walletTransaction, string currency)
+    public static WalletTransactionDto ToDto(this WalletTransaction walletTransaction, string currency)
     {
         var (referenceType, referenceId) = ResolveReference(walletTransaction);
 
