@@ -1,4 +1,4 @@
-﻿namespace OIO.Infrastructure.Shipping;
+namespace OIO.Infrastructure.Shipping;
 
 public sealed class CalculateFeeRequest
 {

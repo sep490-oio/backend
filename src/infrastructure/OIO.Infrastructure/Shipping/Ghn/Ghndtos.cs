@@ -130,7 +130,8 @@ internal sealed class GhnCancelResult
 
 internal sealed class GhnCalculateFeeRequest
 {
-    [JsonPropertyName("service_type_id")] public int    ServiceTypeId { get; init; } = 2;
+    [JsonPropertyName("service_id")]      public int?   ServiceId     { get; init; }
+    [JsonPropertyName("service_type_id")] public int?   ServiceTypeId { get; init; }
     [JsonPropertyName("to_ward_code")]    public required string ToWardCode   { get; init; }
     [JsonPropertyName("to_district_id")]  public required int    ToDistrictId { get; init; }
     [JsonPropertyName("weight")]          public required int    Weight       { get; init; }  // grams

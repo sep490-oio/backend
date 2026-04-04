@@ -49,12 +49,35 @@ internal sealed class BookInboundShipmentCommandHandler
         var now        = _clock.UtcNow;
         var isExternal = request.ShipmentMode == InboundShipmentMode.ExternalCarrier.Id;
 
-        // ── 1. Build package dimensions (shared for the entire batch) ─────────
+        // ── 1. Validate & Build package dimensions ───────────────────────────
+        var sumItemWeights = request.Items.Sum(i => i.WeightGrams);
+        var totalWeight = request.WeightGrams;
+
+        if (totalWeight == 0)
+        {
+            totalWeight = sumItemWeights;
+        }
+        else if (totalWeight < sumItemWeights)
+        {
+            return Error.Validation(
+                "WeightGrams",
+                "BookInboundShipment.WeightTooLow",
+                $"Total weight ({totalWeight}g) cannot be less than the sum of item weights ({sumItemWeights}g).");
+        }
+
+        if (!isExternal && (request.LengthCm <= 0 || request.WidthCm <= 0 || request.HeightCm <= 0))
+        {
+            return Error.Validation(
+                "Dimensions",
+                "BookInboundShipment.InvalidDimensions",
+                "Length, width, and height must be greater than 0 for platform-managed shipments.");
+        }
+
         var dimensionsResult = PackageDimensions.Create(
-            weightGrams: request.WeightGrams,
-            lengthCm:    request.LengthCm,
-            widthCm:     request.WidthCm,
-            heightCm:    request.HeightCm);
+            weightGrams: totalWeight,
+            lengthCm:    request.LengthCm ?? 10, // Provide defaults if missing but validated above
+            widthCm:     request.WidthCm  ?? 10,
+            heightCm:    request.HeightCm ?? 10);
 
         if (dimensionsResult.IsFailure) return dimensionsResult.Error;
         var dimensions = dimensionsResult.Value;
@@ -213,10 +236,10 @@ internal sealed class BookInboundShipmentCommandHandler
             SenderProvince               = senderProvince,
             SenderCarrierAddressDataJson  = request.SenderCarrierAddressDataJson,
 
-            WeightGrams    = request.WeightGrams,
-            LengthCm       = request.LengthCm,
-            WidthCm        = request.WidthCm,
-            HeightCm       = request.HeightCm,
+            WeightGrams    = totalWeight,
+            LengthCm       = request.LengthCm ?? 10,
+            WidthCm        = request.WidthCm  ?? 10,
+            HeightCm       = request.HeightCm ?? 10,
             InsuranceValue = request.InsuranceValue,
             CodAmount      = 0,   // inbound — no COD
 
