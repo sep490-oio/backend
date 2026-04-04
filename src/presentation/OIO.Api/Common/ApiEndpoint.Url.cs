@@ -239,6 +239,16 @@ public static partial class ApiEndpoint
             public const string Refund = $"{Base}/refund";
         }
 
+        public static class Address
+        {
+            private const string Base = "api/address";
+
+            public const string GetProvinces = $"{Base}/provinces";
+            public const string GetDistricts = $"{Base}/districts";
+            public const string GetWards     = $"{Base}/wards";
+            public const string Sync         = $"{Base}/sync";
+        }
+
         public static class Payments
         {
             private const string Base = "api/payments";

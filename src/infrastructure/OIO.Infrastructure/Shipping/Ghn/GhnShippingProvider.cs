@@ -252,6 +252,7 @@ internal sealed class GhnShippingProvider : IShippingProvider
             Width         = request.WidthCm,
             Height        = request.HeightCm,
             InsuranceValue = request.InsuranceValue
+            // ServiceTypeId defaults to null → GHN uses service_type_id = 2 (standard express)
         };
 
         using var http = BuildClient(config, creds);

@@ -35,4 +35,11 @@
       </Content>
     </ItemGroup>
 
+    <ItemGroup>
+      <Content Update="data\*.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </Content>
+    </ItemGroup>
+
 </Project>

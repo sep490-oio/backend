@@ -84,7 +84,7 @@ public static class DependencyInjection
                 .AddOutbox(configuration)
                 .AddMedia(configuration)
                 .AddSecurityServices()
-                .AddShipping()
+                .AddShipping(configuration)
                 .AddEkyc(configuration)
                 .AddPayment(configuration);
 
@@ -368,12 +368,16 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
             return services;
         }
 
-        private IServiceCollection AddShipping()
+        private IServiceCollection AddShipping(IConfiguration configuration)
         {
+            services.Configure<Settings.GhnAddressOptions>(
+                configuration.GetSection(Settings.GhnAddressOptions.SectionName));
             services.AddHttpClient("GhnClient");
+            services.AddHttpClient("GhnAddressClient");
             services.AddTransient<IShippingProvider, GhnShippingProvider>();
             services.AddTransient<IShippingProviderSelector, ShippingProviderSelector>();
             services.AddScoped<IShippingService, ShippingService>();
+            services.AddScoped<OIO.Application.Abstractions.Address.IGhnAddressService, GhnAddressService>();
             return services;
         }
 

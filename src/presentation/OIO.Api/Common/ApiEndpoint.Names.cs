@@ -255,6 +255,14 @@ public static partial class ApiEndpoint
             public const string Refund = "VnPayRefund";
         }
 
+        public static class Address
+        {
+            public const string GetProvinces = nameof(GetProvinces);
+            public const string GetDistricts = nameof(GetDistricts);
+            public const string GetWards     = nameof(GetWards);
+            public const string SyncGhnAddress = nameof(SyncGhnAddress);
+        }
+
         public static class Payments
         {
             public const string AddPaymentMethod = nameof(AddPaymentMethod);
