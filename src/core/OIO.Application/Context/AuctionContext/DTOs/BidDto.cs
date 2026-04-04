@@ -4,6 +4,7 @@ public sealed record BidDto(
     Guid Id,
     Guid AuctionId,
     Guid BidderId,
+    string? BidderDisplayName,
     MoneyDto Amount,
     bool IsAutoBid,
     string Status,

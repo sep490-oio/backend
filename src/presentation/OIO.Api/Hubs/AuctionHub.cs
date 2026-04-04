@@ -19,7 +19,6 @@ using SignalRSwaggerGen.Attributes;
 namespace OIO.Api.Hubs;
 
 [SignalRHub("/hubs/auction", tag: ApiEndpoint.Tags.Hub)]
-[Authorize]
 public sealed class AuctionHub : Hub<IAuctionHubClient>
 {
     private readonly ISender _sender;
@@ -35,6 +34,7 @@ public sealed class AuctionHub : Hub<IAuctionHubClient>
 
     // ==================== Connection Management ====================
 
+    [AllowAnonymous]
     public async Task JoinAuction(Guid auctionId)
     {
         await Groups.AddToGroupAsync(
@@ -42,6 +42,7 @@ public sealed class AuctionHub : Hub<IAuctionHubClient>
             AuctionGroupName(auctionId));
     }
 
+    [AllowAnonymous]
     public async Task LeaveAuction(Guid auctionId)
     {
         await Groups.RemoveFromGroupAsync(
@@ -51,6 +52,7 @@ public sealed class AuctionHub : Hub<IAuctionHubClient>
 
     // ==================== Item Q&A ====================
 
+    [AllowAnonymous]
     public async Task JoinItem(Guid itemId)
     {
         await Groups.AddToGroupAsync(
@@ -58,11 +60,20 @@ public sealed class AuctionHub : Hub<IAuctionHubClient>
             ItemGroupName(itemId));
     }
 
+    [AllowAnonymous]
     public async Task LeaveItem(Guid itemId)
     {
         await Groups.RemoveFromGroupAsync(
             Context.ConnectionId,
             ItemGroupName(itemId));
+    }
+
+    // ==================== Server Time ====================
+
+    [AllowAnonymous]
+    public DateTimeOffset GetServerTime()
+    {
+        return DateTimeOffset.UtcNow;
     }
 
     // ==================== Bidding ====================
@@ -131,21 +142,26 @@ public sealed class AuctionHub : Hub<IAuctionHubClient>
 
     public override async Task OnConnectedAsync()
     {
-        var userId = _currentUser.UserId;
-
-        await Groups.AddToGroupAsync(
-            Context.ConnectionId,
-            UserGroupName(userId.Value));
+        if (_currentUser.IsAuthenticated)
+        {
+            var userId = _currentUser.UserId;
+            await Groups.AddToGroupAsync(
+                Context.ConnectionId,
+                UserGroupName(userId.Value));
+        }
 
         await base.OnConnectedAsync();
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        var userId = _currentUser.UserId;
-        await Groups.RemoveFromGroupAsync(
-            Context.ConnectionId,
-            UserGroupName(userId.Value));
+        if (_currentUser.IsAuthenticated)
+        {
+            var userId = _currentUser.UserId;
+            await Groups.RemoveFromGroupAsync(
+                Context.ConnectionId,
+                UserGroupName(userId.Value));
+        }
 
         await base.OnDisconnectedAsync(exception);
     }

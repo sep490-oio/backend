@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
@@ -13,32 +14,31 @@ public sealed class PendingUploadRelocationJob : IJob
 {
     private const int BatchSize = 50;
 
-    private readonly IDbContext _dbContext;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IMediaRelocationService _mediaRelocationService;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IClock _clock;
     private readonly ILogger<PendingUploadRelocationJob> _logger;
 
     public PendingUploadRelocationJob(
-        IDbContext dbContext,
-        IUnitOfWork unitOfWork,
-        IMediaRelocationService mediaRelocationService,
+        IServiceScopeFactory scopeFactory,
         IClock clock,
         ILogger<PendingUploadRelocationJob> logger)
     {
-        _dbContext = dbContext;
-        _unitOfWork = unitOfWork;
-        _mediaRelocationService = mediaRelocationService;
+        _scopeFactory = scopeFactory;
         _clock = clock;
         _logger = logger;
     }
 
     public async Task Execute(IJobExecutionContext context)
     {
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<IDbContext>();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        var mediaRelocationService = scope.ServiceProvider.GetRequiredService<IMediaRelocationService>();
+
         var nowUtc = _clock.UtcNow;
         var cancellationToken = context.CancellationToken;
 
-        var candidates = await _dbContext.Set<MediaUpload>()
+        var candidates = await dbContext.Set<MediaUpload>()
             .Where(x => x.IsLinked
                         && x.RelocatedAt == null
                         && x.StorageRef.Folder.Contains("/pending/")
@@ -51,9 +51,9 @@ public sealed class PendingUploadRelocationJob : IJob
             return;
 
         foreach (var upload in candidates)
-            await _mediaRelocationService.RelocateLinkedUploadAsync(upload, cancellationToken);
+            await mediaRelocationService.RelocateLinkedUploadAsync(upload, cancellationToken);
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
             "Processed {Count} pending media relocation candidates.",

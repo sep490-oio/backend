@@ -63,6 +63,9 @@ internal sealed class ReportConfiguration : IEntityTypeConfiguration<Report>
         builder.Property(r => r.EscalatedEmergencyAt)
             .HasColumnName("escalated_emergency_at");
 
+        builder.Property(r => r.DisputeId)
+            .HasColumnName("dispute_id");
+
         builder.Property(r => r.CreatedAt)
             .HasColumnName("created_at")
             .HasDefaultValueSql("CURRENT_TIMESTAMP")
@@ -77,5 +80,9 @@ internal sealed class ReportConfiguration : IEntityTypeConfiguration<Report>
 
         builder.HasIndex(r => r.ReporterId)
             .HasDatabaseName("idx_reports_reporter");
+
+        builder.HasIndex(r => r.DisputeId)
+            .HasDatabaseName("idx_reports_dispute_id")
+            .HasFilter("dispute_id IS NOT NULL");
     }
 }

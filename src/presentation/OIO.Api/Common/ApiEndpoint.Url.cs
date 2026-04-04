@@ -78,6 +78,7 @@ public static partial class ApiEndpoint
             public const string AssignReport = $"{Base}/reports/{{reportId:guid}}/assign";
             public const string ResolveReport = $"{Base}/reports/{{reportId:guid}}/resolve";
             public const string EscalateReportEmergency = $"{Base}/reports/{{reportId:guid}}/escalate-emergency";
+            public const string EscalateReportToDispute = $"{Base}/reports/{{reportId:guid}}/escalate-to-dispute";
             public const string GetMonitoringAlerts = $"{Base}/monitoring-alerts";
             public const string AcknowledgeMonitoringAlert = $"{Base}/monitoring-alerts/{{alertId:guid}}/acknowledge";
             public const string ResolveMonitoringAlert = $"{Base}/monitoring-alerts/{{alertId:guid}}/resolve";
@@ -160,6 +161,7 @@ public static partial class ApiEndpoint
             public const string ConfigureAutoBid = $"{Base}/{{auctionId:guid}}/auto-bid";
             public const string PauseAutoBid = $"{Base}/{{auctionId:guid}}/auto-bid/pause";
             public const string ResumeAutoBid = $"{Base}/{{auctionId:guid}}/auto-bid/resume";
+            public const string CancelAutoBid = $"{Base}/{{auctionId:guid}}/auto-bid/cancel";
             public const string GetMyAutoBid = $"{Base}/{{auctionId:guid}}/auto-bid/my";
 
             // Watch

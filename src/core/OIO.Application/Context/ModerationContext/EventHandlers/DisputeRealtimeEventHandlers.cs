@@ -46,14 +46,17 @@ internal sealed class DisputeMessageSentEventHandler(
         var candidateUserIds = GetCandidateUserIds(dispute, participantStates);
         candidateUserIds.Add(notification.SenderId.Value);
 
+        var candidateIds = candidateUserIds.Select(UserId.From).ToList();
         var users = await dbContext.Set<User>()
             .AsNoTracking()
             .Include(x => x.Roles)
-            .Where(x => candidateUserIds.Contains(x.Id.Value))
+            .Include(x => x.Profile)
+            .Where(x => candidateIds.Contains(x.Id))
             .ToListAsync(cancellationToken);
 
         var displayNames = users.ToDictionary(x => x.Id.Value, x => x.UserName.Value);
-        var dto = message.ToDto(displayNames);
+        var avatarUrls = users.ToDictionary(x => x.Id.Value, x => x.Profile?.AvatarUrl?.Value);
+        var dto = message.ToDto(displayNames, avatarUrls);
         await realtimeService.BroadcastMessageAsync(dispute.Id.Value, dto, notification.IsInternal, cancellationToken);
 
         var allMessages = await dbContext.Set<DisputeMessage>()
@@ -85,24 +88,29 @@ internal sealed class DisputeMessageSentEventHandler(
                 new DisputeUnreadUpdateDto(dispute.Id.Value, unreadCount),
                 cancellationToken);
 
-            await NotificationDispatch.DispatchAsync(
-                sender,
-                logger,
-                new CreateNotificationCommand(
-                    recipientId,
-                    NotificationType: "moderation",
-                    EventType: notification.IsInternal ? "dispute_internal_message_received" : "dispute_message_received",
-                    Title: notification.IsInternal ? "New internal dispute message" : "New dispute message",
-                    Message: BuildNotificationMessage(dto),
-                    EntityType: "dispute",
-                    EntityId: dispute.Id.Value,
-                    Metadata: NotificationDispatch.SerializeMetadata(new
-                    {
-                        disputeId = dispute.Id.Value,
-                        messageId = dto.Id,
-                        isInternal = notification.IsInternal
-                    })),
-                cancellationToken);
+            // Only send push/email notification if the user has unread messages.
+            // Users actively viewing the chat (unreadCount == 0) already see messages via SignalR.
+            if (unreadCount > 0)
+            {
+                await NotificationDispatch.DispatchAsync(
+                    sender,
+                    logger,
+                    new CreateNotificationCommand(
+                        recipientId,
+                        NotificationType: "moderation",
+                        EventType: notification.IsInternal ? "dispute_internal_message_received" : "dispute_message_received",
+                        Title: notification.IsInternal ? "New internal dispute message" : "New dispute message",
+                        Message: BuildNotificationMessage(dto),
+                        EntityType: "dispute",
+                        EntityId: dispute.Id.Value,
+                        Metadata: NotificationDispatch.SerializeMetadata(new
+                        {
+                            disputeId = dispute.Id.Value,
+                            messageId = dto.Id,
+                            isInternal = notification.IsInternal
+                        })),
+                    cancellationToken);
+            }
         }
     }
 

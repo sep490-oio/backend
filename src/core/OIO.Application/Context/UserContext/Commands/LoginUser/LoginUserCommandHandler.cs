@@ -80,6 +80,9 @@ internal sealed class LoginUserCommandHandler
         if (user.Status == UserStatus.Locked)
             return UserErrors.User.UserLocked;
         
+        if(!user.EmailConfirmed)
+            return UserErrors.User.EmailNotConfirmed;
+        
         if (user.Status == UserStatus.Inactive)
             return UserErrors.User.UserInactive;
 

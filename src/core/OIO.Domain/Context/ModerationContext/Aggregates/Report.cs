@@ -1,7 +1,9 @@
-﻿using OIO.Domain.Context.ModerationContext.Enums;
+﻿using CSharpFunctionalExtensions;
+using OIO.Domain.Context.ModerationContext.Enums;
 using OIO.Domain.Context.ModerationContext.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
+using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Domain.Context.ModerationContext.Aggregates;
 
@@ -19,6 +21,7 @@ public sealed class Report : BaseEntity<ReportId>, ICreatedAtEntity
     public string? ResolutionNotes { get; private set; }
     public DateTime? ResolvedAt { get; private set; }
     public DateTime? EscalatedEmergencyAt { get; private set; }
+    public DisputeId? DisputeId { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? ModifiedAt { get; private set; }
 
@@ -56,12 +59,17 @@ public sealed class Report : BaseEntity<ReportId>, ICreatedAtEntity
         ModifiedAt = nowUtc;
     }
 
-    public void Resolve(string? resolutionNotes, bool dismissed, DateTime nowUtc)
+    public UnitResult<Error> Resolve(string? resolutionNotes, bool dismissed, DateTime nowUtc)
     {
+        if (Status == ReportStatus.ActionTaken || Status == ReportStatus.Dismissed || Status == ReportStatus.Closed)
+            return UnitResult.Failure(Error.Conflict("Report.AlreadyResolved",
+                "Cannot resolve a report that is already resolved, dismissed, or closed."));
+
         ResolutionNotes = resolutionNotes;
         ResolvedAt = nowUtc;
         Status = dismissed ? ReportStatus.Dismissed : ReportStatus.ActionTaken;
         ModifiedAt = nowUtc;
+        return UnitResult.Success<Error>();
     }
 
     public void Close(DateTime nowUtc)
@@ -75,5 +83,15 @@ public sealed class Report : BaseEntity<ReportId>, ICreatedAtEntity
         EscalatedEmergencyAt = nowUtc;
         Status = ReportStatus.ActionTaken;
         ModifiedAt = nowUtc;
+    }
+
+    public UnitResult<Error> EscalateToDispute(DisputeId disputeId, DateTime nowUtc)
+    {
+        if (Status == ReportStatus.Dismissed || Status == ReportStatus.Closed)
+            return UnitResult.Failure(Error.Conflict("Report.CannotEscalate", "Cannot escalate a dismissed or closed report."));
+        DisputeId = disputeId;
+        Status = ReportStatus.ActionTaken;
+        ModifiedAt = nowUtc;
+        return UnitResult.Success<Error>();
     }
 }

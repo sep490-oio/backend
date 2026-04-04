@@ -1,5 +1,6 @@
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
@@ -11,17 +12,26 @@ using ItemId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId;
 
 namespace OIO.Application.Context.WarehouseContext.Queries.GetInspectionQueue;
 
+public record GetInspectionQueueQueryFilters : PagedParameters
+{
+    /// <summary>
+    /// Optional filter by queue status: "awaiting_inspection" or "awaiting_review".
+    /// </summary>
+    public string? Status { get; init; }
+}
+
 public sealed record GetInspectionQueueQuery(
-    int Page = 1,
-    int PageSize = 20) : IQuery<IReadOnlyList<InspectionQueueItemDto>>;
+    GetInspectionQueueQueryFilters Parameters) : IQuery<PagedList<InspectionQueueItemDto>>;
 
 internal sealed class GetInspectionQueueQueryHandler(Application.Abstractions.Data.IDbContext db)
-    : IQueryHandler<GetInspectionQueueQuery, IReadOnlyList<InspectionQueueItemDto>>
+    : IQueryHandler<GetInspectionQueueQuery, PagedList<InspectionQueueItemDto>>
 {
-    public async Task<Result<IReadOnlyList<InspectionQueueItemDto>, Error>> Handle(
+    public async Task<Result<PagedList<InspectionQueueItemDto>, Error>> Handle(
         GetInspectionQueueQuery request,
         CancellationToken cancellationToken)
     {
+        var parameters = request.Parameters;
+
         var shipments = await db.Set<InboundShipment>()
             .AsNoTracking()
             .Where(x =>
@@ -31,7 +41,7 @@ internal sealed class GetInspectionQueueQueryHandler(Application.Abstractions.Da
             .ToListAsync(cancellationToken);
 
         if (shipments.Count == 0)
-            return Array.Empty<InspectionQueueItemDto>();
+            return PagedList<InspectionQueueItemDto>.Empty();
 
         var shipmentIds = shipments.Select(x => x.Id).ToList();
         var itemIds = shipments.Select(x => ItemId.From(x.ItemId)).Distinct().ToList();
@@ -48,7 +58,7 @@ internal sealed class GetInspectionQueueQueryHandler(Application.Abstractions.Da
 
         var itemsById = items.ToDictionary(x => x.Id.Value);
 
-        var queue = shipments
+        var allItems = shipments
             .Select(shipment =>
             {
                 var inspection = inspections.FirstOrDefault(x => x.InboundShipmentId == shipment.Id);
@@ -56,17 +66,19 @@ internal sealed class GetInspectionQueueQueryHandler(Application.Abstractions.Da
                     return null;
 
                 var queueStatus = inspection is null
-                    ? "awaiting_inspection"
+                    ? InspectionQueueStatus.AwaitingInspection
                     : inspection.DecisionStatus == WarehouseInspectionDecisionStatus.PendingReview
-                        ? "awaiting_review"
+                        ? InspectionQueueStatus.AwaitingReview
                         : null;
 
                 if (queueStatus is null)
                     return null;
 
+                // Arrived + already inspected = skip (shouldn't happen but guard)
                 if (shipment.Status == InboundShipmentStatus.Arrived && inspection is not null)
                     return null;
 
+                // Inspected + already reviewed = skip
                 if (shipment.Status == InboundShipmentStatus.Inspected &&
                     inspection?.DecisionStatus != WarehouseInspectionDecisionStatus.PendingReview)
                     return null;
@@ -79,7 +91,7 @@ internal sealed class GetInspectionQueueQueryHandler(Application.Abstractions.Da
                     WarehouseItemId: inspection?.WarehouseItemId.Value,
                     InspectionId: inspection?.Id.Value,
                     ShipmentStatus: shipment.Status.Id,
-                    QueueStatus: queueStatus,
+                    QueueStatus: queueStatus.Id,
                     CarrierTrackingNumber: shipment.CarrierTrackingNumber,
                     ArrivedAt: shipment.ArrivedAt,
                     DeclaredCondition: inspection?.DeclaredCondition.Id ?? item.Condition.Id,
@@ -88,10 +100,27 @@ internal sealed class GetInspectionQueueQueryHandler(Application.Abstractions.Da
             })
             .Where(x => x is not null)
             .Cast<InspectionQueueItemDto>()
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
             .ToList();
 
-        return queue;
+        // Apply optional status filter
+        if (!string.IsNullOrEmpty(parameters.Status))
+        {
+            allItems = allItems
+                .Where(x => x.QueueStatus == parameters.Status)
+                .ToList();
+        }
+
+        // Apply pagination
+        var totalCount = allItems.Count;
+        var pageNumber = parameters.EffectivePageNumber;
+        var pageSize = parameters.EffectivePageSize;
+
+        var pagedItems = allItems
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return new PagedList<InspectionQueueItemDto>(
+            pagedItems, totalCount, pageNumber, pageSize);
     }
 }

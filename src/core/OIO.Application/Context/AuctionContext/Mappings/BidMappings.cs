@@ -7,12 +7,13 @@ namespace OIO.Application.Context.AuctionContext.Mappings;
 
 internal static class BidMappings
 {
-    public static BidDto ToDto(this Bid bid)
+    public static BidDto ToDto(this Bid bid, string? bidderDisplayName = null)
     {
         return new BidDto(
             Id: bid.Id.Value,
             AuctionId: bid.AuctionId.Value,
             BidderId: bid.BidderId.Value,
+            BidderDisplayName: bidderDisplayName,
             Amount: bid.Amount.ToDto(),
             IsAutoBid: bid.IsAutoBid,
             Status: bid.Status.Id,

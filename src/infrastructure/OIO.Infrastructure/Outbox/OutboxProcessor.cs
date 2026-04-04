@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using Dapper;
 using MediatR;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -22,7 +23,7 @@ internal sealed class OutboxProcessor
     private readonly ILogger<OutboxProcessor> _logger;
     private readonly IOptionsMonitor<OutboxSettings> _outboxSettings;
     private readonly NpgsqlDataSource _dataSource;
-    private readonly IPublisher _publisher;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IOutboxMessageResolver _outboxMessageResolver;
     private readonly IClock _clock;
 
@@ -30,14 +31,14 @@ internal sealed class OutboxProcessor
         ILogger<OutboxProcessor> logger,
         IOptionsMonitor<OutboxSettings> outboxSettings,
         NpgsqlDataSource dataSource,
-        IPublisher publisher,
-        IOutboxMessageResolver outboxMessageResolver, 
+        IServiceScopeFactory scopeFactory,
+        IOutboxMessageResolver outboxMessageResolver,
         IClock clock)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _outboxSettings = outboxSettings ?? throw new ArgumentNullException(nameof(outboxSettings));
         _dataSource = dataSource ?? throw new ArgumentNullException(nameof(dataSource));
-        _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
+        _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         _outboxMessageResolver =
             outboxMessageResolver ?? throw new ArgumentNullException(nameof(outboxMessageResolver));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
@@ -76,15 +77,20 @@ internal sealed class OutboxProcessor
                 MaxDegreeOfParallelism = MaxParallelism,
                 CancellationToken = cancellationToken
             },
-            (message, token) =>
-                PublishMessage(message,
+            async (message, token) =>
+            {
+                // Each message gets its own DI scope to avoid DbContext concurrency issues.
+                // Notification handlers resolved from scoped IPublisher each get an isolated DbContext.
+                using var scope = _scopeFactory.CreateScope();
+                var publisher = scope.ServiceProvider.GetRequiredService<IPublisher>();
+                await PublishMessage(message,
                     updateQueue,
-                    _publisher,
+                    publisher,
                     _clock,
                     _outboxMessageResolver,
                     _logger,
-                    token
-                )
+                    token);
+            }
         );
         var publishTime = stepStopwatch.ElapsedMilliseconds;
 

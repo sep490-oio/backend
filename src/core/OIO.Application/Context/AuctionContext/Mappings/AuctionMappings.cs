@@ -34,6 +34,7 @@ internal static class AuctionMappings
             EndTime: auction.Info?.EndTime,
             RemainingTime: auction.Info?.RemainingTime(nowUtc),
             IsEndingSoon: auction.Info is not null ? auction.IsEndingSoon(nowUtc, extensionThresholdMinutes) : null,
+            CreatedAt: auction.CreatedAt,
             IsFeatured: auction.IsFeatured,
             SellerId: auction.Item.SellerId.Value,
             ItemStatus: auction.Item.Status.Id);
@@ -99,5 +100,6 @@ internal static class AuctionMappings
             .Map(x => x.EndTime, x => x.Info!.EndTime)
             .Map(x => x.IsFeatured, x => x.IsFeatured)
             .Map(x => x.SellerId, x => x.Item.SellerId)
+            .Map(x => x.CreatedAt, x => x.CreatedAt)
             .Build();
 }

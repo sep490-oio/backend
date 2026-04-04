@@ -50,6 +50,10 @@ public interface IAuctionGrain : IGrainWithGuidKey
         Guid bidderId,
         CancellationToken cancellationToken = default);
 
+    Task<UnitResult<Error>> CancelAutoBidAsync(
+        Guid bidderId,
+        CancellationToken cancellationToken = default);
+
     Task<UnitResult<Error>> EndAuctionAsync(
         Guid? revealerId,
         IReadOnlyCollection<RevealedSealedBidAmountGrain>? revealedSealedBids,

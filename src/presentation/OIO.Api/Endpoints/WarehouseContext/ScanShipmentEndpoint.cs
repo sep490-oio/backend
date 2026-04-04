@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using OIO.Api.Common;
+using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Application.Context.WarehouseContext.Queries.GetShipmentByScanCode;
 using OIO.Domain.AppDefinitions;
 
@@ -26,7 +27,7 @@ public sealed class ScanShipmentEndpoint : IEndpoint
         .RequireAuthorization(App.Permissions.Catalogs.Warehouse.ReadShipments)
         .WithTags(ApiEndpoint.Tags.Warehouse)
         .WithName("Scan Inbound Shipment")
-        .Produces(StatusCodes.Status200OK)
+        .Produces<List<InboundShipmentDto>>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)

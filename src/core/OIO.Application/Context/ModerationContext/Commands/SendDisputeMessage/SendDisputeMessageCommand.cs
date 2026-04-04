@@ -155,6 +155,7 @@ internal sealed class SendDisputeMessageCommandHandler(
             dispute.Id.Value,
             currentUser.UserId.Value,
             currentUser.UserName?.Value ?? currentUser.UserId.Value.ToString(),
+            null,
             message.Message,
             message.IsInternal,
             message.CreatedAt,

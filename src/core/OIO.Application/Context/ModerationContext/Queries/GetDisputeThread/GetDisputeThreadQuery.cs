@@ -51,11 +51,13 @@ internal sealed class GetDisputeThreadQueryHandler(
         var users = await dbContext.Set<User>()
             .AsNoTracking()
             .Include(x => x.Roles)
+            .Include(x => x.Profile)
             .Where(x => participantIds.Contains(x.Id))
             .ToListAsync(cancellationToken);
 
         var statesByUserId = participantStates.ToDictionary(x => x.UserId.Value);
         var displayNames = users.ToDictionary(x => x.Id.Value, x => x.UserName.Value);
+        var avatarUrls = users.ToDictionary(x => x.Id.Value, x => x.Profile?.AvatarUrl?.Value);
 
         var recentMessages = dispute.Messages
             .Where(x => x.IsVisibleTo(accessService.CanViewInternalMessages))
@@ -64,7 +66,7 @@ internal sealed class GetDisputeThreadQueryHandler(
             .Take(50)
             .OrderBy(x => x.CreatedAt)
             .ThenBy(x => x.Id.Value)
-            .Select(x => x.ToDto(displayNames))
+            .Select(x => x.ToDto(displayNames, avatarUrls))
             .ToList();
 
         var participants = users

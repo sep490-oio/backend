@@ -6,6 +6,7 @@ using OIO.Application.Context.UserContext.Services;
 using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Application.Context.WarehouseContext.Mappings;
 using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
+using OIO.Domain.AppDefinitions;
 using OIO.Domain.Context.WarehouseContext.Errors;
 using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
@@ -31,8 +32,12 @@ internal sealed class GetInboundShipmentByIdQueryHandler(IDbContext db, ICurrent
         if (shipment is null)
             return WarehouseErrors.InboundShipment.NotFound(request.ShipmentId.ToString());
 
-        // Ownership check — seller can only view their own shipments
-        if (shipment.SellerId != currentUser.UserId)
+        // Ownership check — seller can only view their own shipments;
+        // Inspector and WarehouseStaff can view any shipment
+        var isStaffRole = currentUser.IsInRole(App.Roles.Catalogs.Inspector)
+                       || currentUser.IsInRole(App.Roles.Catalogs.WarehouseStaff)
+                       || currentUser.IsInRole(App.Roles.Catalogs.Admin);
+        if (!isStaffRole && shipment.SellerId != currentUser.UserId)
             return WarehouseErrors.InboundShipment.NotFound(request.ShipmentId.ToString());
 
         return shipment.ToDto();

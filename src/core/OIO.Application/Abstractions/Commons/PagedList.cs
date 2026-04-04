@@ -28,6 +28,11 @@ public class PagedList<T>
         return new PagedList<T>(source, count, pagedParameter.PageNumber, pagedParameter.PageSize);
     }
     
+    public static PagedList<T> Empty()
+    {
+        return new PagedList<T>([], new Metadata());
+    } 
+    
 }
 
 public static class PagedListExtensions 

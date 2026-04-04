@@ -14,4 +14,5 @@ public sealed record ReportDto(
     DateTime? AssignedAt,
     DateTime? ResolvedAt,
     DateTime? EscalatedEmergencyAt,
-    string? ResolutionNotes);
+    string? ResolutionNotes,
+    Guid? DisputeId);

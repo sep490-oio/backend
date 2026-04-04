@@ -45,7 +45,8 @@ public sealed record BookInboundShipmentCommand(
     {
         var check = BookInboundShipmentCommand.Check()
             .WithOwnerName("BookInboundShipment")
-            .Field(Items.Count, nameof(Items)).GreaterThan(0)
+            .Field(Items, nameof(Items)).NotNull()
+            .Field(Items?.Count ?? 0, nameof(Items)).GreaterThan(0)
             .Field(WeightGrams).GreaterThan(0)
             .Field(InsuranceValue).NonNegative();
 

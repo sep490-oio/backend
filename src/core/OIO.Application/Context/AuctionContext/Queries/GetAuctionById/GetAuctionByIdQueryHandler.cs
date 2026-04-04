@@ -5,11 +5,14 @@ using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.AuctionContext.DTOs;
+using OIO.Application.Context.AuctionContext.EventHandlers;
 using OIO.Application.Context.AuctionContext.Mappings;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.UserContext.Aggregates.Users;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.AuctionContext.Queries.GetAuctionById;
@@ -89,13 +92,32 @@ internal sealed class GetAuctionByIdQueryHandler
             }
         }
 
+        var recentBids = auction.Bids
+            .OrderByDescending(b => b.CreatedAt)
+            .Take(20)
+            .ToList();
+
+        var bidderIds = recentBids
+            .Select(b => b.BidderId)
+            .Distinct()
+            .Select(id => UserId.From(id.Value))
+            .ToList();
+
+        var bidderUsers = await _dbContext.Set<User>()
+            .AsNoTracking()
+            .Include(x => x.Profile)
+            .Where(x => bidderIds.Contains(x.Id))
+            .ToListAsync(cancellationToken);
+
+        var bidderDisplayNames = bidderUsers.ToDictionary(
+            x => x.Id.Value,
+            x => AuctionNotificationDisplayNames.Resolve(x));
+
         return new AuctionDetailDto(
             Auction: auction.ToDto(nowUtc, _runtimeSettings.Auction.ExtensionThreshold),
             Item: auction.Item.ToDto(),
-            RecentBids: auction.Bids
-                .OrderByDescending(b => b.CreatedAt)
-                .Take(20)
-                .Select(b => b.ToDto())
+            RecentBids: recentBids
+                .Select(b => b.ToDto(bidderDisplayNames.TryGetValue(b.BidderId.Value, out var dn) ? dn : null))
                 .ToList(),
             PriceHistory: auction.PriceHistories
                 .OrderByDescending(ph => ph.CreatedAt)

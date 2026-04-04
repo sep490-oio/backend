@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
@@ -23,25 +24,26 @@ namespace OIO.Infrastructure.Scheduling.Jobs;
 [DisallowConcurrentExecution]
 public sealed class AuctionAutoCompleteJob : IJob
 {
-    private readonly IDbContext _dbContext;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IClock _clock;
     private readonly ILogger<AuctionAutoCompleteJob> _logger;
 
     public AuctionAutoCompleteJob(
-        IDbContext dbContext,
-        IUnitOfWork unitOfWork,
+        IServiceScopeFactory scopeFactory,
         IClock clock,
         ILogger<AuctionAutoCompleteJob> logger)
     {
-        _dbContext = dbContext;
-        _unitOfWork = unitOfWork;
+        _scopeFactory = scopeFactory;
         _clock = clock;
         _logger = logger;
     }
 
     public async Task Execute(IJobExecutionContext context)
     {
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<IDbContext>();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
         var now = _clock.UtcNow;
         var autoCompleteDays = App.Constraint.Auction.AutoCompleteDaysAfterDelivery;
         var cutoff = now.AddDays(-autoCompleteDays);
@@ -49,7 +51,7 @@ public sealed class AuctionAutoCompleteJob : IJob
         _logger.LogInformation("Running AuctionAutoCompleteJob. Cutoff: {Cutoff}", cutoff);
 
         // Find sold auctions
-        var soldAuctions = await _dbContext.Set<Auction>()
+        var soldAuctions = await dbContext.Set<Auction>()
             .Include(a => a.Item)
             .Where(a => a.Status == AuctionStatus.Sold)
             .ToListAsync(context.CancellationToken);
@@ -65,7 +67,7 @@ public sealed class AuctionAutoCompleteJob : IJob
         foreach (var auction in soldAuctions)
         {
             // Check if there's a delivered outbound shipment past the cutoff
-            var deliveredShipment = await _dbContext.Set<OutboundShipment>()
+            var deliveredShipment = await dbContext.Set<OutboundShipment>()
                 .AsNoTracking()
                 .FirstOrDefaultAsync(s =>
                         s.ClientOrderCode.Contains(auction.Id.Value.ToString()) &&
@@ -78,7 +80,7 @@ public sealed class AuctionAutoCompleteJob : IJob
                 continue;
 
             // Check if there are any open disputes for this auction
-            var hasOpenDispute = await _dbContext.Set<Dispute>()
+            var hasOpenDispute = await dbContext.Set<Dispute>()
                 .AsNoTracking()
                 .AnyAsync(d =>
                         d.AuctionId == auction.Id &&
@@ -105,7 +107,7 @@ public sealed class AuctionAutoCompleteJob : IJob
 
         if (completedCount > 0)
         {
-            await _unitOfWork.SaveChangesAsync(context.CancellationToken);
+            await unitOfWork.SaveChangesAsync(context.CancellationToken);
         }
 
         _logger.LogInformation("AuctionAutoCompleteJob finished. Auto-completed {Count} auctions.", completedCount);

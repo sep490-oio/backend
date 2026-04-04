@@ -115,6 +115,7 @@ internal sealed class PlaceBidCommandHandler
             Id: bid.Id,
             AuctionId: bid.AuctionId,
             BidderId: bid.BidderId,
+            BidderDisplayName: null,
             Amount: bid.Amount.ToDto(),
             IsAutoBid: bid.IsAutoBid,
             Status: bid.Status,

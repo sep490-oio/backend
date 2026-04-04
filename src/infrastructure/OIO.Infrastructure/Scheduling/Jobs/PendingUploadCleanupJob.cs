@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
@@ -12,23 +13,20 @@ namespace OIO.Infrastructure.Scheduling.Jobs;
 [DisallowConcurrentExecution]
 public sealed class PendingUploadCleanupJob : IJob
 {
-    private readonly IDbContext _dbContext;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IMediaSignatureService _mediaSignatureService;
     private readonly IClock _clock;
     private readonly IRuntimeSettings _runtimeSettings;
     private readonly ILogger<PendingUploadCleanupJob> _logger;
 
     public PendingUploadCleanupJob(
-        IDbContext dbContext,
-        IUnitOfWork unitOfWork,
+        IServiceScopeFactory scopeFactory,
         IMediaSignatureService mediaSignatureService,
         IClock clock,
         IRuntimeSettings runtimeSettings,
         ILogger<PendingUploadCleanupJob> logger)
     {
-        _dbContext = dbContext;
-        _unitOfWork = unitOfWork;
+        _scopeFactory = scopeFactory;
         _mediaSignatureService = mediaSignatureService;
         _clock = clock;
         _runtimeSettings = runtimeSettings;
@@ -37,6 +35,10 @@ public sealed class PendingUploadCleanupJob : IJob
 
     public async Task Execute(IJobExecutionContext context)
     {
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<IDbContext>();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
         var now = _clock.UtcNow;
         var cancellationToken = context.CancellationToken;
         var orphanThreshold = now.Add(-_runtimeSettings.Media.OrphanExpiration);
@@ -45,7 +47,7 @@ public sealed class PendingUploadCleanupJob : IJob
         var toDelete = new List<MediaUpload>();
 
         // Case 1: Signature expired, never confirmed
-        var expiredUnconfirmed = await _dbContext.Set<MediaUpload>()
+        var expiredUnconfirmed = await dbContext.Set<MediaUpload>()
             .Where(p => !p.IsConfirmed && p.ExpiresAt < now)
             .ToListAsync(cancellationToken);
 
@@ -57,7 +59,7 @@ public sealed class PendingUploadCleanupJob : IJob
         }
 
         // Case 2: Confirmed but never linked (orphan)
-        var orphans = await _dbContext.Set<MediaUpload>()
+        var orphans = await dbContext.Set<MediaUpload>()
             .Where(p => p.IsConfirmed &&
                         !p.IsLinked &&
                         p.ConfirmedAt < orphanThreshold)
@@ -71,7 +73,7 @@ public sealed class PendingUploadCleanupJob : IJob
         }
 
         // Case 3: Old linked records (audit trail cleanup)
-        var oldLinked = await _dbContext.Set<MediaUpload>()
+        var oldLinked = await dbContext.Set<MediaUpload>()
             .Where(p => p.IsLinked &&
                         p.LinkedAt < linkedRetentionThreshold &&
                         !p.StorageRef.Folder.Contains("/pending/"))
@@ -81,7 +83,7 @@ public sealed class PendingUploadCleanupJob : IJob
         {
             _logger.LogInformation(
                 "Cleaning {Count} old linked upload records.", oldLinked.Count);
-            _dbContext.Set<MediaUpload>().RemoveRange(oldLinked);
+            dbContext.Set<MediaUpload>().RemoveRange(oldLinked);
         }
 
         // Delete from Cloudinary + DB
@@ -103,7 +105,7 @@ public sealed class PendingUploadCleanupJob : IJob
                     deleted, confirmedToDelete.Count);
             }
 
-            _dbContext.Set<MediaUpload>().RemoveRange(toDelete);
+            dbContext.Set<MediaUpload>().RemoveRange(toDelete);
 
             _logger.LogInformation(
                 "Cleaned up {Expired} expired + {Orphan} orphan uploads.",
@@ -112,7 +114,7 @@ public sealed class PendingUploadCleanupJob : IJob
 
         if (toDelete.Count > 0 || oldLinked.Count > 0)
         {
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
         }
     }
 
@@ -125,4 +127,3 @@ public sealed class PendingUploadCleanupJob : IJob
             _ => MediaResourceType.Image
         };
 }
-

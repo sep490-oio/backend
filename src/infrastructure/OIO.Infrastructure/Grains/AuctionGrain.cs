@@ -1,6 +1,7 @@
 using System.Net;
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
@@ -34,8 +35,7 @@ namespace OIO.Infrastructure.Grains;
 /// </summary>
 public sealed class AuctionGrain : Grain, IAuctionGrain
 {
-    private readonly IDbContext _dbContext;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IClock _clock;
     private readonly ILogger<AuctionGrain> _logger;
     private readonly IRuntimeSettings _runtimeSettings;
@@ -45,14 +45,12 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
     private bool _isLoaded;
 
     public AuctionGrain(
-        IDbContext dbContext,
-        IUnitOfWork unitOfWork,
+        IServiceScopeFactory scopeFactory,
         IClock clock,
         ILogger<AuctionGrain> logger,
         IRuntimeSettings runtimeSettings)
     {
-        _dbContext = dbContext;
-        _unitOfWork = unitOfWork;
+        _scopeFactory = scopeFactory;
         _clock = clock;
         _logger = logger;
         _runtimeSettings = runtimeSettings;
@@ -281,9 +279,31 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
             var previousMaxAmount = existingAutoBid?.Budget.MaxAmount ?? 0m;
             var holdDelta = maxAmountDomain.Amount - previousMaxAmount;
 
+            // Perform domain operation first (no DB side-effects yet)
+            (_, isFailure, var autoBid, error) = auction.ConfigureAutoBid(
+                bidderUserId,
+                maxAmountDomain,
+                nowUtc,
+                incrementAmountDomain);
+
+            if (isFailure)
+            {
+                DiscardLoadedAuction();
+                return error;
+            }
+
+            // Track actual held amount on the auto-bid entity so fund release uses the real held value
+            autoBid.SetHeldAmount(maxAmountDomain.Amount);
+
             if (holdDelta != 0m)
             {
-                var wallet = await _dbContext.Set<Wallet>()
+                // Wallet hold/unhold + auction save in a SINGLE scope/transaction
+                // to prevent split-brain (wallet held but no auto-bid, or vice versa)
+                using var atomicScope = _scopeFactory.CreateScope();
+                var dbContext = atomicScope.ServiceProvider.GetRequiredService<IDbContext>();
+                var unitOfWork = atomicScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+                var wallet = await dbContext.Set<Wallet>()
                     .FirstOrDefaultAsync(w => w.UserId == bidderUserId, cancellationToken);
 
                 if (wallet is null)
@@ -309,21 +329,16 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                         holdResult.Error.Message);
                     return Error.Conflict("Wallet.HoldFailed", holdResult.Error.Message);
                 }
-            }
 
-            (_, isFailure, var autoBid, error) = auction.ConfigureAutoBid(
-                bidderUserId,
-                maxAmountDomain,
-                nowUtc,
-                incrementAmountDomain);
-
-            if (isFailure)
-            {
+                // Save wallet + auction atomically in one SaveChangesAsync call
+                dbContext.Update(auction);
+                await unitOfWork.SaveChangesAsync(cancellationToken);
                 DiscardLoadedAuction();
-                return error;
             }
-
-            await SaveAsync(auction, cancellationToken);
+            else
+            {
+                await SaveAsync(auction, cancellationToken);
+            }
 
             var result = AutoBidGrain.From(autoBid);
             result = result with { PreviousMaxAmount = previousMaxAmount };
@@ -398,6 +413,90 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
             DiscardLoadedAuction();
             _logger.LogError(ex,
                 "Unexpected error resuming auto-bid on auction {AuctionId}",
+                this.GetGrainId());
+            throw;
+        }
+    }
+
+    public async Task<UnitResult<Error>> CancelAutoBidAsync(
+        Guid bidderId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var nowUtc = _clock.UtcNow;
+            var bidderUserId = UserId.From(bidderId);
+
+            var (_, isFailure, auction, error) = await LoadAuctionAsync(cancellationToken);
+
+            if (isFailure)
+                return error;
+
+            var (_, cancelFailure, autoBid, cancelError) = auction.CancelAutoBid(bidderUserId, nowUtc);
+            if (cancelFailure)
+            {
+                DiscardLoadedAuction();
+                return cancelError;
+            }
+
+            // Release wallet hold immediately on user-initiated cancel
+            var holdAmount = autoBid.HeldAmount;
+            if (holdAmount > 0m)
+            {
+                // Wallet unhold + auction cancel save in a SINGLE scope/transaction
+                // to prevent split-brain (wallet unheld but auto-bid still active)
+                using var atomicScope = _scopeFactory.CreateScope();
+                var dbContext = atomicScope.ServiceProvider.GetRequiredService<IDbContext>();
+                var unitOfWork = atomicScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+                var wallet = await dbContext.Set<Wallet>()
+                    .FirstOrDefaultAsync(w => w.UserId == bidderUserId, cancellationToken);
+
+                if (wallet is null)
+                {
+                    DiscardLoadedAuction();
+                    _logger.LogError(
+                        "Wallet not found when cancelling auto-bid on auction {AuctionId}. UserId={UserId}",
+                        this.GetGrainId(),
+                        bidderId);
+                    return Error.NotFound("Wallet.NotFound", "User wallet not found.");
+                }
+
+                var unholdResult = wallet.Unhold(
+                    holdAmount,
+                    transactionId: null,
+                    description: $"Auto-bid cancelled by user for auction {this.GetGrainId()}",
+                    nowUtc: nowUtc);
+
+                if (unholdResult.IsFailure)
+                {
+                    DiscardLoadedAuction();
+                    _logger.LogWarning(
+                        "Failed to release auto-bid reservation on cancel for auction {AuctionId}: {Error}",
+                        this.GetGrainId(),
+                        unholdResult.Error.Message);
+                    return Error.Conflict("Wallet.UnholdFailed", unholdResult.Error.Message);
+                }
+
+                // Reset tracked held amount after successful release
+                autoBid.SetHeldAmount(0m);
+
+                // Save wallet + auction atomically in one SaveChangesAsync call
+                dbContext.Update(auction);
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+                DiscardLoadedAuction();
+            }
+            else
+            {
+                await SaveAsync(auction, cancellationToken);
+            }
+            return UnitResult.Success<Error>();
+        }
+        catch (Exception ex)
+        {
+            DiscardLoadedAuction();
+            _logger.LogError(ex,
+                "Unexpected error cancelling auto-bid on auction {AuctionId}",
                 this.GetGrainId());
             throw;
         }
@@ -521,7 +620,10 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
 
         var auctionId = this.GetPrimaryKey();
 
-        _auction = await _dbContext.GetByIdAsync<Auction, AuctionId>(
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<IDbContext>();
+
+        _auction = await dbContext.GetByIdAsync<Auction, AuctionId>(
             AuctionId.From(auctionId),
             query => query
                 .Include(a => a.Item)
@@ -539,7 +641,7 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
         {
             return AuctionErrors.Auction.NotFound(AuctionId.From(auctionId));
         }
-        
+
         _isLoaded = true;
 
         return _auction;
@@ -547,12 +649,17 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
 
     /// <summary>
     /// Save auction to DB and invalidate grain cache.
-    /// Domain events in auction ? Outbox messages (via interceptor).
+    /// Domain events in auction → Outbox messages (via interceptor).
+    /// Creates a fresh DI scope so the DbContext is short-lived.
     /// </summary>
     private async Task SaveAsync(Auction auction, CancellationToken cancellationToken = default)
     {
-         _dbContext.Update(auction);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<IDbContext>();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+        dbContext.Update(auction);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         DiscardLoadedAuction();
     }
@@ -565,9 +672,6 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
 
     private void DiscardLoadedAuction()
     {
-        if (_dbContext is DbContext efContext)
-            efContext.ChangeTracker.Clear();
-
         _isLoaded = false;
         _auction = null;
     }

@@ -29,6 +29,7 @@ public sealed class InspectWarehouseItemMultipartEndpoint : IEndpoint
                 Guid              shipmentId,
                 ISender           sender,
                 CancellationToken ct,
+                [FromForm] string  condition           = "like_new",
                 [FromForm] string? inspectionNotes     = null,
                 IFormFile?        frontPhoto           = null,
                 IFormFile?        shippingLabelPhoto   = null,
@@ -37,6 +38,7 @@ public sealed class InspectWarehouseItemMultipartEndpoint : IEndpoint
             {
                 var command = new InspectWarehouseItemMultipartCommand(
                     InboundShipmentId:  shipmentId,
+                    Condition:          condition,
                     InspectionNotes:    inspectionNotes,
                     FrontPhoto:         frontPhoto,
                     ShippingLabelPhoto: shippingLabelPhoto,

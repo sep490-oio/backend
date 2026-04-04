@@ -34,9 +34,10 @@ public sealed class ShippingEnvironment : EnumValueObject<ShippingEnvironment>
 
 public sealed class InboundShipmentStatus : EnumValueObject<InboundShipmentStatus>
 {
-    public static readonly InboundShipmentStatus AwaitingPickup = new("awaiting_pickup");
-    public static readonly InboundShipmentStatus InTransit      = new("in_transit");
-    public static readonly InboundShipmentStatus Arrived        = new("arrived");
+    public static readonly InboundShipmentStatus AwaitingPickup      = new("awaiting_pickup");
+    public static readonly InboundShipmentStatus InTransit           = new("in_transit");
+    public static readonly InboundShipmentStatus SellerClaimsArrived = new("seller_claims_arrived");
+    public static readonly InboundShipmentStatus Arrived             = new("arrived");
     public static readonly InboundShipmentStatus Inspected      = new("inspected");
     public static readonly InboundShipmentStatus Completed      = new("completed");
     public static readonly InboundShipmentStatus Cancelled      = new("cancelled");
@@ -93,6 +94,21 @@ public sealed class WarehouseInspectionDecisionStatus : EnumValueObject<Warehous
     public static readonly WarehouseInspectionDecisionStatus ConditionConfirmed = new("condition_confirmed");
 
     private WarehouseInspectionDecisionStatus(string id) : base(id) { }
+}
+
+/// <summary>
+/// Computed queue status for the inspection queue view.
+/// Not persisted — derived from shipment status + inspection decision status.
+/// </summary>
+public sealed class InspectionQueueStatus : EnumValueObject<InspectionQueueStatus>
+{
+    /// <summary>Shipment arrived, no inspection record yet.</summary>
+    public static readonly InspectionQueueStatus AwaitingInspection = new("awaiting_inspection");
+
+    /// <summary>Inspected, decision is PendingReview.</summary>
+    public static readonly InspectionQueueStatus AwaitingReview = new("awaiting_review");
+
+    private InspectionQueueStatus(string id) : base(id) { }
 }
 
 public sealed class NormalizedTrackingStatus : EnumValueObject<NormalizedTrackingStatus>

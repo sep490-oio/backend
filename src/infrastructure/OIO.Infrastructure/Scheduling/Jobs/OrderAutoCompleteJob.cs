@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
@@ -12,28 +13,27 @@ namespace OIO.Infrastructure.Scheduling.Jobs;
 [DisallowConcurrentExecution]
 internal sealed class OrderAutoCompleteJob : IJob
 {
-    private readonly IDbContext _dbContext;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly EscrowSettlementService _escrowSettlementService;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IClock _clock;
     private readonly ILogger<OrderAutoCompleteJob> _logger;
 
     public OrderAutoCompleteJob(
-        IDbContext dbContext,
-        IUnitOfWork unitOfWork,
-        EscrowSettlementService escrowSettlementService,
+        IServiceScopeFactory scopeFactory,
         IClock clock,
         ILogger<OrderAutoCompleteJob> logger)
     {
-        _dbContext = dbContext;
-        _unitOfWork = unitOfWork;
-        _escrowSettlementService = escrowSettlementService;
+        _scopeFactory = scopeFactory;
         _clock = clock;
         _logger = logger;
     }
 
     public async Task Execute(IJobExecutionContext context)
     {
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<IDbContext>();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        var escrowSettlementService = scope.ServiceProvider.GetRequiredService<EscrowSettlementService>();
+
         _logger.LogInformation("Starting OrderAutoCompleteJob...");
 
         var ct = context.CancellationToken;
@@ -42,7 +42,7 @@ internal sealed class OrderAutoCompleteJob : IJob
 
         // Find all orders that are Delivered and have been past the 3-day window
         // Load IDs only for memory efficiency (T007)
-        var eligibleOrderIds = await _dbContext.Set<Order>()
+        var eligibleOrderIds = await dbContext.Set<Order>()
             .Where(o => o.Status == OrderStatus.Delivered && o.DeliveredAt <= thresholdDate)
             .Select(o => o.Id)
             .ToListAsync(ct);
@@ -54,7 +54,7 @@ internal sealed class OrderAutoCompleteJob : IJob
             try
             {
                 // Load full entity inside the loop (memory efficient for large batches)
-                var order = await _dbContext.Set<Order>()
+                var order = await dbContext.Set<Order>()
                     .FirstOrDefaultAsync(o => o.Id == orderId, ct);
 
                 if (order is null)
@@ -65,7 +65,7 @@ internal sealed class OrderAutoCompleteJob : IJob
 
                 // EscrowSettlementService.ReleaseToSellerAsync handles both order.Complete()
                 // and escrow release in a single operation — no need to call Complete() separately.
-                var releaseResult = await _escrowSettlementService.ReleaseToSellerAsync(
+                var releaseResult = await escrowSettlementService.ReleaseToSellerAsync(
                     order, "Auto-completed: decision window expired", null, ct);
 
                 if (releaseResult.IsFailure)
@@ -76,7 +76,7 @@ internal sealed class OrderAutoCompleteJob : IJob
                     continue;
                 }
 
-                await _unitOfWork.SaveChangesAsync(ct);
+                await unitOfWork.SaveChangesAsync(ct);
 
                 _logger.LogInformation("Auto-completed Order {OrderId}", orderId);
             }

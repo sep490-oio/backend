@@ -9,6 +9,7 @@ public sealed class AutoBidStatus : EnumValueObject<AutoBidStatus>
     public static readonly AutoBidStatus Exhausted = new("exhausted");
     public static readonly AutoBidStatus Won = new("won");
     public static readonly AutoBidStatus Outbid = new("outbid");
+    public static readonly AutoBidStatus Cancelled = new("cancelled");
 
     public AutoBidStatus(string id) : base(id) { }
 }

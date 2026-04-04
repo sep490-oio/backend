@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Context.NotificationContext.Services;
 using OIO.Domain.Context.NotificationContext.Aggregates;
 using OIO.Domain.Context.NotificationContext.Enums;
-using OIO.Infrastructure.Persistence;
 using Quartz;
 
 namespace OIO.Infrastructure.Notification.BackgroundJobs;
@@ -12,17 +12,14 @@ namespace OIO.Infrastructure.Notification.BackgroundJobs;
 [DisallowConcurrentExecution]
 internal sealed class ProcessNotificationDeliveriesJob : IJob
 {
-    private readonly ApplicationDbContext _dbContext;
-    private readonly IEnumerable<INotificationProvider> _providers;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<ProcessNotificationDeliveriesJob> _logger;
 
     public ProcessNotificationDeliveriesJob(
-        ApplicationDbContext dbContext,
-        IEnumerable<INotificationProvider> providers,
+        IServiceScopeFactory scopeFactory,
         ILogger<ProcessNotificationDeliveriesJob> logger)
     {
-        _dbContext = dbContext;
-        _providers = providers;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -31,7 +28,12 @@ internal sealed class ProcessNotificationDeliveriesJob : IJob
         var ct = context.CancellationToken;
         var now = DateTime.UtcNow;
 
-        var pendingDeliveries = await _dbContext.Set<NotificationDelivery>()
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<IDbContext>();
+        var providers = scope.ServiceProvider.GetRequiredService<IEnumerable<INotificationProvider>>();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+        var pendingDeliveries = await dbContext.Set<NotificationDelivery>()
             .Include(d => d.Notification)
             .Where(d => (d.Status == NotificationDeliveryStatus.Pending && d.ScheduledAt <= now) ||
                         (d.Status == NotificationDeliveryStatus.Failed && d.NextRetryAt <= now && d.AttemptCount < d.MaxAttempts))
@@ -44,7 +46,7 @@ internal sealed class ProcessNotificationDeliveriesJob : IJob
 
         foreach (var delivery in pendingDeliveries)
         {
-            var provider = _providers.FirstOrDefault(p =>
+            var provider = providers.FirstOrDefault(p =>
                 p.ChannelType.Equals(delivery.Channel.Id, StringComparison.OrdinalIgnoreCase));
 
             if (provider == null)
@@ -57,7 +59,7 @@ internal sealed class ProcessNotificationDeliveriesJob : IJob
             try
             {
                 var result = await provider.SendAsync(delivery.Notification, delivery, ct);
-                
+
                 if (result.IsSuccess)
                 {
                     delivery.MarkAsSent(now);
@@ -74,6 +76,6 @@ internal sealed class ProcessNotificationDeliveriesJob : IJob
             }
         }
 
-        await _dbContext.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
     }
 }

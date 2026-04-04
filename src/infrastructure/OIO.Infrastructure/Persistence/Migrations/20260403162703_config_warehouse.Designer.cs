@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OIO.Infrastructure.Persistence;
@@ -13,9 +14,11 @@ using OIO.Infrastructure.Persistence;
 namespace OIO.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260403162703_config_warehouse")]
+    partial class config_warehouse
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -544,10 +547,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0)
                         .HasColumnName("view_count");
-
-                    b.Property<bool>("WasCascadeCapped")
-                        .HasColumnType("boolean")
-                        .HasColumnName("was_cascade_capped");
 
                     b.Property<int>("WatchCount")
                         .ValueGeneratedOnAdd()
@@ -1246,10 +1245,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<decimal>("HeldAmount")
-                        .HasColumnType("numeric")
-                        .HasColumnName("held_amount");
 
                     b.Property<bool>("IsEnabled")
                         .ValueGeneratedOnAdd()

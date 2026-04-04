@@ -233,7 +233,7 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
         return UnitResult.Success<e>();
     }
 
-    public UnitResult<e> ManuallyAdvanceStatus(InboundShipmentStatus newStatus, DateTime now)
+    public UnitResult<e> ManuallyAdvanceStatus(InboundShipmentStatus newStatus, DateTime now, bool isStaffRole = false)
     {
         if (ShipmentMode != InboundShipmentMode.ExternalCarrier)
             return WarehouseErrors.InboundShipment.NotExternalCarrier;
@@ -241,13 +241,33 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
         if (newStatus.Id == Status.Id)
             return WarehouseErrors.InboundShipment.StatusUnchanged;
 
+        // Seller transitions: AwaitingPickup → InTransit, InTransit → SellerClaimsArrived
+        // Staff transitions:  AwaitingPickup → InTransit, InTransit → Arrived, SellerClaimsArrived → Arrived
         if (Status == InboundShipmentStatus.AwaitingPickup &&
             newStatus != InboundShipmentStatus.InTransit)
             return WarehouseErrors.InboundShipment.InvalidTransition;
 
-        if (Status == InboundShipmentStatus.InTransit &&
-            newStatus != InboundShipmentStatus.Arrived)
-            return WarehouseErrors.InboundShipment.InvalidTransition;
+        if (Status == InboundShipmentStatus.InTransit)
+        {
+            if (isStaffRole && newStatus == InboundShipmentStatus.Arrived)
+            {
+                // Staff can directly confirm arrival
+            }
+            else if (!isStaffRole && newStatus == InboundShipmentStatus.SellerClaimsArrived)
+            {
+                // Seller claims arrival — pending staff confirmation
+            }
+            else
+            {
+                return WarehouseErrors.InboundShipment.InvalidTransition;
+            }
+        }
+
+        if (Status == InboundShipmentStatus.SellerClaimsArrived)
+        {
+            if (!isStaffRole || newStatus != InboundShipmentStatus.Arrived)
+                return WarehouseErrors.InboundShipment.InvalidTransition;
+        }
 
         Status = newStatus;
 

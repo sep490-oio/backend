@@ -212,6 +212,9 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         if (Status != AuctionStatus.Approved)
             return AuctionErrors.Auction.CannotSetTiming;
 
+        if (!timing.HasQualification)
+            return AuctionErrors.Auction.QualificationWindowRequired;
+
         var result = EnsureCanTransition(AuctionStatus.Scheduled);
 
         if (result.IsFailure)
@@ -259,6 +262,8 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
         if (Status == AuctionStatus.Approved && info is not null)
         {
+            if (!info.HasQualification)
+                return AuctionErrors.Auction.QualificationWindowRequired;
             Status = AuctionStatus.Scheduled;
         }
 
@@ -713,11 +718,25 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             nowUtc));
 
         // Process auto-bids from OTHER bidders
-        result = ProcessAutoBids(excludeBidderId: bidderId, nowUtc);
+        result = ProcessAutoBids(excludeBidderId: bidderId, nowUtc,
+            extensionThresholdMinutes, maxExtensions, maxDuration);
 
         if (result.IsFailure)
         {
             return result.Error;
+        }
+
+        // Resume cascade if it was capped (C2: cascade resumption)
+        var cascadeRetries = 0;
+        while (WasCascadeCapped && cascadeRetries < 5)
+        {
+            result = ProcessAutoBids(excludeBidderId: bidderId, nowUtc,
+                extensionThresholdMinutes, maxExtensions, maxDuration);
+
+            if (result.IsFailure)
+                return result.Error;
+
+            cascadeRetries++;
         }
 
         return bid;
@@ -1083,12 +1102,26 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         {
             return error;
         }
-        
+
         var result = autoBid.Pause(nowUtc);
 
         return result.IsFailure ? result.Error : result;
     }
-    
+
+    public Result<AutoBid, Error> CancelAutoBid(
+        UserId bidderId,
+        DateTime nowUtc)
+    {
+        var (_, isFailure, autoBid, error) = FindAutoBid(bidderId);
+
+        if (isFailure)
+            return error;
+
+        var cancelResult = autoBid.Cancel(nowUtc);
+
+        return cancelResult.IsFailure ? cancelResult.Error : autoBid;
+    }
+
     public UnitResult<Error> ResumeAutoBid(
         UserId bidderId,
         DateTime nowUtc)
@@ -1126,10 +1159,17 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         return engageResult.IsFailure ? engageResult.Error : UnitResult.Success<Error>();
     }
     
+    public bool WasCascadeCapped { get; private set; }
+
     private UnitResult<Error> ProcessAutoBids(
         UserId excludeBidderId,
-        DateTime nowUtc)
+        DateTime nowUtc,
+        TimeSpan extensionThresholdMinutes,
+        int maxExtensions,
+        TimeSpan maxDuration)
     {
+        WasCascadeCapped = false;
+        _cascadeCappedEventRaised = false;
         var totalOperations = 0;
         var hasProcessedBattle = false;
 
@@ -1157,7 +1197,8 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
                 continue;
             }
 
-            var processResult = ProcessSingleAutoBid(autoBid, nowUtc, ref totalOperations);
+            var processResult = ProcessSingleAutoBid(autoBid, nowUtc, ref totalOperations,
+                extensionThresholdMinutes, maxExtensions, maxDuration);
 
             if (processResult.IsFailure)
                 return processResult.Error;
@@ -1176,7 +1217,8 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
                 if (originalBidderAutoBid is not null)
                 {
                     var battleResult = ProcessAutoBidBattle(
-                        autoBid, originalBidderAutoBid, nowUtc, ref totalOperations);
+                        autoBid, originalBidderAutoBid, nowUtc, ref totalOperations,
+                        extensionThresholdMinutes, maxExtensions, maxDuration);
 
                     if (battleResult.IsFailure)
                         return battleResult.Error;
@@ -1194,10 +1236,14 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
     private Result<bool, Error> ProcessSingleAutoBid(
         AutoBid autoBid,
         DateTime nowUtc,
-        ref int totalOperations)
+        ref int totalOperations,
+        TimeSpan extensionThresholdMinutes,
+        int maxExtensions,
+        TimeSpan maxDuration)
     {
         if (!TryConsumeAutoBidOperation(ref totalOperations))
         {
+            WasCascadeCapped = true;
             RaiseCascadeCappedEventOnce(totalOperations, nowUtc);
             return false;
         }
@@ -1212,14 +1258,17 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
         var (_, isFailure, bidAmount, error) = autoBid
             .CalculateNextBidAmount(minimumRequired);
-            
+
         if (isFailure)
         {
             return error;
         }
 
         // Place the auto-bid
-        var placeResult = PlaceAutoBidInternal(autoBid, bidAmount, nowUtc);
+        var placeResult = PlaceAutoBidInternal(autoBid, bidAmount, nowUtc,
+            extensionThresholdMinutes: extensionThresholdMinutes,
+            maxExtensions: maxExtensions,
+            maxDuration: maxDuration);
 
         if (placeResult.IsFailure)
         {
@@ -1233,7 +1282,10 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         AutoBid autoBidA,
         AutoBid autoBidB,
         DateTime nowUtc,
-        ref int totalOperations)
+        ref int totalOperations,
+        TimeSpan extensionThresholdMinutes,
+        int maxExtensions,
+        TimeSpan maxDuration)
     {
         const int maxRounds = 100; // Safety: prevent infinite loops
         var round = 0;
@@ -1247,6 +1299,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
             if (!TryConsumeAutoBidOperation(ref totalOperations))
             {
+                WasCascadeCapped = true;
                 RaiseCascadeCappedEventOnce(totalOperations, nowUtc);
                 break;
             }
@@ -1261,13 +1314,17 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
             var (_, isFailure, bidAmount, error) = currentAttacker
                 .CalculateNextBidAmount(minimumRequired);
-            
+
             if (isFailure)
             {
                 return error;
             }
-            
-            var placeResult = PlaceAutoBidInternal(currentAttacker, bidAmount, nowUtc, raiseOutbidEvent: false);
+
+            var placeResult = PlaceAutoBidInternal(currentAttacker, bidAmount, nowUtc,
+                raiseOutbidEvent: false,
+                extensionThresholdMinutes: extensionThresholdMinutes,
+                maxExtensions: maxExtensions,
+                maxDuration: maxDuration);
 
             if (placeResult.IsFailure)
             {
@@ -1311,7 +1368,10 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         AutoBid autoBid,
         Money bidAmount,
         DateTime nowUtc,
-        bool raiseOutbidEvent = true)
+        bool raiseOutbidEvent = true,
+        TimeSpan extensionThresholdMinutes = default,
+        int maxExtensions = 0,
+        TimeSpan maxDuration = default)
     {
         // 1. Validate BEFORE mutating — ensure pricing and budget are valid
         var pricingCheck = Pricing.WithNewBid(bidAmount.Amount, GetMinimumBidAmount().Amount);
@@ -1368,6 +1428,20 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
                 NewHighestBid: bidAmount.Amount,
                 OutbidAmount: Pricing.CurrentAmount,
                 OccurredAt: nowUtc));
+        }
+
+        // Auto-extend check (mirrors PlaceBid behavior)
+        if (extensionThresholdMinutes != default)
+        {
+            var extendResult = TryAutoExtend(
+                nowUtc: nowUtc,
+                extensionThresholdMinutes: extensionThresholdMinutes,
+                maxExtensions: maxExtensions,
+                maxDuration: maxDuration,
+                triggerByBidId: bid.Id);
+
+            if (extendResult.IsFailure)
+                return extendResult.Error;
         }
 
         return UnitResult.Success<Error>();
@@ -2214,14 +2288,18 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
     private UnitResult<Error> EngageAutoBidAgainstCurrentWinner(
         AutoBid autoBid,
         UserId bidderId,
-        DateTime nowUtc)
+        DateTime nowUtc,
+        TimeSpan extensionThresholdMinutes = default,
+        int maxExtensions = 0,
+        TimeSpan maxDuration = default)
     {
         var currentWinning = GetCurrentWinningBid();
         if (currentWinning is null || currentWinning.BidderId == bidderId)
             return UnitResult.Success<Error>();
 
         var totalOperations = 0;
-        var processSingleAutoBidResult = ProcessSingleAutoBid(autoBid, nowUtc, ref totalOperations);
+        var processSingleAutoBidResult = ProcessSingleAutoBid(autoBid, nowUtc, ref totalOperations,
+            extensionThresholdMinutes, maxExtensions, maxDuration);
 
         if (processSingleAutoBidResult.IsFailure)
             return processSingleAutoBidResult.Error;
@@ -2241,7 +2319,8 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             autoBid,
             winnerAutoBid,
             nowUtc,
-            ref totalOperations);
+            ref totalOperations,
+            extensionThresholdMinutes, maxExtensions, maxDuration);
 
         return battleResult.IsFailure ? battleResult.Error : UnitResult.Success<Error>();
     }

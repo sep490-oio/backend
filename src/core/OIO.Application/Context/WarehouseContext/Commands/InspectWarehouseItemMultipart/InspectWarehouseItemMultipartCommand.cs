@@ -9,15 +9,19 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Application.Context.WarehouseContext.Mappings;
+using System.Text.Json;
+using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.Shared.Entities;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.Context.WarehouseContext.Errors;
+using OIO.Domain.Context.WarehouseContext.ValueObjects;
 using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 using e = OIO.Domain.SeedWork.Errors.Error;
+using ItemId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId;
 
 namespace OIO.Application.Context.WarehouseContext.Commands.InspectWarehouseItemMultipart;
 
@@ -32,6 +36,7 @@ namespace OIO.Application.Context.WarehouseContext.Commands.InspectWarehouseItem
 /// </summary>
 public sealed record InspectWarehouseItemMultipartCommand(
     Guid         InboundShipmentId,
+    string       Condition,
     string?      InspectionNotes,
     /// <summary>Front / exterior of the package.</summary>
     IFormFile?   FrontPhoto,
@@ -154,16 +159,48 @@ internal sealed class InspectWarehouseItemMultipartCommandHandler(
             if (linkResult.IsFailure) return linkResult.Error;
         }
 
-        // ── 5. Advance shipment: Arrived → Inspected ──────────────────────────
+        // ── 5. Create WarehouseInspection record ─────────────────────────────
+        var conditionMaybe = WarehouseItemCondition.FromId(request.Condition);
+        if (conditionMaybe.HasNoValue)
+            return e.Conflict("Warehouse.InvalidCondition", $"Unknown condition: '{request.Condition}'.");
+
+        var itemId = ItemId.From(shipment.ItemId);
+        var item = await db.Set<Item>()
+            .FirstOrDefaultAsync(i => i.Id == itemId, cancellationToken);
+
+        if (item is null)
+            return e.NotFound("Item.NotFound", $"Item '{shipment.ItemId}' was not found.");
+
+        var evidence = InspectionEvidence.From(JsonSerializer.Serialize(
+            uploadedMedia.Select(m => InspectionEvidenceSnapshot.Create(m.Upload.StorageRef, m.Upload.Info)).ToList()));
+
+        var createInspectionResult = WarehouseInspection.Create(
+            warehouseItemId: warehouseItem.Id,
+            inboundShipmentId: shipmentId,
+            itemId: shipment.ItemId,
+            declaredCondition: item.Condition,
+            conditionOnArrival: conditionMaybe.Value,
+            evidence: evidence,
+            inspectedBy: staffId,
+            now: now,
+            inspectionNotes: request.InspectionNotes);
+
+        if (createInspectionResult.IsFailure)
+            return createInspectionResult.Error;
+
+        var inspection = createInspectionResult.Value;
+
+        // ── 6. Advance shipment: Arrived → Inspected ──────────────────────────
         var shipmentResult = shipment.RecordInspected(staffId, now);
         if (shipmentResult.IsFailure) return shipmentResult.Error;
 
-        // ── 6. Persist everything in one transaction ──────────────────────────
+        // ── 7. Persist everything in one transaction ──────────────────────────
         // Insert MediaUpload records so they're tracked/auditable
         foreach (var (upload, _, _) in uploadedMedia)
             db.Set<MediaUpload>().Add(upload);
 
         db.Set<WarehouseItem>().Add(warehouseItem);
+        db.Set<WarehouseInspection>().Add(inspection);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(

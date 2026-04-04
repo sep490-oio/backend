@@ -11,7 +11,8 @@ public sealed class ResolveReportEndpoint : IEndpoint
 {
     public sealed record Request(
         [Required] bool Dismissed,
-        string? ResolutionNotes = null);
+        string? ResolutionNotes = null,
+        string? EnforcementAction = null);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
@@ -22,7 +23,7 @@ public sealed class ResolveReportEndpoint : IEndpoint
                 CancellationToken ct) =>
             {
                 var result = await sender.Send(
-                    new ResolveReportCommand(reportId, request.Dismissed, request.ResolutionNotes),
+                    new ResolveReportCommand(reportId, request.Dismissed, request.ResolutionNotes, request.EnforcementAction),
                     ct);
 
                 return result.ToOkHttpResult();

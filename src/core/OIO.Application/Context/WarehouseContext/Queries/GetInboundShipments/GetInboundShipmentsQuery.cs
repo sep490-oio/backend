@@ -9,6 +9,7 @@ using OIO.Application.Context.WarehouseContext.Mappings;
 using OIO.Application.Extensions;
 using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.AppDefinitions;
 using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
@@ -46,9 +47,14 @@ internal sealed class GetInboundShipmentsQueryHandler(IDbContext db, ICurrentUse
         CancellationToken cancellationToken)
     {
         var parameters = request.Parameters;
-        var query = db.Set<InboundShipment>()
-            .AsNoTracking()
-            .Where(s => s.SellerId == currentUser.UserId); // Ownership scoping
+        var isStaffRole = currentUser.IsInRole(App.Roles.Catalogs.WarehouseStaff)
+                       || currentUser.IsInRole(App.Roles.Catalogs.Inspector)
+                       || currentUser.IsInRole(App.Roles.Catalogs.Admin);
+        var query = db.Set<InboundShipment>().AsNoTracking();
+
+        // Sellers see only their own shipments; staff sees all
+        if (!isStaffRole)
+            query = query.Where(s => s.SellerId == currentUser.UserId);
 
         if (!string.IsNullOrWhiteSpace(parameters.Status))
         {

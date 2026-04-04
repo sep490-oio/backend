@@ -6,12 +6,13 @@ using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Application.Context.WarehouseContext.Mappings;
 using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
 using OIO.Domain.Context.WarehouseContext.Errors;
+using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.WarehouseContext.Queries.GetShipmentByScanCode;
 
 internal sealed class GetShipmentByScanCodeQueryHandler
-    : IQueryHandler<GetShipmentByScanCodeQuery, InboundShipmentDto>
+    : IQueryHandler<GetShipmentByScanCodeQuery, List<InboundShipmentDto>>
 {
     private readonly IDbContext _dbContext;
 
@@ -20,7 +21,7 @@ internal sealed class GetShipmentByScanCodeQueryHandler
         _dbContext = dbContext;
     }
 
-    public async Task<Result<InboundShipmentDto, Error>> Handle(
+    public async Task<Result<List<InboundShipmentDto>, Error>> Handle(
         GetShipmentByScanCodeQuery request,
         CancellationToken          cancellationToken)
     {
@@ -29,17 +30,38 @@ internal sealed class GetShipmentByScanCodeQueryHandler
             return Error.Validation("ScanCode", "GetShipment.ScanCodeEmpty", "Scan code cannot be empty.");
         }
 
-        var shipment = await _dbContext.Set<InboundShipment>()
+        // Try parsing as GUID first (QR codes encode shipment ID directly)
+        InboundShipment? primary = null;
+        if (Guid.TryParse(request.ScanCode, out var parsedId))
+        {
+            var shipmentId = InboundShipmentId.From(parsedId);
+            primary = await _dbContext.Set<InboundShipment>()
+                .AsNoTracking()
+                .Include(s => s.TrackingEvents)
+                .FirstOrDefaultAsync(s => s.Id == shipmentId, cancellationToken);
+        }
+
+        // Fallback: search by ClientOrderCode or CarrierTrackingNumber
+        primary ??= await _dbContext.Set<InboundShipment>()
             .AsNoTracking()
+            .Include(s => s.TrackingEvents)
             .FirstOrDefaultAsync(
                 s => s.ClientOrderCode == request.ScanCode || s.CarrierTrackingNumber == request.ScanCode,
                 cancellationToken);
 
-        if (shipment is null)
+        if (primary is null)
         {
             return Error.NotFound("InboundShipment.NotFoundByScanCode", $"No shipment found matching scan code '{request.ScanCode}'.");
         }
 
-        return shipment.ToDto();
+        // Fetch all shipments in the same batch (sharing ClientOrderCode)
+        var batch = await _dbContext.Set<InboundShipment>()
+            .AsNoTracking()
+            .Include(s => s.TrackingEvents)
+            .Where(s => s.ClientOrderCode == primary.ClientOrderCode)
+            .OrderBy(s => s.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return batch.Select(s => s.ToDto()).ToList();
     }
 }

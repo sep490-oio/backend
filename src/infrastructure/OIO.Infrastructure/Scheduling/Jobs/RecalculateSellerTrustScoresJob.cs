@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
@@ -15,33 +16,32 @@ namespace OIO.Infrastructure.Scheduling.Jobs;
 [DisallowConcurrentExecution]
 public sealed class RecalculateSellerTrustScoresJob : IJob
 {
-    private readonly IDbContext _dbContext;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IClock _clock;
-    private readonly SellerTrustScoreCalculator _calculator;
     private readonly ILogger<RecalculateSellerTrustScoresJob> _logger;
 
     public RecalculateSellerTrustScoresJob(
-        IDbContext dbContext,
-        IUnitOfWork unitOfWork,
+        IServiceScopeFactory scopeFactory,
         IClock clock,
-        SellerTrustScoreCalculator calculator,
         ILogger<RecalculateSellerTrustScoresJob> logger)
     {
-        _dbContext = dbContext;
-        _unitOfWork = unitOfWork;
+        _scopeFactory = scopeFactory;
         _clock = clock;
-        _calculator = calculator;
         _logger = logger;
     }
 
     public async Task Execute(IJobExecutionContext context)
     {
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<IDbContext>();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        var calculator = scope.ServiceProvider.GetRequiredService<SellerTrustScoreCalculator>();
+
         var now = _clock.UtcNow;
 
         _logger.LogInformation("Running RecalculateSellerTrustScoresJob at {Now}.", now);
 
-        var sellers = await _dbContext.Set<SellerProfile>()
+        var sellers = await dbContext.Set<SellerProfile>()
             .Where(s => s.Status == SellerProfileStatus.Verified)
             .ToListAsync(context.CancellationToken);
 
@@ -57,7 +57,7 @@ public sealed class RecalculateSellerTrustScoresJob : IJob
         {
             try
             {
-                var score = await _calculator.CalculateAsync(seller.Id, context.CancellationToken);
+                var score = await calculator.CalculateAsync(seller.Id, context.CancellationToken);
                 seller.UpdateTrustScore(score, now);
                 updatedCount++;
             }
@@ -69,7 +69,7 @@ public sealed class RecalculateSellerTrustScoresJob : IJob
 
         if (updatedCount > 0)
         {
-            await _unitOfWork.SaveChangesAsync(context.CancellationToken);
+            await unitOfWork.SaveChangesAsync(context.CancellationToken);
         }
 
         _logger.LogInformation(

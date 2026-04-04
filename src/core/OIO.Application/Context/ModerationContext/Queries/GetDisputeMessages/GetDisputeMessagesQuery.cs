@@ -72,16 +72,20 @@ internal sealed class GetDisputeMessagesQueryHandler(
             .Distinct()
             .ToList();
 
-        var displayNames = await dbContext.Set<User>()
+        var users = await dbContext.Set<User>()
             .AsNoTracking()
+            .Include(x => x.Profile)
             .Where(x => senderIds.Contains(x.Id))
-            .ToDictionaryAsync(x => x.Id.Value, x => x.UserName.Value, cancellationToken);
+            .ToListAsync(cancellationToken);
+
+        var displayNames = users.ToDictionary(x => x.Id.Value, x => x.UserName.Value);
+        var avatarUrls = users.ToDictionary(x => x.Id.Value, x => x.Profile?.AvatarUrl?.Value);
 
         var nextCursorItem = pageItemsDesc.LastOrDefault();
         var messages = pageItemsDesc
             .OrderBy(x => x.CreatedAt)
             .ThenBy(x => x.Id.Value)
-            .Select(x => x.ToDto(displayNames))
+            .Select(x => x.ToDto(displayNames, avatarUrls))
             .ToList();
 
         return new DisputeMessagePageDto(

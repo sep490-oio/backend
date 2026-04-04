@@ -14,6 +14,7 @@ public static partial class App
             public const string Seller = "seller";
             public const string Bidder = "bidder";
             public const string Inspector = "inspector";
+            public const string WarehouseStaff = "warehouse_staff";
 
             public static readonly HashSet<string> All =
             [
@@ -21,7 +22,8 @@ public static partial class App
                 Admin,
                 Seller,
                 Bidder,
-                Inspector
+                Inspector,
+                WarehouseStaff
             ];
             
             public static IReadOnlyDictionary<string, HashSet<string>> RolePermissions => new Dictionary<string, HashSet<string>>
@@ -180,6 +182,32 @@ public static partial class App
                     Permissions.Catalogs.Warehouse.ReadShipments,
                     Permissions.Catalogs.Warehouse.BookInbound,
                     Permissions.Catalogs.Warehouse.SelfShipOutbound,
+                    Permissions.Catalogs.Warehouse.UpdateExternalStatus,
+                    Permissions.Catalogs.Warehouse.CalculateShippingFee,
+                    Permissions.Catalogs.Warehouse.CalculateLeadTime,
+                ],
+
+                [WarehouseStaff] =
+                [
+                    // Profile
+                    Permissions.Catalogs.Me.Read,
+                    Permissions.Catalogs.Me.ReadProfile,
+                    Permissions.Catalogs.Me.UpdateProfile,
+                    Permissions.Catalogs.Me.ChangePassword,
+                    Permissions.Catalogs.Me.ReadSessions,
+                    Permissions.Catalogs.Me.ReadLoginHistory,
+                    Permissions.Catalogs.Me.ManageTwoFactor,
+                    Permissions.Catalogs.Me.ManagePhone,
+                    Permissions.Catalogs.Media.ReadContexts,
+                    Permissions.Catalogs.Media.Upload,
+                    Permissions.Catalogs.Media.ConfirmUpload,
+
+                    // Warehouse — receiving & logistics
+                    Permissions.Catalogs.Warehouse.ReadShipments,
+                    Permissions.Catalogs.Warehouse.BookInbound,
+                    Permissions.Catalogs.Warehouse.BookOutbound,
+                    Permissions.Catalogs.Warehouse.UpdateExternalStatus,
+                    Permissions.Catalogs.Warehouse.ManageLocations,
                     Permissions.Catalogs.Warehouse.CalculateShippingFee,
                     Permissions.Catalogs.Warehouse.CalculateLeadTime,
                 ],
@@ -197,15 +225,11 @@ public static partial class App
                     Permissions.Catalogs.Media.ReadContexts,
                     Permissions.Catalogs.Media.Upload,
                     Permissions.Catalogs.Media.ConfirmUpload,
+
+                    // Warehouse — inspection only
                     Permissions.Catalogs.Warehouse.ReadShipments,
                     Permissions.Catalogs.Warehouse.Inspect,
                     Permissions.Catalogs.Warehouse.Store,
-                    Permissions.Catalogs.Warehouse.BookInbound,
-                    Permissions.Catalogs.Warehouse.BookOutbound,
-                    Permissions.Catalogs.Warehouse.UpdateExternalStatus,
-                    Permissions.Catalogs.Warehouse.ManageLocations,
-                    Permissions.Catalogs.Warehouse.CalculateShippingFee,
-                    Permissions.Catalogs.Warehouse.CalculateLeadTime,
                 ],
 
                 [Admin] = Permissions.Catalogs.All
@@ -220,6 +244,7 @@ public static partial class App
             public static readonly Role Seller = Role.Create(Catalogs.Seller, 50);
             public static readonly Role Bidder = Role.Create(Catalogs.Bidder, 50);
             public static readonly Role Inspector = Role.Create(Catalogs.Inspector, 60);
+            public static readonly Role WarehouseStaff = Role.Create(Catalogs.WarehouseStaff, 55);
 
             public static readonly IReadOnlyDictionary<string, Role> All = new Dictionary<string, Role>
             {
@@ -227,7 +252,8 @@ public static partial class App
                 [Catalogs.Admin] = Admin,
                 [Catalogs.Seller] = Seller,
                 [Catalogs.Bidder] = Bidder,
-                [Catalogs.Inspector] = Inspector
+                [Catalogs.Inspector] = Inspector,
+                [Catalogs.WarehouseStaff] = WarehouseStaff,
             };
         }
     }

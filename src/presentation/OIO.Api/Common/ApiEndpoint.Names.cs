@@ -118,6 +118,7 @@ public static partial class ApiEndpoint
             public const string AssignReport = nameof(AssignReport);
             public const string ResolveReport = nameof(ResolveReport);
             public const string EscalateReportEmergency = nameof(EscalateReportEmergency);
+            public const string EscalateReportToDispute = nameof(EscalateReportToDispute);
             public const string GetMonitoringAlerts = nameof(GetMonitoringAlerts);
             public const string AcknowledgeMonitoringAlert = nameof(AcknowledgeMonitoringAlert);
             public const string ResolveMonitoringAlert = nameof(ResolveMonitoringAlert);
@@ -184,6 +185,7 @@ public static partial class ApiEndpoint
             public const string ConfigureAutoBid = nameof(ConfigureAutoBid);
             public const string PauseAutoBid = nameof(PauseAutoBid);
             public const string ResumeAutoBid = nameof(ResumeAutoBid);
+            public const string CancelAutoBid = nameof(CancelAutoBid);
             public const string GetMyAutoBid = nameof(GetMyAutoBid);
             public const string WatchAuction = nameof(WatchAuction);
             public const string UnwatchAuction = nameof(UnwatchAuction);

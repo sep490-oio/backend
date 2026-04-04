@@ -71,10 +71,15 @@ public sealed class AutoBid : BaseEntity<AutoBidId>, IAuditableEntity
         Status == AutoBidStatus.Active &&
         Budget.MaxPrice.IsGreaterThanOrEqual(requiredAmount);
 
+    public decimal HeldAmount { get; private set; }
+
+    public void SetHeldAmount(decimal amount)
+    {
+        HeldAmount = amount;
+    }
+
     public Result<Money, Error> CalculateNextBidAmount(Money minimumRequired)
     {
-        LastValidationAt = DateTime.UtcNow;
-
         if (!CanBid(minimumRequired))
             return AuctionErrors.AutoBid.CannotBid;
 
@@ -157,6 +162,23 @@ public sealed class AutoBid : BaseEntity<AutoBidId>, IAuditableEntity
         return UnitResult.Success<Error>();
     }
     
+    /// <summary>
+    /// Cancel auto-bid — disables bidding and releases wallet hold immediately.
+    /// This is a terminal state; the auto-bid cannot be reactivated after cancellation.
+    /// </summary>
+    public UnitResult<Error> Cancel(DateTime nowUtc)
+    {
+        if (Status == AutoBidStatus.Cancelled)
+            return UnitResult.Failure(Error.Conflict("AutoBid.AlreadyCancelled", "Auto-bid is already cancelled."));
+
+        Status = AutoBidStatus.Cancelled;
+        IsEnabled = false;
+        StopReason = "cancelled_by_user";
+        StoppedAt = nowUtc;
+        ModifiedAt = nowUtc;
+        return UnitResult.Success<Error>();
+    }
+
     /// <summary>
     /// Pause auto-bid — disables bidding but keeps wallet hold.
     /// Wallet reservation is retained so Resume can reactivate instantly without re-hold.

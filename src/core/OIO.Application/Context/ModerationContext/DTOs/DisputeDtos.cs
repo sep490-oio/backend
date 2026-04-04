@@ -18,6 +18,7 @@ public sealed record DisputeMessageDto(
     Guid DisputeId,
     Guid SenderId,
     string SenderDisplayName,
+    string? SenderAvatarUrl,
     string Message,
     bool IsInternal,
     DateTime CreatedAt,
@@ -33,7 +34,8 @@ public sealed record DisputeParticipantDto(
     Guid UserId,
     string DisplayName,
     string Role,
-    DateTime? LastReadAt);
+    DateTime? LastReadAt,
+    string? AvatarUrl);
 
 public sealed record DisputeThreadMetaDto(
     Guid Id,

@@ -110,23 +110,23 @@ internal sealed class BookInboundShipmentCommandHandler
             senderProvince = string.IsNullOrWhiteSpace(senderProvince) ? defaultUserAddress.Address.City            : senderProvince;
         }
 
-        // ── 4a. External carrier — one record per item, each with its own EXT code ─
+        // ── 4a. External carrier — one record per item, shared ClientOrderCode ──
         if (isExternal)
         {
             if (string.IsNullOrWhiteSpace(request.ExternalCarrierName))
                 return WarehouseErrors.InboundShipment.ExternalCarrierNameRequired;
 
             var externalShipments = new List<InboundShipment>(request.Items.Count);
+            var sharedExtCode = $"EXT-{Guid.NewGuid():N}"[..20];
 
             foreach (var item in request.Items)
             {
-                var extCode = $"EXT-{Guid.NewGuid():N}"[..20];
 
                 var extResult = InboundShipment.Create(
                     itemId:              item.ItemId,
                     sellerId:            _currentUser.UserId,
                     providerCode:        ShippingProviderCode.External,
-                    clientOrderCode:     extCode,
+                    clientOrderCode:     sharedExtCode,
                     senderName:          senderName,
                     senderPhone:         senderPhone,
                     senderAddress:       senderAddress,

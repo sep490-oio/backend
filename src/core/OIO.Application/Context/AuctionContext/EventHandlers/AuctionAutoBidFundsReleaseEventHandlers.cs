@@ -104,7 +104,7 @@ internal static class AuctionAutoBidFundsReleaseDispatch
         var candidates = await dbContext.Set<AutoBid>()
             .AsNoTracking()
             .Where(x => x.AuctionId == AuctionId.From(auctionId))
-            .Select(x => new AutoBidFundsReleaseCandidate(x.BidderId, x.Budget.MaxAmount))
+            .Select(x => new AutoBidFundsReleaseCandidate(x.BidderId, x.HeldAmount))
             .ToListAsync(cancellationToken);
 
         if (candidates.Count == 0)

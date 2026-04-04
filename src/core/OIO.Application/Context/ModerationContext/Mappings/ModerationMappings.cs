@@ -26,7 +26,8 @@ internal static class ModerationMappings
             AssignedAt: report.AssignedAt,
             ResolvedAt: report.ResolvedAt,
             EscalatedEmergencyAt: report.EscalatedEmergencyAt,
-            ResolutionNotes: report.ResolutionNotes);
+            ResolutionNotes: report.ResolutionNotes,
+            DisputeId: report.DisputeId?.Value);
     }
 
     public static MonitoringAlertDto ToDto(this MonitoringAlert alert)
@@ -118,22 +119,27 @@ internal static class ModerationMappings
             user.Id.Value,
             user.UserName.Value,
             role,
-            lastReadAt);
+            lastReadAt,
+            user.Profile?.AvatarUrl?.Value);
     }
 
     public static DisputeMessageDto ToDto(
         this DisputeMessage message,
-        IReadOnlyDictionary<Guid, string> displayNames)
+        IReadOnlyDictionary<Guid, string> displayNames,
+        IReadOnlyDictionary<Guid, string?> avatarUrls)
     {
         var senderDisplayName = displayNames.TryGetValue(message.SenderId.Value, out var displayName)
             ? displayName
             : message.SenderId.Value.ToString();
+
+        var senderAvatarUrl = avatarUrls.TryGetValue(message.SenderId.Value, out var av) ? av : null;
 
         return new DisputeMessageDto(
             message.Id.Value,
             message.DisputeId.Value,
             message.SenderId.Value,
             senderDisplayName,
+            senderAvatarUrl,
             message.Message,
             message.IsInternal,
             message.CreatedAt,

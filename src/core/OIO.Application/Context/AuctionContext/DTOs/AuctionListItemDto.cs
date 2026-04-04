@@ -17,6 +17,7 @@ public sealed record AuctionListItemDto(
     DateTime? StartTime,
     DateTime? EndTime,
     TimeSpan? RemainingTime,
+    DateTime CreatedAt,
     bool? IsEndingSoon,
     bool? IsFeatured,
     Guid SellerId,
