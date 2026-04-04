@@ -91,6 +91,7 @@ public static partial class App
                 public const string SelfShipOutbound = "warehouse:outbound:self-ship";
                 public const string CalculateShippingFee = "warehouse:shipping:calculate-fee";
                 public const string CalculateLeadTime    = "warehouse:shipping:calculate-lead-time";
+                public const string SyncAddress          = "warehouse:address:sync";
             }
 
             // ==================== Media ====================
@@ -227,6 +228,7 @@ public static partial class App
                 Warehouse.SelfShipOutbound,
                 Warehouse.CalculateShippingFee,
                 Warehouse.CalculateLeadTime,
+                Warehouse.SyncAddress,
 
 
                 // Categories
@@ -382,6 +384,7 @@ public static partial class App
                 public static readonly Permission SelfShipOutbound = Permission.Create(Catalogs.Warehouse.SelfShipOutbound);
                 public static readonly Permission CalculateShippingFee = Permission.Create(Catalogs.Warehouse.CalculateShippingFee);
                 public static readonly Permission CalculateLeadTime    = Permission.Create(Catalogs.Warehouse.CalculateLeadTime);
+                public static readonly Permission SyncAddress          = Permission.Create(Catalogs.Warehouse.SyncAddress);
             }
             
             public static class Categories
@@ -459,6 +462,7 @@ public static partial class App
                 [Catalogs.Warehouse.SelfShipOutbound] = Warehouse.SelfShipOutbound,
                 [Catalogs.Warehouse.CalculateShippingFee] = Warehouse.CalculateShippingFee,
                 [Catalogs.Warehouse.CalculateLeadTime] = Warehouse.CalculateLeadTime,
+                [Catalogs.Warehouse.SyncAddress] = Warehouse.SyncAddress,
 
                 
                 // Media
