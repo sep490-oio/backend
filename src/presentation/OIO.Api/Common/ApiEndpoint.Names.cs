@@ -39,6 +39,9 @@ public static partial class ApiEndpoint
             public const string CheckPendingTerms = nameof(CheckPendingTerms);
             public const string GetMyWallet = nameof(GetMyWallet);
             public const string GetMyOrders = nameof(GetMyOrders);
+            public const string GetMyOutboundShipments = nameof(GetMyOutboundShipments);
+            public const string GetMyInboundShipments = nameof(GetMyInboundShipments);
+            public const string GetSellerDirectShipOrders = nameof(GetSellerDirectShipOrders);
 
             // Verifications
             public const string CreateVerification = nameof(CreateVerification);
