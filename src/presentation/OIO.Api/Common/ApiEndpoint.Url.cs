@@ -288,6 +288,7 @@ public static partial class ApiEndpoint
             public const string ApproveReturn = $"{Base}/{{orderId:guid}}/returns/{{returnId:guid}}/approve";
             public const string RejectReturn = $"{Base}/{{orderId:guid}}/returns/{{returnId:guid}}/reject";
             public const string ConfirmReturnReceived = $"{Base}/{{orderId:guid}}/returns/{{returnId:guid}}/confirm-received";
+            public const string ConfirmReceipt = $"{Base}/{{orderId:guid}}/confirm-receipt";
         }
 
         public static class Me

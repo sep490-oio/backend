@@ -296,6 +296,7 @@ public static partial class ApiEndpoint
             public const string ApproveOrderReturn = nameof(ApproveOrderReturn);
             public const string RejectOrderReturn = nameof(RejectOrderReturn);
             public const string ConfirmOrderReturnReceived = nameof(ConfirmOrderReturnReceived);
+            public const string ConfirmOrderReceipt = nameof(ConfirmOrderReceipt);
         }
 
         public static class Reports
