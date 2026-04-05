@@ -38,12 +38,13 @@ internal sealed class OrderAutoCompleteJob : IJob
 
         var ct = context.CancellationToken;
         var now = _clock.UtcNow;
-        var thresholdDate = now.AddDays(-3);
+        var autoCompletedThreshold = now.AddDays(-7);
 
-        // Find all orders that are Delivered and have been past the 3-day window
-        // Load IDs only for memory efficiency (T007)
+        // Find all Delivered orders whose 7-day auto-complete window has expired
         var eligibleOrderIds = await dbContext.Set<Order>()
-            .Where(o => o.Status == OrderStatus.Delivered && o.DeliveredAt <= thresholdDate)
+            .Where(o => o.Status == OrderStatus.Delivered
+                        && o.DeliveredAt.HasValue
+                        && o.DeliveredAt.Value <= autoCompletedThreshold)
             .Select(o => o.Id)
             .ToListAsync(ct);
 
