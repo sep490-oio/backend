@@ -372,6 +372,7 @@ public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
             _                    => Status
         };
 
+        var oldStatusId = Status.Id;
         if (newStatus != Status)
         {
             Status     = newStatus;
@@ -382,6 +383,36 @@ public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
 
             if (newStatus == OutboundShipmentStatus.Delivered)
                 DeliveredAt = eventTime;
+        }
+
+        // Raise specific events based on status change to trigger Order system integration
+        if (Status.Id != oldStatusId)
+        {
+            if (Status == OutboundShipmentStatus.PickedUp)
+            {
+                RaiseDomainEvent(new OutboundShipmentPickedUpEvent(
+                    Id.ToString(), OrderId.ToString(), providerCode.Id, CarrierTrackingNumber ?? ClientOrderCode, now));
+            }
+            else if (Status == OutboundShipmentStatus.Delivered)
+            {
+                RaiseDomainEvent(new OutboundShipmentDeliveredEvent(
+                    Id.ToString(), OrderId.ToString(), providerCode.Id, eventTime, now));
+            }
+            else if (Status == OutboundShipmentStatus.Failed)
+            {
+                RaiseDomainEvent(new OutboundShipmentFailedEvent(
+                    Id.ToString(), OrderId.ToString(), reasonDescription ?? carrierStatusDesc ?? "Carrier reported failure", now));
+            }
+            else if (Status == OutboundShipmentStatus.Returning)
+            {
+                RaiseDomainEvent(new OutboundShipmentReturningEvent(
+                    Id.ToString(), OrderId.ToString(), reasonDescription ?? carrierStatusDesc ?? "Carrier returning to sender", now));
+            }
+            else if (Status == OutboundShipmentStatus.Returned)
+            {
+                RaiseDomainEvent(new OutboundShipmentReturnedEvent(
+                    Id.ToString(), OrderId.ToString(), now));
+            }
         }
 
         RaiseDomainEvent(new OutboundTrackingEventRecordedEvent(
