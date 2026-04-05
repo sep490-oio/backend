@@ -23,12 +23,6 @@ public sealed record InboundShipmentArrivedEvent(
     string CarrierTrackingNumber,
     DateTime OccurredOn) : DomainEvent(OccurredOn);
 
-public sealed record InboundShipmentReceivedEvent(
-    string InboundShipmentId,
-    string ProviderCode,
-    string CarrierTrackingNumber,
-    DateTime OccurredOn) : DomainEvent(OccurredOn);
-
 public sealed record InboundShipmentInspectedEvent(
     string InboundShipmentId,
     string ItemId,

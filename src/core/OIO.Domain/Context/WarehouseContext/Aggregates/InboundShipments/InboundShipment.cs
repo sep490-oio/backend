@@ -306,27 +306,9 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
         return UnitResult.Success<e>();
     }
 
-    public UnitResult<e> RecordReceived(DateTime now)
-    {
-        if (Status == InboundShipmentStatus.Received)
-            return UnitResult.Success<e>();
-
-        Status = InboundShipmentStatus.Received;
-
-        ModifiedAt = now;
-
-        RaiseDomainEvent(new InboundShipmentReceivedEvent(
-            Id.ToString(),
-            ProviderCode.Id,
-            CarrierTrackingNumber ?? ClientOrderCode,
-            now));
-
-        return UnitResult.Success<e>();
-    }
-
     public UnitResult<e> RecordInspected(UserId inspectedBy, DateTime now)
     {
-        if (Status != InboundShipmentStatus.Arrived && Status != InboundShipmentStatus.Received)
+        if (Status != InboundShipmentStatus.Arrived)
             return WarehouseErrors.InboundShipment.CannotInspect;
 
         Status = InboundShipmentStatus.Inspected;
@@ -345,7 +327,7 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
 
     public UnitResult<e> Complete(DateTime now)
     {
-        if (Status != InboundShipmentStatus.Inspected && Status != InboundShipmentStatus.Received)
+        if (Status != InboundShipmentStatus.Inspected && Status != InboundShipmentStatus.Arrived)
             return WarehouseErrors.InboundShipment.CannotComplete;
 
         Status = InboundShipmentStatus.Completed;

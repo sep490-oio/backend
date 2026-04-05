@@ -189,9 +189,9 @@ internal sealed class InspectWarehouseItemMultipartCommandHandler(
 
         var inspection = createInspectionResult.Value;
 
-        // ── 6. Advance shipment: Arrived → Received ──────────────────────────
-        var shipmentResult = shipment.RecordReceived(now);
-        if (shipmentResult.IsFailure) return shipmentResult.Error;
+        // ── 6. Shipment stays at Arrived status. Multipart is just the "Receiving" step.
+        // Shipment Status remains InboundShipmentStatus.Arrived.
+        // Full inspection happens later if needed.
 
         // ── 7. Persist everything in one transaction ──────────────────────────
         // Insert MediaUpload records so they're tracked/auditable

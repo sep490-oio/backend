@@ -8,6 +8,7 @@ using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
 using OIO.Domain.Context.NotificationContext.Enums;
 using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
 using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments.Events;
+using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.Events;
 using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
 
 namespace OIO.Application.Context.WarehouseContext.EventHandlers;
@@ -43,13 +44,13 @@ internal sealed class InboundShipmentInspectedEventHandler(
     }
 }
 
-internal sealed class InboundShipmentReceivedEventHandler(
+internal sealed class WarehouseItemCreatedEventHandler(
     ISender sender,
     IDbContext dbContext,
-    ILogger<InboundShipmentReceivedEventHandler> logger)
-    : INotificationHandler<InboundShipmentReceivedEvent>
+    ILogger<WarehouseItemCreatedEventHandler> logger)
+    : INotificationHandler<WarehouseItemCreatedEvent>
 {
-    public async Task Handle(InboundShipmentReceivedEvent notification, CancellationToken cancellationToken)
+    public async Task Handle(WarehouseItemCreatedEvent notification, CancellationToken cancellationToken)
     {
         var shipment = await dbContext.Set<InboundShipment>()
             .AsNoTracking()
