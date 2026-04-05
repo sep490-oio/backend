@@ -327,6 +327,9 @@ public static partial class ApiEndpoint
             public const string GetMyWithdrawals = $"{Base}/wallet/withdrawals";
             public const string CancelWithdrawal = $"{Base}/wallet/withdrawals/{{withdrawalId:guid}}/cancel";
             public const string GetMyOrders = $"{Base}/orders";
+            public const string GetMyOutboundShipments = $"{Base}/outbound-shipments";
+            public const string GetMyInboundShipments = $"{Base}/inbound-shipments";
+            public const string GetSellerDirectShipOrders = $"{Base}/orders/seller-direct-ship";
 
             // Verifications
             public const string CreateVerification = $"{Base}/verifications";
