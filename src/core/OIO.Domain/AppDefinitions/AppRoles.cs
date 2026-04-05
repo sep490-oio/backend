@@ -68,6 +68,7 @@ public static partial class App
                     // Notification Preferences
                     Permissions.Catalogs.Me.ReadNotificationPreferences,
                     Permissions.Catalogs.Me.ManageNotificationPreferences,
+                    Permissions.Catalogs.Me.ReadOutboundShipments,
                 ],
 
                 [Bidder] =
@@ -114,9 +115,9 @@ public static partial class App
                     Permissions.Catalogs.Me.ManageSellerProfile,
                     Permissions.Catalogs.Me.ReadSellerProfile,
 
-                    // Notification Preferences
                     Permissions.Catalogs.Me.ReadNotificationPreferences,
                     Permissions.Catalogs.Me.ManageNotificationPreferences,
+                    Permissions.Catalogs.Me.ReadOutboundShipments,
 
                     // Warehouse
                     Permissions.Catalogs.Warehouse.ReadShipments,
@@ -178,6 +179,9 @@ public static partial class App
                     // Notification Preferences
                     Permissions.Catalogs.Me.ReadNotificationPreferences,
                     Permissions.Catalogs.Me.ManageNotificationPreferences,
+                    Permissions.Catalogs.Me.ReadDirectShipOrders,
+                    Permissions.Catalogs.Me.ReadOutboundShipments,
+                    Permissions.Catalogs.Me.ReadInboundShipments,
 
                     Permissions.Catalogs.Warehouse.ReadShipments,
                     Permissions.Catalogs.Warehouse.BookInbound,
