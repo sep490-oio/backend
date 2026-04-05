@@ -190,6 +190,13 @@ public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
         ModifiedAt            = now;
         DispatchedAt          = now;
 
+        RaiseDomainEvent(new OutboundShipmentPickedUpEvent(
+            Id.ToString(),
+            OrderId.ToString(),
+            ProviderCode.Id,
+            carrierTrackingNumber,
+            now));
+
         return UnitResult.Success<e>();
     }
 
