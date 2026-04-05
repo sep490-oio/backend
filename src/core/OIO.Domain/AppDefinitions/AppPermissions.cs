@@ -49,6 +49,10 @@ public static partial class App
                 // Notification Preferences
                 public const string ReadNotificationPreferences = "users:me:notification-preferences:read";
                 public const string ManageNotificationPreferences = "users:me:notification-preferences:manage";
+                
+                public const string ReadDirectShipOrders = "me:orders:direct-ship:read";
+                public const string ReadOutboundShipments = "me:shipments:outbound:read";
+                public const string ReadInboundShipments = "me:shipments:inbound:read";
             }
 
             // ==================== Items ====================
@@ -170,6 +174,9 @@ public static partial class App
                 Me.ReadSellerProfile,
                 Me.ReadNotificationPreferences,
                 Me.ManageNotificationPreferences,
+                Me.ReadDirectShipOrders,
+                Me.ReadOutboundShipments,
+                Me.ReadInboundShipments,
 
                 // Admin
                 Admin.ReadUsers,
@@ -304,6 +311,9 @@ public static partial class App
                 public static readonly Permission ReadSellerProfile = Permission.Create(Catalogs.Me.ReadSellerProfile);
                 public static readonly Permission ReadNotificationPreferences = Permission.Create(Catalogs.Me.ReadNotificationPreferences);
                 public static readonly Permission ManageNotificationPreferences = Permission.Create(Catalogs.Me.ManageNotificationPreferences);
+                public static readonly Permission ReadDirectShipOrders = Permission.Create(Catalogs.Me.ReadDirectShipOrders);
+                public static readonly Permission ReadOutboundShipments = Permission.Create(Catalogs.Me.ReadOutboundShipments);
+                public static readonly Permission ReadInboundShipments = Permission.Create(Catalogs.Me.ReadInboundShipments);
             }
 
             public static class Admin
@@ -429,6 +439,9 @@ public static partial class App
                 [Catalogs.Me.ReadSellerProfile] = Me.ReadSellerProfile,
                 [Catalogs.Me.ReadNotificationPreferences] = Me.ReadNotificationPreferences,
                 [Catalogs.Me.ManageNotificationPreferences] = Me.ManageNotificationPreferences,
+                [Catalogs.Me.ReadDirectShipOrders] = Me.ReadDirectShipOrders,
+                [Catalogs.Me.ReadOutboundShipments] = Me.ReadOutboundShipments,
+                [Catalogs.Me.ReadInboundShipments] = Me.ReadInboundShipments,
 
                 // Items
                 [Catalogs.Items.Create] = Items.Create,
