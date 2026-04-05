@@ -69,9 +69,21 @@ internal sealed class AcceptTermsCommandHandler : ICommandHandler<AcceptTermsCom
 
         var acceptance = acceptanceResult.Value;
         
-        _dbContext.Insert(acceptance);
-        
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        try
+        {
+            _dbContext.Insert(acceptance);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message?.Contains("uq_user_terms_acceptances_user_term") == true)
+        {
+            // Race condition: another request accepted the same term concurrently.
+            // Return the existing acceptance (idempotent behavior).
+            acceptance = await _dbContext.Set<TermsAcceptance>()
+                .AsNoTracking()
+                .Include(x => x.TermDocument)
+                .FirstAsync(x => x.UserId == _currentUser.UserId && x.TermDocumentId == termDocumentId, cancellationToken);
+            return acceptance.ToDto();
+        }
 
         acceptance = await _dbContext.Set<TermsAcceptance>()
             .AsNoTracking()

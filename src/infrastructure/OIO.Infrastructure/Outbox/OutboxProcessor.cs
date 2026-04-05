@@ -112,15 +112,26 @@ internal sealed class OutboxProcessor
         await transaction.CommitAsync(cancellationToken);
 
         totalStopwatch.Stop();
-        OutboxMessagesProcessorLoggers.LogProcessingPerformance(
-            logger: _logger,
-            totalTime: totalStopwatch.ElapsedMilliseconds,
-            queryTime: queryTime,
-            publishTime: publishTime,
-            updateTime: updateTime,
-            messageCount: messages.Count,
-            rowsAffected: rowsAffected
-        );
+
+        // Only log at Info when slow (>500ms) or many messages; otherwise Debug
+        if (totalStopwatch.ElapsedMilliseconds > 500 || messages.Count > 10)
+        {
+            _logger.LogWarning(
+                "⚠️ Outbox slow: {TotalTime}ms, {MessageCount} messages (query={QueryTime}ms, publish={PublishTime}ms, update={UpdateTime}ms)",
+                totalStopwatch.ElapsedMilliseconds, messages.Count, queryTime, publishTime, updateTime);
+        }
+        else
+        {
+            OutboxMessagesProcessorLoggers.LogProcessingPerformance(
+                logger: _logger,
+                totalTime: totalStopwatch.ElapsedMilliseconds,
+                queryTime: queryTime,
+                publishTime: publishTime,
+                updateTime: updateTime,
+                messageCount: messages.Count,
+                rowsAffected: rowsAffected
+            );
+        }
     }
     
     private async Task<IReadOnlyList<OutboxMessage>> GetOutboxMessagesAsync(
@@ -256,7 +267,7 @@ internal static partial class OutboxMessagesProcessorLoggers
         Message = "OutboxProcessor cancelled")]
     internal static partial void LogCancelled(ILogger logger);
 
-    [LoggerMessage(Level = LogLevel.Information,
+    [LoggerMessage(Level = LogLevel.Debug,
         Message =
             "Outbox processing completed. Total time: {TotalTime}ms, Query time: {QueryTime}ms," +
             " Publish time: {PublishTime}ms, Update time: {UpdateTime}ms, Messages processed: {MessageCount}," +
@@ -269,7 +280,7 @@ internal static partial class OutboxMessagesProcessorLoggers
         int messageCount,
         int rowsAffected);
 
-    [LoggerMessage(Level = LogLevel.Information,
+    [LoggerMessage(Level = LogLevel.Debug,
         Message = "No outbox messages to process.")]
     internal static partial void LogNoMessagesToProcess(ILogger logger);
 }

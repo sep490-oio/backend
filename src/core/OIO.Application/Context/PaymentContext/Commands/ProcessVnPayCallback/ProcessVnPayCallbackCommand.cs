@@ -6,6 +6,7 @@ using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Abstractions.Payment;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
+using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.Grains;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
@@ -250,11 +251,11 @@ internal sealed class ProcessVnPayCallbackCommandHandler
         if (auction.Item.SellerId == transaction.UserId)
             return AuctionErrors.Auction.SelfBid;
 
-        if (auction.Status == Domain.Context.AuctionContext.Enums.AuctionStatus.Cancelled ||
-            auction.Status == Domain.Context.AuctionContext.Enums.AuctionStatus.Ended ||
-            auction.Status == Domain.Context.AuctionContext.Enums.AuctionStatus.Sold ||
-            auction.Status == Domain.Context.AuctionContext.Enums.AuctionStatus.Failed ||
-            auction.Status == Domain.Context.AuctionContext.Enums.AuctionStatus.Terminated)
+        if (auction.Status == AuctionStatus.Cancelled ||
+            auction.Status == AuctionStatus.Ended ||
+            auction.Status == AuctionStatus.Sold ||
+            auction.Status == AuctionStatus.Failed ||
+            auction.Status == AuctionStatus.Terminated)
         {
             return AuctionErrors.Auction.InvalidState(auction.Status.Id, "process auction deposit callback");
         }

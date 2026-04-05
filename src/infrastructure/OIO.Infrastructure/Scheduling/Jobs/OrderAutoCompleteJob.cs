@@ -1,6 +1,9 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Context.OrderContext.Services;
@@ -15,26 +18,28 @@ internal sealed class OrderAutoCompleteJob : IJob
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IClock _clock;
+    private readonly IOptionsMonitor<AppLoggingOptions> _loggingOptions;
     private readonly ILogger<OrderAutoCompleteJob> _logger;
 
     public OrderAutoCompleteJob(
         IServiceScopeFactory scopeFactory,
         IClock clock,
+        IOptionsMonitor<AppLoggingOptions> loggingOptions,
         ILogger<OrderAutoCompleteJob> logger)
     {
         _scopeFactory = scopeFactory;
         _clock = clock;
+        _loggingOptions = loggingOptions;
         _logger = logger;
     }
 
     public async Task Execute(IJobExecutionContext context)
     {
+        var stopwatch = Stopwatch.StartNew();
         using var scope = _scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<IDbContext>();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         var escrowSettlementService = scope.ServiceProvider.GetRequiredService<EscrowSettlementService>();
-
-        _logger.LogInformation("Starting OrderAutoCompleteJob...");
 
         var ct = context.CancellationToken;
         var now = _clock.UtcNow;
@@ -47,7 +52,8 @@ internal sealed class OrderAutoCompleteJob : IJob
             .Select(o => o.Id)
             .ToListAsync(ct);
 
-        _logger.LogInformation("Found {Count} orders eligible for auto-completion.", eligibleOrderIds.Count);
+        var completedCount = 0;
+        var failedCount = 0;
 
         foreach (var orderId in eligibleOrderIds)
         {
@@ -70,6 +76,7 @@ internal sealed class OrderAutoCompleteJob : IJob
 
                 if (releaseResult.IsFailure)
                 {
+                    failedCount++;
                     _logger.LogWarning(
                         "Failed to release escrow for Order {OrderId}: {Error}",
                         orderId, releaseResult.Error);
@@ -77,15 +84,43 @@ internal sealed class OrderAutoCompleteJob : IJob
                 }
 
                 await unitOfWork.SaveChangesAsync(ct);
-
-                _logger.LogInformation("Auto-completed Order {OrderId}", orderId);
+                completedCount++;
             }
             catch (Exception ex)
             {
+                failedCount++;
                 _logger.LogError(ex, "Error auto-completing Order {OrderId}", orderId);
             }
         }
 
-        _logger.LogInformation("OrderAutoCompleteJob finished.");
+        stopwatch.Stop();
+        var logging = _loggingOptions.CurrentValue.Jobs;
+
+        if (eligibleOrderIds.Count > 0 || failedCount > 0)
+        {
+            var level = failedCount > 0 || stopwatch.ElapsedMilliseconds >= logging.SlowJobThresholdMs
+                ? LogLevel.Warning
+                : LogLevel.Information;
+
+            _logger.Log(
+                level,
+                "OrderAutoCompleteJob completed in {DurationMs}ms. Eligible={EligibleCount}, Completed={CompletedCount}, Failed={FailedCount}",
+                stopwatch.ElapsedMilliseconds,
+                eligibleOrderIds.Count,
+                completedCount,
+                failedCount);
+        }
+        else if (stopwatch.ElapsedMilliseconds >= logging.SlowJobThresholdMs)
+        {
+            _logger.LogWarning(
+                "OrderAutoCompleteJob found no eligible orders in {DurationMs}ms.",
+                stopwatch.ElapsedMilliseconds);
+        }
+        else if (logging.LogNoopRuns)
+        {
+            _logger.LogDebug(
+                "OrderAutoCompleteJob found no eligible orders in {DurationMs}ms.",
+                stopwatch.ElapsedMilliseconds);
+        }
     }
 }

@@ -43,6 +43,7 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
     // In-memory cache of the auction aggregate
     private Auction? _auction;
     private bool _isLoaded;
+    private IServiceScope? _loadScope;
 
     public AuctionGrain(
         IServiceScopeFactory scopeFactory,
@@ -297,11 +298,13 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
 
             if (holdDelta != 0m)
             {
-                // Wallet hold/unhold + auction save in a SINGLE scope/transaction
-                // to prevent split-brain (wallet held but no auto-bid, or vice versa)
-                using var atomicScope = _scopeFactory.CreateScope();
-                var dbContext = atomicScope.ServiceProvider.GetRequiredService<IDbContext>();
-                var unitOfWork = atomicScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+                // Wallet hold/unhold + auction save in the SAME scope that loaded the auction.
+                // This ensures EF correctly tracks new vs existing entities (no Update() needed).
+                if (_loadScope is null)
+                    throw new InvalidOperationException("Cannot save auction without an active load scope.");
+
+                var dbContext = _loadScope.ServiceProvider.GetRequiredService<IDbContext>();
+                var unitOfWork = _loadScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
                 var wallet = await dbContext.Set<Wallet>()
                     .FirstOrDefaultAsync(w => w.UserId == bidderUserId, cancellationToken);
@@ -330,8 +333,7 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                     return Error.Conflict("Wallet.HoldFailed", holdResult.Error.Message);
                 }
 
-                // Save wallet + auction atomically in one SaveChangesAsync call
-                dbContext.Update(auction);
+                // Save wallet + auction atomically — same scope tracks both
                 await unitOfWork.SaveChangesAsync(cancellationToken);
                 DiscardLoadedAuction();
             }
@@ -443,11 +445,12 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
             var holdAmount = autoBid.HeldAmount;
             if (holdAmount > 0m)
             {
-                // Wallet unhold + auction cancel save in a SINGLE scope/transaction
-                // to prevent split-brain (wallet unheld but auto-bid still active)
-                using var atomicScope = _scopeFactory.CreateScope();
-                var dbContext = atomicScope.ServiceProvider.GetRequiredService<IDbContext>();
-                var unitOfWork = atomicScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+                // Wallet unhold + auction cancel in the SAME scope that loaded the auction.
+                if (_loadScope is null)
+                    throw new InvalidOperationException("Cannot save auction without an active load scope.");
+
+                var dbContext = _loadScope.ServiceProvider.GetRequiredService<IDbContext>();
+                var unitOfWork = _loadScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
                 var wallet = await dbContext.Set<Wallet>()
                     .FirstOrDefaultAsync(w => w.UserId == bidderUserId, cancellationToken);
@@ -481,8 +484,7 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 // Reset tracked held amount after successful release
                 autoBid.SetHeldAmount(0m);
 
-                // Save wallet + auction atomically in one SaveChangesAsync call
-                dbContext.Update(auction);
+                // Save wallet + auction atomically — same scope tracks both
                 await unitOfWork.SaveChangesAsync(cancellationToken);
                 DiscardLoadedAuction();
             }
@@ -620,8 +622,11 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
 
         var auctionId = this.GetPrimaryKey();
 
-        using var scope = _scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<IDbContext>();
+        // Keep scope alive so the DbContext tracks entities for SaveAsync.
+        // Disposed in DiscardLoadedAuction() or SaveAsync().
+        _loadScope?.Dispose();
+        _loadScope = _scopeFactory.CreateScope();
+        var dbContext = _loadScope.ServiceProvider.GetRequiredService<IDbContext>();
 
         _auction = await dbContext.GetByIdAsync<Auction, AuctionId>(
             AuctionId.From(auctionId),
@@ -639,6 +644,8 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
 
         if (_auction is null)
         {
+            _loadScope.Dispose();
+            _loadScope = null;
             return AuctionErrors.Auction.NotFound(AuctionId.From(auctionId));
         }
 
@@ -651,16 +658,19 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
     /// Save auction to DB and invalidate grain cache.
     /// Domain events in auction → Outbox messages (via interceptor).
     /// Creates a fresh DI scope so the DbContext is short-lived.
+    /// Retries on concurrency conflict by reloading entries.
     /// </summary>
     private async Task SaveAsync(Auction auction, CancellationToken cancellationToken = default)
     {
-        using var scope = _scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<IDbContext>();
-        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        if (_loadScope is null)
+            throw new InvalidOperationException("Cannot save auction without an active load scope.");
 
-        dbContext.Update(auction);
+        var unitOfWork = _loadScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
+        // Dispose the scope and clear cached state
+        _loadScope.Dispose();
+        _loadScope = null;
         DiscardLoadedAuction();
     }
 
@@ -674,6 +684,8 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
     {
         _isLoaded = false;
         _auction = null;
+        _loadScope?.Dispose();
+        _loadScope = null;
     }
 }
 

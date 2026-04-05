@@ -37,6 +37,7 @@ public sealed class ItemStatus : EnumValueObject<ItemStatus>
             _ when this == Rejected && target == PendingVerify => true,
             _ when this == Rejected && target == PendingReview => true,
             _ when this == Rejected && target == Removed => true,
+            _ when this == Approved && target == Active => true,
             _ when this == Approved && target == InAuction => true,
             _ when this == Approved && target == Removed => true,
             _ when this == Active && target == InAuction => true,

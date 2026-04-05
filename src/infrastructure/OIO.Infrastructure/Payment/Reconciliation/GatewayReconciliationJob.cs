@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Context.PaymentContext.Commands.ReconcileTransactions;
 using OIO.Infrastructure.Scheduling;
 using Quartz;
@@ -11,11 +13,13 @@ namespace OIO.Infrastructure.Payment.Reconciliation;
 [DisallowConcurrentExecution]
 internal sealed class GatewayReconciliationJob(
     ILogger<GatewayReconciliationJob> logger,
-    IServiceScopeFactory scopeFactory
+    IServiceScopeFactory scopeFactory,
+    IOptionsMonitor<AppLoggingOptions> loggingOptions
 ) : IJob
 {
     public async Task Execute(IJobExecutionContext context)
     {
+        var stopwatch = Stopwatch.StartNew();
         var cancellationToken = context.CancellationToken;
 
         using var scope = scopeFactory.CreateScope();
@@ -23,14 +27,19 @@ internal sealed class GatewayReconciliationJob(
 
         try
         {
-            logger.LogInformation("Starting Gateway Reconciliation Job...");
-            // Process up to 100 transactions per batch
             await mediator.Send(new ProcessGatewayReconciliationCommand(100), cancellationToken);
-            logger.LogInformation("Gateway Reconciliation Job finished.");
+            stopwatch.Stop();
+
+            if (stopwatch.ElapsedMilliseconds >= loggingOptions.CurrentValue.Jobs.SlowJobThresholdMs)
+            {
+                logger.LogWarning(
+                    "GatewayReconciliationJob completed in {DurationMs}ms.",
+                    stopwatch.ElapsedMilliseconds);
+            }
         }
         catch (OperationCanceledException)
         {
-            logger.LogInformation("GatewayReconciliationJob cancelled.");
+            logger.LogDebug("GatewayReconciliationJob cancelled.");
             throw;
         }
         catch (Exception ex)

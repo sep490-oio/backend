@@ -348,15 +348,19 @@ public sealed class Item : AggregateRoot<ItemId>, IAuditableEntity
     
     public UnitResult<Error> ReturnToActive(DateTime nowUtc)
     {
+        // If item is already Active or still Approved (never entered InAuction), no transition needed.
+        if (Status == ItemStatus.Active || Status == ItemStatus.Approved)
+            return UnitResult.Success<Error>();
+
         var result = EnsureCanTransition(ItemStatus.Active);
-        
+
         if (result.IsFailure)
         {
             return result.Error;
         }
-        
+
         ChangeStatus(ItemStatus.Active, nowUtc);
-        
+
         return result;
     }
 

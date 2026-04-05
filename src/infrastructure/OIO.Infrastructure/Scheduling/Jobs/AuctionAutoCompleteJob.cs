@@ -1,6 +1,9 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Domain.AppDefinitions;
@@ -26,20 +29,24 @@ public sealed class AuctionAutoCompleteJob : IJob
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IClock _clock;
+    private readonly IOptionsMonitor<AppLoggingOptions> _loggingOptions;
     private readonly ILogger<AuctionAutoCompleteJob> _logger;
 
     public AuctionAutoCompleteJob(
         IServiceScopeFactory scopeFactory,
         IClock clock,
+        IOptionsMonitor<AppLoggingOptions> loggingOptions,
         ILogger<AuctionAutoCompleteJob> logger)
     {
         _scopeFactory = scopeFactory;
         _clock = clock;
+        _loggingOptions = loggingOptions;
         _logger = logger;
     }
 
     public async Task Execute(IJobExecutionContext context)
     {
+        var stopwatch = Stopwatch.StartNew();
         using var scope = _scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<IDbContext>();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
@@ -48,21 +55,14 @@ public sealed class AuctionAutoCompleteJob : IJob
         var autoCompleteDays = App.Constraint.Auction.AutoCompleteDaysAfterDelivery;
         var cutoff = now.AddDays(-autoCompleteDays);
 
-        _logger.LogInformation("Running AuctionAutoCompleteJob. Cutoff: {Cutoff}", cutoff);
-
         // Find sold auctions
         var soldAuctions = await dbContext.Set<Auction>()
             .Include(a => a.Item)
             .Where(a => a.Status == AuctionStatus.Sold)
             .ToListAsync(context.CancellationToken);
 
-        if (soldAuctions.Count == 0)
-        {
-            _logger.LogDebug("No sold auctions found for auto-completion.");
-            return;
-        }
-
         var completedCount = 0;
+        var skippedOpenDisputeCount = 0;
 
         foreach (var auction in soldAuctions)
         {
@@ -91,13 +91,10 @@ public sealed class AuctionAutoCompleteJob : IJob
 
             if (hasOpenDispute)
             {
+                skippedOpenDisputeCount++;
                 _logger.LogDebug("Auction {AuctionId} has open disputes, skipping auto-complete.", auction.Id);
                 continue;
             }
-
-            _logger.LogInformation(
-                "Auto-completing auction {AuctionId}. Delivered at {DeliveredAt}, cutoff {Cutoff}.",
-                auction.Id, deliveredShipment.DeliveredAt, cutoff);
 
             // Mark item as sold, auction stays in sold state
             // The payment to seller should be triggered here
@@ -110,6 +107,32 @@ public sealed class AuctionAutoCompleteJob : IJob
             await unitOfWork.SaveChangesAsync(context.CancellationToken);
         }
 
-        _logger.LogInformation("AuctionAutoCompleteJob finished. Auto-completed {Count} auctions.", completedCount);
+        stopwatch.Stop();
+        var logging = _loggingOptions.CurrentValue.Jobs;
+
+        if (completedCount > 0 || skippedOpenDisputeCount > 0)
+        {
+            _logger.LogInformation(
+                "AuctionAutoCompleteJob completed in {DurationMs}ms. SoldCandidates={SoldAuctionCount}, Completed={CompletedCount}, SkippedOpenDispute={SkippedOpenDisputeCount}, Cutoff={Cutoff}",
+                stopwatch.ElapsedMilliseconds,
+                soldAuctions.Count,
+                completedCount,
+                skippedOpenDisputeCount,
+                cutoff);
+        }
+        else if (stopwatch.ElapsedMilliseconds >= logging.SlowJobThresholdMs)
+        {
+            _logger.LogWarning(
+                "AuctionAutoCompleteJob completed with no changes in {DurationMs}ms. Cutoff={Cutoff}",
+                stopwatch.ElapsedMilliseconds,
+                cutoff);
+        }
+        else if (logging.LogNoopRuns)
+        {
+            _logger.LogDebug(
+                "AuctionAutoCompleteJob found no auctions to auto-complete in {DurationMs}ms. Cutoff={Cutoff}",
+                stopwatch.ElapsedMilliseconds,
+                cutoff);
+        }
     }
 }

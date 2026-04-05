@@ -69,7 +69,7 @@ internal sealed class SubmitAuctionCommandHandler
         if (auction.Status != AuctionStatus.Draft)
             return AuctionErrors.Auction.CannotSubmit;
 
-        if (auction.Item.Status != ItemStatus.Approved)
+        if (auction.Item.Status != ItemStatus.Approved && auction.Item.Status != ItemStatus.Active)
             return AuctionErrors.Item.InvalidState(auction.Item.Status.Id, "submit auction");
 
         var auctionResult = auction.SubmitConfiguration(nowUtc);

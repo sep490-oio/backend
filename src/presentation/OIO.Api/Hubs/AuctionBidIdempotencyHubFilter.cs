@@ -24,7 +24,7 @@ public sealed class AuctionBidIdempotencyHubFilter : IHubFilter
             return await next(invocationContext);
 
         if (invocationContext.HubMethodArguments.Count < 4)
-            return HubCommandResult<BidDto>.FromError(CreateBidIdempotencyError(IdempotencyFailureKind.MissingKey));
+            return HubCommandResult<PlaceBidResultDto>.FromError(CreateBidIdempotencyError(IdempotencyFailureKind.MissingKey));
 
         var auctionId = (Guid)invocationContext.HubMethodArguments[0]!;
         var amount = (decimal)invocationContext.HubMethodArguments[1]!;
@@ -43,13 +43,13 @@ public sealed class AuctionBidIdempotencyHubFilter : IHubFilter
             async () =>
             {
                 var raw = await next(invocationContext);
-                return raw as HubCommandResult<BidDto>
-                       ?? HubCommandResult<BidDto>.FromError(
+                return raw as HubCommandResult<PlaceBidResultDto>
+                       ?? HubCommandResult<PlaceBidResultDto>.FromError(
                            Error.Unexpected(
                                "Idempotency.HubResultInvalid",
                                "Hub returned an unsupported response for idempotency."));
             },
-            failureKind => HubCommandResult<BidDto>.FromError(CreateBidIdempotencyError(failureKind)),
+            failureKind => HubCommandResult<PlaceBidResultDto>.FromError(CreateBidIdempotencyError(failureKind)),
             [$"bid-idempotency:{currentUser.UserId.Value}:{auctionId}"],
             invocationContext.Context.ConnectionAborted);
 

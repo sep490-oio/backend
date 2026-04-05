@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
@@ -17,6 +19,7 @@ public sealed class PendingUploadCleanupJob : IJob
     private readonly IMediaSignatureService _mediaSignatureService;
     private readonly IClock _clock;
     private readonly IRuntimeSettings _runtimeSettings;
+    private readonly IOptionsMonitor<AppLoggingOptions> _loggingOptions;
     private readonly ILogger<PendingUploadCleanupJob> _logger;
 
     public PendingUploadCleanupJob(
@@ -24,17 +27,20 @@ public sealed class PendingUploadCleanupJob : IJob
         IMediaSignatureService mediaSignatureService,
         IClock clock,
         IRuntimeSettings runtimeSettings,
+        IOptionsMonitor<AppLoggingOptions> loggingOptions,
         ILogger<PendingUploadCleanupJob> logger)
     {
         _scopeFactory = scopeFactory;
         _mediaSignatureService = mediaSignatureService;
         _clock = clock;
         _runtimeSettings = runtimeSettings;
+        _loggingOptions = loggingOptions;
         _logger = logger;
     }
 
     public async Task Execute(IJobExecutionContext context)
     {
+        var stopwatch = Stopwatch.StartNew();
         using var scope = _scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<IDbContext>();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
@@ -45,6 +51,7 @@ public sealed class PendingUploadCleanupJob : IJob
         var linkedRetentionThreshold = now.Add(-_runtimeSettings.Media.LinkedRecordRetention);
 
         var toDelete = new List<MediaUpload>();
+        var deletedCloudinaryCount = 0;
 
         // Case 1: Signature expired, never confirmed
         var expiredUnconfirmed = await dbContext.Set<MediaUpload>()
@@ -52,11 +59,7 @@ public sealed class PendingUploadCleanupJob : IJob
             .ToListAsync(cancellationToken);
 
         if (expiredUnconfirmed.Count > 0)
-        {
-            _logger.LogInformation(
-                "Found {Count} expired unconfirmed uploads.", expiredUnconfirmed.Count);
             toDelete.AddRange(expiredUnconfirmed);
-        }
 
         // Case 2: Confirmed but never linked (orphan)
         var orphans = await dbContext.Set<MediaUpload>()
@@ -66,11 +69,7 @@ public sealed class PendingUploadCleanupJob : IJob
             .ToListAsync(cancellationToken);
 
         if (orphans.Count > 0)
-        {
-            _logger.LogInformation(
-                "Found {Count} orphan confirmed uploads.", orphans.Count);
             toDelete.AddRange(orphans);
-        }
 
         // Case 3: Old linked records (audit trail cleanup)
         var oldLinked = await dbContext.Set<MediaUpload>()
@@ -80,11 +79,7 @@ public sealed class PendingUploadCleanupJob : IJob
             .ToListAsync(cancellationToken);
 
         if (oldLinked.Count > 0)
-        {
-            _logger.LogInformation(
-                "Cleaning {Count} old linked upload records.", oldLinked.Count);
             dbContext.Set<MediaUpload>().RemoveRange(oldLinked);
-        }
 
         // Delete from Cloudinary + DB
         // Batch delete from Cloudinary (grouped by resource type)
@@ -97,24 +92,43 @@ public sealed class PendingUploadCleanupJob : IJob
 
             if (confirmedToDelete.Count > 0)
             {
-                var deleted = await _mediaSignatureService.DeleteResourcesAsync(
+                deletedCloudinaryCount = await _mediaSignatureService.DeleteResourcesAsync(
                     confirmedToDelete, cancellationToken);
-
-                _logger.LogInformation(
-                    "Batch deleted {Deleted}/{Total} Cloudinary resources.",
-                    deleted, confirmedToDelete.Count);
             }
 
             dbContext.Set<MediaUpload>().RemoveRange(toDelete);
-
-            _logger.LogInformation(
-                "Cleaned up {Expired} expired + {Orphan} orphan uploads.",
-                expiredUnconfirmed.Count, orphans.Count);
         }
 
         if (toDelete.Count > 0 || oldLinked.Count > 0)
         {
             await unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        stopwatch.Stop();
+
+        var logging = _loggingOptions.CurrentValue.Jobs;
+        var affectedCount = expiredUnconfirmed.Count + orphans.Count + oldLinked.Count;
+        if (affectedCount > 0)
+        {
+            _logger.LogInformation(
+                "PendingUploadCleanupJob completed in {DurationMs}ms. ExpiredUnconfirmed={ExpiredUnconfirmedCount}, Orphans={OrphanCount}, OldLinked={OldLinkedCount}, DeletedCloudinary={DeletedCloudinaryCount}",
+                stopwatch.ElapsedMilliseconds,
+                expiredUnconfirmed.Count,
+                orphans.Count,
+                oldLinked.Count,
+                deletedCloudinaryCount);
+        }
+        else if (stopwatch.ElapsedMilliseconds >= logging.SlowJobThresholdMs)
+        {
+            _logger.LogWarning(
+                "PendingUploadCleanupJob completed with no changes in {DurationMs}ms.",
+                stopwatch.ElapsedMilliseconds);
+        }
+        else if (logging.LogNoopRuns)
+        {
+            _logger.LogDebug(
+                "PendingUploadCleanupJob found no uploads to clean up in {DurationMs}ms.",
+                stopwatch.ElapsedMilliseconds);
         }
     }
 

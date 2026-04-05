@@ -101,7 +101,7 @@ internal static partial class OutboxCleanupLoggers
         Message = "Outbox cleanup deleted {DeletedCount} messages in {BatchCount} batches.")]
     internal static partial void LogDeleted(ILogger logger, int deletedCount, int batchCount);
 
-    [LoggerMessage(Level = LogLevel.Information,
+    [LoggerMessage(Level = LogLevel.Debug,
         Message = "Outbox cleanup found no messages to delete.")]
     internal static partial void LogNoop(ILogger logger);
 }

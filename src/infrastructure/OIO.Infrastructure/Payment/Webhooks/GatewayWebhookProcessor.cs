@@ -109,7 +109,7 @@ internal sealed class GatewayWebhookProcessor
             DateTime nextRetryAt = nowUtc.AddMinutes(delayMinutes);
             webhookEvent.MarkAsPendingForRetry(errorMessage, nextRetryAt);
             
-            _logger.LogInformation("Webhook ID {WebhookId} failed attempt {Attempt}. Retrying at {NextRetryAt}. Error: {Error}", 
+            _logger.LogWarning("Webhook ID {WebhookId} failed attempt {Attempt}. Retrying at {NextRetryAt}. Error: {Error}", 
                 webhookEvent.Id.Value, currentRetry + 1, nextRetryAt, errorMessage);
         }
     }

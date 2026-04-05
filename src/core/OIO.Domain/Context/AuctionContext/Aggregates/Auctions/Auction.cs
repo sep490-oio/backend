@@ -1172,6 +1172,10 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         _cascadeCappedEventRaised = false;
         var totalOperations = 0;
         var hasProcessedBattle = false;
+        // Incrementing timestamp so each auto-bid in the cascade gets a unique,
+        // monotonically increasing createdAt — prevents chart display issues
+        // where same-timestamp bids appear in wrong order.
+        var cascadeTime = nowUtc;
 
         // Get eligible auto-bids, ordered by max amount DESC, then by creation time ASC
         var eligibleAutoBids = _autoBids
@@ -1187,17 +1191,18 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
         foreach (var autoBid in eligibleAutoBids)
         {
+            cascadeTime = cascadeTime.AddTicks(1);
             var minimumRequired = GetMinimumBidAmount();
 
             // Skip auto-bidders that can no longer compete
             if (!autoBid.CanBid(minimumRequired))
             {
                 if (autoBid.Status == AutoBidStatus.Active)
-                    autoBid.MarkAsOutbid(nowUtc);
+                    autoBid.MarkAsOutbid(cascadeTime);
                 continue;
             }
 
-            var processResult = ProcessSingleAutoBid(autoBid, nowUtc, ref totalOperations,
+            var processResult = ProcessSingleAutoBid(autoBid, cascadeTime, ref totalOperations,
                 extensionThresholdMinutes, maxExtensions, maxDuration);
 
             if (processResult.IsFailure)
@@ -1217,7 +1222,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
                 if (originalBidderAutoBid is not null)
                 {
                     var battleResult = ProcessAutoBidBattle(
-                        autoBid, originalBidderAutoBid, nowUtc, ref totalOperations,
+                        autoBid, originalBidderAutoBid, cascadeTime, ref totalOperations,
                         extensionThresholdMinutes, maxExtensions, maxDuration);
 
                     if (battleResult.IsFailure)
@@ -1289,6 +1294,9 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
     {
         const int maxRounds = 100; // Safety: prevent infinite loops
         var round = 0;
+        // Each bid in the battle gets a microsecond-incremented timestamp
+        // so price history records are ordered correctly for charts.
+        var bidTime = nowUtc;
 
         var currentAttacker = autoBidB; // B responds to A's bid
         var currentDefender = autoBidA;
@@ -1296,11 +1304,12 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         while (round < maxRounds)
         {
             round++;
+            bidTime = bidTime.AddTicks(1); // 100ns increment per bid
 
             if (!TryConsumeAutoBidOperation(ref totalOperations))
             {
                 WasCascadeCapped = true;
-                RaiseCascadeCappedEventOnce(totalOperations, nowUtc);
+                RaiseCascadeCappedEventOnce(totalOperations, bidTime);
                 break;
             }
 
@@ -1308,7 +1317,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
             if (!currentAttacker.CanBid(minimumRequired))
             {
-                currentAttacker.MarkAsOutbid(nowUtc);
+                currentAttacker.MarkAsOutbid(bidTime);
                 break;
             }
 
@@ -1320,7 +1329,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
                 return error;
             }
 
-            var placeResult = PlaceAutoBidInternal(currentAttacker, bidAmount, nowUtc,
+            var placeResult = PlaceAutoBidInternal(currentAttacker, bidAmount, bidTime,
                 raiseOutbidEvent: false,
                 extensionThresholdMinutes: extensionThresholdMinutes,
                 maxExtensions: maxExtensions,
@@ -1339,7 +1348,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
             if (!currentAttacker.CanBid(nextMinimum))
             {
-                currentAttacker.MarkAsOutbid(nowUtc);
+                currentAttacker.MarkAsOutbid(bidTime);
                 break;
             }
         }

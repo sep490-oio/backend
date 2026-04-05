@@ -8,6 +8,7 @@ using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
+using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
@@ -65,7 +66,8 @@ internal sealed class RelistAuctionCommandHandler(
         if (auction.Item.SellerId != currentUser.UserId)
             return AuctionErrors.Auction.OnlyOwnerCanCancel;
 
-        if (auction.Status != Domain.Context.AuctionContext.Enums.AuctionStatus.PaymentDefaulted)
+        if (auction.Status != AuctionStatus.PaymentDefaulted &&
+            auction.Status != AuctionStatus.Failed)
             return AuctionErrors.Auction.InvalidState(auction.Status.Id, "relist");
 
         if (auction.RelistHistories.Any(x => x.NewAuctionId.HasValue))
@@ -79,7 +81,7 @@ internal sealed class RelistAuctionCommandHandler(
             return qualification.Error;
 
         var autoExtend = auction.Info?.AutoExtend ?? true;
-        if (auction.AuctionType == Domain.Context.AuctionContext.Enums.AuctionType.Sealed && autoExtend)
+        if (auction.AuctionType == AuctionType.Sealed && autoExtend)
         {
             return Error.Validation(
                 "AutoExtend",

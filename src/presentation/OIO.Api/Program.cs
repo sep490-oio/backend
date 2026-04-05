@@ -66,7 +66,7 @@ if (app.Environment.IsDevelopment() || features.EnableScalar)
 app.UseHttpsRedirection();
 app.UseExceptionHandler();
 app.UseRequestContextLogging();
-app.UseSerilogRequestLogging();
+app.UseAppRequestLogging();
 app.UseCors(CorsOptions.PolicyName);
 
 app.UseAuthentication();

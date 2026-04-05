@@ -79,7 +79,7 @@ public sealed class VnPayGateway : IPaymentGatewayService
 
         var paymentUrl = $"{_vnPayConfig.CurrentValue.PaymentUrl}?{queryString}&vnp_SecureHash={secureHash}";
 
-        _logger.LogInformation(
+        _logger.LogDebug(
             "VNPay payment URL created for TxnRef={TxnRef}, Amount={Amount}",
             request.TransactionRef, request.Amount);
 
@@ -130,7 +130,7 @@ public sealed class VnPayGateway : IPaymentGatewayService
 
         var rawJson = JsonSerializer.Serialize(queryParams);
 
-        _logger.LogInformation(
+        _logger.LogDebug(
             "VNPay callback processed: TxnRef={TxnRef}, ResponseCode={ResponseCode}, TransactionStatus={TransactionStatus}, HasToken={HasToken}",
             txnRef, responseCode, transactionStatus, !string.IsNullOrWhiteSpace(vnpToken));
 
@@ -185,9 +185,9 @@ public sealed class VnPayGateway : IPaymentGatewayService
             var response = await _httpClient.PostAsync(_vnPayConfig.CurrentValue.ApiUrl, jsonContent, ct);
             var responseBody = await response.Content.ReadAsStringAsync(ct);
 
-            _logger.LogInformation(
-                "VNPay query response for TxnRef={TxnRef}: {Response}",
-                transactionRef, responseBody);
+            _logger.LogDebug(
+                "VNPay query completed for TxnRef={TxnRef} with HTTP {StatusCode}",
+                transactionRef, (int)response.StatusCode);
 
             var jsonDoc = JsonDocument.Parse(responseBody);
             var root = jsonDoc.RootElement;
@@ -259,9 +259,9 @@ public sealed class VnPayGateway : IPaymentGatewayService
             var response = await _httpClient.PostAsync(_vnPayConfig.CurrentValue.ApiUrl, jsonContent, ct);
             var responseBody = await response.Content.ReadAsStringAsync(ct);
 
-            _logger.LogInformation(
-                "VNPay refund response for TxnRef={TxnRef}: {Response}",
-                request.OriginalTransactionRef, responseBody);
+            _logger.LogDebug(
+                "VNPay refund completed for TxnRef={TxnRef} with HTTP {StatusCode}",
+                request.OriginalTransactionRef, (int)response.StatusCode);
 
             var jsonDoc = JsonDocument.Parse(responseBody);
             var root = jsonDoc.RootElement;
@@ -429,9 +429,9 @@ public sealed class VnPayGateway : IPaymentGatewayService
             var response = await _httpClient.PostAsync(_vnPayConfig.CurrentValue.TokenRemoveUrl, jsonContent, ct);
             var responseBody = await response.Content.ReadAsStringAsync(ct);
 
-            _logger.LogInformation(
-                "VNPay token remove response for AppUserId={AppUserId}: {Response}",
-                request.AppUserId, responseBody);
+            _logger.LogDebug(
+                "VNPay token remove completed for AppUserId={AppUserId} with HTTP {StatusCode}",
+                request.AppUserId, (int)response.StatusCode);
 
             var jsonDoc = JsonDocument.Parse(responseBody);
             var root = jsonDoc.RootElement;
@@ -482,7 +482,7 @@ public sealed class VnPayGateway : IPaymentGatewayService
 
         var paymentUrl = $"{baseUrl}?{queryString}&vnp_SecureHash={secureHash}";
 
-        _logger.LogInformation(
+        _logger.LogDebug(
             "VNPay {Command} URL created for TxnRef={TxnRef}",
             command, transactionRef);
 

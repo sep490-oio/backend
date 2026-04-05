@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OIO.Application.Abstractions.Behaviors;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Settings;
 using OIO.Application.Context.AuctionContext.Services;
 using OIO.Application.Context.MediaContext.Services;
@@ -17,6 +18,7 @@ public static class DependencyInjection
     {
         var assembly = typeof(DependencyInjection).Assembly;
 
+        services.Configure<AppLoggingOptions>(configuration.GetSection(AppLoggingOptions.SectionName));
         services.Configure<MediatrOption>(configuration.GetSection(MediatrOption.SectionName));
         services.AddMediatR(cfg =>
         {

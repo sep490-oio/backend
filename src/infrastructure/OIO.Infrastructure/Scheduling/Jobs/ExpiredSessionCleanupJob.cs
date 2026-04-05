@@ -1,8 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OIO.Application.Abstractions.Clock;
+using OIO.Application.Abstractions.Commons;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Infrastructure.Persistence;
 
@@ -11,23 +14,23 @@ namespace OIO.Infrastructure.Scheduling.Jobs;
 public sealed class ExpiredSessionCleanupJob : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IOptionsMonitor<AppLoggingOptions> _loggingOptions;
     private readonly ILogger<ExpiredSessionCleanupJob> _logger;
     //TODO: bring interval to app settings
     private readonly TimeSpan _interval = TimeSpan.FromHours(6);
     
     public ExpiredSessionCleanupJob(
         IServiceScopeFactory scopeFactory,
+        IOptionsMonitor<AppLoggingOptions> loggingOptions,
         ILogger<ExpiredSessionCleanupJob> logger)
     {
         _scopeFactory = scopeFactory;
+        _loggingOptions = loggingOptions;
         _logger = logger;
     }
     
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation(
-            "Session cleanup job started. Interval: {Interval}", _interval);
-
         while (!stoppingToken.IsCancellationRequested)
         {
             try
@@ -45,6 +48,7 @@ public sealed class ExpiredSessionCleanupJob : BackgroundService
 
     private async Task CleanupAsync(CancellationToken ct)
     {
+        var stopwatch = Stopwatch.StartNew();
         using var scope = _scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var clock = scope.ServiceProvider.GetRequiredService<IClock>();
@@ -85,19 +89,32 @@ public sealed class ExpiredSessionCleanupJob : BackgroundService
             .Where(f => !f.IsActive && f.CreatedAt < purgeThreshold)
             .ExecuteDeleteAsync(ct);
 
+        stopwatch.Stop();
+
         if (absoluteExpiredCount + slidingExpiredCount + orphanedTokenCount + purgedCount > 0)
         {
             _logger.LogInformation(
-                "Token cleanup completed. " +
-                "Absolute expired: {AbsoluteExpired}, " +
-                "Sliding expired: {SlidingExpired}, " +
-                "Orphaned tokens: {Orphaned}, " +
-                "Purged old families: {Purged}",
+                "ExpiredSessionCleanupJob completed in {DurationMs}ms. AbsoluteExpired={AbsoluteExpired}, SlidingExpired={SlidingExpired}, OrphanedTokens={Orphaned}, PurgedFamilies={Purged}",
+                stopwatch.ElapsedMilliseconds,
                 absoluteExpiredCount,
                 slidingExpiredCount,
                 orphanedTokenCount,
                 purgedCount);
+            return;
+        }
+
+        var logging = _loggingOptions.CurrentValue.Jobs;
+        if (stopwatch.ElapsedMilliseconds >= logging.SlowJobThresholdMs)
+        {
+            _logger.LogWarning(
+                "ExpiredSessionCleanupJob found no expired sessions in {DurationMs}ms.",
+                stopwatch.ElapsedMilliseconds);
+        }
+        else if (logging.LogNoopRuns)
+        {
+            _logger.LogDebug(
+                "ExpiredSessionCleanupJob found no expired sessions in {DurationMs}ms.",
+                stopwatch.ElapsedMilliseconds);
         }
     }
-
 }

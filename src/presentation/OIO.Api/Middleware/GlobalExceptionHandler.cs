@@ -11,13 +11,16 @@ internal sealed class GlobalExceptionHandler
 {
     private readonly ILogger<GlobalExceptionHandler> _logger;
     private readonly IProblemDetailsService _problemDetailsService;
+    private readonly IWebHostEnvironment _env;
     
     public GlobalExceptionHandler(
         ILogger<GlobalExceptionHandler> logger,
-        IProblemDetailsService problemDetailsService)
+        IProblemDetailsService problemDetailsService,
+        IWebHostEnvironment env)
     {
         _logger = logger;
         _problemDetailsService = problemDetailsService;
+        _env = env;
     }
     
     public async ValueTask<bool> TryHandleAsync(
@@ -52,7 +55,7 @@ internal sealed class GlobalExceptionHandler
             ProblemDetails =
             {
                 Title = "Unexpected.Error",
-                Detail = "An unexpected error occurred.",
+                Detail = _env.IsDevelopment() ? exception.Message : "An unexpected error occurred.",
                 Status = StatusCodes.Status500InternalServerError,
             }
         };

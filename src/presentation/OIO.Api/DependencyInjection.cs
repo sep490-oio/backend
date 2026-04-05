@@ -146,6 +146,10 @@ public static class DependencyInjection
                     ctx.ProblemDetails.Extensions.TryAdd("requestId", ctx.HttpContext.TraceIdentifier);
                     var activity = ctx.HttpContext.Features.Get<IHttpActivityFeature>()?.Activity;
                     ctx.ProblemDetails.Extensions.TryAdd("traceId", activity?.Id);
+                    ctx.ProblemDetails.Extensions.TryAdd("correlationId",
+                        ctx.HttpContext.Items.TryGetValue(RequestContextLoggingMiddleware.CorrelationIdItemKey, out var correlationId)
+                            ? correlationId?.ToString()
+                            : ctx.HttpContext.TraceIdentifier);
 
                     if (ctx.ProblemDetails.Status == StatusCodes.Status400BadRequest)
                     {
@@ -176,12 +180,6 @@ public static class DependencyInjection
                     .AddRuntimeInstrumentation()
                     .AddNpgsqlInstrumentation())
             .UseOtlpExporter();
-
-        builder.Logging.AddOpenTelemetry(options =>
-        {
-            options.IncludeScopes = true;
-            options.IncludeFormattedMessage = true;
-        });
 
         return builder;
     }
