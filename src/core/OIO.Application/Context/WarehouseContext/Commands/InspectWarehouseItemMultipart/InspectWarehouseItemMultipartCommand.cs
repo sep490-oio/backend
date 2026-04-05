@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -141,9 +141,8 @@ internal sealed class InspectWarehouseItemMultipartCommandHandler(
 
         warehouseItem.MarkReceived(now);
 
-        var inspectResult = warehouseItem.MarkInspected(now);
-
-        if (inspectResult.IsFailure) return inspectResult.Error;
+        // Remove automatic MarkInspected — Multipart is just the "Receiving" step.
+        // Full inspection happens later if needed.
 
         // ── 4. Attach photos + link uploads ───────────────────────────────────
         foreach (var (upload, sortOrder, isPrimary) in uploadedMedia)
@@ -190,8 +189,8 @@ internal sealed class InspectWarehouseItemMultipartCommandHandler(
 
         var inspection = createInspectionResult.Value;
 
-        // ── 6. Advance shipment: Arrived → Inspected ──────────────────────────
-        var shipmentResult = shipment.RecordInspected(staffId, now);
+        // ── 6. Advance shipment: Arrived → Received ──────────────────────────
+        var shipmentResult = shipment.RecordReceived(now);
         if (shipmentResult.IsFailure) return shipmentResult.Error;
 
         // ── 7. Persist everything in one transaction ──────────────────────────

@@ -42,3 +42,34 @@ internal sealed class InboundShipmentInspectedEventHandler(
             cancellationToken);
     }
 }
+
+internal sealed class InboundShipmentReceivedEventHandler(
+    ISender sender,
+    IDbContext dbContext,
+    ILogger<InboundShipmentReceivedEventHandler> logger)
+    : INotificationHandler<InboundShipmentReceivedEvent>
+{
+    public async Task Handle(InboundShipmentReceivedEvent notification, CancellationToken cancellationToken)
+    {
+        var shipment = await dbContext.Set<InboundShipment>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == InboundShipmentId.From(Guid.Parse(notification.InboundShipmentId)), cancellationToken);
+
+        if (shipment is null)
+            return;
+
+        await NotificationDispatch.DispatchAsync(
+            sender,
+            logger,
+            new CreateNotificationCommand(
+                UserId: shipment.SellerId.Value,
+                NotificationType: "warehouse",
+                EventType: "item_received",
+                Title: "Goi hang da duoc tiep nhan",
+                Message: $"Mon hang cua ban da duoc nhan vien OIO tiep nhan tai cua kho va dang chuan bi dua len ke.",
+                Priority: NotificationPriority.Normal,
+                EntityType: "InboundShipment",
+                EntityId: shipment.Id.Value),
+            cancellationToken);
+    }
+}

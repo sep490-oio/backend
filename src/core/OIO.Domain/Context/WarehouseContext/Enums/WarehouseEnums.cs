@@ -38,10 +38,11 @@ public sealed class InboundShipmentStatus : EnumValueObject<InboundShipmentStatu
     public static readonly InboundShipmentStatus InTransit           = new("in_transit");
     public static readonly InboundShipmentStatus SellerClaimsArrived = new("seller_claims_arrived");
     public static readonly InboundShipmentStatus Arrived             = new("arrived");
-    public static readonly InboundShipmentStatus Inspected      = new("inspected");
-    public static readonly InboundShipmentStatus Completed      = new("completed");
-    public static readonly InboundShipmentStatus Cancelled      = new("cancelled");
-    public static readonly InboundShipmentStatus Failed         = new("failed");
+    public static readonly InboundShipmentStatus Received            = new("received");
+    public static readonly InboundShipmentStatus Inspected           = new("inspected");
+    public static readonly InboundShipmentStatus Completed           = new("completed");
+    public static readonly InboundShipmentStatus Cancelled           = new("cancelled");
+    public static readonly InboundShipmentStatus Failed              = new("failed");
 
     private InboundShipmentStatus(string id) : base(id) { }
 }

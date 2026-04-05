@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments.Events;
 using OIO.Domain.Context.WarehouseContext.Enums;
@@ -306,9 +306,27 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
         return UnitResult.Success<e>();
     }
 
+    public UnitResult<e> RecordReceived(DateTime now)
+    {
+        if (Status == InboundShipmentStatus.Received)
+            return UnitResult.Success<e>();
+
+        Status = InboundShipmentStatus.Received;
+
+        ModifiedAt = now;
+
+        RaiseDomainEvent(new InboundShipmentReceivedEvent(
+            Id.ToString(),
+            ProviderCode.Id,
+            CarrierTrackingNumber ?? ClientOrderCode,
+            now));
+
+        return UnitResult.Success<e>();
+    }
+
     public UnitResult<e> RecordInspected(UserId inspectedBy, DateTime now)
     {
-        if (Status != InboundShipmentStatus.Arrived)
+        if (Status != InboundShipmentStatus.Arrived && Status != InboundShipmentStatus.Received)
             return WarehouseErrors.InboundShipment.CannotInspect;
 
         Status = InboundShipmentStatus.Inspected;
@@ -327,7 +345,7 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
 
     public UnitResult<e> Complete(DateTime now)
     {
-        if (Status != InboundShipmentStatus.Inspected)
+        if (Status != InboundShipmentStatus.Inspected && Status != InboundShipmentStatus.Received)
             return WarehouseErrors.InboundShipment.CannotComplete;
 
         Status = InboundShipmentStatus.Completed;
@@ -408,6 +426,7 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
 
         _trackingEvents.Add(trackingEvent);
 
+        var oldStatusId = Status.Id;
         switch (normalizedStatus.Id)
         {
             case "picked_up" or "in_transit" or "delayed":
@@ -445,6 +464,26 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
                     ModifiedAt = now;
                 }
                 break;
+        }
+
+        // Raise specific events based on status change
+        if (Status.Id != oldStatusId)
+        {
+            if (Status == InboundShipmentStatus.Arrived)
+            {
+                RaiseDomainEvent(new InboundShipmentArrivedEvent(
+                    Id.ToString(), ProviderCode.Id, CarrierTrackingNumber ?? ClientOrderCode, now));
+            }
+            else if (Status == InboundShipmentStatus.Cancelled)
+            {
+                RaiseDomainEvent(new InboundShipmentCancelledEvent(
+                    Id.ToString(), reasonDescription ?? carrierStatusDesc ?? "Carrier reported cancellation", now));
+            }
+            else if (Status == InboundShipmentStatus.Failed)
+            {
+                RaiseDomainEvent(new InboundShipmentFailedEvent(
+                    Id.ToString(), reasonDescription ?? carrierStatusDesc ?? "Carrier reported failure", now));
+            }
         }
 
         RaiseDomainEvent(new InboundTrackingEventRecordedEvent(

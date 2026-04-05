@@ -1,4 +1,4 @@
-﻿using OIO.Domain.SeedWork.DomainEvents;
+using OIO.Domain.SeedWork.DomainEvents;
 
 namespace OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments.Events;
 
@@ -18,6 +18,12 @@ public sealed record InboundShipmentBookedEvent(
     DateTime OccurredOn) : DomainEvent(OccurredOn);
 
 public sealed record InboundShipmentArrivedEvent(
+    string InboundShipmentId,
+    string ProviderCode,
+    string CarrierTrackingNumber,
+    DateTime OccurredOn) : DomainEvent(OccurredOn);
+
+public sealed record InboundShipmentReceivedEvent(
     string InboundShipmentId,
     string ProviderCode,
     string CarrierTrackingNumber,
