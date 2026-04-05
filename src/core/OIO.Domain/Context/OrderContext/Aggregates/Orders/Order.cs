@@ -166,6 +166,14 @@ public sealed class Order : AggregateRoot<OrderId>, IAuditableEntity
         CompletedAt = nowUtc;
         ModifiedAt = nowUtc;
 
+        RaiseDomainEvent(new OrderCompletedEvent(
+            OrderId: $"{Id.Value}",
+            BuyerId: $"{BuyerId.Value}",
+            SellerId: $"{SellerId.Value}",
+            OrderNumber: OrderNumber.Value,
+            CompletedAt: nowUtc,
+            OccurredAt: nowUtc));
+
         return UnitResult.Success<Error>();
     }
 
