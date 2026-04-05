@@ -72,5 +72,20 @@ internal sealed class InboundShipmentArrivedEventHandler(
                     })),
                 cancellationToken);
         }
+
+        // Notify Seller
+        await NotificationDispatch.DispatchAsync(
+            sender,
+            logger,
+            new CreateNotificationCommand(
+                UserId: shipment.SellerId.Value,
+                NotificationType: "warehouse",
+                EventType: "inbound_arrived",
+                Title: "Goi hang da den kho",
+                Message: $"Goi hang {shipment.ClientOrderCode} cua ban da den kho OIO va dang cho kiem dinh.",
+                Priority: NotificationPriority.Normal,
+                EntityType: "InboundShipment",
+                EntityId: shipment.Id.Value),
+            cancellationToken);
     }
 }
