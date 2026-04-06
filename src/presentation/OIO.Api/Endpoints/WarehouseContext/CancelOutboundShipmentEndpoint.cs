@@ -24,6 +24,7 @@ public sealed class CancelOutboundShipmentEndpoint : IEndpoint
                 return result.ToNoContentHttpResult();
             })
             .RequireAuthorization(App.Permissions.Catalogs.Warehouse.CancelOutbound)
+            .WithName(ApiEndpoint.Names.Warehouse.CancelOutboundShipment)
             .WithTags(ApiEndpoint.Tags.Warehouse);
     }
 }
