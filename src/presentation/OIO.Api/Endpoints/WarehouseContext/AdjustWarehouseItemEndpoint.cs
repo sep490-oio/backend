@@ -24,6 +24,7 @@ public sealed class AdjustWarehouseItemEndpoint : IEndpoint
                 return result.ToNoContentHttpResult();
             })
             .RequireAuthorization(App.Permissions.Catalogs.Warehouse.AdjustItem)
+            .WithName(ApiEndpoint.Names.Warehouse.AdjustWarehouseItem)
             .WithTags(ApiEndpoint.Tags.Warehouse);
     }
 }
