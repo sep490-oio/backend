@@ -544,7 +544,7 @@ internal sealed class GhnShippingProvider : IShippingProvider
             "picked"            => NormalizedTrackingStatus.PickedUp,
             "storing"           => NormalizedTrackingStatus.InTransit,
             "transporting"      => NormalizedTrackingStatus.InTransit,
-            "delivering"        => NormalizedTrackingStatus.InTransit,   
+            "delivering"        => NormalizedTrackingStatus.Delivering,   
             "delivered"         => NormalizedTrackingStatus.Delivered,
             "delivery_fail"     => NormalizedTrackingStatus.Failed,      
             "waiting_to_return" => NormalizedTrackingStatus.Returning,
