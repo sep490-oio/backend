@@ -151,13 +151,14 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
     /// <summary>Assign a physical storage location to this item.</summary>
     public UnitResult<e> Store(WarehouseStorageLocationId locationId, string locationLabel, DateTime now)
     {
-        if (Status != WarehouseItemStatus.Received)
+        if (Status != WarehouseItemStatus.Received && Status != WarehouseItemStatus.Inspected)
             return WarehouseErrors.WarehouseItem.NotReceived;
 
         if (StorageLocationId is not null)
             return WarehouseErrors.WarehouseItem.AlreadyStored;
 
         StorageLocationId = locationId;
+        Status            = WarehouseItemStatus.Stored;
         ModifiedAt        = now;
 
         RaiseDomainEvent(new WarehouseItemStoredEvent(
@@ -172,7 +173,7 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
     /// <summary>Reserve item for an outbound shipment after order is paid.</summary>
     public UnitResult<e> Reserve(OutboundShipmentId outboundShipmentId, DateTime now)
     {
-        if (Status != WarehouseItemStatus.Received)
+        if (Status != WarehouseItemStatus.Received && Status != WarehouseItemStatus.Inspected && Status != WarehouseItemStatus.Stored)
             return WarehouseErrors.WarehouseItem.NotAvailable;
 
         Status     = WarehouseItemStatus.Reserved;
@@ -189,7 +190,8 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
     /// <summary>Mark item as dispatched — called when outbound shipment is picked up by carrier.</summary>
     public UnitResult<e> MarkDispatched(OutboundShipmentId outboundShipmentId, DateTime now)
     {
-        if (Status != WarehouseItemStatus.Received)
+        if (Status != WarehouseItemStatus.Received && Status != WarehouseItemStatus.Inspected && 
+            Status != WarehouseItemStatus.Stored && Status != WarehouseItemStatus.Reserved)
             return WarehouseErrors.WarehouseItem.NotAvailable;
 
         StorageLocationId = null; // freed from shelf

@@ -8,7 +8,11 @@ using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
 using OIO.Domain.Context.NotificationContext.Enums;
 using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
 using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments.Events;
+using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments;
+using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.Events;
+using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.Events;
+using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseStorage;
 using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
 
 namespace OIO.Application.Context.WarehouseContext.EventHandlers;
