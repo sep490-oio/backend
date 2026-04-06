@@ -13,18 +13,11 @@ public sealed class GetWarehouseItemsEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet(ApiEndpoint.Url.Warehouse.WarehouseItems, async (
-                string? status,
-                Guid?   storageLocationId,
-                Guid?   itemId,
-                Guid?   inboundShipmentId,
-                int     page = 1,
-                int     pageSize = 20,
+                [AsParameters] GetWarehouseItemsQueryFilter parameters,
                 ISender sender = default!,
                 CancellationToken ct = default) =>
             {
-                var result = await sender.Send(
-                    new GetWarehouseItemsQuery(
-                        status, storageLocationId, itemId, inboundShipmentId, page, pageSize), ct);
+                var result = await sender.Send(new GetWarehouseItemsQuery(parameters), ct);
                 return result.ToOkHttpResult();
             })
             .RequireAuthorization(App.Permissions.Catalogs.Warehouse.ReadShipments)

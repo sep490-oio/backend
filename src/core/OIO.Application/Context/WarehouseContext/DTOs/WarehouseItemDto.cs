@@ -1,11 +1,17 @@
 namespace OIO.Application.Context.WarehouseContext.DTOs;
 
 public sealed record WarehouseItemDto(
-    Guid    Id,
-    Guid    ItemId,
-    Guid    InboundShipmentId,
-    Guid?   StorageLocationId,
-    string  Status,
+    Guid      Id,
+    Guid      ItemId,
+    Guid      InboundShipmentId,
+    string?   InboundShipmentCode,
+    Guid?     StorageLocationId,
+    string?   StorageLocationLabel,
+    string?   ItemTitle,
+    Guid?     SellerId,
+    string?   SellerName,
+    string?   ItemImageUrl,
+    string    Status,
     DateTime? ReceivedAt,
     DateTime  CreatedAt,
     DateTime? ModifiedAt,
