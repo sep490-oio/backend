@@ -191,3 +191,63 @@ internal sealed class OrderDeliveredNotificationHandler
         }
     }
 }
+
+internal sealed class OrderCompletedNotificationHandler
+    : INotificationHandler<OrderCompletedEvent>
+{
+    private readonly ISender _sender;
+    private readonly ILogger<OrderCompletedNotificationHandler> _logger;
+
+    public OrderCompletedNotificationHandler(
+        ISender sender,
+        ILogger<OrderCompletedNotificationHandler> logger)
+    {
+        _sender = sender;
+        _logger = logger;
+    }
+
+    public async Task Handle(OrderCompletedEvent notification, CancellationToken cancellationToken)
+    {
+        // To Buyer
+        await NotificationDispatch.DispatchAsync(
+            _sender,
+            _logger,
+            new CreateNotificationCommand(
+                UserId: Guid.Parse(notification.BuyerId),
+                NotificationType: "order",
+                EventType: "order_completed",
+                Title: "Don hang da hoan tat",
+                Message: $"Don hang {notification.OrderNumber} da duoc hoan tat. Cam on ban da mua xam!",
+                Priority: NotificationPriority.Normal,
+                EntityType: "Order",
+                EntityId: Guid.Parse(notification.OrderId),
+                Metadata: NotificationDispatch.SerializeMetadata(new
+                {
+                    orderId = notification.OrderId,
+                    orderNumber = notification.OrderNumber,
+                    completedAt = notification.CompletedAt
+                })),
+            cancellationToken);
+
+        // To Seller
+        await NotificationDispatch.DispatchAsync(
+            _sender,
+            _logger,
+            new CreateNotificationCommand(
+                UserId: Guid.Parse(notification.SellerId),
+                NotificationType: "order",
+                EventType: "escrow_released",
+                Title: "Tien ban hang da duoc chuyen vao vi",
+                Message: $"Don hang {notification.OrderNumber} da hoan tat, tien da duoc cong vao vi cua ban.",
+                Priority: NotificationPriority.High,
+                EntityType: "Order",
+                EntityId: Guid.Parse(notification.OrderId),
+                Metadata: NotificationDispatch.SerializeMetadata(new
+                {
+                    orderId = notification.OrderId,
+                    orderNumber = notification.OrderNumber,
+                    completedAt = notification.CompletedAt
+                })),
+            cancellationToken);
+    }
+}

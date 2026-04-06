@@ -111,20 +111,8 @@ internal sealed class ProcessTrackingWebhookCommandHandler
 
             if (result.IsFailure) return result.Error;
 
-            // RecordTrackingEvent already mutates Status internally.
-            // We call RecordArrived separately to raise InboundShipmentArrivedEvent,
-            // but only if the shipment was NOT already Arrived BEFORE this tracking event.
-            if (normalizedStatus == NormalizedTrackingStatus.Arrived &&
-                statusBeforeTracking != InboundShipmentStatus.Arrived)
-            {
-                var arrivedResult = shipment.RecordArrived(now);
-                if (arrivedResult.IsFailure)
-                {
-                    _logger.LogWarning(
-                        "RecordArrived failed for inbound shipment {ShipmentId}: {Error}",
-                        shipment.Id, arrivedResult.Error);
-                }
-            }
+            // RecordTrackingEvent already mutates Status and raises appropriate events (Arrived, etc.) internally.
+            _dbContext.Update(shipment);
 
             _dbContext.Update(shipment);
         }
@@ -197,17 +185,8 @@ internal sealed class ProcessTrackingWebhookCommandHandler
 
                 if (result.IsFailure) return result.Error;
 
-                if (normalizedStatus == NormalizedTrackingStatus.Arrived &&
-                    statusBeforeTracking != InboundShipmentStatus.Arrived)
-                {
-                    var arrivedResult = inbound.RecordArrived(now);
-                    if (arrivedResult.IsFailure)
-                    {
-                        _logger.LogWarning(
-                            "RecordArrived failed for inbound shipment {ShipmentId} (carrier fallback): {Error}",
-                            inbound.Id, arrivedResult.Error);
-                    }
-                }
+                // RecordTrackingEvent already mutates Status and raises appropriate events internally.
+                _dbContext.Update(inbound);
 
                 _dbContext.Update(inbound);
             }

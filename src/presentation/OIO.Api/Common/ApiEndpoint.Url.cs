@@ -288,6 +288,7 @@ public static partial class ApiEndpoint
             public const string ApproveReturn = $"{Base}/{{orderId:guid}}/returns/{{returnId:guid}}/approve";
             public const string RejectReturn = $"{Base}/{{orderId:guid}}/returns/{{returnId:guid}}/reject";
             public const string ConfirmReturnReceived = $"{Base}/{{orderId:guid}}/returns/{{returnId:guid}}/confirm-received";
+            public const string ConfirmReceipt = $"{Base}/{{orderId:guid}}/confirm-receipt";
         }
 
         public static class Me
@@ -326,6 +327,9 @@ public static partial class ApiEndpoint
             public const string GetMyWithdrawals = $"{Base}/wallet/withdrawals";
             public const string CancelWithdrawal = $"{Base}/wallet/withdrawals/{{withdrawalId:guid}}/cancel";
             public const string GetMyOrders = $"{Base}/orders";
+            public const string GetMyOutboundShipments = $"{Base}/outbound-shipments";
+            public const string GetMyInboundShipments = $"{Base}/inbound-shipments";
+            public const string GetSellerDirectShipOrders = $"{Base}/orders/seller-direct-ship";
 
             // Verifications
             public const string CreateVerification = $"{Base}/verifications";

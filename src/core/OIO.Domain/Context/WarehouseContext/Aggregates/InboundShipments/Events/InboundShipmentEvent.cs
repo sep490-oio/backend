@@ -1,4 +1,4 @@
-﻿using OIO.Domain.SeedWork.DomainEvents;
+using OIO.Domain.SeedWork.DomainEvents;
 
 namespace OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments.Events;
 
