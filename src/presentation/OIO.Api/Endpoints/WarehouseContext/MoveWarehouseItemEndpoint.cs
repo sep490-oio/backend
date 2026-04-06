@@ -21,7 +21,7 @@ public sealed class MoveWarehouseItemEndpoint : IEndpoint
                 CancellationToken ct) =>
             {
                 var result = await sender.Send(new MoveWarehouseItemCommand(id, request.NewLocationId), ct);
-                return result.ToOkHttpResult();
+                return result.ToNoContentHttpResult();
             })
             .RequireAuthorization(App.Permissions.Catalogs.Warehouse.MoveItem)
             .WithTags(ApiEndpoint.Tags.Warehouse);

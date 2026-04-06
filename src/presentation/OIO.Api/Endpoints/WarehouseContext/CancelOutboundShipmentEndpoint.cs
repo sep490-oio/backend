@@ -21,7 +21,7 @@ public sealed class CancelOutboundShipmentEndpoint : IEndpoint
                 CancellationToken ct) =>
             {
                 var result = await sender.Send(new CancelOutboundShipmentCommand(id, request.Reason), ct);
-                return result.ToOkHttpResult();
+                return result.ToNoContentHttpResult();
             })
             .RequireAuthorization(App.Permissions.Catalogs.Warehouse.CancelOutbound)
             .WithTags(ApiEndpoint.Tags.Warehouse);

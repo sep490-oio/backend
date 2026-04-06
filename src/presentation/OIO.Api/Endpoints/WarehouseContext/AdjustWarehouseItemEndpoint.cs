@@ -21,7 +21,7 @@ public sealed class AdjustWarehouseItemEndpoint : IEndpoint
                 CancellationToken ct) =>
             {
                 var result = await sender.Send(new AdjustWarehouseItemCommand(id, request.NewStatus, request.Reason), ct);
-                return result.ToOkHttpResult();
+                return result.ToNoContentHttpResult();
             })
             .RequireAuthorization(App.Permissions.Catalogs.Warehouse.AdjustItem)
             .WithTags(ApiEndpoint.Tags.Warehouse);
