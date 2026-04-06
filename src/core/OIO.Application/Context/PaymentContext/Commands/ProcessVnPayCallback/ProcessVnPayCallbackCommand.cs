@@ -437,7 +437,7 @@ internal sealed class ProcessVnPayCallbackCommandHandler
             .FirstOrDefaultAsync(
                 d => d.AuctionId == order.AuctionId &&
                      d.BidderId == order.BuyerId &&
-                     d.IsHeld,
+                     d.Status == DepositStatus.Held,
                 ct);
 
         if (winnerDeposit is not null)

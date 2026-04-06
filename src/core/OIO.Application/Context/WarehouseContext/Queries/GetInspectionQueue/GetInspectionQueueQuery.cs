@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.WarehouseContext.DTOs;
+using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
@@ -18,6 +19,11 @@ public record GetInspectionQueueQueryFilters : PagedParameters
     /// Optional filter by queue status: "awaiting_inspection" or "awaiting_review".
     /// </summary>
     public string? Status { get; init; }
+
+    /// <summary>
+    /// Optional filter: only include shipments whose item has an auction requiring platform inspection.
+    /// </summary>
+    public bool? RequiresPlatformInspection { get; init; }
 }
 
 public sealed record GetInspectionQueueQuery(
@@ -32,11 +38,22 @@ internal sealed class GetInspectionQueueQueryHandler(Application.Abstractions.Da
     {
         var parameters = request.Parameters;
 
-        var shipments = await db.Set<InboundShipment>()
+        var shipmentsQuery = db.Set<InboundShipment>()
             .AsNoTracking()
             .Where(x =>
                 x.Status == InboundShipmentStatus.Arrived ||
-                x.Status == InboundShipmentStatus.Inspected)
+                x.Status == InboundShipmentStatus.Inspected);
+
+        if (parameters.RequiresPlatformInspection.HasValue)
+        {
+            var flag = parameters.RequiresPlatformInspection.Value;
+            var itemIdsWithFlag = db.Set<Auction>()
+                .Where(a => a.VerifyByPlatform == flag)
+                .Select(a => a.ItemId.Value);
+            shipmentsQuery = shipmentsQuery.Where(x => itemIdsWithFlag.Contains(x.ItemId));
+        }
+
+        var shipments = await shipmentsQuery
             .OrderByDescending(x => x.ArrivedAt ?? x.CreatedAt)
             .ToListAsync(cancellationToken);
 

@@ -22,7 +22,9 @@ public sealed class CreateVnPayPaymentUrlEndpoint : IEndpoint
         Guid? OrderId = null,
         Guid? BuyNowReservationId = null,
         Guid? PaymentMethodId = null,
-        bool SaveCard = false);
+        bool SaveCard = false,
+        string? CardType = null,
+        string? ClientReturnPath = null);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
@@ -43,7 +45,9 @@ public sealed class CreateVnPayPaymentUrlEndpoint : IEndpoint
                     OrderId: request.OrderId,
                     BuyNowReservationId: request.BuyNowReservationId,
                     PaymentMethodId: request.PaymentMethodId,
-                    SaveCard: request.SaveCard);
+                    SaveCard: request.SaveCard,
+                    CardType: request.CardType,
+                    ClientReturnPath: request.ClientReturnPath);
 
                 var result = await sender.Send(command, ct);
 

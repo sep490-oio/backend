@@ -134,6 +134,35 @@ public static class VnPayHelper
         return result;
     }
 
+    /// <summary>
+    /// Normalize IP address to IPv4 string for VNPay compatibility.
+    /// VNPay rejects IPv6 addresses and certain loopback formats.
+    /// </summary>
+    public static string NormalizeIpAddress(string? ipAddress)
+    {
+        if (string.IsNullOrWhiteSpace(ipAddress) || ipAddress == "::1" || ipAddress == "::0")
+            return "127.0.0.1";
+
+        if (System.Net.IPAddress.TryParse(ipAddress, out var parsed))
+        {
+            // IPv4-mapped IPv6 (e.g., ::ffff:127.0.0.1) → convert to IPv4
+            if (parsed.IsIPv4MappedToIPv6)
+                return parsed.MapToIPv4().ToString();
+
+            // IPv6 loopback
+            if (System.Net.IPAddress.IsLoopback(parsed) && parsed.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
+                return "127.0.0.1";
+
+            // Pure IPv6 — fallback to 127.0.0.1 for dev safety
+            if (parsed.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
+                return "127.0.0.1";
+
+            return parsed.ToString();
+        }
+
+        return "127.0.0.1";
+    }
+
     private static bool IsAllowedOrderInfoCharacter(char ch)
         => ch <= 127 &&
            (char.IsLetterOrDigit(ch) || ch is ' ' or '.' or ',' or ':' or '-');

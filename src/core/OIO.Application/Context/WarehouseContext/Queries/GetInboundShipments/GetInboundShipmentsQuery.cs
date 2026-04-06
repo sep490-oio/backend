@@ -7,6 +7,7 @@ using OIO.Application.Context.UserContext.Services;
 using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Application.Context.WarehouseContext.Mappings;
 using OIO.Application.Extensions;
+using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.AppDefinitions;
@@ -24,6 +25,7 @@ public record GetInboundShipmentsQueryFilter : PagedParameters
     public string?   Search { get; init; }
     public DateTime? FromDate { get; init; }
     public DateTime? ToDate { get; init; }
+    public bool?     RequiresPlatformInspection { get; init; }
 }
 
 public sealed record GetInboundShipmentsQuery(
@@ -81,6 +83,15 @@ internal sealed class GetInboundShipmentsQueryHandler(IDbContext db, ICurrentUse
 
         if (parameters.ToDate.HasValue)
             query = query.Where(s => s.CreatedAt <= parameters.ToDate.Value);
+
+        if (parameters.RequiresPlatformInspection.HasValue)
+        {
+            var flag = parameters.RequiresPlatformInspection.Value;
+            var itemIdsWithFlag = db.Set<Auction>()
+                .Where(a => a.VerifyByPlatform == flag)
+                .Select(a => a.ItemId.Value);
+            query = query.Where(s => itemIdsWithFlag.Contains(s.ItemId));
+        }
 
         var totalCount = await query.CountAsync(cancellationToken);
         

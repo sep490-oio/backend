@@ -32,22 +32,36 @@ internal sealed class GetMyBidsQueryHandler
         CancellationToken cancellationToken)
     {
         var parameters = request.Parameters;
+        var userId = _currentUser.UserId;
 
         // Get the latest bid per auction for this bidder
         // Uses NOT EXISTS pattern instead of GroupBy+First() which EF Core can't translate
         var query = _dbContext.Set<Bid>()
             .AsNoTracking()
-            .Where(bid => bid.BidderId == _currentUser.UserId)
+            .Where(bid => bid.BidderId == userId)
             .Where(bid => !_dbContext.Set<Bid>()
-                .Any(newer => newer.BidderId == _currentUser.UserId
+                .Any(newer => newer.BidderId == userId
                     && newer.AuctionId == bid.AuctionId
                     && newer.CreatedAt > bid.CreatedAt));
 
-        // Status filter
+        // Position filter — map position string to query predicate
         if (!string.IsNullOrWhiteSpace(parameters.Status))
         {
-            var bidStatus = BidStatus.FromId(parameters.Status);
-            query = query.Where(b => b.Status == bidStatus);
+            var pos = parameters.Status.ToLowerInvariant();
+            query = pos switch
+            {
+                "won"     => query.Where(b => b.Auction.Status == AuctionStatus.Sold
+                                           && b.Auction.WinnerId == userId),
+                "lost"    => query.Where(b => (b.Auction.Status == AuctionStatus.Ended
+                                              || b.Auction.Status == AuctionStatus.Failed
+                                              || b.Auction.Status == AuctionStatus.Cancelled
+                                              || b.Auction.Status == AuctionStatus.Terminated
+                                              || b.Auction.Status == AuctionStatus.PaymentDefaulted)
+                                           && b.Auction.WinnerId != userId),
+                "leading" => query.Where(b => b.Status == BidStatus.Winning),
+                "outbid"  => query.Where(b => b.Status == BidStatus.Outbid),
+                _         => query,
+            };
         }
 
         query = query.ApplySort(parameters, BidMappings.MyBidDtoSortMapping);
@@ -56,20 +70,32 @@ internal sealed class GetMyBidsQueryHandler
 
         var myBids = await query
             .Select(x => new MyBidDto(
-                x.Id.Value,
                 x.Auction.Id.Value,
+                x.Auction.Item.Id.Value,
                 x.Auction.Item.Title.Value,
                 x.Auction.Item.Media
                     .Where(img => img.IsPrimary)
                     .Select(img => img.Info.SecureUrl)
                     .FirstOrDefault(),
-                x.Amount.ToDto(),
-                x.Auction.Pricing.CurrentPrice.ToDto(),
-                x.Status.Id,
                 x.Auction.Status.Id,
-                x.Status == BidStatus.Winning,
+                x.Auction.Pricing.CurrentPrice.ToDto(),
+                x.Amount.ToDto(),
+                // Compute position
+                x.Auction.Status == AuctionStatus.Sold && x.Auction.WinnerId == userId
+                    ? "won"
+                    : (x.Auction.Status == AuctionStatus.Ended
+                       || x.Auction.Status == AuctionStatus.Failed
+                       || x.Auction.Status == AuctionStatus.Cancelled
+                       || x.Auction.Status == AuctionStatus.Terminated
+                       || x.Auction.Status == AuctionStatus.PaymentDefaulted)
+                        ? "lost"
+                        : x.Status == BidStatus.Winning
+                            ? "leading"
+                            : "outbid",
+                // WonAt — use auction's sold/closed timestamp; not directly available, use null
+                (DateTime?)null,
                 x.CreatedAt,
-                x.Auction.Info.EndTime))
+                _dbContext.Set<Bid>().Count(b => b.BidderId == userId && b.AuctionId == x.AuctionId)))
             .ToPagedListAsync(totalCount, parameters, cancellationToken);
 
         return myBids;

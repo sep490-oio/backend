@@ -33,14 +33,13 @@ internal static class BidMappings
     
     public static readonly SortMappingDefinition MyBidDtoSortMapping = SortMappingBuilder<MyBidDto, Bid>
         .Create()
-        .Map(x => x.Id, b => b.Id)
         .Map(x => x.AuctionId, b => b.AuctionId)
+        .Map(x => x.ItemId, b => b.Auction.Item.Id)
         .Map(x => x.ItemTitle, b => b.Auction.Item.Title)
-        .Map(x => x.Amount, b => b.Amount.Amount)
-        .Map(x => x.Status, b => b.Status.Id)
         .Map(x => x.CurrentPrice, b => b.Auction.Pricing.CurrentAmount)
+        .Map(x => x.MyLatestBidAmount, b => b.Amount.Amount)
         .Map(x => x.AuctionStatus, b => b.Auction.Status)
-        .Map(x => x.BidPlacedAt, b => b.CreatedAt)
-        .Map(x => x.AuctionEndTime, b => b.Auction.Info.EndTime)
+        .Map(x => x.Position, b => b.Status.Id)
+        .Map(x => x.LastBidAt, b => b.CreatedAt)
         .Build();
 }

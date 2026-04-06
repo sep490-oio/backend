@@ -39,6 +39,7 @@ public sealed record CreateVnPayPaymentUrlCommand(
     Guid? BuyNowReservationId = null,
     Guid? PaymentMethodId = null,
     bool SaveCard = false,
+    string? CardType = null,
     string? ClientReturnPath = null) : ICommand<CreateVnPayPaymentUrlResponse>, IHasValidate
 {
     public ViolationsError Validate()
@@ -190,10 +191,11 @@ internal sealed class CreateVnPayPaymentUrlCommandHandler
 
         if (request.Purpose == PaymentPurpose.OrderPayment && request.OrderId.HasValue)
         {
+            var orderId = OrderId.From(request.OrderId.Value);
             transaction = await _dbContext.Set<Transaction>()
                 .FirstOrDefaultAsync(t => 
                     t.UserId == _currentUser.UserId &&
-                    t.OrderId!.Value == request.OrderId.Value &&
+                    t.OrderId! == orderId &&
                     t.Status == TransactionStatus.Pending &&
                     t.Type == TransactionType.Payment, 
                     cancellationToken);
@@ -275,6 +277,10 @@ internal sealed class CreateVnPayPaymentUrlCommandHandler
 
         transaction.SetClientReturnPath(request.ClientReturnPath);
 
+        if (request.SaveCard && string.IsNullOrWhiteSpace(request.CardType))
+            return Error.Validation("CardType", "Payment.CardTypeRequired",
+                "Card type is required when saving card.");
+
         // 6. Tạo URL thanh toán VNPay — route theo PaymentMethodId / SaveCard
         var amountVnd = (long)request.Amount;
         var ipStr = request.IpAddress.ToString();
@@ -323,6 +329,7 @@ internal sealed class CreateVnPayPaymentUrlCommandHandler
                 OrderDescription = request.Description,
                 AppUserId = appUserId,
                 IpAddress = ipStr,
+                CardType = request.CardType,
             });
         }
         else

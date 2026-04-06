@@ -9,6 +9,7 @@ using OIO.Application.Context.PaymentContext.Commands.CreateVnPayPaymentUrl;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Application.Abstractions.Payment;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
+using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.Errors;
 using OIO.Domain.Context.PaymentContext.Aggregates.Escrows;
@@ -16,6 +17,7 @@ using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.PaymentContext.ValueObjects;
+using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.SeedWork.Errors;
 
@@ -134,7 +136,7 @@ internal sealed class CheckoutOrderCommandHandler
             .FirstOrDefaultAsync(
                 d => d.AuctionId == order.AuctionId &&
                      d.BidderId == order.BuyerId &&
-                     d.IsHeld,
+                     d.Status == DepositStatus.Held,
                 cancellationToken);
 
         if (winnerDeposit is not null)
@@ -337,9 +339,10 @@ internal sealed class CheckoutOrderCommandHandler
         // Store wallet portion info in the transaction description so callback handler knows
         if (walletPortion > 0)
         {
+            var transactionId = TransactionId.From(urlResult.Value.TransactionId);
             var transaction = await _dbContext.Set<Transaction>()
                 .FirstOrDefaultAsync(
-                    t => t.Id.Value == urlResult.Value.TransactionId,
+                    t => t.Id == transactionId,
                     cancellationToken);
 
             if (transaction is not null)

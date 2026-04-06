@@ -7,4 +7,6 @@ public sealed record ItemQuestionDto(
     string? Answer,
     DateTime? AnsweredAt,
     bool IsPublic,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string? AskerDisplayName = null,
+    string? AnswererDisplayName = null);

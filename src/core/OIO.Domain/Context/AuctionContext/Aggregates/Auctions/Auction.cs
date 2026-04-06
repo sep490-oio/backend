@@ -692,6 +692,47 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             return result.Error;
         }
 
+        // Buy-now-by-bid: if bid >= buyNowPrice, end auction immediately
+        if (Pricing.HasBuyNowPrice && amount.Amount >= Pricing.BuyNowAmount!.Value)
+        {
+            bid.MarkAsWon();
+            Status = AuctionStatus.Sold;
+            ActualEndTime = nowUtc;
+            WinnerId = bidderId;
+            ModifiedAt = nowUtc;
+
+            // Mark all other active bids as outbid
+            foreach (var otherBid in _bids.Where(b => b.Id != bid.Id && b.Status == Enums.BidStatus.Winning))
+                otherBid.MarkAsOutbid();
+
+            // Cancel all auto-bids
+            foreach (var ab in _autoBids.Where(ab => ab.IsEnabled))
+                ab.MarkAsOutbid(nowUtc);
+
+            RaiseDomainEvent(new BidPlacedEvent(
+                AuctionId: $"{Id}",
+                BidId: $"{bid.Id}",
+                BidderId: $"{bidderId}",
+                Amount: amount.Amount,
+                PreviousHighestBid: previousHighestBid,
+                IsAutoBid: false,
+                PreviousBidderId: previousBidderId?.ToString(),
+                BidCount: BidCount,
+                BidTime: bid.CreatedAt,
+                nowUtc));
+
+            RaiseDomainEvent(new AuctionSoldEvent(
+                AuctionId: $"{Id}",
+                WinnerId: $"{bidderId}",
+                SellerId: $"{Item.SellerId}",
+                FinalPrice: amount.Amount,
+                Currency: Pricing.Currency.Id,
+                TotalBids: BidCount,
+                OccurredAt: nowUtc));
+
+            return bid; // Early return — no auto-extend, no proxy resolution
+        }
+
         // Auto-extend check
         result = TryAutoExtend(
             nowUtc: nowUtc,
@@ -704,12 +745,12 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         {
             return result.Error;
         }
-        
+
         RaiseDomainEvent(new BidPlacedEvent(
-            AuctionId: $"{Id}", 
+            AuctionId: $"{Id}",
             BidId: $"{bid.Id}",
             BidderId: $"{bidderId}",
-            Amount: amount.Amount, 
+            Amount: amount.Amount,
             PreviousHighestBid: previousHighestBid,
             IsAutoBid: false,
             PreviousBidderId:  previousBidderId?.ToString(),
@@ -724,6 +765,34 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         if (result.IsFailure)
         {
             return result.Error;
+        }
+
+        // Check if proxy resolution resulted in buy-now price being reached
+        if (Pricing.HasBuyNowPrice && Pricing.CurrentAmount >= Pricing.BuyNowAmount!.Value)
+        {
+            var winner = GetCurrentWinningBid();
+            if (winner is not null)
+            {
+                winner.MarkAsWon();
+                Status = AuctionStatus.Sold;
+                ActualEndTime = nowUtc;
+                WinnerId = winner.BidderId;
+                ModifiedAt = nowUtc;
+
+                foreach (var otherBid in _bids.Where(b => b.Id != winner.Id && b.Status == Enums.BidStatus.Winning))
+                    otherBid.MarkAsOutbid();
+                foreach (var ab in _autoBids.Where(ab => ab.IsEnabled))
+                    ab.MarkAsOutbid(nowUtc);
+
+                RaiseDomainEvent(new AuctionSoldEvent(
+                    AuctionId: $"{Id}",
+                    WinnerId: $"{winner.BidderId}",
+                    SellerId: $"{Item.SellerId}",
+                    FinalPrice: Pricing.CurrentAmount,
+                    Currency: Pricing.Currency.Id,
+                    TotalBids: BidCount,
+                    OccurredAt: nowUtc));
+            }
         }
 
         return bid;
