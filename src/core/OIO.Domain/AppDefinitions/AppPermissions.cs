@@ -485,6 +485,9 @@ public static partial class App
                 [Catalogs.Warehouse.CalculateShippingFee] = Warehouse.CalculateShippingFee,
                 [Catalogs.Warehouse.CalculateLeadTime] = Warehouse.CalculateLeadTime,
                 [Catalogs.Warehouse.SyncAddress] = Warehouse.SyncAddress,
+                [Catalogs.Warehouse.MoveItem] = Warehouse.MoveItem,
+                [Catalogs.Warehouse.AdjustItem] = Warehouse.AdjustItem,
+                [Catalogs.Warehouse.CancelOutbound] = Warehouse.CancelOutbound,
 
                 
                 // Media
