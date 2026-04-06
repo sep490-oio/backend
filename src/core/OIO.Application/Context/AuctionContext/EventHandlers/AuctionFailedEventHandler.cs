@@ -2,8 +2,6 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Data;
-using OIO.Application.Context.AuctionContext.Hubs;
-using OIO.Application.Context.AuctionContext.Services;
 using OIO.Application.Context.NotificationContext;
 using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
@@ -19,18 +17,15 @@ internal sealed class AuctionFailedEventHandler
 {
     private readonly IDbContext _dbContext;
     private readonly ISender _sender;
-    private readonly IAuctionNotificationService _hubNotifier;
     private readonly ILogger<AuctionFailedEventHandler> _logger;
 
     public AuctionFailedEventHandler(
         IDbContext dbContext,
         ISender sender,
-        IAuctionNotificationService hubNotifier,
         ILogger<AuctionFailedEventHandler> logger)
     {
         _dbContext = dbContext;
         _sender = sender;
-        _hubNotifier = hubNotifier;
         _logger = logger;
     }
 
@@ -50,17 +45,6 @@ internal sealed class AuctionFailedEventHandler
 
         if (auction is null)
             return;
-
-        await _hubNotifier.NotifyAuctionEndedAsync(
-            auctionId.Value,
-            new AuctionEndedNotification(
-                AuctionId: auctionId.Value,
-                WinnerId: null,
-                WinnerDisplayName: null,
-                FinalPrice: notification.FinalPrice,
-                TotalBids: notification.TotalBids,
-                ReserveMet: false),
-            cancellationToken);
 
         await NotificationDispatch.DispatchAsync(
             _sender,

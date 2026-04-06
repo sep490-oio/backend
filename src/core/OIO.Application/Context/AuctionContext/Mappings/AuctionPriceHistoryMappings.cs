@@ -5,12 +5,13 @@ namespace OIO.Application.Context.AuctionContext.Mappings;
 
 public static class AuctionPriceHistoryMappings
 {
-    public static PriceHistoryDto ToDto(this AuctionPriceHistory ph)
+    public static PriceHistoryDto ToDto(this AuctionPriceHistory ph, string? bidderDisplayName = null)
     {
         return new PriceHistoryDto(
             Price: ph.Price.ToDto(),
             Type: ph.Type.Id,
             BidId: ph.BidId?.Value,
-            RecordedAt: ph.CreatedAt);
+            RecordedAt: ph.CreatedAt,
+            BidderDisplayName: bidderDisplayName);
     }
 }

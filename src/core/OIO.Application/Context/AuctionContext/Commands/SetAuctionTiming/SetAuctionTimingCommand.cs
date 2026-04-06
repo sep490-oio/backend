@@ -113,6 +113,7 @@ internal sealed class SetAuctionTimingCommandHandler
         var result = auction.SetTiming(auctionInfo, nowUtc);
         if (result.IsFailure) return result.Error;
 
+        _dbContext.Update(auction);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return auction.ToDto(nowUtc,

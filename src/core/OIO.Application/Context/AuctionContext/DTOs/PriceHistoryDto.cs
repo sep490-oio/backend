@@ -4,4 +4,5 @@ public sealed record PriceHistoryDto(
     MoneyDto Price,
     string Type,
     Guid? BidId,
-    DateTime RecordedAt);
+    DateTime RecordedAt,
+    string? BidderDisplayName = null);

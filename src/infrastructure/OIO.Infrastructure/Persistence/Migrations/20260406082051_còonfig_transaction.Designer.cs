@@ -14,8 +14,8 @@ using OIO.Infrastructure.Persistence;
 namespace OIO.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260329183911_UpdateWarehouse")]
-    partial class UpdateWarehouse
+    [Migration("20260406082051_còonfig_transaction")]
+    partial class còonfig_transaction
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -570,7 +570,7 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
                             b1.Property<int>("ExtensionCount")
                                 .HasColumnType("integer")
-                                .HasColumnName("info_extension_count");
+                                .HasColumnName("extension_count");
 
                             b1.Property<int>("ExtensionMinutes")
                                 .HasColumnType("integer")
@@ -1245,6 +1245,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<decimal>("HeldAmount")
+                        .HasColumnType("numeric")
+                        .HasColumnName("held_amount");
 
                     b.Property<bool>("IsEnabled")
                         .ValueGeneratedOnAdd()
@@ -2827,6 +2831,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
+                    b.Property<Guid?>("DisputeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("dispute_id");
+
                     b.Property<Guid>("EntityId")
                         .HasColumnType("uuid")
                         .HasColumnName("entity_id");
@@ -2876,6 +2884,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_reports");
+
+                    b.HasIndex("DisputeId")
+                        .HasDatabaseName("idx_reports_dispute_id")
+                        .HasFilter("dispute_id IS NOT NULL");
 
                     b.HasIndex("ReporterId")
                         .HasDatabaseName("idx_reports_reporter");
@@ -3875,6 +3887,11 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("BuyNowReservationId")
                         .HasColumnType("uuid")
                         .HasColumnName("buy_now_reservation_id");
+
+                    b.Property<string>("ClientReturnPath")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("client_return_path");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()

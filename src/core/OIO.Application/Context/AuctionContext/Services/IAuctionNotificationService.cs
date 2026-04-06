@@ -90,4 +90,13 @@ public interface IAuctionNotificationService
         Guid itemId,
         ItemQuestionNotification notification,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Broadcast centralized auction state change to auction group.
+    /// Contains room-safe shared state only (no user-specific data).
+    /// </summary>
+    Task NotifyAuctionStateChangedAsync(
+        Guid auctionId,
+        AuctionStateChangedNotification notification,
+        CancellationToken cancellationToken = default);
 }

@@ -2,8 +2,6 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Data;
-using OIO.Application.Context.AuctionContext.Hubs;
-using OIO.Application.Context.AuctionContext.Services;
 using OIO.Application.Context.NotificationContext;
 using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
@@ -27,20 +25,17 @@ internal sealed class AuctionSoldEventHandler
     private readonly IDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ISender _sender;
-    private readonly IAuctionNotificationService _hubNotifier;
     private readonly ILogger<AuctionSoldEventHandler> _logger;
 
     public AuctionSoldEventHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         ISender sender,
-        IAuctionNotificationService hubNotifier,
         ILogger<AuctionSoldEventHandler> logger)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _sender = sender;
-        _hubNotifier = hubNotifier;
         _logger = logger;
     }
 
@@ -157,17 +152,6 @@ internal sealed class AuctionSoldEventHandler
                     orderId = order?.Id.Value,
                     orderNumber = order?.OrderNumber.Value
                 })),
-            cancellationToken);
-
-        await _hubNotifier.NotifyAuctionEndedAsync(
-            auctionId.Value,
-            new AuctionEndedNotification(
-                AuctionId: auctionId.Value,
-                WinnerId: winnerId.Value,
-                WinnerDisplayName: winnerDisplayName,
-                FinalPrice: notification.FinalPrice,
-                TotalBids: notification.TotalBids,
-                ReserveMet: true),
             cancellationToken);
 
         var watcherUserIds = auction.Watchers

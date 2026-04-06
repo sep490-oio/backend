@@ -34,16 +34,14 @@ internal sealed class GetMyBidsQueryHandler
         var parameters = request.Parameters;
 
         // Get the latest bid per auction for this bidder
-        // Subquery: get the max bid ID per auction (latest = highest ID for same auction)
-        var latestBidIds = _dbContext.Set<Bid>()
-            .AsNoTracking()
-            .Where(bid => bid.BidderId == _currentUser.UserId)
-            .GroupBy(bid => bid.AuctionId)
-            .Select(g => g.OrderByDescending(b => b.CreatedAt).First().Id);
-
+        // Uses NOT EXISTS pattern instead of GroupBy+First() which EF Core can't translate
         var query = _dbContext.Set<Bid>()
             .AsNoTracking()
-            .Where(bid => latestBidIds.Contains(bid.Id));
+            .Where(bid => bid.BidderId == _currentUser.UserId)
+            .Where(bid => !_dbContext.Set<Bid>()
+                .Any(newer => newer.BidderId == _currentUser.UserId
+                    && newer.AuctionId == bid.AuctionId
+                    && newer.CreatedAt > bid.CreatedAt));
 
         // Status filter
         if (!string.IsNullOrWhiteSpace(parameters.Status))

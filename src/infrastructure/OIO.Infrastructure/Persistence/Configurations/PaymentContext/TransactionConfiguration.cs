@@ -117,6 +117,10 @@ internal sealed class TransactionConfiguration : IEntityTypeConfiguration<Transa
         builder.Property(t => t.Description)
             .HasColumnName("description");
 
+        builder.Property(t => t.ClientReturnPath)
+            .HasColumnName("client_return_path")
+            .HasMaxLength(500);
+
         builder.Property(t => t.ProcessedAt)
             .HasColumnName("processed_at");
 

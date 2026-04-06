@@ -104,10 +104,16 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
                 .IsRequired();
 
             info.Property(i => i.AutoExtend)
-                .HasColumnName("auto_extend");
+                .HasColumnName("auto_extend")
+                .IsRequired();
 
             info.Property(i => i.ExtensionMinutes)
-                .HasColumnName("extension_minutes");
+                .HasColumnName("extension_minutes")
+                .IsRequired();
+            
+            info.Property(i => i.ExtensionCount)
+                .HasColumnName("extension_count")
+                .IsRequired();
 
             // Nested VO: QualificationWindow? inside AuctionInfo
             info.ComplexProperty(i => i.Qualification, qual =>

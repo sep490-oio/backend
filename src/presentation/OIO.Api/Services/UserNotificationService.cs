@@ -18,4 +18,16 @@ public sealed class UserNotificationService(IHubContext<UserHub, IUserHubClient>
 
     public Task NotifyOrderStatusChangedAsync(Guid userId, OrderStatusChangedNotification notification)
         => hubContext.Clients.Group($"user:{userId}").OrderStatusChanged(notification);
+
+    public Task NotifyAutoBidStateChangedAsync(
+        Guid userId,
+        AutoBidStateChangedNotification notification,
+        CancellationToken cancellationToken = default)
+        => hubContext.Clients.Group($"user:{userId}").AutoBidStateChanged(notification);
+
+    public Task NotifyAuctionPositionChangedAsync(
+        Guid userId,
+        AuctionPositionChangedNotification notification,
+        CancellationToken cancellationToken = default)
+        => hubContext.Clients.Group($"user:{userId}").AuctionPositionChanged(notification);
 }

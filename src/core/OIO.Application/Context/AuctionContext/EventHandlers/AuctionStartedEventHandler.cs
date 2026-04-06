@@ -2,8 +2,6 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Data;
-using OIO.Application.Context.AuctionContext.Hubs;
-using OIO.Application.Context.AuctionContext.Services;
 using OIO.Application.Context.NotificationContext;
 using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
@@ -18,18 +16,15 @@ internal sealed class AuctionStartedEventHandler
 {
     private readonly IDbContext _dbContext;
     private readonly ISender _sender;
-    private readonly IAuctionNotificationService _notificationService;
     private readonly ILogger<AuctionStartedEventHandler> _logger;
 
     public AuctionStartedEventHandler(
         IDbContext dbContext,
         ISender sender,
-        IAuctionNotificationService notificationService,
         ILogger<AuctionStartedEventHandler> logger)
     {
         _dbContext = dbContext;
         _sender = sender;
-        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -51,15 +46,6 @@ internal sealed class AuctionStartedEventHandler
                 notification.AuctionId);
             return;
         }
-
-        // SignalR broadcast (existing)
-        await _notificationService.NotifyAuctionStartedAsync(
-            auction.Id.Value,
-            new AuctionStartedNotification(
-                AuctionId: auction.Id.Value,
-                StartTime: auction.Info.StartTime,
-                EndTime: auction.Info.EndTime),
-            ct);
 
         // Persistent notifications for qualified participants
         var participantUserIds = auction.Participants

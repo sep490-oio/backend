@@ -545,10 +545,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("view_count");
 
-                    b.Property<bool>("WasCascadeCapped")
-                        .HasColumnType("boolean")
-                        .HasColumnName("was_cascade_capped");
-
                     b.Property<int>("WatchCount")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -571,7 +567,7 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
                             b1.Property<int>("ExtensionCount")
                                 .HasColumnType("integer")
-                                .HasColumnName("info_extension_count");
+                                .HasColumnName("extension_count");
 
                             b1.Property<int>("ExtensionMinutes")
                                 .HasColumnType("integer")
@@ -3888,6 +3884,11 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("BuyNowReservationId")
                         .HasColumnType("uuid")
                         .HasColumnName("buy_now_reservation_id");
+
+                    b.Property<string>("ClientReturnPath")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("client_return_path");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()

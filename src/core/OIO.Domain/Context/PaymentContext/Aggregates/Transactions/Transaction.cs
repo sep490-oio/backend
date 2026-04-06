@@ -34,6 +34,7 @@ public sealed class Transaction : AggregateRoot<TransactionId>, ICreatedAtEntity
     public TransactionStatus Status { get; private set; }
     public GatewayInfo Gateway { get; private set; }
     public string? Description { get; private set; }
+    public string? ClientReturnPath { get; private set; }
     public DateTime? ProcessedAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
@@ -130,6 +131,20 @@ public sealed class Transaction : AggregateRoot<TransactionId>, ICreatedAtEntity
             Id, UserId, Amount.Amount, Currency, Type.Id, processedAt));
 
         return UnitResult.Success<Error>();
+    }
+
+    public void SetClientReturnPath(string? path)
+    {
+        if (path is not null && IsValidClientReturnPath(path))
+            ClientReturnPath = path;
+    }
+
+    private static bool IsValidClientReturnPath(string path)
+    {
+        return path.StartsWith('/') &&
+               !path.StartsWith("//") &&
+               !path.Contains("://") &&
+               !path.StartsWith("/payments/vnpay/return", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

@@ -145,4 +145,15 @@ internal sealed class AuctionNotificationService : IAuctionNotificationService
             .Group(AuctionHub.ItemGroupName(itemId))
             .QuestionAnswered(notification);
     }
+
+    public async Task NotifyAuctionStateChangedAsync(
+        Guid auctionId,
+        AuctionStateChangedNotification notification,
+        CancellationToken cancellationToken = default)
+    {
+        await _hubContext
+            .Clients
+            .Group(AuctionHub.AuctionGroupName(auctionId))
+            .AuctionStateChanged(notification);
+    }
 }

@@ -37,7 +37,8 @@ public sealed record ProcessVnPayCallbackResponse(
     string TransactionRef,
     bool IsSuccess,
     string ResponseCode,
-    string Message);
+    string Message,
+    string? ClientReturnPath = null);
 
 internal sealed class ProcessVnPayCallbackCommandHandler
     : ICommandHandler<ProcessVnPayCallbackCommand, ProcessVnPayCallbackResponse>
@@ -106,7 +107,8 @@ internal sealed class ProcessVnPayCallbackCommandHandler
                 TransactionRef: callback.TransactionRef,
                 IsSuccess: transaction.Status == TransactionStatus.Completed,
                 ResponseCode: callback.ResponseCode,
-                Message: "Transaction already processed.");
+                Message: "Transaction already processed.",
+                ClientReturnPath: transaction.ClientReturnPath);
         }
 
         // 4. Táº¡o GatewayInfo tá»« callback
@@ -168,7 +170,8 @@ internal sealed class ProcessVnPayCallbackCommandHandler
             TransactionRef: callback.TransactionRef,
             IsSuccess: true,
             ResponseCode: callback.ResponseCode,
-            Message: "Thanh toan thanh cong");
+            Message: "Thanh toan thanh cong",
+            ClientReturnPath: transaction.ClientReturnPath);
     }
 
     private async Task<Result<ProcessVnPayCallbackResponse, Error>> HandleFailedCallbackAsync(
@@ -201,7 +204,8 @@ internal sealed class ProcessVnPayCallbackCommandHandler
             TransactionRef: callback.TransactionRef,
             IsSuccess: false,
             ResponseCode: callback.ResponseCode,
-            Message: $"Thanh toan that bai (ma: {callback.ResponseCode})");
+            Message: $"Thanh toan that bai (ma: {callback.ResponseCode})",
+            ClientReturnPath: transaction.ClientReturnPath);
     }
 
     private static PaymentPurpose ResolvePaymentPurpose(Transaction transaction)

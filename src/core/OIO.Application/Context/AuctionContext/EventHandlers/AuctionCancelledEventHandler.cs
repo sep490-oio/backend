@@ -2,8 +2,6 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Data;
-using OIO.Application.Context.AuctionContext.Hubs;
-using OIO.Application.Context.AuctionContext.Services;
 using OIO.Application.Context.NotificationContext;
 using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
@@ -18,18 +16,15 @@ internal sealed class AuctionCancelledEventHandler
 {
     private readonly IDbContext _dbContext;
     private readonly ISender _sender;
-    private readonly IAuctionNotificationService _hubNotifier;
     private readonly ILogger<AuctionCancelledEventHandler> _logger;
 
     public AuctionCancelledEventHandler(
         IDbContext dbContext,
         ISender sender,
-        IAuctionNotificationService hubNotifier,
         ILogger<AuctionCancelledEventHandler> logger)
     {
         _dbContext = dbContext;
         _sender = sender;
-        _hubNotifier = hubNotifier;
         _logger = logger;
     }
 
@@ -49,13 +44,6 @@ internal sealed class AuctionCancelledEventHandler
         if (auction is null)
             return;
 
-        await _hubNotifier.NotifyAuctionCancelledAsync(
-            auctionId.Value,
-            new AuctionCancelledNotification(
-                AuctionId: auctionId.Value,
-                Reason: notification.Reason),
-            cancellationToken);
-
         var allUserIds = auction.Bids
             .Select(b => b.BidderId)
             .Union(auction.Watchers.Select(w => w.UserId))
@@ -65,7 +53,12 @@ internal sealed class AuctionCancelledEventHandler
             .ToList();
 
         if (allUserIds.Count == 0)
+        {
+            _logger.LogInformation(
+                "Auction cancelled. Id={AuctionId}, Reason={Reason}, Notified={Count} users via notification engine.",
+                notification.AuctionId, notification.Reason, 0);
             return;
+        }
 
         foreach (var userId in allUserIds)
         {

@@ -38,7 +38,8 @@ public sealed record CreateVnPayPaymentUrlCommand(
     Guid? OrderId = null,
     Guid? BuyNowReservationId = null,
     Guid? PaymentMethodId = null,
-    bool SaveCard = false) : ICommand<CreateVnPayPaymentUrlResponse>, IHasValidate
+    bool SaveCard = false,
+    string? ClientReturnPath = null) : ICommand<CreateVnPayPaymentUrlResponse>, IHasValidate
 {
     public ViolationsError Validate()
     {
@@ -266,11 +267,13 @@ internal sealed class CreateVnPayPaymentUrlCommandHandler
             // Tái sử dụng transaction cũ, cập nhật lại txnRef (TransactionNumber mới) để generate URL mới cho chuẩn VNPay
             var (_, updateTxnNumFailure, newTxnNum, updateError) = TransactionNumber.Create(txnRef);
             if (updateTxnNumFailure) return updateError;
-            
+
             // Transaction domain model should ideally have an UpdateTransactionNumber method for true DDD,
             // but for idempotency on a Pending transaction, regenerating URL with the original TransactionRef is safer.
             txnRef = transaction.TransactionNumber.Value;
         }
+
+        transaction.SetClientReturnPath(request.ClientReturnPath);
 
         // 6. Tạo URL thanh toán VNPay — route theo PaymentMethodId / SaveCard
         var amountVnd = (long)request.Amount;

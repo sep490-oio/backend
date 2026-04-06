@@ -2,17 +2,12 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Data;
-using OIO.Application.Context.AuctionContext.Hubs;
-using OIO.Application.Context.AuctionContext.Services;
 using OIO.Application.Context.NotificationContext;
 using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
-using OIO.Application.Context.NotificationContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Events;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.NotificationContext.Enums;
-using OIO.Domain.Context.UserContext.Aggregates.Users;
-using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 
 namespace OIO.Application.Context.AuctionContext.EventHandlers;
 
@@ -20,18 +15,15 @@ internal sealed class OutbidEventHandler
     : INotificationHandler<OutbidEvent>
 {
     private readonly IDbContext _dbContext;
-    private readonly IAuctionNotificationService _notificationService;
     private readonly ISender _sender;
     private readonly ILogger<OutbidEventHandler> _logger;
 
     public OutbidEventHandler(
         IDbContext dbContext,
-        IAuctionNotificationService notificationService,
         ISender sender,
         ILogger<OutbidEventHandler> logger)
     {
         _dbContext = dbContext;
-        _notificationService = notificationService;
         _sender = sender;
         _logger = logger;
     }
@@ -55,28 +47,9 @@ internal sealed class OutbidEventHandler
             return;
         }
 
-        var highBidderId = auction.GetCurrentWinningBid()?.BidderId ??
-                           UserId.From(Guid.Parse(notification.NewHighBidderId));
-
-        var highBidder = await _dbContext.GetByIdAsync<User, UserId>(
-            highBidderId,
-            queryBuilder: query => query
-                .AsNoTracking()
-                .Include(u => u.Profile),
-            cancellationToken: ct);
-
         _logger.LogInformation(
             "Notifying outbid: Auction={AuctionId}, OutbidUser={OutbidUser}",
             notification.AuctionId, notification.OutbidBidderId);
-
-        await _notificationService.NotifyOutbidAsync(
-            Guid.Parse(notification.OutbidBidderId),
-            new OutbidNotification(
-                AuctionId: Guid.Parse(notification.AuctionId),
-                NewHighAmount: auction.Pricing.CurrentAmount,
-                MinimumNextBid: auction.GetMinimumBidAmount().Amount,
-                NewHighBidderDisplayName: AuctionNotificationDisplayNames.Resolve(highBidder)),
-            ct);
 
         // Create persistent bell notification for outbid bidder
         var itemTitle = auction.Item?.Title?.Value ?? "Auction";

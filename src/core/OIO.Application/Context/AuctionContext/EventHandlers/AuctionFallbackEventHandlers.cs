@@ -18,6 +18,7 @@ namespace OIO.Application.Context.AuctionContext.EventHandlers;
 internal sealed class AuctionPaymentDefaultedEventHandler(
     IDbContext dbContext,
     ISender sender,
+    AuctionStateSyncService auctionStateSyncService,
     ILogger<AuctionPaymentDefaultedEventHandler> logger)
     : INotificationHandler<AuctionPaymentDefaultedEvent>
 {
@@ -63,6 +64,8 @@ internal sealed class AuctionPaymentDefaultedEventHandler(
                     }
                 })),
             cancellationToken);
+
+        await auctionStateSyncService.PublishAsync(auction.Id.Value, cancellationToken: cancellationToken);
     }
 }
 
@@ -185,6 +188,7 @@ internal sealed class AuctionTerminatedEventHandler(
     IDbContext dbContext,
     ISender sender,
     IAuctionNotificationService hubNotifier,
+    AuctionStateSyncService auctionStateSyncService,
     ILogger<AuctionTerminatedEventHandler> logger)
     : INotificationHandler<AuctionTerminatedEvent>
 {
@@ -204,6 +208,8 @@ internal sealed class AuctionTerminatedEventHandler(
             auctionId,
             new AuctionCancelledNotification(auctionId, notification.Reason),
             cancellationToken);
+
+        await auctionStateSyncService.PublishAsync(auctionId, cancellationToken: cancellationToken);
 
         var recipients = auction.Watchers.Select(x => x.UserId)
             .Append(auction.Item.SellerId)

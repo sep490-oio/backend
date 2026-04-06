@@ -35,4 +35,35 @@ public interface IUserHubClient
     Task BidStatusChanged(BidStatusChangedNotification notification);
     Task AuctionOutcomeForBidder(AuctionOutcomeNotification notification);
     Task OrderStatusChanged(OrderStatusChangedNotification notification);
+    Task AutoBidStateChanged(AutoBidStateChangedNotification notification);
+    Task AuctionPositionChanged(AuctionPositionChangedNotification notification);
 }
+
+public sealed record AutoBidStateChangedNotification(
+    Guid AuctionId,
+    Guid BidderId,
+    bool IsEnabled,
+    decimal MaxAmount,
+    decimal CurrentAmount,
+    decimal RemainingBudget,
+    decimal? IncrementAmount,
+    string Status,
+    string Currency,
+    int TotalAutoBids,
+    DateTimeOffset? LastAutoBidAt,
+    string? StopReason,
+    DateTimeOffset? StoppedAt,
+    DateTimeOffset? LastValidationAt,
+    DateTimeOffset ServerTimestamp);
+
+public sealed record AuctionPositionChangedNotification(
+    Guid AuctionId,
+    string Position,
+    bool IsCurrentWinner,
+    decimal CurrentPrice,
+    decimal MinimumNextBid,
+    string Currency,
+    Guid? LatestBidId,
+    decimal? LatestBidAmount,
+    string? LatestBidStatus,
+    DateTimeOffset Timestamp);

@@ -92,15 +92,85 @@ internal sealed class GetAuctionByIdQueryHandler
             }
         }
 
+        CurrentUserBidStateDto? currentUserBidState = null;
+
+        if (_currentUser.IsAuthenticated)
+        {
+            var userId = _currentUser.UserId;
+
+            // Find user's latest bid
+            var latestBid = auction.Bids
+                .Where(b => b.BidderId == userId)
+                .OrderByDescending(b => b.CreatedAt)
+                .FirstOrDefault();
+
+            // Find user's auto-bid
+            var autoBid = auction.AutoBids
+                .FirstOrDefault(ab => ab.BidderId == userId);
+
+            // Determine position
+            var winningBid = auction.GetCurrentWinningBid();
+            var isCurrentWinner = winningBid?.BidderId == userId;
+
+            string position;
+            var auctionStatus = auction.Status.Id.ToLowerInvariant();
+            if (auctionStatus is "ended" or "sold")
+            {
+                position = auction.WinnerId == userId ? "won" : (latestBid != null ? "lost" : "none");
+            }
+            else if (auctionStatus is "failed" or "cancelled" or "terminated")
+            {
+                position = latestBid != null ? "lost" : "none";
+            }
+            else if (isCurrentWinner)
+            {
+                position = "leading";
+            }
+            else if (latestBid != null)
+            {
+                position = "outbid";
+            }
+            else
+            {
+                position = "none";
+            }
+
+            if (latestBid != null || autoBid != null)
+            {
+                currentUserBidState = new CurrentUserBidStateDto(
+                    Position: position,
+                    IsCurrentWinner: isCurrentWinner,
+                    LatestBidId: latestBid?.Id.Value,
+                    LatestBidAmount: latestBid?.Amount.Amount,
+                    LatestBidStatus: latestBid?.Status.Id,
+                    LatestBidAt: latestBid?.CreatedAt,
+                    HasAutoBid: autoBid != null,
+                    AutoBidStatus: autoBid?.Status.Id);
+            }
+        }
+
         var recentBids = auction.Bids
             .OrderByDescending(b => b.CreatedAt)
             .Take(20)
             .ToList();
 
+        // Collect bidder IDs from both bids and price history entries
+        var bidIdsFromHistory = auction.PriceHistories
+            .Where(ph => ph.BidId is not null)
+            .Select(ph => ph.BidId!.Value)
+            .Distinct()
+            .ToHashSet();
+
+        var bidsById = auction.Bids
+            .Where(b => bidIdsFromHistory.Contains(b.Id))
+            .ToDictionary(b => b.Id.Value, b => b.BidderId.Value);
+
         var bidderIds = recentBids
             .Select(b => b.BidderId)
             .Distinct()
             .Select(id => UserId.From(id.Value))
+            .Union(bidsById.Values.Distinct().Select(id => UserId.From(id)))
+            .Distinct()
             .ToList();
 
         var bidderUsers = await _dbContext.Set<User>()
@@ -121,9 +191,20 @@ internal sealed class GetAuctionByIdQueryHandler
                 .ToList(),
             PriceHistory: auction.PriceHistories
                 .OrderByDescending(ph => ph.CreatedAt)
-                .Select(ph => ph.ToDto())
+                .Select(ph =>
+                {
+                    string? displayName = null;
+                    if (ph.BidId is not null &&
+                        bidsById.TryGetValue(ph.BidId.Value.Value, out var bidderId) &&
+                        bidderDisplayNames.TryGetValue(bidderId, out var dn))
+                    {
+                        displayName = dn;
+                    }
+                    return ph.ToDto(displayName);
+                })
                 .ToList(),
-            CurrentUserParticipant: currentUserParticipant);
+            CurrentUserParticipant: currentUserParticipant,
+            CurrentUserBidState: currentUserBidState);
     }
 }
 

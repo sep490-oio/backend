@@ -112,7 +112,7 @@ internal sealed class UpdateAuctionCommandHandler
         if (currency.HasNoValue)
             return Currency.Errors.NotSupported;
 
-        var requestedAutoExtend = request.AutoExtend ?? auction.Info?.AutoExtend ?? true;
+        var requestedAutoExtend = request.AutoExtend ?? auction.Info?.AutoExtend ?? false;
         if (auctionType.Value == OIO.Domain.Context.AuctionContext.Enums.AuctionType.Sealed &&
             requestedAutoExtend)
         {
@@ -145,6 +145,7 @@ internal sealed class UpdateAuctionCommandHandler
         if (updateResult.IsFailure)
             return updateResult.Error;
 
+        _dbContext.Update(auction);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         if (auction.Status == OIO.Domain.Context.AuctionContext.Enums.AuctionStatus.Scheduled && auction.Info is not null)

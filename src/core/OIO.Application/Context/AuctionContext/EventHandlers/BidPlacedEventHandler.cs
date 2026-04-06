@@ -3,11 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
-using OIO.Application.Context.AuctionContext.Hubs;
-using OIO.Application.Context.AuctionContext.Services;
 using OIO.Application.Context.NotificationContext;
 using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
-using OIO.Application.Context.NotificationContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Events;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
@@ -27,7 +24,6 @@ internal sealed class BidPlacedEventHandler
     private readonly IDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IRuntimeSettings _runtimeSettings;
-    private readonly IAuctionNotificationService _notificationService;
     private readonly ISender _sender;
     private readonly ILogger<BidPlacedEventHandler> _logger;
 
@@ -35,14 +31,12 @@ internal sealed class BidPlacedEventHandler
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         IRuntimeSettings runtimeSettings,
-        IAuctionNotificationService notificationService,
         ISender sender,
         ILogger<BidPlacedEventHandler> logger)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _runtimeSettings = runtimeSettings;
-        _notificationService = notificationService;
         _sender = sender;
         _logger = logger;
     }
@@ -69,34 +63,11 @@ internal sealed class BidPlacedEventHandler
             return;
         }
 
-        var bidder = await _dbContext.GetByIdAsync<User, UserId>(
-            bidderId,
-            queryBuilder: query => query
-                .AsNoTracking()
-                .Include(u => u.Profile),
-            cancellationToken: ct);
-
         _logger.LogInformation(
             "Broadcasting bid: Auction={AuctionId}, Bidder={BidderId}, Amount={Amount}",
             notification.AuctionId,
             notification.BidderId,
             notification.Amount);
-
-        await _notificationService.NotifyBidPlacedAsync(
-            Guid.Parse(notification.AuctionId),
-            new BidNotification(
-                AuctionId: Guid.Parse(notification.AuctionId),
-                BidId: Guid.Parse(notification.BidId),
-                BidderId: Guid.Parse(notification.BidderId),
-                BidderDisplayName: AuctionNotificationDisplayNames.Resolve(bidder),
-                Amount: notification.Amount,
-                CurrentPrice: auction.Pricing.CurrentAmount,
-                MinimumNextBid: auction.GetMinimumBidAmount().Amount,
-                TotalBids: auction.BidCount,
-                IsAutoBid: notification.IsAutoBid,
-                Timestamp: new DateTimeOffset(
-                    DateTime.SpecifyKind(notification.BidTime, DateTimeKind.Utc))),
-            ct);
 
         // Notify watchers with NotifyOnBid enabled
         var sellerId = auction.Item?.SellerId;

@@ -16,8 +16,12 @@ using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.ValueObjects;
+using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
+using OIO.Application.Context.AuctionContext.EventHandlers;
+using OIO.Application.Context.AuctionContext.Hubs;
+using OIO.Application.Context.AuctionContext.Services;
 using OIO.Infrastructure.Settings.Apps;
 
 namespace OIO.Infrastructure.Grains;
@@ -68,7 +72,7 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
         try
         {
             var nowUtc = _clock.UtcNow;
-            
+
             var (_, isFailure, auction, error) = await LoadAuctionAsync(cancellationToken);
 
             if (isFailure)
@@ -76,15 +80,17 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 return error;
             }
 
-            (_, isFailure, var amountDomain, error)  = MoneyGrain.ToMoney(amount);
-            
+            (_, isFailure, var amountDomain, error) = MoneyGrain.ToMoney(amount);
+
             if (isFailure)
             {
                 return error;
             }
-            
-            // The aggregate executes the full live-bidding cascade, including
-            // counter auto-bids and any resulting domain events, before returning.
+
+            // Capture previous winner for outbid detection
+            var previousWinnerIdRaw = auction.GetCurrentWinningBid()?.BidderId.Value;
+
+            // Execute bid (may trigger auto-bid cascade + extension)
             (_, isFailure, var bid, error) = auction.PlaceBid(
                 bidderId: UserId.From(bidderId),
                 amount: amountDomain,
@@ -93,13 +99,85 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 maxExtensions: _runtimeSettings.Auction.MaxExtensionsPerAuction,
                 maxDuration: _runtimeSettings.Auction.MaxDuration,
                 ipAddress: ipAddress);
-            
+
             if (isFailure)
             {
                 DiscardLoadedAuction();
                 return error;
             }
+
+            // Capture state before save (scope disposal clears everything)
+            var auctionId = auction.Id.Value;
+            var currentPrice = auction.Pricing.CurrentAmount;
+            var minNextBid = auction.GetMinimumBidAmount().Amount;
+            var totalBids = auction.BidCount;
+            var currency = auction.Pricing.Currency.Id;
+            var bidId = bid.Id.Value;
+            var bidAmount = amountDomain.Amount;
+            var isAutoBid = bid.IsAutoBid;
+            var bidTime = bid.CreatedAt;
+
             await SaveAsync(auction, cancellationToken);
+
+            // Publish realtime events immediately after commit
+            await PublishRealtimeAsync(auctionId, async (publisher, dbContext) =>
+            {
+                var displayName = await ResolveBidderDisplayNameAsync(dbContext, bidderId, cancellationToken);
+                var bidTimestamp = new DateTimeOffset(DateTime.SpecifyKind(bidTime, DateTimeKind.Utc));
+
+                // BidPlaced + AuctionStateChanged
+                await publisher.PublishBidPlacedAsync(
+                    auctionId,
+                    new BidNotification(
+                        AuctionId: auctionId,
+                        BidId: bidId,
+                        BidderId: bidderId,
+                        BidderDisplayName: displayName,
+                        Amount: bidAmount,
+                        CurrentPrice: currentPrice,
+                        MinimumNextBid: minNextBid,
+                        TotalBids: totalBids,
+                        IsAutoBid: isAutoBid,
+                        Timestamp: bidTimestamp),
+                    new AuctionStateSyncOptions(
+                        LastBid: new AuctionStateLastBidInfo(
+                            BidId: bidId,
+                            BidderId: bidderId,
+                            BidderDisplayName: displayName,
+                            Amount: bidAmount,
+                            IsAutoBid: isAutoBid,
+                            Timestamp: bidTimestamp),
+                        NewPriceHistoryPoint: new AuctionStatePriceHistoryPoint(
+                            Price: currentPrice,
+                            Type: "bid",
+                            BidId: bidId,
+                            BidderDisplayName: displayName,
+                            RecordedAt: bidTimestamp)),
+                    cancellationToken);
+
+                // Outbid notification (targeted to previous winner)
+                if (previousWinnerIdRaw is not null && previousWinnerIdRaw.Value != bidderId)
+                {
+                    await publisher.PublishOutbidAsync(
+                        previousWinnerIdRaw.Value,
+                        new OutbidNotification(
+                            AuctionId: auctionId,
+                            NewHighAmount: currentPrice,
+                            MinimumNextBid: minNextBid,
+                            NewHighBidderDisplayName: displayName),
+                        cancellationToken);
+                }
+            });
+
+            // Publish auto-bid state changes for all affected bidders in the cascade
+            await PublishAllAutoBidStatesAsync(auctionId, cancellationToken);
+
+            // Publish position changes for manual bidder + previous winner
+            await PublishPositionAsync(auctionId, bidderId, cancellationToken);
+            if (previousWinnerIdRaw is not null && previousWinnerIdRaw.Value != bidderId)
+            {
+                await PublishPositionAsync(auctionId, previousWinnerIdRaw.Value, cancellationToken);
+            }
 
             return BidGrain.From(bid);
         }
@@ -136,7 +214,9 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 return error;
             }
 
+            var rtAuctionId = auction.Id.Value;
             await SaveAsync(auction, cancellationToken);
+            await PublishRealtimeAsync(rtAuctionId, (pub, _) => pub.PublishStateChangedAsync(rtAuctionId, ct: cancellationToken));
             return AuctionBuyNowReservationGrain.From(reservation);
         }
         catch (Exception ex)
@@ -173,7 +253,9 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 return error;
             }
 
+            var rtAuctionId = auction.Id.Value;
             await SaveAsync(auction, cancellationToken);
+            await PublishRealtimeAsync(rtAuctionId, (pub, _) => pub.PublishStateChangedAsync(rtAuctionId, ct: cancellationToken));
             return AuctionBuyNowReservationGrain.From(reservation);
         }
         catch (Exception ex)
@@ -210,7 +292,9 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 return result.Error;
             }
 
+            var rtAuctionId = auction.Id.Value;
             await SaveAsync(auction, cancellationToken);
+            await PublishRealtimeAsync(rtAuctionId, (pub, _) => pub.PublishStateChangedAsync(rtAuctionId, ct: cancellationToken));
             return UnitResult.Success<Error>();
         }
         catch (Exception ex)
@@ -296,6 +380,8 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
             // Track actual held amount on the auto-bid entity so fund release uses the real held value
             autoBid.SetHeldAmount(maxAmountDomain.Amount);
 
+            var rtAuctionId = auction.Id.Value;
+
             if (holdDelta != 0m)
             {
                 // Wallet hold/unhold + auction save in the SAME scope that loaded the auction.
@@ -342,6 +428,10 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 await SaveAsync(auction, cancellationToken);
             }
 
+            await PublishRealtimeAsync(rtAuctionId, (pub, _) => pub.PublishStateChangedAsync(rtAuctionId, ct: cancellationToken));
+            await PublishAutoBidStateAsync(rtAuctionId, bidderId, cancellationToken);
+            await PublishPositionAsync(rtAuctionId, bidderId, cancellationToken);
+
             var result = AutoBidGrain.From(autoBid);
             result = result with { PreviousMaxAmount = previousMaxAmount };
             return result;
@@ -375,7 +465,10 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 return result.Error;
             }
 
+            var rtAuctionId = auction.Id.Value;
             await SaveAsync(auction, cancellationToken);
+            await PublishRealtimeAsync(rtAuctionId, (pub, _) => pub.PublishStateChangedAsync(rtAuctionId, ct: cancellationToken));
+            await PublishAutoBidStateAsync(rtAuctionId, bidderId, cancellationToken);
             return UnitResult.Success<Error>();
         }
         catch (Exception ex)
@@ -407,7 +500,11 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 return result.Error;
             }
 
+            var rtAuctionId = auction.Id.Value;
             await SaveAsync(auction, cancellationToken);
+            await PublishRealtimeAsync(rtAuctionId, (pub, _) => pub.PublishStateChangedAsync(rtAuctionId, ct: cancellationToken));
+            await PublishAutoBidStateAsync(rtAuctionId, bidderId, cancellationToken);
+            await PublishPositionAsync(rtAuctionId, bidderId, cancellationToken);
             return UnitResult.Success<Error>();
         }
         catch (Exception ex)
@@ -443,6 +540,7 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
 
             // Release wallet hold immediately on user-initiated cancel
             var holdAmount = autoBid.HeldAmount;
+            var rtAuctionId = auction.Id.Value;
             if (holdAmount > 0m)
             {
                 // Wallet unhold + auction cancel in the SAME scope that loaded the auction.
@@ -492,6 +590,8 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
             {
                 await SaveAsync(auction, cancellationToken);
             }
+            await PublishRealtimeAsync(rtAuctionId, (pub, _) => pub.PublishStateChangedAsync(rtAuctionId, ct: cancellationToken));
+            await PublishAutoBidStateAsync(rtAuctionId, bidderId, cancellationToken);
             return UnitResult.Success<Error>();
         }
         catch (Exception ex)
@@ -575,7 +675,13 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 return resolveResult.Error;
             }
 
+            var rtAuctionId = auction.Id.Value;
             await SaveAsync(auction, cancellationToken);
+            await PublishRealtimeAsync(rtAuctionId, (pub, _) => pub.PublishStateChangedAsync(rtAuctionId, ct: cancellationToken));
+            // Publish terminal auto-bid states (won/outbid) for all bidders
+            await PublishAllAutoBidStatesAsync(rtAuctionId, cancellationToken);
+            // Publish terminal position (won/lost) for all bidders
+            await PublishAllPositionsAsync(rtAuctionId, cancellationToken);
             return UnitResult.Success<Error>();
         }
         catch (Exception ex)
@@ -672,6 +778,100 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
         _loadScope.Dispose();
         _loadScope = null;
         DiscardLoadedAuction();
+    }
+
+    /// <summary>
+    /// Publishes realtime events immediately after commit.
+    /// Creates a fresh DI scope since the load scope is disposed after SaveAsync.
+    /// </summary>
+    private async Task PublishRealtimeAsync(Guid auctionId, Func<IAuctionRealtimePublisher, IDbContext, Task> action)
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var publisher = scope.ServiceProvider.GetRequiredService<IAuctionRealtimePublisher>();
+            var dbContext = scope.ServiceProvider.GetRequiredService<IDbContext>();
+            await action(publisher, dbContext);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to publish realtime events for auction {AuctionId}", auctionId);
+        }
+    }
+
+    private async Task PublishAutoBidStateAsync(Guid auctionId, Guid bidderId, CancellationToken ct)
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var publisher = scope.ServiceProvider.GetRequiredService<IAutoBidRealtimePublisher>();
+            await publisher.PublishAsync(auctionId, bidderId, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to publish AutoBidStateChanged for auction {AuctionId}, bidder {BidderId}",
+                auctionId, bidderId);
+        }
+    }
+
+    private async Task PublishAllAutoBidStatesAsync(Guid auctionId, CancellationToken ct)
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var publisher = scope.ServiceProvider.GetRequiredService<IAutoBidRealtimePublisher>();
+            await publisher.PublishAllForAuctionAsync(auctionId, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to publish AutoBidStateChanged for all bidders on auction {AuctionId}",
+                auctionId);
+        }
+    }
+
+    private async Task PublishPositionAsync(Guid auctionId, Guid bidderId, CancellationToken ct)
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var publisher = scope.ServiceProvider.GetRequiredService<IAuctionPositionPublisher>();
+            await publisher.PublishAsync(auctionId, bidderId, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to publish AuctionPositionChanged for auction {AuctionId}, bidder {BidderId}",
+                auctionId, bidderId);
+        }
+    }
+
+    private async Task PublishAllPositionsAsync(Guid auctionId, CancellationToken ct)
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var publisher = scope.ServiceProvider.GetRequiredService<IAuctionPositionPublisher>();
+            await publisher.PublishForAllBiddersAsync(auctionId, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to publish AuctionPositionChanged for all bidders on auction {AuctionId}",
+                auctionId);
+        }
+    }
+
+    private static async Task<string> ResolveBidderDisplayNameAsync(
+        IDbContext dbContext, Guid bidderId, CancellationToken ct)
+    {
+        var user = await dbContext.GetByIdAsync<User, UserId>(
+            UserId.From(bidderId),
+            queryBuilder: q => q.AsNoTracking().Include(u => u.Profile),
+            cancellationToken: ct);
+        return AuctionNotificationDisplayNames.Resolve(user);
     }
 
     public Task InvalidateCacheAsync()

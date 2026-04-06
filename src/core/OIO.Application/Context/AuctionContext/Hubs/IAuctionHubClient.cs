@@ -23,6 +23,9 @@ public interface IAuctionHubClient
     // ==================== Price Update ====================
     Task PriceUpdated(PriceUpdateNotification notification);
 
+    // ==================== Centralized State Sync ====================
+    Task AuctionStateChanged(AuctionStateChangedNotification notification);
+
     // ==================== Q&A ====================
     Task QuestionAsked(ItemQuestionNotification notification);
     Task QuestionAnswered(ItemQuestionNotification notification);
@@ -115,3 +118,38 @@ public sealed record ErrorNotification(
     string Code,
     string Message,
     Dictionary<string, string[]>? Errors);
+
+public sealed record AuctionStateChangedNotification(
+    Guid AuctionId,
+    string Status,
+    decimal CurrentPrice,
+    decimal MinimumNextBid,
+    string Currency,
+    int BidCount,
+    DateTimeOffset EndTime,
+    Guid? WinnerId,
+    bool IsBuyNowReserved,
+    DateTimeOffset? BuyNowReservedUntil,
+    bool AutoExtend,
+    int ExtensionMinutes,
+    int ExtensionCount,
+    bool IsEndingSoon,
+    AuctionStateLastBidInfo? LastBid,
+    AuctionStatePriceHistoryPoint? NewPriceHistoryPoint,
+    DateTimeOffset ServerTimestamp,
+    DateTimeOffset VersionTimestamp);
+
+public sealed record AuctionStateLastBidInfo(
+    Guid BidId,
+    Guid BidderId,
+    string BidderDisplayName,
+    decimal Amount,
+    bool IsAutoBid,
+    DateTimeOffset Timestamp);
+
+public sealed record AuctionStatePriceHistoryPoint(
+    decimal Price,
+    string Type,
+    Guid? BidId,
+    string? BidderDisplayName,
+    DateTimeOffset RecordedAt);

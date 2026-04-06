@@ -35,6 +35,10 @@ public static class DependencyInjection
         services.AddScoped<ContinueVerifiedAuctionService>();
         services.AddScoped<AuctionDraftCreationService>();
         services.AddScoped<AuctionActivationService>();
+        services.AddScoped<AuctionStateSyncService>();
+        services.AddScoped<IAuctionRealtimePublisher, AuctionRealtimePublisher>();
+        services.AddScoped<IAutoBidRealtimePublisher, AutoBidRealtimePublisher>();
+        services.AddScoped<IAuctionPositionPublisher, AuctionPositionPublisher>();
         services.AddScoped<IAuctionCollusionDetectionService, AuctionCollusionDetectionService>();
         services.AddScoped<ItemShippingSelectionService>();
         services.AddScoped<IMediaRelocationService, MediaRelocationService>();

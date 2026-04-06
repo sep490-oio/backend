@@ -5,4 +5,5 @@ public sealed record AuctionDetailDto(
     ItemDto Item,
     IReadOnlyList<BidDto> RecentBids,
     IReadOnlyList<PriceHistoryDto> PriceHistory,
-    ParticipantInfoDto? CurrentUserParticipant = null);
+    ParticipantInfoDto? CurrentUserParticipant = null,
+    CurrentUserBidStateDto? CurrentUserBidState = null);

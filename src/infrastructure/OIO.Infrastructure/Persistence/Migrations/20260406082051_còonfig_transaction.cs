@@ -1,84 +1,21 @@
-﻿using System;
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace OIO.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class UpdateWarehouse : Migration
+    public partial class còonfig_transaction : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "fk_inbound_shipments_items_item_id",
-                table: "inbound_shipments");
-
-            migrationBuilder.DropForeignKey(
-                name: "fk_inbound_shipments_users_seller_id",
-                table: "inbound_shipments");
-
-            migrationBuilder.DropForeignKey(
-                name: "fk_outbound_shipments_orders_order_id1",
-                table: "outbound_shipments");
-
-            migrationBuilder.DropForeignKey(
-                name: "fk_warehouse_items_items_item_id",
-                table: "warehouse_items");
-
-            migrationBuilder.DropForeignKey(
-                name: "fk_warehouse_items_users_inspected_by",
-                table: "warehouse_items");
-
-            migrationBuilder.DropIndex(
-                name: "ix_warehouse_items_inspected_by",
-                table: "warehouse_items");
-
-            migrationBuilder.DropIndex(
-                name: "ix_warehouse_items_item_id",
-                table: "warehouse_items");
-
-            migrationBuilder.DropIndex(
-                name: "ix_outbound_shipments_order_id",
-                table: "outbound_shipments");
-
-            migrationBuilder.DropIndex(
-                name: "idx_unique_inbound_shipments_client_order_code",
-                table: "inbound_shipments");
-
-            migrationBuilder.DropIndex(
-                name: "ix_inbound_shipments_item_id",
-                table: "inbound_shipments");
-
-            migrationBuilder.DropIndex(
-                name: "ix_inbound_shipments_seller_id",
-                table: "inbound_shipments");
-
-            migrationBuilder.DropColumn(
-                name: "inspected_by",
-                table: "warehouse_items");
-
-            migrationBuilder.DropColumn(
-                name: "item_id1",
-                table: "warehouse_items");
-
-            migrationBuilder.DropColumn(
-                name: "order_id1",
-                table: "outbound_shipments");
-
-            migrationBuilder.DropColumn(
-                name: "item_id1",
-                table: "inbound_shipments");
-
-            migrationBuilder.DropColumn(
-                name: "seller_id1",
-                table: "inbound_shipments");
-
-            migrationBuilder.CreateIndex(
-                name: "idx_inbound_shipments_client_order_code",
-                table: "inbound_shipments",
-                column: "client_order_code");
+            migrationBuilder.AddColumn<string>(
+                name: "client_return_path",
+                table: "transactions",
+                type: "character varying(500)",
+                maxLength: 500,
+                nullable: true);
 
             migrationBuilder.DropIndex(
                 name: "idx_auctions_priority",
@@ -289,110 +226,9 @@ namespace OIO.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "idx_inbound_shipments_client_order_code",
-                table: "inbound_shipments");
-
-            migrationBuilder.AddColumn<Guid>(
-                name: "inspected_by",
-                table: "warehouse_items",
-                type: "uuid",
-                nullable: true);
-
-            migrationBuilder.AddColumn<Guid>(
-                name: "item_id1",
-                table: "warehouse_items",
-                type: "uuid",
-                nullable: true);
-
-            migrationBuilder.AddColumn<Guid>(
-                name: "order_id1",
-                table: "outbound_shipments",
-                type: "uuid",
-                nullable: true);
-
-            migrationBuilder.AddColumn<Guid>(
-                name: "item_id1",
-                table: "inbound_shipments",
-                type: "uuid",
-                nullable: true);
-
-            migrationBuilder.AddColumn<Guid>(
-                name: "seller_id1",
-                table: "inbound_shipments",
-                type: "uuid",
-                nullable: true);
-
-            migrationBuilder.CreateIndex(
-                name: "ix_warehouse_items_inspected_by",
-                table: "warehouse_items",
-                column: "inspected_by");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_warehouse_items_item_id",
-                table: "warehouse_items",
-                column: "item_id1");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_outbound_shipments_order_id",
-                table: "outbound_shipments",
-                column: "order_id1");
-
-            migrationBuilder.CreateIndex(
-                name: "idx_unique_inbound_shipments_client_order_code",
-                table: "inbound_shipments",
-                column: "client_order_code",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "ix_inbound_shipments_item_id",
-                table: "inbound_shipments",
-                column: "item_id1");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_inbound_shipments_seller_id",
-                table: "inbound_shipments",
-                column: "seller_id1");
-
-            migrationBuilder.AddForeignKey(
-                name: "fk_inbound_shipments_items_item_id",
-                table: "inbound_shipments",
-                column: "item_id1",
-                principalTable: "items",
-                principalColumn: "id",
-                onDelete: ReferentialAction.Restrict);
-
-            migrationBuilder.AddForeignKey(
-                name: "fk_inbound_shipments_users_seller_id",
-                table: "inbound_shipments",
-                column: "seller_id1",
-                principalTable: "users",
-                principalColumn: "id",
-                onDelete: ReferentialAction.Restrict);
-
-            migrationBuilder.AddForeignKey(
-                name: "fk_outbound_shipments_orders_order_id1",
-                table: "outbound_shipments",
-                column: "order_id1",
-                principalTable: "orders",
-                principalColumn: "id",
-                onDelete: ReferentialAction.Restrict);
-
-            migrationBuilder.AddForeignKey(
-                name: "fk_warehouse_items_items_item_id",
-                table: "warehouse_items",
-                column: "item_id1",
-                principalTable: "items",
-                principalColumn: "id",
-                onDelete: ReferentialAction.Restrict);
-
-            migrationBuilder.AddForeignKey(
-                name: "fk_warehouse_items_users_inspected_by",
-                table: "warehouse_items",
-                column: "inspected_by",
-                principalTable: "users",
-                principalColumn: "id",
-                onDelete: ReferentialAction.Restrict);
+            migrationBuilder.DropColumn(
+                name: "client_return_path",
+                table: "transactions");
 
             migrationBuilder.DropIndex(
                 name: "idx_auctions_priority",

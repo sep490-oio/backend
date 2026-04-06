@@ -14,8 +14,8 @@ using OIO.Infrastructure.Persistence;
 namespace OIO.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260403162703_config_warehouse")]
-    partial class config_warehouse
+    [Migration("20260406055159_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -570,7 +570,7 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
                             b1.Property<int>("ExtensionCount")
                                 .HasColumnType("integer")
-                                .HasColumnName("info_extension_count");
+                                .HasColumnName("extension_count");
 
                             b1.Property<int>("ExtensionMinutes")
                                 .HasColumnType("integer")
@@ -1245,6 +1245,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<decimal>("HeldAmount")
+                        .HasColumnType("numeric")
+                        .HasColumnName("held_amount");
 
                     b.Property<bool>("IsEnabled")
                         .ValueGeneratedOnAdd()

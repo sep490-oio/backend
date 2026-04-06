@@ -717,26 +717,13 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             BidTime: bid.CreatedAt,
             nowUtc));
 
-        // Process auto-bids from OTHER bidders
-        result = ProcessAutoBids(excludeBidderId: bidderId, nowUtc,
+        // Proxy resolution: determine winner + resolved price in one pass (max 1 counter-bid)
+        result = ResolveProxyBids(excludeBidderId: bidderId, nowUtc,
             extensionThresholdMinutes, maxExtensions, maxDuration);
 
         if (result.IsFailure)
         {
             return result.Error;
-        }
-
-        // Resume cascade if it was capped (C2: cascade resumption)
-        var cascadeRetries = 0;
-        while (WasCascadeCapped && cascadeRetries < 5)
-        {
-            result = ProcessAutoBids(excludeBidderId: bidderId, nowUtc,
-                extensionThresholdMinutes, maxExtensions, maxDuration);
-
-            if (result.IsFailure)
-                return result.Error;
-
-            cascadeRetries++;
         }
 
         return bid;
@@ -1159,25 +1146,22 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         return engageResult.IsFailure ? engageResult.Error : UnitResult.Success<Error>();
     }
     
-    public bool WasCascadeCapped { get; private set; }
-
-    private UnitResult<Error> ProcessAutoBids(
+    /// <summary>
+    /// Proxy bidding resolution: determines the winner and resolved price in one pass.
+    /// Creates at most ONE counter-bid instead of cascading individual bids.
+    /// </summary>
+    private UnitResult<Error> ResolveProxyBids(
         UserId excludeBidderId,
         DateTime nowUtc,
         TimeSpan extensionThresholdMinutes,
         int maxExtensions,
         TimeSpan maxDuration)
     {
-        WasCascadeCapped = false;
-        _cascadeCappedEventRaised = false;
-        var totalOperations = 0;
-        var hasProcessedBattle = false;
-        // Incrementing timestamp so each auto-bid in the cascade gets a unique,
-        // monotonically increasing createdAt — prevents chart display issues
-        // where same-timestamp bids appear in wrong order.
-        var cascadeTime = nowUtc;
+        var bidIncrement = Pricing.BidIncrementAmount;
+        var currentPrice = Pricing.CurrentAmount;
+        var currency = Pricing.Currency;
 
-        // Get eligible auto-bids, ordered by max amount DESC, then by creation time ASC
+        // 1. Collect all eligible auto-bids (excluding the manual bidder)
         var eligibleAutoBids = _autoBids
             .Where(ab => ab.BidderId != excludeBidderId &&
                          ab.IsEnabled &&
@@ -1189,185 +1173,78 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         if (eligibleAutoBids.Count == 0)
             return UnitResult.Success<Error>();
 
-        foreach (var autoBid in eligibleAutoBids)
-        {
-            cascadeTime = cascadeTime.AddTicks(1);
-            var minimumRequired = GetMinimumBidAmount();
+        // 2. Check if manual bidder also has an auto-bid (their ceiling)
+        var manualBidderAutoBid = _autoBids
+            .FirstOrDefault(ab => ab.BidderId == excludeBidderId &&
+                                  ab.IsEnabled &&
+                                  ab.Status == AutoBidStatus.Active);
 
-            // Skip auto-bidders that can no longer compete
-            if (!autoBid.CanBid(minimumRequired))
-            {
-                if (autoBid.Status == AutoBidStatus.Active)
-                    autoBid.MarkAsOutbid(cascadeTime);
-                continue;
-            }
+        // 3. Determine winner: highest ceiling among all eligible auto-bids
+        var winner = eligibleAutoBids[0]; // sorted DESC by MaxAmount
+        var winnerCeiling = winner.Budget.MaxAmount;
 
-            var processResult = ProcessSingleAutoBid(autoBid, cascadeTime, ref totalOperations,
-                extensionThresholdMinutes, maxExtensions, maxDuration);
+        // 4. Determine runner-up ceiling
+        //    = max of: current visible price, manual bidder's auto-bid ceiling, second-highest auto-bid ceiling
+        var runnerUpCeiling = currentPrice;
 
-            if (processResult.IsFailure)
-                return processResult.Error;
+        if (manualBidderAutoBid is not null && manualBidderAutoBid.Budget.MaxAmount > runnerUpCeiling)
+            runnerUpCeiling = manualBidderAutoBid.Budget.MaxAmount;
 
-            if (!processResult.Value)
-                continue;
+        if (eligibleAutoBids.Count > 1 && eligibleAutoBids[1].Budget.MaxAmount > runnerUpCeiling)
+            runnerUpCeiling = eligibleAutoBids[1].Budget.MaxAmount;
 
-            // Battle with original bidder's auto-bid (only once)
-            if (!hasProcessedBattle)
-            {
-                var originalBidderAutoBid = _autoBids
-                    .FirstOrDefault(ab => ab.BidderId == excludeBidderId &&
-                                          ab.IsEnabled &&
-                                          ab.Status == AutoBidStatus.Active);
-
-                if (originalBidderAutoBid is not null)
-                {
-                    var battleResult = ProcessAutoBidBattle(
-                        autoBid, originalBidderAutoBid, cascadeTime, ref totalOperations,
-                        extensionThresholdMinutes, maxExtensions, maxDuration);
-
-                    if (battleResult.IsFailure)
-                        return battleResult.Error;
-                }
-
-                hasProcessedBattle = true;
-            }
-
-            // Continue loop — remaining auto-bidders get a chance to outbid the current winner
-        }
-
-        return UnitResult.Success<Error>();
-    }
-    
-    private Result<bool, Error> ProcessSingleAutoBid(
-        AutoBid autoBid,
-        DateTime nowUtc,
-        ref int totalOperations,
-        TimeSpan extensionThresholdMinutes,
-        int maxExtensions,
-        TimeSpan maxDuration)
-    {
-        if (!TryConsumeAutoBidOperation(ref totalOperations))
-        {
-            WasCascadeCapped = true;
-            RaiseCascadeCappedEventOnce(totalOperations, nowUtc);
-            return false;
-        }
-
+        // 5. Check if winner can actually beat the minimum next bid
         var minimumRequired = GetMinimumBidAmount();
-
-        if (!autoBid.CanBid(minimumRequired))
+        if (!winner.CanBid(minimumRequired))
         {
-            autoBid.MarkAsOutbid(nowUtc);
-            return false;
+            // Winner can't afford → mark all as outbid, nobody counters
+            foreach (var ab in eligibleAutoBids)
+            {
+                if (ab.Status == AutoBidStatus.Active)
+                    ab.MarkAsOutbid(nowUtc);
+            }
+            return UnitResult.Success<Error>();
         }
 
-        var (_, isFailure, bidAmount, error) = autoBid
-            .CalculateNextBidAmount(minimumRequired);
+        // 6. Resolve the visible price
+        //    = min(winner ceiling, runner-up ceiling + increment)
+        var resolvedAmount = Math.Min(winnerCeiling, runnerUpCeiling + bidIncrement);
 
-        if (isFailure)
-        {
-            return error;
-        }
+        // Ensure resolved amount is at least the minimum required bid
+        if (resolvedAmount < minimumRequired.Amount)
+            resolvedAmount = minimumRequired.Amount;
 
-        // Place the auto-bid
-        var placeResult = PlaceAutoBidInternal(autoBid, bidAmount, nowUtc,
+        // Cap at winner's ceiling
+        if (resolvedAmount > winnerCeiling)
+            resolvedAmount = winnerCeiling;
+
+        var resolvedPrice = Money.Of(resolvedAmount, currency);
+
+        // 7. Place ONE counter-bid at the resolved price
+        var counterBidTime = nowUtc.AddTicks(1); // slightly after manual bid for ordering
+        var placeResult = PlaceAutoBidInternal(
+            winner, resolvedPrice, counterBidTime,
+            raiseOutbidEvent: true,
             extensionThresholdMinutes: extensionThresholdMinutes,
             maxExtensions: maxExtensions,
             maxDuration: maxDuration);
 
         if (placeResult.IsFailure)
-        {
             return placeResult.Error;
+
+        // 8. Mark all OTHER auto-bids as outbid (they lost the proxy resolution)
+        foreach (var ab in eligibleAutoBids)
+        {
+            if (ab.Id != winner.Id && ab.Status == AutoBidStatus.Active)
+                ab.MarkAsOutbid(counterBidTime);
         }
 
-        return true;
-    }
-    
-    private UnitResult<Error> ProcessAutoBidBattle(
-        AutoBid autoBidA,
-        AutoBid autoBidB,
-        DateTime nowUtc,
-        ref int totalOperations,
-        TimeSpan extensionThresholdMinutes,
-        int maxExtensions,
-        TimeSpan maxDuration)
-    {
-        const int maxRounds = 100; // Safety: prevent infinite loops
-        var round = 0;
-        // Each bid in the battle gets a microsecond-incremented timestamp
-        // so price history records are ordered correctly for charts.
-        var bidTime = nowUtc;
-
-        var currentAttacker = autoBidB; // B responds to A's bid
-        var currentDefender = autoBidA;
-
-        while (round < maxRounds)
+        // 9. If manual bidder had an auto-bid and was outbid by winner, mark it
+        if (manualBidderAutoBid is not null &&
+            manualBidderAutoBid.Status == AutoBidStatus.Active &&
+            manualBidderAutoBid.Budget.MaxAmount < resolvedAmount)
         {
-            round++;
-            bidTime = bidTime.AddTicks(1); // 100ns increment per bid
-
-            if (!TryConsumeAutoBidOperation(ref totalOperations))
-            {
-                WasCascadeCapped = true;
-                RaiseCascadeCappedEventOnce(totalOperations, bidTime);
-                break;
-            }
-
-            var minimumRequired = GetMinimumBidAmount();
-
-            if (!currentAttacker.CanBid(minimumRequired))
-            {
-                currentAttacker.MarkAsOutbid(bidTime);
-                break;
-            }
-
-            var (_, isFailure, bidAmount, error) = currentAttacker
-                .CalculateNextBidAmount(minimumRequired);
-
-            if (isFailure)
-            {
-                return error;
-            }
-
-            var placeResult = PlaceAutoBidInternal(currentAttacker, bidAmount, bidTime,
-                raiseOutbidEvent: false,
-                extensionThresholdMinutes: extensionThresholdMinutes,
-                maxExtensions: maxExtensions,
-                maxDuration: maxDuration);
-
-            if (placeResult.IsFailure)
-            {
-                return placeResult.Error;
-            }
-
-            // Swap roles
-            (currentAttacker, currentDefender) = (currentDefender, currentAttacker);
-
-            // Check if defender can still respond
-            var nextMinimum = GetMinimumBidAmount();
-
-            if (!currentAttacker.CanBid(nextMinimum))
-            {
-                currentAttacker.MarkAsOutbid(bidTime);
-                break;
-            }
-        }
-
-        // Raise a single OutbidEvent for the battle loser
-        var winningBid = GetCurrentWinningBid();
-        if (winningBid is not null)
-        {
-            // currentAttacker is the last one who failed CanBid → the loser
-            if (currentAttacker.BidderId != winningBid.BidderId)
-            {
-                RaiseDomainEvent(new OutbidEvent(
-                    AuctionId: $"{Id}",
-                    OutbidBidderId: $"{currentAttacker.BidderId}",
-                    NewHighBidderId: $"{winningBid.BidderId}",
-                    NewHighestBid: Pricing.CurrentAmount,
-                    OutbidAmount: Pricing.CurrentAmount,
-                    OccurredAt: nowUtc));
-            }
+            manualBidderAutoBid.MarkAsOutbid(counterBidTime);
         }
 
         return UnitResult.Success<Error>();
@@ -1477,7 +1354,12 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             .FirstOrDefault(p => p.UserId == userId && p.JoinStatus != ParticipantJoinStatus.Withdrawn);
 
         if (existingParticipant is not null)
+        {
+            // Ensure participant is qualified — deposit confirms eligibility
+            if (!existingParticipant.IsQualified)
+                existingParticipant.Qualify(nowUtc);
             return existingParticipant;
+        }
 
         var participant = AuctionParticipant.Create(
             Id,
@@ -2306,32 +2188,84 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         if (currentWinning is null || currentWinning.BidderId == bidderId)
             return UnitResult.Success<Error>();
 
-        var totalOperations = 0;
-        var processSingleAutoBidResult = ProcessSingleAutoBid(autoBid, nowUtc, ref totalOperations,
-            extensionThresholdMinutes, maxExtensions, maxDuration);
-
-        if (processSingleAutoBidResult.IsFailure)
-            return processSingleAutoBidResult.Error;
-
-        if (!processSingleAutoBidResult.Value)
+        // Use proxy resolution: this auto-bid vs current winner
+        var minimumRequired = GetMinimumBidAmount();
+        if (!autoBid.CanBid(minimumRequired))
             return UnitResult.Success<Error>();
 
+        // Determine ceilings
+        var autoBidCeiling = autoBid.Budget.MaxAmount;
+        var currentWinnerCeiling = Pricing.CurrentAmount; // visible price is their minimum
+
+        // Check if current winner also has an active auto-bid
         var winnerAutoBid = _autoBids
             .FirstOrDefault(ab => ab.BidderId == currentWinning.BidderId &&
                                   ab.IsEnabled &&
                                   ab.Status == AutoBidStatus.Active);
 
-        if (winnerAutoBid is null)
-            return UnitResult.Success<Error>();
+        if (winnerAutoBid is not null)
+            currentWinnerCeiling = winnerAutoBid.Budget.MaxAmount;
 
-        var battleResult = ProcessAutoBidBattle(
-            autoBid,
-            winnerAutoBid,
-            nowUtc,
-            ref totalOperations,
-            extensionThresholdMinutes, maxExtensions, maxDuration);
+        // Determine who wins the proxy resolution
+        if (autoBidCeiling > currentWinnerCeiling)
+        {
+            // New auto-bid wins — resolved price = min(new ceiling, winner ceiling + increment)
+            var resolvedAmount = Math.Min(autoBidCeiling, currentWinnerCeiling + Pricing.BidIncrementAmount);
+            if (resolvedAmount < minimumRequired.Amount)
+                resolvedAmount = minimumRequired.Amount;
+            if (resolvedAmount > autoBidCeiling)
+                resolvedAmount = autoBidCeiling;
 
-        return battleResult.IsFailure ? battleResult.Error : UnitResult.Success<Error>();
+            var resolvedPrice = Money.Of(resolvedAmount, Pricing.Currency);
+            var placeResult = PlaceAutoBidInternal(autoBid, resolvedPrice, nowUtc,
+                raiseOutbidEvent: true,
+                extensionThresholdMinutes: extensionThresholdMinutes,
+                maxExtensions: maxExtensions,
+                maxDuration: maxDuration);
+
+            if (placeResult.IsFailure)
+                return placeResult.Error;
+
+            // Mark current winner's auto-bid as outbid
+            if (winnerAutoBid is not null && winnerAutoBid.Status == AutoBidStatus.Active)
+                winnerAutoBid.MarkAsOutbid(nowUtc);
+        }
+        else if (autoBidCeiling == currentWinnerCeiling)
+        {
+            // Tie: current winner keeps lead (they bid first)
+            // New auto-bid places at their max but still loses
+            if (autoBid.Status == AutoBidStatus.Active)
+                autoBid.MarkAsOutbid(nowUtc);
+        }
+        else
+        {
+            // Current winner has higher ceiling — they defend
+            // Resolved price = min(winner ceiling, new auto-bid ceiling + increment)
+            if (winnerAutoBid is not null)
+            {
+                var resolvedAmount = Math.Min(currentWinnerCeiling, autoBidCeiling + Pricing.BidIncrementAmount);
+                if (resolvedAmount < minimumRequired.Amount)
+                    resolvedAmount = minimumRequired.Amount;
+                if (resolvedAmount > currentWinnerCeiling)
+                    resolvedAmount = currentWinnerCeiling;
+
+                var resolvedPrice = Money.Of(resolvedAmount, Pricing.Currency);
+                var placeResult = PlaceAutoBidInternal(winnerAutoBid, resolvedPrice, nowUtc,
+                    raiseOutbidEvent: false,
+                    extensionThresholdMinutes: extensionThresholdMinutes,
+                    maxExtensions: maxExtensions,
+                    maxDuration: maxDuration);
+
+                if (placeResult.IsFailure)
+                    return placeResult.Error;
+            }
+
+            // New auto-bid is outbid
+            if (autoBid.Status == AutoBidStatus.Active)
+                autoBid.MarkAsOutbid(nowUtc);
+        }
+
+        return UnitResult.Success<Error>();
     }
 
     private bool IsBidEligibleParticipant(AuctionParticipant participant, DateTime nowUtc)
@@ -2340,34 +2274,6 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             return false;
 
         return _deposits.Any(d => d.BidderId == participant.UserId && d.IsHeld);
-    }
-
-    private static bool TryConsumeAutoBidOperation(ref int totalOperations)
-    {
-        const int maxAutoBidOperationsPerCascade = 200;
-
-        if (totalOperations >= maxAutoBidOperationsPerCascade)
-            return false;
-
-        totalOperations++;
-        return true;
-    }
-
-    private bool _cascadeCappedEventRaised;
-
-    private void RaiseCascadeCappedEventOnce(int totalOperations, DateTime nowUtc)
-    {
-        if (_cascadeCappedEventRaised) return;
-        _cascadeCappedEventRaised = true;
-
-        var remaining = _autoBids.Count(ab =>
-            ab.IsEnabled && ab.Status == AutoBidStatus.Active);
-
-        RaiseDomainEvent(new AutoBidCascadeCappedEvent(
-            AuctionId: $"{Id}",
-            TotalOperations: totalOperations,
-            RemainingEligibleAutoBids: remaining,
-            OccurredAt: nowUtc));
     }
 
     private Result<AutoBid, Error> FindAutoBid(UserId bidderId)

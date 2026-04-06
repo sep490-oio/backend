@@ -2,7 +2,7 @@ using OIO.Domain.Context.UserContext.Aggregates.Users;
 
 namespace OIO.Application.Context.AuctionContext.EventHandlers;
 
-internal static class AuctionNotificationDisplayNames
+public static class AuctionNotificationDisplayNames
 {
     public static string Resolve(User? user)
     {
