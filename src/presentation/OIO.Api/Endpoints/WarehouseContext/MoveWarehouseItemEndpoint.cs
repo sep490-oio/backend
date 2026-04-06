@@ -24,6 +24,7 @@ public sealed class MoveWarehouseItemEndpoint : IEndpoint
                 return result.ToNoContentHttpResult();
             })
             .RequireAuthorization(App.Permissions.Catalogs.Warehouse.MoveItem)
+            .WithName(ApiEndpoint.Names.Warehouse.MoveWarehouseItem)
             .WithTags(ApiEndpoint.Tags.Warehouse);
     }
 }
