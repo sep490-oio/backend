@@ -205,4 +205,39 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
 
         return UnitResult.Success<e>();
     }
+
+    /// <summary>Relocate item within the warehouse.</summary>
+    public UnitResult<e> Move(WarehouseStorageLocationId locationId, string locationLabel, DateTime now)
+    {
+        if (Status != WarehouseItemStatus.Received && Status != WarehouseItemStatus.Inspected && Status != WarehouseItemStatus.Stored)
+            return WarehouseErrors.WarehouseItem.NotAvailable;
+
+        StorageLocationId = locationId;
+        ModifiedAt        = now;
+
+        RaiseDomainEvent(new WarehouseItemStoredEvent(
+            Id.ToString(),
+            locationId.ToString(),
+            locationLabel,
+            now));
+
+        return UnitResult.Success<e>();
+    }
+
+    /// <summary>Adjust item status manually (e.g., Damaged, Lost).</summary>
+    public UnitResult<e> AdjustStatus(WarehouseItemStatus newStatus, DateTime now)
+    {
+        Status     = newStatus;
+        ModifiedAt = now;
+
+        // If no longer in regular storage (Lost, Damaged, Dispatched, etc.), free the location
+        if (newStatus == WarehouseItemStatus.Lost || 
+            newStatus == WarehouseItemStatus.Damaged ||
+            newStatus == WarehouseItemStatus.Dispatched)
+        {
+            StorageLocationId = null;
+        }
+
+        return UnitResult.Success<e>();
+    }
 }

@@ -38,6 +38,7 @@ public sealed class InboundShipmentStatus : EnumValueObject<InboundShipmentStatu
     public static readonly InboundShipmentStatus InTransit           = new("in_transit");
     public static readonly InboundShipmentStatus SellerClaimsArrived = new("seller_claims_arrived");
     public static readonly InboundShipmentStatus Arrived             = new("arrived");
+    public static readonly InboundShipmentStatus Delivering          = new("delivering");
     public static readonly InboundShipmentStatus Inspected           = new("inspected");
     public static readonly InboundShipmentStatus Completed           = new("completed");
     public static readonly InboundShipmentStatus Cancelled           = new("cancelled");
@@ -52,6 +53,7 @@ public sealed class OutboundShipmentStatus : EnumValueObject<OutboundShipmentSta
     public static readonly OutboundShipmentStatus Booked            = new("booked");
     public static readonly OutboundShipmentStatus PickedUp          = new("picked_up");
     public static readonly OutboundShipmentStatus InTransit         = new("in_transit");
+    public static readonly OutboundShipmentStatus Delivering        = new("delivering");
     public static readonly OutboundShipmentStatus Delivered         = new("delivered");
     public static readonly OutboundShipmentStatus Failed            = new("failed");
     public static readonly OutboundShipmentStatus Returning         = new("returning");
@@ -69,6 +71,8 @@ public sealed class WarehouseItemStatus : EnumValueObject<WarehouseItemStatus>
     public static readonly WarehouseItemStatus Stored     = new("stored");
     public static readonly WarehouseItemStatus Reserved   = new("reserved");
     public static readonly WarehouseItemStatus Dispatched = new("dispatched");
+    public static readonly WarehouseItemStatus Lost       = new("lost");
+    public static readonly WarehouseItemStatus Damaged    = new("damaged");
 
     private WarehouseItemStatus(string id) : base(id) { }
 }
@@ -116,6 +120,7 @@ public sealed class NormalizedTrackingStatus : EnumValueObject<NormalizedTrackin
     public static readonly NormalizedTrackingStatus Confirmed  = new("confirmed");
     public static readonly NormalizedTrackingStatus PickedUp   = new("picked_up");
     public static readonly NormalizedTrackingStatus InTransit  = new("in_transit");
+    public static readonly NormalizedTrackingStatus Delivering = new("delivering");
     public static readonly NormalizedTrackingStatus Delivered  = new("delivered");
     public static readonly NormalizedTrackingStatus Failed     = new("failed");
     public static readonly NormalizedTrackingStatus Delayed    = new("delayed");
