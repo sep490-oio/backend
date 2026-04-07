@@ -225,6 +225,7 @@ public static partial class ApiEndpoint
             public const string QrCode                 = $"{Base}/inbound-shipments/{{shipmentId:guid}}/qr";
             public const string InspectMultipart = $"{Base}/inbound-shipments/{{shipmentId}}/inspect/multipart";
             public const string SelfShipOutbound = $"{Base}/outbound-shipments/self-ship";
+            public const string BookDirectGhn      = $"{Base}/outbound-shipments/direct-ghn";
             public const string CalculateShippingFee = $"{Base}/shipping/calculate-fee";
             public const string CalculateLeadTime    = $"{Base}/shipping/calculate-lead-time";
         }

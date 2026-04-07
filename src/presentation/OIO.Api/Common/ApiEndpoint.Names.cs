@@ -224,6 +224,7 @@ public static partial class ApiEndpoint
         {
             public const string BookInboundShipment  = nameof(BookInboundShipment);
             public const string BookOutboundShipment = nameof(BookOutboundShipment);
+            public const string BookDirectShipment   = nameof(BookDirectShipment);
             public const string GhnWebhook           = nameof(GhnWebhook);
             public const string GetInspectionQueue   = nameof(GetInspectionQueue);
             public const string InspectWarehouseItem = nameof(InspectWarehouseItem);
