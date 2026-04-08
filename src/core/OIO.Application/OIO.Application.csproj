@@ -25,4 +25,8 @@
       <PackageReference Include="System.Linq.Dynamic.Core" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="bin-verify3\Debug\net10.0\" />
+    </ItemGroup>
+
 </Project>

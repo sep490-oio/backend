@@ -34,4 +34,101 @@
       <ProjectReference Include="..\..\core\OIO.Application\OIO.Application.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="bin-verify3\Debug\net10.0\bin-verify\BuildHost-net472\" />
+      <Folder Include="bin-verify3\Debug\net10.0\bin-verify\BuildHost-netcore\" />
+      <Folder Include="bin-verify3\Debug\net10.0\BuildHost-net472\de\" />
+      <Folder Include="bin-verify3\Debug\net10.0\BuildHost-net472\es\" />
+      <Folder Include="bin-verify3\Debug\net10.0\BuildHost-net472\fr\" />
+      <Folder Include="bin-verify3\Debug\net10.0\BuildHost-net472\ko\" />
+      <Folder Include="bin-verify3\Debug\net10.0\BuildHost-net472\pl\" />
+      <Folder Include="bin-verify3\Debug\net10.0\BuildHost-net472\pt-BR\" />
+      <Folder Include="bin-verify3\Debug\net10.0\BuildHost-net472\ru\" />
+      <Folder Include="bin-verify3\Debug\net10.0\BuildHost-net472\tr\" />
+      <Folder Include="bin-verify3\Debug\net10.0\BuildHost-net472\zh-Hans\" />
+      <Folder Include="bin-verify3\Debug\net10.0\BuildHost-net472\zh-Hant\" />
+      <Folder Include="bin-verify3\Debug\net10.0\BuildHost-netcore\cs\" />
+      <Folder Include="bin-verify3\Debug\net10.0\BuildHost-netcore\ja\" />
+      <Folder Include="bin-verify3\Debug\net10.0\BuildHost-netcore\ko\" />
+      <Folder Include="bin-verify3\Debug\net10.0\BuildHost-netcore\pl\" />
+      <Folder Include="bin-verify3\Debug\net10.0\BuildHost-netcore\pt-BR\" />
+      <Folder Include="bin-verify3\Debug\net10.0\BuildHost-netcore\ru\" />
+      <Folder Include="bin-verify3\Debug\net10.0\BuildHost-netcore\zh-Hans\" />
+      <Folder Include="bin-verify3\Debug\net10.0\BuildHost-netcore\zh-Hant\" />
+      <Folder Include="bin-verify\BuildHost-net472\es\" />
+      <Folder Include="bin-verify\BuildHost-net472\fr\" />
+      <Folder Include="bin-verify\BuildHost-net472\it\" />
+      <Folder Include="bin-verify\BuildHost-net472\ko\" />
+      <Folder Include="bin-verify\BuildHost-net472\pl\" />
+      <Folder Include="bin-verify\BuildHost-net472\pt-BR\" />
+      <Folder Include="bin-verify\BuildHost-net472\ru\" />
+      <Folder Include="bin-verify\BuildHost-net472\tr\" />
+      <Folder Include="bin-verify\BuildHost-net472\zh-Hans\" />
+      <Folder Include="bin-verify\BuildHost-netcore\cs\" />
+      <Folder Include="bin-verify\BuildHost-netcore\de\" />
+      <Folder Include="bin-verify\BuildHost-netcore\es\" />
+      <Folder Include="bin-verify\BuildHost-netcore\it\" />
+      <Folder Include="bin-verify\BuildHost-netcore\ja\" />
+      <Folder Include="bin-verify\BuildHost-netcore\ko\" />
+      <Folder Include="bin-verify\BuildHost-netcore\pl\" />
+      <Folder Include="bin-verify\BuildHost-netcore\pt-BR\" />
+      <Folder Include="bin-verify\BuildHost-netcore\tr\" />
+      <Folder Include="bin-verify\BuildHost-netcore\zh-Hans\" />
+      <Folder Include="bin-verify\BuildHost-netcore\zh-Hant\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="bin-verify3\Debug\net10.0\OIO.Infrastructure.xml" />
+      <None Remove="bin-verify3\Debug\net10.0\OIO.Infrastructure.pdb" />
+      <None Remove="bin-verify3\Debug\net10.0\OIO.Infrastructure.dll" />
+      <None Remove="bin-verify3\Debug\net10.0\OIO.Domain.xml" />
+      <None Remove="bin-verify3\Debug\net10.0\OIO.Domain.pdb" />
+      <None Remove="bin-verify3\Debug\net10.0\OIO.Domain.dll" />
+      <None Remove="bin-verify3\Debug\net10.0\OIO.Application.xml" />
+      <None Remove="bin-verify3\Debug\net10.0\OIO.Application.pdb" />
+      <None Remove="bin-verify3\Debug\net10.0\OIO.Application.dll" />
+      <None Remove="bin-verify3\Debug\net10.0\BuildHost-netcore\Newtonsoft.Json.dll" />
+      <None Remove="bin-verify3\Debug\net10.0\BuildHost-netcore\Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.dll" />
+      <None Remove="bin-verify3\Debug\net10.0\BuildHost-netcore\Microsoft.Build.Locator.dll" />
+      <None Remove="bin-verify3\Debug\net10.0\BuildHost-net472\System.Memory.dll" />
+      <None Remove="bin-verify3\Debug\net10.0\BuildHost-net472\System.CommandLine.dll" />
+      <None Remove="bin-verify3\Debug\net10.0\BuildHost-net472\System.Collections.Immutable.dll" />
+      <None Remove="bin-verify3\Debug\net10.0\BuildHost-net472\System.Buffers.dll" />
+      <None Remove="bin-verify3\Debug\net10.0\BuildHost-net472\Newtonsoft.Json.dll" />
+      <None Remove="bin-verify3\Debug\net10.0\BuildHost-net472\Microsoft.IO.Redist.dll" />
+      <None Remove="bin-verify3\Debug\net10.0\BuildHost-net472\Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.exe" />
+      <None Remove="bin-verify3\Debug\net10.0\BuildHost-net472\Microsoft.Build.Locator.dll" />
+      <None Remove="bin-verify\OIO.Infrastructure.xml" />
+      <None Remove="bin-verify\OIO.Infrastructure.pdb" />
+      <None Remove="bin-verify\OIO.Infrastructure.dll" />
+      <None Remove="bin-verify\OIO.Domain.xml" />
+      <None Remove="bin-verify\OIO.Domain.pdb" />
+      <None Remove="bin-verify\OIO.Application.xml" />
+      <None Remove="bin-verify\OIO.Application.pdb" />
+      <None Remove="bin-verify\OIO.Application.dll" />
+      <None Remove="bin-verify\BuildHost-netcore\System.CommandLine.dll" />
+      <None Remove="bin-verify\BuildHost-netcore\System.Collections.Immutable.dll" />
+      <None Remove="bin-verify\BuildHost-netcore\Newtonsoft.Json.dll" />
+      <None Remove="bin-verify\BuildHost-netcore\Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.dll" />
+      <None Remove="bin-verify\BuildHost-netcore\Microsoft.Build.Locator.dll" />
+      <None Remove="bin-verify\BuildHost-net472\System.Collections.Immutable.dll" />
+      <None Remove="bin-verify\BuildHost-net472\System.Buffers.dll" />
+      <None Remove="bin-verify\BuildHost-net472\Newtonsoft.Json.dll" />
+      <None Remove="bin-verify\BuildHost-net472\Microsoft.IO.Redist.dll" />
+      <None Remove="bin-verify\BuildHost-net472\Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.exe" />
+      <None Remove="bin-verify\BuildHost-net472\Microsoft.Build.Locator.dll" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Remove="bin-verify3\Debug\net10.0\OIO.Infrastructure.deps.json" />
+      <Content Remove="bin-verify3\Debug\net10.0\BuildHost-netcore\Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.runtimeconfig.json" />
+      <Content Remove="bin-verify3\Debug\net10.0\BuildHost-netcore\Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.deps.json" />
+      <Content Remove="bin-verify3\Debug\net10.0\BuildHost-net472\Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.exe.config" />
+      <Content Remove="bin-verify\OIO.Infrastructure.staticwebassets.endpoints.json" />
+      <Content Remove="bin-verify\OIO.Infrastructure.deps.json" />
+      <Content Remove="bin-verify\BuildHost-netcore\Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.runtimeconfig.json" />
+      <Content Remove="bin-verify\BuildHost-netcore\Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.deps.json" />
+      <Content Remove="bin-verify\BuildHost-net472\Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.exe.config" />
+    </ItemGroup>
+
 </Project>
