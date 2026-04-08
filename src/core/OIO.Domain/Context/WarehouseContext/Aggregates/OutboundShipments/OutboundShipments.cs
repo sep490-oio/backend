@@ -365,6 +365,7 @@ public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
         {
             { Id: "picked_up" }  => OutboundShipmentStatus.PickedUp,
             { Id: "in_transit" } => OutboundShipmentStatus.InTransit,
+            { Id: "delivering" } => OutboundShipmentStatus.Delivering,
             { Id: "delivered" }  => OutboundShipmentStatus.Delivered,
             { Id: "failed" }     => OutboundShipmentStatus.Failed,
             { Id: "returning" }  => OutboundShipmentStatus.Returning,
@@ -404,6 +405,11 @@ public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
             {
                 RaiseDomainEvent(new OutboundShipmentDeliveredEvent(
                     Id.ToString(), OrderId.ToString(), providerCode.Id, eventTime, now));
+            }
+            else if (Status == OutboundShipmentStatus.Delivering)
+            {
+                RaiseDomainEvent(new OutboundShipmentDeliveringEvent(
+                    Id.ToString(), OrderId.ToString(), providerCode.Id, now));
             }
             else if (Status == OutboundShipmentStatus.Failed)
             {

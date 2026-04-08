@@ -266,6 +266,8 @@ public static partial class ApiEndpoint
             public const string SelfShipOrder = nameof(SelfShipOrder);
             public const string CalculateShippingFee = nameof(CalculateShippingFee);
             public const string CalculateLeadTime    = nameof(CalculateLeadTime);
+            public const string MoveWarehouseItem    = nameof(MoveWarehouseItem);
+            public const string AdjustWarehouseItem  = nameof(AdjustWarehouseItem);
         }
 
         public static class VnPay

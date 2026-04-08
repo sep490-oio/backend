@@ -88,10 +88,13 @@ public static partial class App
                 public const string BookOutbound = "warehouse:outbound:book";
                 public const string Inspect = "warehouse:item:inspect";
                 public const string Store   = "warehouse:item:store";
+                public const string MoveItem = "warehouse:item:move";
+                public const string AdjustItem = "warehouse:item:adjust";
                 public const string ManageLocations = "warehouse:locations:manage";
                 public const string ReadShipments    = "warehouse:shipments:read";
                 public const string UpdateExternalStatus = "warehouse:inbound:update-external-status";
                 public const string SelfShipOutbound = "warehouse:outbound:self-ship";
+                public const string CancelOutbound = "warehouse:outbound:cancel";
                 public const string CalculateShippingFee = "warehouse:shipping:calculate-fee";
                 public const string CalculateLeadTime    = "warehouse:shipping:calculate-lead-time";
                 public const string SyncAddress          = "warehouse:address:sync";
@@ -234,6 +237,9 @@ public static partial class App
                 Warehouse.CalculateShippingFee,
                 Warehouse.CalculateLeadTime,
                 Warehouse.SyncAddress,
+                Warehouse.MoveItem,
+                Warehouse.AdjustItem,
+                Warehouse.CancelOutbound,
 
 
                 // Categories
@@ -384,11 +390,14 @@ public static partial class App
                 public static readonly Permission BookInbound  = Permission.Create(Catalogs.Warehouse.BookInbound);
                 public static readonly Permission BookOutbound = Permission.Create(Catalogs.Warehouse.BookOutbound);
                 public static readonly Permission Store   = Permission.Create(Catalogs.Warehouse.Store);
+                public static readonly Permission MoveItem = Permission.Create(Catalogs.Warehouse.MoveItem);
+                public static readonly Permission AdjustItem = Permission.Create(Catalogs.Warehouse.AdjustItem);
                 public static readonly Permission Inspect = Permission.Create(Catalogs.Warehouse.Inspect);
                 public static readonly Permission ManageLocations = Permission.Create(Catalogs.Warehouse.ManageLocations);
                 public static readonly Permission ReadShipments = Permission.Create(Catalogs.Warehouse.ReadShipments);
                 public static readonly Permission UpdateExternalStatus = Permission.Create(Catalogs.Warehouse.UpdateExternalStatus);
                 public static readonly Permission SelfShipOutbound = Permission.Create(Catalogs.Warehouse.SelfShipOutbound);
+                public static readonly Permission CancelOutbound = Permission.Create(Catalogs.Warehouse.CancelOutbound);
                 public static readonly Permission CalculateShippingFee = Permission.Create(Catalogs.Warehouse.CalculateShippingFee);
                 public static readonly Permission CalculateLeadTime    = Permission.Create(Catalogs.Warehouse.CalculateLeadTime);
                 public static readonly Permission SyncAddress          = Permission.Create(Catalogs.Warehouse.SyncAddress);
@@ -472,6 +481,9 @@ public static partial class App
                 [Catalogs.Warehouse.CalculateShippingFee] = Warehouse.CalculateShippingFee,
                 [Catalogs.Warehouse.CalculateLeadTime] = Warehouse.CalculateLeadTime,
                 [Catalogs.Warehouse.SyncAddress] = Warehouse.SyncAddress,
+                [Catalogs.Warehouse.MoveItem] = Warehouse.MoveItem,
+                [Catalogs.Warehouse.AdjustItem] = Warehouse.AdjustItem,
+                [Catalogs.Warehouse.CancelOutbound] = Warehouse.CancelOutbound,
 
                 
                 // Media

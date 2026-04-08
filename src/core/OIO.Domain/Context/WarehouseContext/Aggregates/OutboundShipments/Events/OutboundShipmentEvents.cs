@@ -1,4 +1,4 @@
-﻿using OIO.Domain.SeedWork.DomainEvents;
+using OIO.Domain.SeedWork.DomainEvents;
 
 namespace OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.Events;
 
@@ -36,6 +36,12 @@ public sealed record OutboundShipmentDeliveredEvent(
     string OrderId,
     string ProviderCode,
     DateTime DeliveredAt,
+    DateTime OccurredOn) : DomainEvent(OccurredOn);
+
+public sealed record OutboundShipmentDeliveringEvent(
+    string OutboundShipmentId,
+    string OrderId,
+    string ProviderCode,
     DateTime OccurredOn) : DomainEvent(OccurredOn);
 
 public sealed record OutboundShipmentFailedEvent(

@@ -420,6 +420,14 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
                 }
                 break;
 
+            case "delivering":
+                if (Status == InboundShipmentStatus.InTransit)
+                {
+                    Status = InboundShipmentStatus.Delivering;
+                    ModifiedAt = now;
+                }
+                break;
+
             case "delivered":
                 if (Status != InboundShipmentStatus.Arrived &&
                     Status != InboundShipmentStatus.Inspected &&
@@ -455,6 +463,16 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
             {
                 RaiseDomainEvent(new InboundShipmentArrivedEvent(
                     Id.ToString(), ProviderCode.Id, CarrierTrackingNumber ?? ClientOrderCode, now));
+            }
+            else if (oldStatusId == "awaiting_pickup" && Status == InboundShipmentStatus.InTransit)
+            {
+                RaiseDomainEvent(new InboundShipmentPickedUpEvent(
+                    Id.ToString(), ProviderCode.Id, CarrierTrackingNumber ?? ClientOrderCode, now));
+            }
+            else if (Status == InboundShipmentStatus.Delivering)
+            {
+                RaiseDomainEvent(new InboundShipmentDeliveringEvent(
+                    Id.ToString(), ClientOrderCode, location, now));
             }
             else if (Status == InboundShipmentStatus.Cancelled)
             {

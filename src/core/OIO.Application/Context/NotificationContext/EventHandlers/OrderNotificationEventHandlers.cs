@@ -108,6 +108,38 @@ internal sealed class OrderShippedNotificationHandler
     }
 }
 
+internal sealed class OrderDeliveringNotificationHandler(
+    IDbContext dbContext,
+    ISender sender,
+    ILogger<OrderDeliveringNotificationHandler> logger)
+    : INotificationHandler<OutboundShipmentDeliveringEvent>
+{
+    public async Task Handle(OutboundShipmentDeliveringEvent notification, CancellationToken cancellationToken)
+    {
+        var orderId = OrderId.From(Guid.Parse(notification.OrderId));
+        var order = await dbContext.GetByIdAsync<Order, OrderId>(
+            orderId,
+            queryBuilder: query => query.AsNoTracking(),
+            cancellationToken: cancellationToken);
+
+        if (order is null) return;
+
+        await NotificationDispatch.DispatchAsync(
+            sender,
+            logger,
+            new CreateNotificationCommand(
+                UserId: order.BuyerId.Value,
+                NotificationType: "order",
+                EventType: "order_delivering",
+                Title: "Don hang dang duoc giao den ban",
+                Message: $"Shipper dang tren duong giao don hang {order.OrderNumber.Value} den ban. Vui long chu y dien thoai!",
+                Priority: NotificationPriority.High,
+                EntityType: "Order",
+                EntityId: order.Id.Value),
+            cancellationToken);
+    }
+}
+
 internal sealed class OrderDeliveredNotificationHandler
     : INotificationHandler<OutboundShipmentDeliveredEvent>
 {
@@ -248,6 +280,102 @@ internal sealed class OrderCompletedNotificationHandler
                     orderNumber = notification.OrderNumber,
                     completedAt = notification.CompletedAt
                 })),
+            cancellationToken);
+    }
+}
+
+internal sealed class OrderDeliveryFailedNotificationHandler(
+    IDbContext dbContext,
+    ISender sender,
+    ILogger<OrderDeliveryFailedNotificationHandler> logger)
+    : INotificationHandler<OutboundShipmentFailedEvent>
+{
+    public async Task Handle(OutboundShipmentFailedEvent notification, CancellationToken cancellationToken)
+    {
+        var orderId = OrderId.From(Guid.Parse(notification.OrderId));
+        var order = await dbContext.GetByIdAsync<Order, OrderId>(
+            orderId,
+            queryBuilder: query => query.AsNoTracking(),
+            cancellationToken: cancellationToken);
+
+        if (order is null) return;
+
+        await NotificationDispatch.DispatchAsync(
+            sender,
+            logger,
+            new CreateNotificationCommand(
+                UserId: order.BuyerId.Value,
+                NotificationType: "order",
+                EventType: "order_delivery_failed",
+                Title: "Giao hang that bai",
+                Message: $"Don hang {order.OrderNumber.Value} gap su co khi giao hang. Ly do: {notification.Reason}",
+                Priority: NotificationPriority.High,
+                EntityType: "Order",
+                EntityId: order.Id.Value),
+            cancellationToken);
+    }
+}
+
+internal sealed class OrderReturningNotificationHandler(
+    IDbContext dbContext,
+    ISender sender,
+    ILogger<OrderReturningNotificationHandler> logger)
+    : INotificationHandler<OutboundShipmentReturningEvent>
+{
+    public async Task Handle(OutboundShipmentReturningEvent notification, CancellationToken cancellationToken)
+    {
+        var orderId = OrderId.From(Guid.Parse(notification.OrderId));
+        var order = await dbContext.GetByIdAsync<Order, OrderId>(
+            orderId,
+            queryBuilder: query => query.AsNoTracking(),
+            cancellationToken: cancellationToken);
+
+        if (order is null) return;
+
+        await NotificationDispatch.DispatchAsync(
+            sender,
+            logger,
+            new CreateNotificationCommand(
+                UserId: order.BuyerId.Value,
+                NotificationType: "order",
+                EventType: "order_returning",
+                Title: "Don hang dang duoc hoan lai",
+                Message: $"Don hang {order.OrderNumber.Value} dang duoc hoan lai ve kho OIO. Ly do: {notification.Reason}",
+                Priority: NotificationPriority.Normal,
+                EntityType: "Order",
+                EntityId: order.Id.Value),
+            cancellationToken);
+    }
+}
+
+internal sealed class OrderReturnedNotificationHandler(
+    IDbContext dbContext,
+    ISender sender,
+    ILogger<OrderReturnedNotificationHandler> logger)
+    : INotificationHandler<OutboundShipmentReturnedEvent>
+{
+    public async Task Handle(OutboundShipmentReturnedEvent notification, CancellationToken cancellationToken)
+    {
+        var orderId = OrderId.From(Guid.Parse(notification.OrderId));
+        var order = await dbContext.GetByIdAsync<Order, OrderId>(
+            orderId,
+            queryBuilder: query => query.AsNoTracking(),
+            cancellationToken: cancellationToken);
+
+        if (order is null) return;
+
+        await NotificationDispatch.DispatchAsync(
+            sender,
+            logger,
+            new CreateNotificationCommand(
+                UserId: order.BuyerId.Value,
+                NotificationType: "order",
+                EventType: "order_returned",
+                Title: "Don hang da hoan ve kho",
+                Message: $"Don hang {order.OrderNumber.Value} da duoc hoan ve kho OIO thanh cong.",
+                Priority: NotificationPriority.Normal,
+                EntityType: "Order",
+                EntityId: order.Id.Value),
             cancellationToken);
     }
 }
