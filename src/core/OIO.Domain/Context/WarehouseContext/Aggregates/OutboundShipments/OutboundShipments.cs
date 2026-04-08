@@ -393,6 +393,13 @@ public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
                 RaiseDomainEvent(new OutboundShipmentPickedUpEvent(
                     Id.ToString(), OrderId.ToString(), providerCode.Id, CarrierTrackingNumber ?? ClientOrderCode, now));
             }
+            else if (Status == OutboundShipmentStatus.InTransit)
+            {
+                // Drives the Order lifecycle handler that transitions the
+                // linked order to OnDelivering for warehouse-managed flows.
+                RaiseDomainEvent(new OutboundShipmentInTransitEvent(
+                    Id.ToString(), OrderId.ToString(), providerCode.Id, now));
+            }
             else if (Status == OutboundShipmentStatus.Delivered)
             {
                 RaiseDomainEvent(new OutboundShipmentDeliveredEvent(

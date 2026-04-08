@@ -85,6 +85,10 @@ public static partial class ApiEndpoint
             public const string FlagUser = $"{Base}/users/{{userId:guid}}/risk-flags";
             public const string FlagAuction = $"{Base}/auctions/{{auctionId:guid}}/alerts";
             public const string CancelInvalidBid = $"{Base}/auctions/{{auctionId:guid}}/bids/{{bidId:guid}}/cancel";
+
+            // Completed Auctions (post-sale monitoring)
+            public const string GetCompletedAuctions = $"{Base}/auctions/completed";
+            public const string GetCompletedAuctionById = $"{Base}/auctions/completed/{{auctionId:guid}}";
         }
 
         public static class Auth
@@ -144,7 +148,6 @@ public static partial class ApiEndpoint
             public const string GetBids = $"{Base}/{{auctionId:guid}}/bids";
             public const string Cancel = $"{Base}/{{auctionId:guid}}/cancel";
             public const string Close = $"{Base}/{{auctionId:guid}}/close";
-            public const string Publish = $"{Base}/{{auctionId:guid}}/publish";
             public const string Submit = $"{Base}/{{auctionId:guid}}/submit";
             public const string SetTiming = $"{Base}/{{auctionId:guid}}/timing";
             public const string Shipping = $"{Base}/{{auctionId:guid}}/shipping";
@@ -187,10 +190,12 @@ public static partial class ApiEndpoint
         public static class Sellers
         {
             private const string Base = "api/sellers";
+            private const string SellerBase = "api/seller";
 
             public const string GetAll = Base;
             public const string GetById = $"{Base}/{{sellerId:guid}}";
             public const string GetItems = $"{Base}/{{sellerId:guid}}/items";
+            public const string GetWalletOverview = $"{SellerBase}/wallet/overview";
         }
 
         public static class Reviews
@@ -210,6 +215,8 @@ public static partial class ApiEndpoint
             public const string ReviewWarehouseInspection = $"{Base}/inbound-shipments/{{shipmentId:guid}}/review";
             public const string BookInbound  = $"{Base}/inbound-shipments";
             public const string BookOutbound = $"{Base}/outbound-shipments";
+            public const string WarehouseStaffOutboundQueue = $"{Base}-staff/outbound-orders";
+            public const string WarehouseStaffOutboundOrderById = $"{Base}-staff/outbound-orders/{{orderId:guid}}";
             public const string StoreItem   = $"{Base}/warehouse-items/{{warehouseItemId}}/store";
             public const string GhnWebhook   = "webhooks/ghn";
             public const string StorageLocations = $"{Base}/storage-locations";
@@ -289,6 +296,20 @@ public static partial class ApiEndpoint
             public const string RejectReturn = $"{Base}/{{orderId:guid}}/returns/{{returnId:guid}}/reject";
             public const string ConfirmReturnReceived = $"{Base}/{{orderId:guid}}/returns/{{returnId:guid}}/confirm-received";
             public const string ConfirmReceipt = $"{Base}/{{orderId:guid}}/confirm-receipt";
+            public const string UpdateShipping = $"{Base}/{{orderId:guid}}/shipping";
+            public const string Confirm = $"{Base}/{{orderId:guid}}/confirm";
+            public const string MarkPickedUp = $"{Base}/{{orderId:guid}}/mark-picked-up";
+            public const string MarkOnDelivering = $"{Base}/{{orderId:guid}}/mark-on-delivering";
+            public const string MarkDelivered = $"{Base}/{{orderId:guid}}/mark-delivered";
+
+            // Seller direct shipments (1:1 with order)
+            public const string CreateSellerDirectShipment = $"{Base}/{{orderId:guid}}/self-shipments";
+            public const string SetSellerDirectShipmentCarrierInfo = $"{Base}/{{orderId:guid}}/self-shipments/{{shipmentId:guid}}/carrier-info";
+            public const string MarkSellerDirectShipmentPickedUp = $"{Base}/{{orderId:guid}}/self-shipments/{{shipmentId:guid}}/mark-picked-up";
+            public const string MarkSellerDirectShipmentOnDelivering = $"{Base}/{{orderId:guid}}/self-shipments/{{shipmentId:guid}}/mark-on-delivering";
+            public const string MarkSellerDirectShipmentDelivered = $"{Base}/{{orderId:guid}}/self-shipments/{{shipmentId:guid}}/mark-delivered";
+            public const string SetSellerDirectShipmentDispatchDetails = $"{Base}/{{orderId:guid}}/self-shipments/{{shipmentId:guid}}/dispatch-details";
+            public const string AddSellerDirectShipmentHandoverProofs = $"{Base}/{{orderId:guid}}/self-shipments/{{shipmentId:guid}}/handover-proofs";
         }
 
         public static class Me
@@ -330,6 +351,18 @@ public static partial class ApiEndpoint
             public const string GetMyOutboundShipments = $"{Base}/outbound-shipments";
             public const string GetMyInboundShipments = $"{Base}/inbound-shipments";
             public const string GetSellerDirectShipOrders = $"{Base}/orders/seller-direct-ship";
+            public const string GetSellerOutboundShipments = $"{Base}/orders/seller-direct-ship/outbound-shipments";
+            public const string GetSellerOutboundShipmentById = $"{Base}/orders/seller-direct-ship/outbound-shipments/{{shipmentId:guid}}";
+            public const string GetSellerShippingProviderOptions = $"{Base}/orders/seller-direct-ship/shipping-provider-options";
+            public const string GetSellerDirectShipmentById = $"{Base}/orders/seller-direct-ship/shipments/{{shipmentId:guid}}";
+            public const string GetSellerDirectShipments = $"{Base}/orders/seller-direct-ship/shipments";
+
+            // Seller direct shipments (buyer-facing deep link)
+            public const string GetMyDirectShipments = $"{Base}/shipments";
+            public const string GetMyDirectShipmentById = $"{Base}/shipments/{{shipmentId:guid}}";
+            public const string AcknowledgeDirectShipmentReceived = $"{Base}/shipments/{{shipmentId:guid}}/acknowledge-received";
+            public const string SubmitProofOfDelivery = $"{Base}/shipments/{{shipmentId:guid}}/proof-of-delivery";
+            public const string ValidateDirectShipmentScan = $"{Base}/shipments/scan/validate";
 
             // Verifications
             public const string CreateVerification = $"{Base}/verifications";

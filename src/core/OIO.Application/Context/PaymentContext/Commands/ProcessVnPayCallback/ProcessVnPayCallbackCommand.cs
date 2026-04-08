@@ -5,6 +5,8 @@ using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Abstractions.Payment;
+using OIO.Application.Context.PaymentContext.Services;
+using OIO.Application.Context.OrderContext.Factories;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.Errors;
@@ -48,6 +50,7 @@ internal sealed class ProcessVnPayCallbackCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
     private readonly IGrainFactory _grainFactory;
+    private readonly BuyNowReservationFinalizer _buyNowReservationFinalizer;
     private readonly ILogger<ProcessVnPayCallbackCommandHandler> _logger;
 
     public ProcessVnPayCallbackCommandHandler(
@@ -56,6 +59,7 @@ internal sealed class ProcessVnPayCallbackCommandHandler
         IUnitOfWork unitOfWork,
         IClock clock,
         IGrainFactory grainFactory,
+        BuyNowReservationFinalizer buyNowReservationFinalizer,
         ILogger<ProcessVnPayCallbackCommandHandler> logger)
     {
         _paymentGateway = paymentGateway;
@@ -63,6 +67,7 @@ internal sealed class ProcessVnPayCallbackCommandHandler
         _unitOfWork = unitOfWork;
         _clock = clock;
         _grainFactory = grainFactory;
+        _buyNowReservationFinalizer = buyNowReservationFinalizer;
         _logger = logger;
     }
 
@@ -433,12 +438,24 @@ internal sealed class ProcessVnPayCallbackCommandHandler
         }
 
         // 5. Handle winner deposit conversion
-        var winnerDeposit = await _dbContext.Set<AuctionDeposit>()
-            .FirstOrDefaultAsync(
-                d => d.AuctionId == order.AuctionId &&
-                     d.BidderId == order.BuyerId &&
-                     d.Status == DepositStatus.Held,
+        // NOTE: Skip generic winner-deposit conversion when this order is linked to an active
+        // buy-now reservation. In that case BuyNowReservationFinalizer.ApplyBuyNowDepositFundingAsync
+        // is the single source of truth for converting the Held deposit into payment funding.
+        // Running this block here would double-convert the deposit and cause the finalizer
+        // to fail with "Held buyer deposit not found".
+        var isLinkedBuyNowReservation = await _dbContext.Set<AuctionBuyNowReservation>()
+            .AnyAsync(
+                r => r.OrderId == order.Id && r.Status == BuyNowReservationStatus.PendingPayment,
                 ct);
+
+        var winnerDeposit = isLinkedBuyNowReservation
+            ? null
+            : await _dbContext.Set<AuctionDeposit>()
+                .FirstOrDefaultAsync(
+                    d => d.AuctionId == order.AuctionId &&
+                         d.BidderId == order.BuyerId &&
+                         d.Status == DepositStatus.Held,
+                    ct);
 
         if (winnerDeposit is not null)
         {
@@ -468,12 +485,24 @@ internal sealed class ProcessVnPayCallbackCommandHandler
         }
 
         _logger.LogInformation("Order {OrderId} marked as Paid successfully", order.Id);
+
+        // 7. If this order originated from a Buy Now reservation (order-first flow),
+        //    finalize the reservation and mark the auction as Sold.
+        var finalizeBuyNowResult = await _buyNowReservationFinalizer.FinalizeAsync(order, now, ct);
+        if (finalizeBuyNowResult.IsFailure)
+            return finalizeBuyNowResult.Error;
+
         return UnitResult.Success<Error>();
     }
+
 
     /// <summary>
     /// Luá»“ng náº¡p tiá»n vÃ­: VNPay â†’ Wallet.Credit
     /// </summary>
+    // LEGACY-ONLY: Wave A made Buy Now order-first, so new flows use PaymentPurpose.OrderPayment
+    // and are handled by HandleOrderPaymentAsync + FinalizeLinkedBuyNowReservationAsync.
+    // This method remains as a fallback for in-flight transactions created with
+    // PaymentPurpose.AuctionBuyNow before the cutover. Do not use for new flows.
     private async Task<UnitResult<Error>> HandleAuctionBuyNowAsync(
         Transaction transaction,
         DateTime now,
@@ -681,51 +710,17 @@ internal sealed class ProcessVnPayCallbackCommandHandler
         return UnitResult.Success<Error>();
     }
 
-    private Result<Order, Error> CreateBuyNowOrder(
+    private static Result<Order, Error> CreateBuyNowOrder(
         Auction auction,
         User buyer,
         AuctionBuyNowReservation reservation,
         DateTime nowUtc)
-    {
-        var shippingAddress = buyer.Addresses.FirstOrDefault(x => x.IsDefault)
-                              ?? buyer.Addresses.FirstOrDefault();
-
-        var shipping = shippingAddress is null
-            ? ShippingSnapshot.Create(
-                recipientName: ResolveUserDisplayName(buyer),
-                phone: null,
-                address: "Address pending update",
-                ward: null,
-                district: null,
-                city: null)
-            : ShippingSnapshot.Create(
-                recipientName: shippingAddress.Recipient.RecipientName,
-                phone: shippingAddress.Recipient.Phone.Value,
-                address: shippingAddress.Address.Street,
-                ward: shippingAddress.Address.Ward,
-                district: shippingAddress.Address.District,
-                city: shippingAddress.Address.City);
-
-        var pricing = OrderPricing.Create(
-            itemPrice: reservation.BuyNowPrice,
-            shippingFee: 0m,
-            platformFee: 0m,
-            taxAmount: 0m,
-            totalAmount: reservation.BuyNowPrice);
-
-        return Order.Create(
-            auctionId: auction.Id,
-            buyerId: buyer.Id,
-            sellerId: auction.Item.SellerId,
-            shipping: shipping,
-            shippingAddressId: shippingAddress?.Id,
-            billingAddressId: shippingAddress?.Id,
-            pricing: pricing,
-            currency: reservation.BuyNowPrice.Currency.Id,
-            paymentDueAt: nowUtc,
-            nowUtc: nowUtc,
+        => BuyNowOrderFactory.Create(
+            auction,
+            buyer,
+            reservation,
+            nowUtc,
             notes: "Created from buy-now payment callback.");
-    }
 
     private async Task<UnitResult<Error>> ApplyBuyNowDepositFundingAsync(
         Auction auction,

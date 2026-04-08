@@ -56,6 +56,8 @@ namespace OIO.Infrastructure.Persistence.Converters;
 //OrderContext
 [EfCoreConverter<OrderId>]
 [EfCoreConverter<OrderReturnId>]
+[EfCoreConverter<SellerDirectShipmentId>]
+[EfCoreConverter<SellerDirectShipmentEvidenceId>]
 
 //PaymentContext
 [EfCoreConverter<EscrowId>]

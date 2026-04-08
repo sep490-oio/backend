@@ -56,6 +56,15 @@ internal sealed class ContinueVerifiedAuctionService
                 return timingResult.Error;
         }
 
+        // Sync linked Item to InAuction when auction has entered Scheduled/Active.
+        // MarkInAuction is idempotent: it no-ops unless current item status is Approved/Active.
+        if (auction.Status == AuctionStatus.Scheduled || auction.Status == AuctionStatus.Active)
+        {
+            var itemSyncResult = auction.Item.MarkInAuction(nowUtc);
+            if (itemSyncResult.IsFailure)
+                return itemSyncResult.Error;
+        }
+
         return Result.Success<VerifiedAuctionContinuationResult, Error>(
             new VerifiedAuctionContinuationResult(
                 auction.Id.Value,

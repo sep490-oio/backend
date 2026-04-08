@@ -8,6 +8,7 @@ using OIO.Application.Context.MediaContext.Services;
 using OIO.Application.Context.ModerationContext.Services;
 using OIO.Application.Context.NotificationContext.Services;
 using OIO.Application.Context.OrderContext.Services;
+using OIO.Application.Context.PaymentContext.Services;
 using OIO.Application.Context.UserContext.Services;
 
 namespace OIO.Application;
@@ -43,6 +44,10 @@ public static class DependencyInjection
         services.AddScoped<ItemShippingSelectionService>();
         services.AddScoped<IMediaRelocationService, MediaRelocationService>();
         services.AddScoped<EscrowSettlementService>();
+        services.AddScoped<IOrderReceiptService, OrderReceiptService>();
+        services.AddScoped<IOrderDeliveryService, OrderDeliveryService>();
+        services.AddScoped<IWinnerOrderProvisioner, WinnerOrderProvisioner>();
+        services.AddScoped<BuyNowReservationFinalizer>();
         services.AddScoped<ModerationAuditService>();
         services.AddScoped<VerificationDuplicateIdentityService>();
         services.AddScoped<DisputeAccessService>();

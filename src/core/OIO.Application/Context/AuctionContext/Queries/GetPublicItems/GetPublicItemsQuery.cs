@@ -56,10 +56,10 @@ internal sealed class GetPublicItemsQueryHandler(IDbContext dbContext)
 
         var query = dbContext.Set<Item>()
             .AsNoTracking()
-            .Where(x =>
-                x.Status == ItemStatus.Approved ||
-                x.Status == ItemStatus.Active ||
-                x.Status == ItemStatus.InAuction);
+            // /items/public is the buyer-facing browse page. Include both
+            // Active items and items currently InAuction so buyers can still
+            // discover listings that have been pushed into an auction.
+            .Where(x => x.Status == ItemStatus.Active || x.Status == ItemStatus.InAuction);
 
         // ===== FILTERS =====
 

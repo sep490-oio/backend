@@ -6,10 +6,12 @@ using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.PaymentContext.Commands.CreateVnPayPaymentUrl;
+using OIO.Application.Context.PaymentContext.Services;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Application.Abstractions.Payment;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Enums;
+using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.Errors;
 using OIO.Domain.Context.PaymentContext.Aggregates.Escrows;
@@ -41,6 +43,7 @@ internal sealed class CheckoutOrderCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
     private readonly MediatR.ISender _sender;
+    private readonly BuyNowReservationFinalizer _buyNowReservationFinalizer;
     private readonly ILogger<CheckoutOrderCommandHandler> _logger;
 
     public CheckoutOrderCommandHandler(
@@ -48,12 +51,14 @@ internal sealed class CheckoutOrderCommandHandler
         IUnitOfWork unitOfWork,
         IClock clock,
         MediatR.ISender sender,
+        BuyNowReservationFinalizer buyNowReservationFinalizer,
         ILogger<CheckoutOrderCommandHandler> logger)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _clock = clock;
         _sender = sender;
+        _buyNowReservationFinalizer = buyNowReservationFinalizer;
         _logger = logger;
     }
 
@@ -132,12 +137,24 @@ internal sealed class CheckoutOrderCommandHandler
         var orderAmount = order.Pricing.TotalAmount.Amount;
         var depositAmount = 0m;
 
-        var winnerDeposit = await _dbContext.Set<AuctionDeposit>()
-            .FirstOrDefaultAsync(
-                d => d.AuctionId == order.AuctionId &&
-                     d.BidderId == order.BuyerId &&
-                     d.Status == DepositStatus.Held,
+        // NOTE: Skip generic winner-deposit conversion when this order is linked to an active
+        // buy-now reservation. In that case BuyNowReservationFinalizer.ApplyBuyNowDepositFundingAsync
+        // is the single source of truth for converting the Held deposit into payment funding.
+        // Running this block here would double-convert the deposit and cause the finalizer
+        // to fail with "Held buyer deposit not found".
+        var isLinkedBuyNowReservation = await _dbContext.Set<AuctionBuyNowReservation>()
+            .AnyAsync(
+                r => r.OrderId == order.Id && r.Status == BuyNowReservationStatus.PendingPayment,
                 cancellationToken);
+
+        var winnerDeposit = isLinkedBuyNowReservation
+            ? null
+            : await _dbContext.Set<AuctionDeposit>()
+                .FirstOrDefaultAsync(
+                    d => d.AuctionId == order.AuctionId &&
+                         d.BidderId == order.BuyerId &&
+                         d.Status == DepositStatus.Held,
+                    cancellationToken);
 
         if (winnerDeposit is not null)
             depositAmount = winnerDeposit.Amount.Amount;
@@ -256,6 +273,12 @@ internal sealed class CheckoutOrderCommandHandler
         if (markPaidResult.IsFailure)
             return markPaidResult.Error;
 
+        // Wave C: If this order originated from a Buy Now reservation, finalize it
+        // so the auction transitions to Sold (mirrors ProcessVnPayCallback OrderPayment branch).
+        var finalizeBuyNowResult = await _buyNowReservationFinalizer.FinalizeAsync(order, now, cancellationToken);
+        if (finalizeBuyNowResult.IsFailure)
+            return finalizeBuyNowResult.Error;
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
@@ -362,4 +385,5 @@ internal sealed class CheckoutOrderCommandHandler
             TransactionRef: urlResult.Value.TransactionRef,
             PaymentUrl: urlResult.Value.PaymentUrl);
     }
+
 }

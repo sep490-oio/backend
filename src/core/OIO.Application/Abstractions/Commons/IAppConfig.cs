@@ -111,6 +111,7 @@ public sealed class OrderOptions
 
     public int ReturnDecisionWindowDays { get; set; } = 7;
     public int PaymentDeadlineHours { get; set; } = 48;
+    public int SellerShipSlaDays { get; set; } = 3;
 }
 
 public sealed class UploadContextOption

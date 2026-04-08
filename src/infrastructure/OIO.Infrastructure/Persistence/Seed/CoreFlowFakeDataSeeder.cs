@@ -602,7 +602,6 @@ public static class CoreFlowFakeDataSeeder
             priority: PriorityInfo.Create(priorityScore, "{\"seed\":true,\"source\":\"coreflow\"}"),
             isFeatured: isFeatured,
             nowUtc: nowUtc);
-        auction.Publish(nowUtc);
         auction.AddWatcher(bidder1.Id, nowUtc, notifyOnBid: true, notifyOnEnd: true);
         auction.AddWatcher(bidder2.Id, nowUtc, notifyOnBid: true, notifyOnEnd: true);
 

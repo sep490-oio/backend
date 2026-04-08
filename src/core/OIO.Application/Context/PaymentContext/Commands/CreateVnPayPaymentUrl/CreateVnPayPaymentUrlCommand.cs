@@ -191,14 +191,29 @@ internal sealed class CreateVnPayPaymentUrlCommandHandler
 
         if (request.Purpose == PaymentPurpose.OrderPayment && request.OrderId.HasValue)
         {
+            // Retry policy for order payment: never reuse a stale txnRef on VNPay.
+            // Any pre-existing pending transaction for the same (user, order) is
+            // cancelled here, and a fresh transaction + new txnRef is created below.
             var orderId = OrderId.From(request.OrderId.Value);
-            transaction = await _dbContext.Set<Transaction>()
-                .FirstOrDefaultAsync(t => 
+            var stalePending = await _dbContext.Set<Transaction>()
+                .Where(t =>
                     t.UserId == _currentUser.UserId &&
                     t.OrderId! == orderId &&
                     t.Status == TransactionStatus.Pending &&
-                    t.Type == TransactionType.Payment, 
-                    cancellationToken);
+                    t.Type == TransactionType.Payment)
+                .ToListAsync(cancellationToken);
+
+            foreach (var stale in stalePending)
+            {
+                var cancelResult = stale.CancelPending("retry_payment_replaced", now);
+                if (cancelResult.IsFailure)
+                    return cancelResult.Error;
+            }
+
+            if (stalePending.Count > 0)
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            // Leave `transaction` null so the block below always creates a new one.
         }
         else if (request.Purpose == PaymentPurpose.AuctionDeposit && request.AuctionId.HasValue)
         {
@@ -321,7 +336,8 @@ internal sealed class CreateVnPayPaymentUrlCommandHandler
         }
         else if (request.SaveCard)
         {
-            // Thanh toán lần đầu + lưu token
+            // Thanh toán lần đầu + lưu token. CardType must be spec code (01/02).
+            var resolvedCardType = request.CardType?.Trim() is "01" or "02" ? request.CardType!.Trim() : "01";
             urlResult = _paymentGateway.CreatePayAndCreateTokenUrl(new CreateTokenPaymentUrlRequest
             {
                 TransactionRef = txnRef,
@@ -329,7 +345,7 @@ internal sealed class CreateVnPayPaymentUrlCommandHandler
                 OrderDescription = request.Description,
                 AppUserId = appUserId,
                 IpAddress = ipStr,
-                CardType = request.CardType,
+                CardType = resolvedCardType,
             });
         }
         else

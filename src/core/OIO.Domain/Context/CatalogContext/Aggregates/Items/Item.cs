@@ -320,16 +320,15 @@ public sealed class Item : AggregateRoot<ItemId>, IAuditableEntity
 
     public UnitResult<Error> MarkInAuction(DateTime nowUtc)
     {
-        var result = EnsureCanTransition(ItemStatus.InAuction);
-        
-        if (result.IsFailure)
-        {
-            return result.Error;
-        }
-        
+        // Idempotent: only transition from Approved/Active. No-op for any other state
+        // (already InAuction, terminal Sold/Removed, etc.) so callers can invoke this
+        // unconditionally from auction lifecycle handlers without risking overwrites.
+        if (Status != ItemStatus.Approved && Status != ItemStatus.Active)
+            return UnitResult.Success<Error>();
+
         ChangeStatus(ItemStatus.InAuction, nowUtc);
-        
-        return result;
+
+        return UnitResult.Success<Error>();
     }
     
     public UnitResult<Error> MarkSold(DateTime nowUtc)

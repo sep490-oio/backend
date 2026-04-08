@@ -76,6 +76,16 @@ internal sealed class SubmitAuctionCommandHandler
         if (auctionResult.IsFailure)
             return auctionResult.Error;
 
+        // Sync linked Item to InAuction when the auction has been published into a
+        // schedulable/live lifecycle state. MarkInAuction is idempotent and only
+        // transitions from Approved/Active, so it is safe to call unconditionally.
+        if (auction.Status == AuctionStatus.Scheduled || auction.Status == AuctionStatus.Active)
+        {
+            var itemSyncResult = auction.Item.MarkInAuction(nowUtc);
+            if (itemSyncResult.IsFailure)
+                return itemSyncResult.Error;
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return UnitResult.Success<Error>();

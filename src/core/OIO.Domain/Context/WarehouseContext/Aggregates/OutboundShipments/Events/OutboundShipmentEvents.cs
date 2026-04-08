@@ -25,6 +25,12 @@ public sealed record OutboundShipmentPickedUpEvent(
     string CarrierTrackingNumber,
     DateTime OccurredOn) : DomainEvent(OccurredOn);
 
+public sealed record OutboundShipmentInTransitEvent(
+    string OutboundShipmentId,
+    string OrderId,
+    string ProviderCode,
+    DateTime OccurredOn) : DomainEvent(OccurredOn);
+
 public sealed record OutboundShipmentDeliveredEvent(
     string OutboundShipmentId,
     string OrderId,

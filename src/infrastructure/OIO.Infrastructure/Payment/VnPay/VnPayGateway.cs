@@ -283,12 +283,12 @@ public sealed class VnPayGateway : IPaymentGatewayService
             transactionRef: request.TransactionRef,
             txnDesc: request.OrderDescription,
             appUserId: request.AppUserId,
-            locale: request.Locale,
             ipAddress: request.IpAddress,
             amount: request.Amount);
 
-        vnpParams["vnp_StoreToken"] = "1";
-        vnpParams["vnp_CardType"] = request.CardType;
+        // pay_and_create: requires card_type and store_token=1
+        vnpParams["vnp_card_type"] = request.CardType!;
+        vnpParams["vnp_store_token"] = "1";
 
         return BuildTokenUrl(_vnPayConfig.CurrentValue.PayAndCreateUrl, vnpParams, request.TransactionRef, "pay_and_create");
     }
@@ -308,11 +308,11 @@ public sealed class VnPayGateway : IPaymentGatewayService
             transactionRef: request.TransactionRef,
             txnDesc: request.OrderDescription,
             appUserId: request.AppUserId,
-            locale: request.Locale,
             ipAddress: request.IpAddress,
             amount: request.Amount);
 
-        vnpParams["vnp_Token"] = request.Token;
+        // token_pay: requires token. Does NOT send card_type, store_token, expire_date.
+        vnpParams["vnp_token"] = request.Token;
 
         return BuildTokenUrl(_vnPayConfig.CurrentValue.TokenPayUrl, vnpParams, request.TransactionRef, "token_pay");
     }
@@ -332,11 +332,11 @@ public sealed class VnPayGateway : IPaymentGatewayService
             transactionRef: request.TransactionRef,
             txnDesc: request.OrderDescription,
             appUserId: request.AppUserId,
-            locale: request.Locale,
             ipAddress: request.IpAddress,
-            amount: null); // no payment for token creation
+            amount: null); // token_create: does NOT send vnp_amount / vnp_curr_code
 
-        vnpParams["vnp_CardType"] = request.CardType;
+        // token_create: requires card_type. Does NOT send store_token.
+        vnpParams["vnp_card_type"] = request.CardType!;
 
         return BuildTokenUrl(_vnPayConfig.CurrentValue.TokenCreateUrl, vnpParams, request.TransactionRef, "token_create");
     }
@@ -478,15 +478,18 @@ public sealed class VnPayGateway : IPaymentGatewayService
 
     /// <summary>
     /// Builds VNPay token-spec parameter set for pay_and_create, token_pay, token_create.
-    /// Uses token techspec field names (vnp_txn_desc, vnp_return_url, vnp_ip_addr, etc.)
-    /// which differ from gateway pay field names.
+    /// Field names follow VNPay token doc (lowercase snake_case):
+    /// https://sandbox.vnpayment.vn/apis/docs/thanh-toan-token/token.html
+    ///
+    /// Does NOT reuse gateway-pay keys (vnp_OrderInfo, vnp_ReturnUrl, vnp_IpAddr, etc.).
+    /// Does NOT include vnp_Locale or vnp_ExpireDate — not in token doc.
+    /// Amount/currency only included when amount > 0 (token_pay, pay_and_create).
     /// </summary>
     private SortedDictionary<string, string> BuildTokenParams(
         string command,
         string transactionRef,
         string txnDesc,
         string appUserId,
-        string locale,
         string ipAddress,
         decimal? amount = null)
     {
@@ -506,24 +509,23 @@ public sealed class VnPayGateway : IPaymentGatewayService
 
         var vnpParams = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
-            ["vnp_Version"] = _vnPayConfig.CurrentValue.Version,
-            ["vnp_Command"] = command,
-            ["vnp_TmnCode"] = _vnPayConfig.CurrentValue.TmnCode,
-            ["vnp_TxnRef"] = transactionRef,
-            ["vnp_OrderInfo"] = normalizedDesc,
-            ["vnp_ReturnUrl"] = $"{_appInfo.FeUrl}{_vnPayConfig.CurrentValue.ReturnPath}",
-            ["vnp_Locale"] = locale,
-            ["vnp_IpAddr"] = VnPayHelper.NormalizeIpAddress(ipAddress),
-            ["vnp_CreateDate"] = createDate.ToString("yyyyMMddHHmmss"),
-            ["vnp_AppUserId"] = safeAppUserId,
+            ["vnp_version"] = _vnPayConfig.CurrentValue.Version,
+            ["vnp_command"] = command,
+            ["vnp_tmn_code"] = _vnPayConfig.CurrentValue.TmnCode,
+            ["vnp_txn_ref"] = transactionRef,
+            ["vnp_app_user_id"] = safeAppUserId,
+            ["vnp_txn_desc"] = normalizedDesc,
+            ["vnp_return_url"] = $"{_appInfo.FeUrl}{_vnPayConfig.CurrentValue.ReturnPath}",
+            ["vnp_ip_addr"] = VnPayHelper.NormalizeIpAddress(ipAddress),
+            ["vnp_create_date"] = createDate.ToString("yyyyMMddHHmmss"),
         };
 
-        // Payment token flows include Amount, Currency, ExpireDate
+        // Payment-bearing token flows (token_pay, pay_and_create) include amount + currency.
+        // token_create does NOT send amount/curr_code.
         if (amount.HasValue && amount.Value > 0)
         {
-            vnpParams["vnp_Amount"] = (amount.Value * 100).ToString(CultureInfo.InvariantCulture);
-            vnpParams["vnp_CurrCode"] = "VND";
-            vnpParams["vnp_ExpireDate"] = createDate.AddMinutes(15).ToString("yyyyMMddHHmmss");
+            vnpParams["vnp_amount"] = (amount.Value * 100).ToString(CultureInfo.InvariantCulture);
+            vnpParams["vnp_curr_code"] = "VND";
         }
 
         return vnpParams;
@@ -535,9 +537,11 @@ public sealed class VnPayGateway : IPaymentGatewayService
         string transactionRef,
         string command)
     {
+        // Hash is computed over the URL-encoded sorted token-doc params only.
+        // The signature field itself uses the token-doc lowercase name vnp_secure_hash.
         var queryString = VnPayHelper.BuildQueryString(vnpParams);
         var secureHash = VnPayHelper.HmacSha512(_vnPayConfig.CurrentValue.HashSecret, queryString);
-        var paymentUrl = $"{baseUrl}?{queryString}&vnp_SecureHash={secureHash}";
+        var paymentUrl = $"{baseUrl}?{queryString}&vnp_secure_hash={secureHash}";
 
         LogUrlCreated(command, transactionRef, baseUrl, vnpParams);
 

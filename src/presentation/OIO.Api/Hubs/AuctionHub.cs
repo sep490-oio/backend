@@ -93,14 +93,14 @@ public sealed class AuctionHub : Hub<IAuctionHubClient>
     }
 
     [HasPermission(App.Permissions.Catalogs.Auctions.BuyNow)]
-    public async Task<HubCommandResult<BuyNowCheckoutDto>> BuyNow(Guid auctionId)
+    public async Task<HubCommandResult<BuyNowReservationDto>> BuyNow(Guid auctionId)
     {
         var httpContext = Context.GetHttpContext();
 
         var command = new BuyNowCommand(auctionId, httpContext?.GetIpAddress());
         var result = await _sender.Send(command);
 
-        return HubCommandResult<BuyNowCheckoutDto>.FromResult(result);
+        return HubCommandResult<BuyNowReservationDto>.FromResult(result);
     }
 
     [HasPermission(App.Permissions.Catalogs.Auctions.AutoBid)]

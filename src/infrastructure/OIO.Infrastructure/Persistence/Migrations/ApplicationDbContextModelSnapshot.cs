@@ -3230,6 +3230,21 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("disputed_at");
 
+                    b.Property<DateTime?>("EscalatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("escalated_at");
+
+                    b.Property<string>("EscalationReason")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("escalation_reason");
+
+                    b.Property<bool>("IsShippingOverdue")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_shipping_overdue");
+
                     b.Property<DateTime?>("LastPaymentAttemptAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_payment_attempt_at");
@@ -3263,6 +3278,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("SellerId")
                         .HasColumnType("uuid")
                         .HasColumnName("seller_id");
+
+                    b.Property<DateTime?>("ShipByAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ship_by_at");
 
                     b.Property<DateTime?>("ShippedAt")
                         .HasColumnType("timestamp with time zone")
@@ -3377,10 +3396,20 @@ namespace OIO.Infrastructure.Persistence.Migrations
                                 .HasColumnType("character varying(20)")
                                 .HasColumnName("shipping_phone");
 
+                            b1.Property<string>("PostalCode")
+                                .HasMaxLength(10)
+                                .HasColumnType("character varying(10)")
+                                .HasColumnName("shipping_postal_code");
+
                             b1.Property<string>("RecipientName")
                                 .HasMaxLength(100)
                                 .HasColumnType("character varying(100)")
                                 .HasColumnName("shipping_recipient_name");
+
+                            b1.Property<string>("Street")
+                                .HasMaxLength(255)
+                                .HasColumnType("character varying(255)")
+                                .HasColumnName("shipping_street");
 
                             b1.Property<string>("Ward")
                                 .HasMaxLength(100)
@@ -3417,6 +3446,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("SellerId")
                         .HasDatabaseName("idx_orders_seller");
+
+                    b.HasIndex("ShipByAt")
+                        .HasDatabaseName("idx_orders_overdue_scan")
+                        .HasFilter("is_shipping_overdue = false AND ship_by_at IS NOT NULL");
 
                     b.ToTable("orders", (string)null);
                 });
@@ -3518,6 +3551,203 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("idx_order_returns_tracking_number");
 
                     b.ToTable("order_returns", (string)null);
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.OrderContext.Aggregates.SellerDirectShipments.SellerDirectShipment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("BuyerAcceptedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("buyer_accepted_at");
+
+                    b.Property<string>("BuyerConditionNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("buyer_condition_notes");
+
+                    b.Property<string>("BuyerPackageCondition")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("buyer_package_condition");
+
+                    b.Property<DateTime?>("BuyerReceivedPackageAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("buyer_received_package_at");
+
+                    b.Property<DateTime?>("CarrierBookedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("carrier_booked_at");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("delivered_at");
+
+                    b.Property<DateTime?>("DisputedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("disputed_at");
+
+                    b.Property<string>("ExternalCarrierName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("external_carrier_name");
+
+                    b.Property<string>("ExternalTrackingCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("external_tracking_code");
+
+                    b.Property<string>("InternalTrackingCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("internal_tracking_code");
+
+                    b.Property<string>("ManualReviewReason")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("manual_review_reason");
+
+                    b.Property<bool>("ManualReviewRequired")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("manual_review_required");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
+
+                    b.Property<DateTime?>("OnDeliveringAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("on_delivering_at");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_id");
+
+                    b.Property<DateTime?>("PickedUpAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("picked_up_at");
+
+                    b.Property<string>("QrCodeUrl")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("qr_code_url");
+
+                    b.Property<string>("QrPayload")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("qr_payload");
+
+                    b.Property<DateTime?>("QrTokenIssuedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("qr_token_issued_at");
+
+                    b.Property<DateTime?>("QrTokenRevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("qr_token_revoked_at");
+
+                    b.Property<int>("QrTokenVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("qr_token_version");
+
+                    b.Property<DateTime?>("SellerDeclaredShippedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("seller_declared_shipped_at");
+
+                    b.Property<string>("ShipmentIdDisplay")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("shipment_id_display");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Status", "OIO.Domain.Context.OrderContext.Aggregates.SellerDirectShipments.SellerDirectShipment.Status#SellerDirectShipmentStatus", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<string>("Id")
+                                .IsRequired()
+                                .HasMaxLength(30)
+                                .HasColumnType("character varying(30)")
+                                .HasColumnName("status");
+                        });
+
+                    b.HasKey("Id")
+                        .HasName("pk_seller_direct_shipments");
+
+                    b.HasIndex("InternalTrackingCode")
+                        .IsUnique()
+                        .HasDatabaseName("uq_seller_direct_shipments_internal_tracking_code");
+
+                    b.HasIndex("OrderId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_seller_direct_shipments_order_id");
+
+                    b.HasIndex("ShipmentIdDisplay")
+                        .IsUnique()
+                        .HasDatabaseName("uq_seller_direct_shipments_shipment_id_display");
+
+                    b.ToTable("seller_direct_shipments", (string)null);
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.OrderContext.Aggregates.SellerDirectShipments.SellerDirectShipmentEvidence", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid>("MediaUploadId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("media_upload_id");
+
+                    b.Property<string>("MediaUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("media_url");
+
+                    b.Property<Guid>("ShipmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("shipment_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_seller_direct_shipment_evidence");
+
+                    b.HasIndex("ShipmentId", "Kind")
+                        .HasDatabaseName("ix_seller_direct_shipment_evidence_shipment_id_kind");
+
+                    b.ToTable("seller_direct_shipment_evidence", (string)null);
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.PaymentContext.Aggregates.Escrows.Escrow", b =>
@@ -7770,6 +8000,26 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.Navigation("Order");
                 });
 
+            modelBuilder.Entity("OIO.Domain.Context.OrderContext.Aggregates.SellerDirectShipments.SellerDirectShipment", b =>
+                {
+                    b.HasOne("OIO.Domain.Context.OrderContext.Aggregates.Orders.Order", null)
+                        .WithOne()
+                        .HasForeignKey("OIO.Domain.Context.OrderContext.Aggregates.SellerDirectShipments.SellerDirectShipment", "OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_seller_direct_shipments_orders_order_id");
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.OrderContext.Aggregates.SellerDirectShipments.SellerDirectShipmentEvidence", b =>
+                {
+                    b.HasOne("OIO.Domain.Context.OrderContext.Aggregates.SellerDirectShipments.SellerDirectShipment", null)
+                        .WithMany("Evidence")
+                        .HasForeignKey("ShipmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_seller_direct_shipment_evidence_seller_direct_shipments_shi");
+                });
+
             modelBuilder.Entity("OIO.Domain.Context.PaymentContext.Aggregates.Escrows.Escrow", b =>
                 {
                     b.HasOne("OIO.Domain.Context.OrderContext.Aggregates.Orders.Order", "Order")
@@ -8230,6 +8480,11 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.Navigation("OutboundShipments");
 
                     b.Navigation("Return");
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.OrderContext.Aggregates.SellerDirectShipments.SellerDirectShipment", b =>
+                {
+                    b.Navigation("Evidence");
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.PaymentContext.Aggregates.Escrows.Escrow", b =>

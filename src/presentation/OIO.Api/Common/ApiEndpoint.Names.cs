@@ -42,6 +42,18 @@ public static partial class ApiEndpoint
             public const string GetMyOutboundShipments = nameof(GetMyOutboundShipments);
             public const string GetMyInboundShipments = nameof(GetMyInboundShipments);
             public const string GetSellerDirectShipOrders = nameof(GetSellerDirectShipOrders);
+            public const string GetSellerOutboundShipments = nameof(GetSellerOutboundShipments);
+            public const string GetSellerOutboundShipmentById = nameof(GetSellerOutboundShipmentById);
+            public const string GetSellerShippingProviderOptions = nameof(GetSellerShippingProviderOptions);
+            public const string GetSellerDirectShipmentById = nameof(GetSellerDirectShipmentById);
+            public const string GetSellerDirectShipments = nameof(GetSellerDirectShipments);
+
+            // Seller direct shipments (buyer-facing)
+            public const string GetMyDirectShipments = nameof(GetMyDirectShipments);
+            public const string GetMyDirectShipmentById = nameof(GetMyDirectShipmentById);
+            public const string AcknowledgeDirectShipmentReceived = nameof(AcknowledgeDirectShipmentReceived);
+            public const string SubmitProofOfDelivery = nameof(SubmitProofOfDelivery);
+            public const string ValidateDirectShipmentScan = nameof(ValidateDirectShipmentScan);
 
             // Verifications
             public const string CreateVerification = nameof(CreateVerification);
@@ -128,6 +140,10 @@ public static partial class ApiEndpoint
             public const string FlagUser = nameof(FlagUser);
             public const string FlagAuction = nameof(FlagAuction);
             public const string CancelInvalidBid = nameof(CancelInvalidBid);
+
+            // Completed Auctions
+            public const string GetCompletedAuctions = nameof(GetCompletedAuctions);
+            public const string GetCompletedAuctionById = nameof(GetCompletedAuctionById);
         }
 
         public static class Auth
@@ -175,7 +191,6 @@ public static partial class ApiEndpoint
             public const string GetAuctionBids = nameof(GetAuctionBids);
             public const string CancelAuction = nameof(CancelAuction);
             public const string CloseAuction = nameof(CloseAuction);
-            public const string PublishAuction = nameof(PublishAuction);
             public const string SubmitAuction = nameof(SubmitAuction);
             public const string SetAuctionTiming = nameof(SetAuctionTiming);
             public const string ChooseAuctionShipping = nameof(ChooseAuctionShipping);
@@ -212,6 +227,7 @@ public static partial class ApiEndpoint
             public const string GetSellers = nameof(GetSellers);
             public const string GetSellerById = nameof(GetSellerById);
             public const string GetSellerItems = nameof(GetSellerItems);
+            public const string GetSellerWalletOverview = nameof(GetSellerWalletOverview);
         }
 
         public static class Reviews
@@ -224,6 +240,8 @@ public static partial class ApiEndpoint
         {
             public const string BookInboundShipment  = nameof(BookInboundShipment);
             public const string BookOutboundShipment = nameof(BookOutboundShipment);
+            public const string GetWarehouseStaffOutboundQueue = nameof(GetWarehouseStaffOutboundQueue);
+            public const string GetWarehouseStaffOutboundOrder = nameof(GetWarehouseStaffOutboundOrder);
             public const string GhnWebhook           = nameof(GhnWebhook);
             public const string GetInspectionQueue   = nameof(GetInspectionQueue);
             public const string InspectWarehouseItem = nameof(InspectWarehouseItem);
@@ -300,6 +318,20 @@ public static partial class ApiEndpoint
             public const string RejectOrderReturn = nameof(RejectOrderReturn);
             public const string ConfirmOrderReturnReceived = nameof(ConfirmOrderReturnReceived);
             public const string ConfirmOrderReceipt = nameof(ConfirmOrderReceipt);
+            public const string UpdateOrderShipping = nameof(UpdateOrderShipping);
+            public const string ConfirmSellerOrder = nameof(ConfirmSellerOrder);
+            public const string MarkOrderPickedUp = nameof(MarkOrderPickedUp);
+            public const string MarkOrderOnDelivering = nameof(MarkOrderOnDelivering);
+            public const string MarkOrderDelivered = nameof(MarkOrderDelivered);
+
+            // Seller direct shipments
+            public const string CreateSellerDirectShipment = nameof(CreateSellerDirectShipment);
+            public const string SetSellerDirectShipmentCarrierInfo = nameof(SetSellerDirectShipmentCarrierInfo);
+            public const string MarkSellerDirectShipmentPickedUp = nameof(MarkSellerDirectShipmentPickedUp);
+            public const string MarkSellerDirectShipmentOnDelivering = nameof(MarkSellerDirectShipmentOnDelivering);
+            public const string MarkSellerDirectShipmentDelivered = nameof(MarkSellerDirectShipmentDelivered);
+            public const string SetSellerDirectShipmentDispatchDetails = nameof(SetSellerDirectShipmentDispatchDetails);
+            public const string AddSellerDirectShipmentHandoverProofs = nameof(AddSellerDirectShipmentHandoverProofs);
         }
 
         public static class Reports

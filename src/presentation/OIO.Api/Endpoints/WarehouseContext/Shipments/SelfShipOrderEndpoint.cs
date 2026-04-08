@@ -40,6 +40,6 @@ public sealed record SelfShipOrderRequest(
     Guid    OrderId,
     string  ExternalCarrierName,
     string  CarrierTrackingNumber,
-    int     WeightGrams = 0,
+    int     WeightGrams,
     decimal InsuranceValue = 0,
     string? ShippingMethod = null);

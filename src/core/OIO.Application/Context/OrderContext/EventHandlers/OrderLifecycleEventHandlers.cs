@@ -30,7 +30,13 @@ internal sealed class OrderMarkedShippedEventHandler(
         if (order is null)
             return;
 
-        var result = order.MarkAsShipped(clock.UtcNow);
+        // Warehouse-managed orders advance via outbound events. Pickup by
+        // the carrier maps to Order.PickedUp. InTransit/Delivered events
+        // continue through the new progression (OnDelivering → Delivered).
+        // If the order is already past Processing (e.g. race with a
+        // manual seller action), MarkPickedUp returns a failure which we
+        // swallow to keep the event handler idempotent.
+        var result = order.MarkPickedUp(clock.UtcNow);
         if (result.IsFailure)
             return;
 
@@ -61,6 +67,46 @@ internal sealed class OrderMarkedShippedEventHandler(
                 EventType: "order_shipped",
                 Title: "Don hang da duoc gui",
                 Message: $"Don hang {order.OrderNumber.Value} da duoc don vi van chuyen tiep nhan.",
+                Priority: NotificationPriority.Normal,
+                EntityType: "Order",
+                EntityId: order.Id.Value),
+            cancellationToken);
+    }
+}
+
+internal sealed class OrderMarkedOnDeliveringEventHandler(
+    IDbContext dbContext,
+    IUnitOfWork unitOfWork,
+    IClock clock,
+    ISender sender,
+    ILogger<OrderMarkedOnDeliveringEventHandler> logger)
+    : INotificationHandler<OutboundShipmentInTransitEvent>
+{
+    public async Task Handle(OutboundShipmentInTransitEvent notification, CancellationToken cancellationToken)
+    {
+        var order = await dbContext.Set<Order>()
+            .FirstOrDefaultAsync(x => x.Id == OrderId.From(Guid.Parse(notification.OrderId)), cancellationToken);
+
+        if (order is null)
+            return;
+
+        // Warehouse-managed orders advance from PickedUp → OnDelivering when
+        // the carrier reports InTransit. Idempotent via the aggregate guard.
+        var result = order.MarkOnDelivering(clock.UtcNow);
+        if (result.IsFailure)
+            return;
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await NotificationDispatch.DispatchAsync(
+            sender,
+            logger,
+            new CreateNotificationCommand(
+                UserId: order.BuyerId.Value,
+                NotificationType: "order",
+                EventType: "order_on_delivering",
+                Title: "Don hang dang tren duong giao",
+                Message: $"Don hang {order.OrderNumber.Value} da len duong giao den ban.",
                 Priority: NotificationPriority.Normal,
                 EntityType: "Order",
                 EntityId: order.Id.Value),

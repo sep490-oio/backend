@@ -1,9 +1,11 @@
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Application.Context.WarehouseContext.Mappings;
+using OIO.Application.Extensions;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments;
 using OIO.Domain.Context.WarehouseContext.Enums;
@@ -11,61 +13,63 @@ using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.WarehouseContext.Queries.GetOutboundShipments;
 
+public record GetOutboundShipmentsQueryFilters : PagedParameters
+{
+    public string? Status { get; init; }
+    public Guid? OrderId { get; init; }
+    public string? Search { get; init; }
+    public DateTime? FromDate { get; init; }
+    public DateTime? ToDate { get; init; }
+}
 public sealed record GetOutboundShipmentsQuery(
-    string?   Status = null,
-    Guid?     OrderId = null,
-    string?   Search = null,
-    DateTime? FromDate = null,
-    DateTime? ToDate = null,
-    int       Page = 1,
-    int       PageSize = 20
-) : IQuery<IReadOnlyList<OutboundShipmentDto>>;
+    GetOutboundShipmentsQueryFilters Parameters
+) : IQuery<PagedList<OutboundShipmentDto>>;
 
 internal sealed class GetOutboundShipmentsQueryHandler(IDbContext db)
-    : IQueryHandler<GetOutboundShipmentsQuery, IReadOnlyList<OutboundShipmentDto>>
+    : IQueryHandler<GetOutboundShipmentsQuery, PagedList<OutboundShipmentDto>>
 {
-    public async Task<Result<IReadOnlyList<OutboundShipmentDto>, Error>> Handle(
+    public async Task<Result<PagedList<OutboundShipmentDto>, Error>> Handle(
         GetOutboundShipmentsQuery request,
         CancellationToken cancellationToken)
     {
+        var parameters = request.Parameters;
         var query = db.Set<OutboundShipment>()
-            .AsNoTracking()
-            .Include(s => s.TrackingEvents)
-            .AsSplitQuery()
-            .AsQueryable();
+            .AsNoTracking();
+            
 
-        if (!string.IsNullOrWhiteSpace(request.Status))
+        if (!string.IsNullOrWhiteSpace(parameters.Status))
         {
-            var status = OutboundShipmentStatus.FromId(request.Status.Trim().ToLowerInvariant());
+            var status = OutboundShipmentStatus.FromId(parameters.Status.Trim().ToLowerInvariant());
             if (status.HasNoValue)
-                return Array.Empty<OutboundShipmentDto>();
+                return PagedList<OutboundShipmentDto>.Empty();
 
             query = query.Where(s => s.Status == status.Value);
         }
 
-        if (request.OrderId.HasValue)
+        if (parameters.OrderId.HasValue)
         {
-            var orderId = OrderId.From(request.OrderId.Value);
+            var orderId = OrderId.From(parameters.OrderId.Value);
             query = query.Where(s => s.OrderId == orderId);
         }
 
-        if (!string.IsNullOrWhiteSpace(request.Search))
+        if (!string.IsNullOrWhiteSpace(parameters.Search))
             query = query.Where(s =>
-                s.CarrierTrackingNumber!.Contains(request.Search) ||
-                s.ClientOrderCode.Contains(request.Search));
+                s.CarrierTrackingNumber!.Contains(parameters.Search) ||
+                s.ClientOrderCode.Contains(parameters.Search));
 
-        if (request.FromDate.HasValue)
-            query = query.Where(s => s.CreatedAt >= request.FromDate.Value);
+        if (parameters.FromDate.HasValue)
+            query = query.Where(s => s.CreatedAt >= parameters.FromDate.Value);
 
-        if (request.ToDate.HasValue)
-            query = query.Where(s => s.CreatedAt <= request.ToDate.Value);
+        if (parameters.ToDate.HasValue)
+            query = query.Where(s => s.CreatedAt <= parameters.ToDate.Value);
 
+        var totalCount = await query.CountAsync(cancellationToken);
+        
         var shipments = await query
             .OrderByDescending(s => s.CreatedAt)
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
-            .ToListAsync(cancellationToken);
+            .Select(s => s.ToDto())
+            .ToPagedListAsync(totalCount, parameters, cancellationToken);
 
-        return shipments.Select(s => s.ToDto()).ToList();
+        return shipments;
     }
 }

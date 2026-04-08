@@ -22,10 +22,17 @@ internal sealed class OrderPaidIntegrationEventHandler(
 {
     public async Task Handle(OrderPaidIntegrationEvent notification, CancellationToken cancellationToken)
     {
+        // Ownership change: warehouse-managed orders must wait for warehouse
+        // staff to book outbound manually. Auto-booking on Order.Paid is
+        // disabled; this handler is kept as a stub so integration-event
+        // plumbing continues to compile, but no side-effects run.
         logger.LogInformation(
-            "OrderPaidIntegrationEvent received for OrderId: {OrderId}. Attempting to auto-book outbound shipment.",
+            "OrderPaidIntegrationEvent received for OrderId: {OrderId}. Auto-book outbound is disabled — warehouse staff will book manually.",
             notification.OrderId);
+        await Task.CompletedTask;
+        return;
 
+#pragma warning disable CS0162 // unreachable: reference implementation kept for warehouse-staff context extraction
         var orderId = OrderId.From(notification.OrderId);
 
         // 1. Load order with shipping info
@@ -106,5 +113,6 @@ internal sealed class OrderPaidIntegrationEventHandler(
                 "Successfully auto-booked outbound shipment for Order {OrderId}, WarehouseItem {WarehouseItemId}.",
                 notification.OrderId, warehouseItem.Id.Value);
         }
+#pragma warning restore CS0162
     }
 }

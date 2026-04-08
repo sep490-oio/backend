@@ -155,7 +155,7 @@ public static class IdempotencyHttpPolicies
             ErrorFactory: CreateBidError,
             SuccessResultKind: IdempotencySuccessResultKind.Created);
 
-    public static IdempotencyEndpointPolicy<BuyNowCheckoutDto> BuyNow() =>
+    public static IdempotencyEndpointPolicy<BuyNowReservationDto> BuyNow() =>
         new(
             CacheKeyPrefixFactory: (context, currentUser) =>
             {

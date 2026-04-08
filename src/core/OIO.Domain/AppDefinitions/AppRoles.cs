@@ -166,7 +166,6 @@ public static partial class App
 
                     // Auctions
                     Permissions.Catalogs.Auctions.Create,
-                    Permissions.Catalogs.Auctions.Publish,
                     Permissions.Catalogs.Auctions.Submit,
                     Permissions.Catalogs.Auctions.Cancel,
                     Permissions.Catalogs.Me.ReadAuctions,

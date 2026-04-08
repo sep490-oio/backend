@@ -1,8 +1,8 @@
 namespace OIO.Application.Context.AuctionContext.DTOs;
 
-public sealed record BuyNowCheckoutDto(
+public sealed record BuyNowReservationDto(
     Guid ReservationId,
-    string PaymentUrl,
+    Guid OrderId,
     DateTime ExpiresAt,
     MoneyDto BuyNowPrice,
     MoneyDto DepositAppliedAmount,

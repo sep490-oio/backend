@@ -145,6 +145,16 @@ internal sealed class UpdateAuctionCommandHandler
         if (updateResult.IsFailure)
             return updateResult.Error;
 
+        // Sync linked Item to InAuction when UpdateConfiguration promoted the auction
+        // to Scheduled (Approved + Info -> Scheduled). MarkInAuction is idempotent.
+        if (auction.Status == OIO.Domain.Context.AuctionContext.Enums.AuctionStatus.Scheduled ||
+            auction.Status == OIO.Domain.Context.AuctionContext.Enums.AuctionStatus.Active)
+        {
+            var itemSyncResult = auction.Item.MarkInAuction(nowUtc);
+            if (itemSyncResult.IsFailure)
+                return itemSyncResult.Error;
+        }
+
         _dbContext.Update(auction);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

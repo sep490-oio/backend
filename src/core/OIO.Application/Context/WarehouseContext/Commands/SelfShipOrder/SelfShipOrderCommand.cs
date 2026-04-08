@@ -12,8 +12,8 @@ public sealed record SelfShipOrderCommand(
     Guid   OrderId,
     string ExternalCarrierName,
     string CarrierTrackingNumber,
-    // Optional package info
-    int     WeightGrams = 0,
+    // Weight is required and must be positive — PackageDimensions rejects 0/negative.
+    int     WeightGrams,
     decimal InsuranceValue = 0,
     string? ShippingMethod = null
 ) : ICommand<OutboundShipmentDto>, IHasValidate
@@ -23,5 +23,6 @@ public sealed record SelfShipOrderCommand(
             .WithOwnerName("SelfShipOrder")
             .Field(OrderId).NotEmptyGuid()
             .Field(ExternalCarrierName).NotWhiteSpace()
-            .Field(CarrierTrackingNumber).NotWhiteSpace();
+            .Field(CarrierTrackingNumber).NotWhiteSpace()
+            .Field(WeightGrams).GreaterThan(0);
 }

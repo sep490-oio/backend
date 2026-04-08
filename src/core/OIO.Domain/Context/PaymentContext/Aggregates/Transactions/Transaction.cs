@@ -133,6 +133,31 @@ public sealed class Transaction : AggregateRoot<TransactionId>, ICreatedAtEntity
         return UnitResult.Success<Error>();
     }
 
+    /// <summary>
+    /// Cancels a pending transaction. Used when the user retries a VNPay
+    /// payment attempt for an order — the stale pending transaction is
+    /// closed out so a fresh transaction (with a new txnRef) can be created
+    /// for the new gateway session. Only valid while status is Pending.
+    /// </summary>
+    /// <param name="reason">Machine-readable reason such as "retry_payment_replaced".</param>
+    /// <param name="nowUtc">Processed-at timestamp.</param>
+    public UnitResult<Error> CancelPending(string reason, DateTime nowUtc)
+    {
+        if (Status != TransactionStatus.Pending)
+            return Error.Conflict("Transaction.InvalidStatus",
+                $"Cannot cancel. Only pending transactions may be cancelled. Current status: {Status}");
+
+        Status = TransactionStatus.Cancelled;
+        ProcessedAt = nowUtc;
+        if (!string.IsNullOrWhiteSpace(reason))
+        {
+            Description = string.IsNullOrWhiteSpace(Description)
+                ? $"[cancelled:{reason}]"
+                : $"{Description} [cancelled:{reason}]";
+        }
+        return UnitResult.Success<Error>();
+    }
+
     public void SetClientReturnPath(string? path)
     {
         if (path is not null && IsValidClientReturnPath(path))

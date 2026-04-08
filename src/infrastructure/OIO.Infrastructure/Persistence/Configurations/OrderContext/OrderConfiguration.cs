@@ -51,6 +51,10 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
                 .HasColumnName("shipping_address")
                 .IsRequired();
 
+            s.Property(x => x.Street)
+                .HasColumnName("shipping_street")
+                .HasMaxLength(255);
+
             s.Property(x => x.Ward)
                 .HasColumnName("shipping_ward")
                 .HasMaxLength(100);
@@ -62,6 +66,10 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
             s.Property(x => x.City)
                 .HasColumnName("shipping_city")
                 .HasMaxLength(120);
+
+            s.Property(x => x.PostalCode)
+                .HasColumnName("shipping_postal_code")
+                .HasMaxLength(10);
         });
 
         builder.Property(o => o.BillingAddressId)
@@ -167,6 +175,21 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.CancelledAt)
             .HasColumnName("cancelled_at");
 
+        builder.Property(o => o.ShipByAt)
+            .HasColumnName("ship_by_at");
+
+        builder.Property(o => o.IsShippingOverdue)
+            .HasColumnName("is_shipping_overdue")
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(o => o.EscalatedAt)
+            .HasColumnName("escalated_at");
+
+        builder.Property(o => o.EscalationReason)
+            .HasColumnName("escalation_reason")
+            .HasMaxLength(100);
+
         builder.Property(o => o.Version)
             .HasColumnName("version")
             .HasDefaultValue(0)
@@ -212,5 +235,9 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
 
         builder.HasIndex(o => o.LastPaymentAttemptAt)
             .HasDatabaseName("idx_orders_last_payment_attempt_at");
+
+        builder.HasIndex(o => o.ShipByAt)
+            .HasDatabaseName("idx_orders_overdue_scan")
+            .HasFilter("is_shipping_overdue = false AND ship_by_at IS NOT NULL");
     }
 }

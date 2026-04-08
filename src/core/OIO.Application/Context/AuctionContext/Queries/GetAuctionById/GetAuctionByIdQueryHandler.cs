@@ -11,6 +11,8 @@ using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.OrderContext.Aggregates.Orders;
+using OIO.Domain.Context.OrderContext.Enums;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
@@ -183,6 +185,31 @@ internal sealed class GetAuctionByIdQueryHandler
             x => x.Id.Value,
             x => AuctionNotificationDisplayNames.Resolve(x));
 
+        CurrentBuyerOrderDto? currentBuyerOrder = null;
+
+        if (_currentUser.IsAuthenticated)
+        {
+            var userId = _currentUser.UserId;
+            var isAuctionWinner = auction.WinnerId == userId;
+            var isBuyNowWinner = auction.BuyNowReservations.Any(r => r.BuyerId == userId);
+
+            if (isAuctionWinner || isBuyNowWinner)
+            {
+                var order = await _dbContext.Set<Order>()
+                    .AsNoTracking()
+                    .Where(o => o.AuctionId == auctionId && o.BuyerId == userId)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (order is not null)
+                {
+                    currentBuyerOrder = new CurrentBuyerOrderDto(
+                        OrderId: order.Id.Value,
+                        OrderStatus: order.Status.Id,
+                        CanPayNow: order.Status == OrderStatus.PendingPayment);
+                }
+            }
+        }
+
         return new AuctionDetailDto(
             Auction: auction.ToDto(nowUtc, _runtimeSettings.Auction.ExtensionThreshold),
             Item: auction.Item.ToDto(),
@@ -204,7 +231,8 @@ internal sealed class GetAuctionByIdQueryHandler
                 })
                 .ToList(),
             CurrentUserParticipant: currentUserParticipant,
-            CurrentUserBidState: currentUserBidState);
+            CurrentUserBidState: currentUserBidState,
+            CurrentBuyerOrder: currentBuyerOrder);
     }
 }
 

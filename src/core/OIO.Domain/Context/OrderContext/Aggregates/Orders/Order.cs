@@ -46,6 +46,12 @@ public sealed class Order : AggregateRoot<OrderId>, IAuditableEntity
     public DateTime? CompletedAt { get; private set; }
     public DateTime? CancelledAt { get; private set; }
 
+    // Seller ship-by SLA + escalation tracking
+    public DateTime? ShipByAt { get; private set; }
+    public bool IsShippingOverdue { get; private set; }
+    public DateTime? EscalatedAt { get; private set; }
+    public string? EscalationReason { get; private set; }
+
     public int Version { get; private set; }
     public string? Notes { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -96,6 +102,23 @@ public sealed class Order : AggregateRoot<OrderId>, IAuditableEntity
         };
     }
 
+    /// <summary>
+    /// Replaces the shipping snapshot on this order. Allowed while the order
+    /// is awaiting payment OR already paid (but not yet picked up by seller
+    /// fulfillment). Once the order transitions to Processing or beyond, the
+    /// shipping snapshot is frozen. This supports buy-now orders whose
+    /// initial snapshot was only a legacy placeholder.
+    /// </summary>
+    public UnitResult<Error> UpdateShipping(ShippingSnapshot newShipping, DateTime nowUtc)
+    {
+        if (Status != OrderStatus.PendingPayment && Status != OrderStatus.Paid)
+            return Errors.OrderErrors.Order.InvalidState(Status.Id, "update shipping");
+
+        Shipping = newShipping;
+        ModifiedAt = nowUtc;
+        return UnitResult.Success<Error>();
+    }
+
     public UnitResult<Error> InitializePayment(DateTime nowUtc)
     {
         if (Status != OrderStatus.PendingPayment)
@@ -120,6 +143,27 @@ public sealed class Order : AggregateRoot<OrderId>, IAuditableEntity
         return UnitResult.Success<Error>();
     }
 
+    /// <summary>
+    /// Seller confirms a paid order and begins fulfillment. Transitions
+    /// Paid → Processing. Only valid while status is Paid. Seller-side
+    /// handler enforces the seller-is-caller check before calling this.
+    /// </summary>
+    public UnitResult<Error> ConfirmBySeller(DateTime nowUtc)
+    {
+        if (Status != OrderStatus.Paid)
+            return Errors.OrderErrors.Order.InvalidState(Status.Id, "confirm order");
+
+        Status = OrderStatus.Processing;
+        ModifiedAt = nowUtc;
+        return UnitResult.Success<Error>();
+    }
+
+    /// <summary>
+    /// LEGACY path. Retained for older call sites that still mark orders as
+    /// `shipped` directly. New code must use MarkPickedUpBySeller /
+    /// MarkOnDeliveringBySeller (self-ship) or the outbound-shipment event
+    /// handlers (warehouse-managed) which target picked_up / on_delivering.
+    /// </summary>
     public UnitResult<Error> MarkAsShipped(DateTime nowUtc)
     {
         if (Status != OrderStatus.Paid && Status != OrderStatus.Processing)
@@ -132,9 +176,49 @@ public sealed class Order : AggregateRoot<OrderId>, IAuditableEntity
         return UnitResult.Success<Error>();
     }
 
+    /// <summary>
+    /// Seller (self-ship) marks the order as picked up from their end.
+    /// Transitions Processing → PickedUp. Also populates ShippedAt on the
+    /// first fulfillment step so existing timeline UI that reads ShippedAt
+    /// keeps rendering a timestamp. Caller must verify seller ownership
+    /// and seller_self_ship flow before invoking.
+    /// </summary>
+    public UnitResult<Error> MarkPickedUp(DateTime nowUtc)
+    {
+        if (Status != OrderStatus.Processing)
+            return Errors.OrderErrors.Order.InvalidState(Status.Id, "mark picked up");
+
+        Status = OrderStatus.PickedUp;
+        ShippedAt ??= nowUtc;
+        ModifiedAt = nowUtc;
+        return UnitResult.Success<Error>();
+    }
+
+    /// <summary>
+    /// Seller (self-ship) marks the order as handed to delivery and in
+    /// transit. Transitions PickedUp → OnDelivering. Legacy `shipped` rows
+    /// are also accepted so self-ship sellers can advance historical
+    /// orders into the new progression without a data repair step.
+    /// </summary>
+    public UnitResult<Error> MarkOnDelivering(DateTime nowUtc)
+    {
+        if (Status != OrderStatus.PickedUp && Status != OrderStatus.Shipped)
+            return Errors.OrderErrors.Order.InvalidState(Status.Id, "mark on delivering");
+
+        Status = OrderStatus.OnDelivering;
+        ModifiedAt = nowUtc;
+        return UnitResult.Success<Error>();
+    }
+
     public UnitResult<Error> MarkAsDelivered(DateTime deliveredAt, DateTime decisionWindowEndsAt, DateTime nowUtc)
     {
-        if (Status != OrderStatus.Shipped && Status != OrderStatus.Processing)
+        // Canonical predecessors: OnDelivering (new flow) or Shipped (legacy
+        // rows). Processing is kept for back-compat with callers that skip
+        // the progression for instant deliveries.
+        if (Status != OrderStatus.OnDelivering &&
+            Status != OrderStatus.Shipped &&
+            Status != OrderStatus.PickedUp &&
+            Status != OrderStatus.Processing)
             return Errors.OrderErrors.Order.InvalidState(Status.Id, "mark as delivered");
 
         Status = OrderStatus.Delivered;
@@ -147,7 +231,11 @@ public sealed class Order : AggregateRoot<OrderId>, IAuditableEntity
 
     public UnitResult<Error> MarkAsDisputed(DateTime nowUtc)
     {
-        if (Status != OrderStatus.Delivered && Status != OrderStatus.Paid && Status != OrderStatus.Shipped)
+        if (Status != OrderStatus.Delivered &&
+            Status != OrderStatus.Paid &&
+            Status != OrderStatus.Shipped &&
+            Status != OrderStatus.PickedUp &&
+            Status != OrderStatus.OnDelivering)
             return Errors.OrderErrors.Order.InvalidState(Status.Id, "mark as disputed");
 
         Status = OrderStatus.Disputed;
@@ -250,6 +338,39 @@ public sealed class Order : AggregateRoot<OrderId>, IAuditableEntity
             OccurredAt: nowUtc));
 
         return UnitResult.Success<Error>();
+    }
+
+    /// <summary>
+    /// Stamps the seller ship-by SLA deadline onto the order. Idempotent:
+    /// once set, subsequent calls are a no-op so retries / replays do not
+    /// clobber an earlier deadline.
+    /// </summary>
+    public UnitResult<Error> StampShipBySla(DateTime shipByAt)
+    {
+        if (ShipByAt is not null)
+            return UnitResult.Success<Error>();
+
+        ShipByAt = shipByAt;
+        return UnitResult.Success<Error>();
+    }
+
+    /// <summary>
+    /// Marks the order as overdue on the seller ship-by SLA and records the
+    /// escalation metadata. Idempotent: subsequent calls return success with
+    /// value=false so the overdue-scan job can safely reprocess the same row
+    /// without re-emitting alerts/notifications. Returns true only on the
+    /// transition from not-overdue → overdue.
+    /// </summary>
+    public Result<bool, Error> MarkShippingOverdue(string reason, DateTime nowUtc)
+    {
+        if (IsShippingOverdue)
+            return false;
+
+        IsShippingOverdue = true;
+        EscalatedAt = nowUtc;
+        EscalationReason = reason;
+        ModifiedAt = nowUtc;
+        return true;
     }
 
     private Order() { }

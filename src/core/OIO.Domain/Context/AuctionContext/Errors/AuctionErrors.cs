@@ -79,11 +79,7 @@ public static class AuctionErrors
             Error.Forbidden("Auction.OnlyOwnerCanCancel", 
                 "Only the auction owner can cancel.");
         
-        public static readonly Error OnlyOwnerCanPublish = 
-            Error.Forbidden("Auction.OnlyOwnerCanCancel", 
-                "Only the auction owner can publish.");
-        
-        public static readonly Error NoRunnerUp =
+public static readonly Error NoRunnerUp =
             Error.NotFound("Auction.NoRunnerUp",
                 "No eligible runner-up bidder found.");
 
@@ -157,7 +153,7 @@ public static class AuctionErrors
 
         public static readonly Error BuyNowUnavailableForScheduledAuction =
             Error.Conflict("Auction.BuyNowUnavailableForScheduledAuction",
-                "Buy now is only available while qualification is open before the auction starts.");
+                "Buy Now is not available for this auction.");
     }
 
     public static class Bid

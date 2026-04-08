@@ -23,7 +23,7 @@ public sealed class BuyNowEndpoint : IEndpoint
 
                 return result;
             })
-            .AddEndpointFilter(new IdempotencyFilter<BuyNowCheckoutDto>(IdempotencyHttpPolicies.BuyNow()))
+            .AddEndpointFilter(new IdempotencyFilter<BuyNowReservationDto>(IdempotencyHttpPolicies.BuyNow()))
             .RequireAuthorization(App.Permissions.Catalogs.Auctions.BuyNow)
             .WithName(ApiEndpoint.Names.Auctions.BuyNow)
             .WithTags(ApiEndpoint.Tags.Auctions)

@@ -4,8 +4,10 @@ using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
+using OIO.Application.Abstractions.Scheduling;
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
+using OIO.Application.Context.AuctionContext.Services;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Enums;
@@ -49,19 +51,25 @@ internal sealed class SetAuctionTimingCommandHandler
     private readonly ICurrentUser _currentUser;
     private readonly IRuntimeSettings _runtimeSettings;
     private readonly IClock _clock;
+    private readonly IAuctionScheduler _scheduler;
+    private readonly AuctionActivationService _auctionActivationService;
 
     public SetAuctionTimingCommandHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
         IRuntimeSettings runtimeSettings,
-        IClock clock)
+        IClock clock,
+        IAuctionScheduler scheduler,
+        AuctionActivationService auctionActivationService)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _runtimeSettings = runtimeSettings;
         _clock = clock;
+        _scheduler = scheduler;
+        _auctionActivationService = auctionActivationService;
     }
 
     public async Task<Result<AuctionDto, Error>> Handle(
@@ -73,7 +81,10 @@ internal sealed class SetAuctionTimingCommandHandler
 
         var auction = await _dbContext.GetByIdAsync<Auction, AuctionId>(
             id: auctionId,
-            queryBuilder: q => q.Include(a => a.Item).ThenInclude(i => i.Media),
+            queryBuilder: q => q
+                .Include(a => a.Item).ThenInclude(i => i.Media)
+                .Include(a => a.Deposits)
+                .Include(a => a.Participants),
             cancellationToken: cancellationToken);
 
         if (auction is null)
@@ -113,8 +124,38 @@ internal sealed class SetAuctionTimingCommandHandler
         var result = auction.SetTiming(auctionInfo, nowUtc);
         if (result.IsFailure) return result.Error;
 
+        // Sync linked Item to InAuction now that auction has entered Scheduled.
+        // MarkInAuction is idempotent (no-op unless item is Approved/Active).
+        if (auction.Status == AuctionStatus.Scheduled || auction.Status == AuctionStatus.Active)
+        {
+            var itemSyncResult = auction.Item.MarkInAuction(nowUtc);
+            if (itemSyncResult.IsFailure)
+                return itemSyncResult.Error;
+        }
+
         _dbContext.Update(auction);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // After timing is configured, schedule the auction start or activate immediately if start time is in the past.
+        if (auction.Status == AuctionStatus.Scheduled && auction.Info!.HasStarted(nowUtc))
+        {
+            var activationResult = await _auctionActivationService.ActivateScheduledAuctionAsync(
+                auction,
+                nowUtc,
+                cancellationToken);
+            if (activationResult.IsFailure)
+                return activationResult.Error;
+        }
+        else
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            if (auction.Status == AuctionStatus.Scheduled)
+            {
+                await _scheduler.ScheduleStartAsync(
+                    auction.Id.Value,
+                    auction.Info!.StartTime,
+                    cancellationToken);
+            }
+        }
 
         return auction.ToDto(nowUtc,
             _runtimeSettings.Auction.ExtensionThreshold);

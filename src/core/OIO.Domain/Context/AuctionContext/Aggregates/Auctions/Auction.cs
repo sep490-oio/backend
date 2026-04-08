@@ -317,18 +317,6 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         return UnitResult.Success<Error>();
     }
 
-    public UnitResult<Error> Publish(DateTime nowUtc)
-    {
-        if (Status != AuctionStatus.Scheduled)
-            return AuctionErrors.Auction.InvalidState(Status.Id, "publish");
-
-        if (Info is null)
-            return AuctionErrors.Auction.TimingRequired;
-
-        ModifiedAt = nowUtc;
-        return UnitResult.Success<Error>();
-    }
-    
     public UnitResult<Error> Start(DateTime nowUtc)
     {
         var result = EnsureCanTransition(AuctionStatus.Active);
@@ -1922,14 +1910,18 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         if (sellerResult.IsFailure)
             return sellerResult.Error;
 
-        if (Status != AuctionStatus.Scheduled)
-            return AuctionErrors.Auction.BuyNowUnavailableForScheduledAuction;
+        if (Status == AuctionStatus.Scheduled)
+        {
+            if (Info is null)
+                return AuctionErrors.Auction.TimingRequired;
 
-        if (Info is null)
-            return AuctionErrors.Auction.TimingRequired;
-
-        if (!Info.HasQualification || !Info.IsQualificationOpen(nowUtc))
+            if (!Info.HasQualification || !Info.IsQualificationOpen(nowUtc))
+                return AuctionErrors.Auction.BuyNowUnavailableForScheduledAuction;
+        }
+        else if (Status != AuctionStatus.Active)
+        {
             return AuctionErrors.Auction.BuyNowUnavailableForScheduledAuction;
+        }
 
         return UnitResult.Success<Error>();
     }

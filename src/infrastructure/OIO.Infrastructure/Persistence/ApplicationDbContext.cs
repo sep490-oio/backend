@@ -200,6 +200,12 @@ public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
         configurationBuilder.Properties<OrderReturnId>()
             .HaveConversion<EfCoreConverters.OrderReturnIdEfCoreValueConverter>();
 
+        configurationBuilder.Properties<SellerDirectShipmentId>()
+            .HaveConversion<EfCoreConverters.SellerDirectShipmentIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<SellerDirectShipmentEvidenceId>()
+            .HaveConversion<EfCoreConverters.SellerDirectShipmentEvidenceIdEfCoreValueConverter>();
+
         configurationBuilder.Properties<EscrowId>()
             .HaveConversion<EfCoreConverters.EscrowIdEfCoreValueConverter>();
 

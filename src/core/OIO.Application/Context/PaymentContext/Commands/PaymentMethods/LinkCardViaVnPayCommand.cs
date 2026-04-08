@@ -15,9 +15,31 @@ namespace OIO.Application.Context.PaymentContext.Commands.PaymentMethods;
 /// <summary>
 /// Tạo URL VNPay token_create để user link thẻ (không thanh toán).
 /// User redirect → nhập thẻ → OTP → callback tạo PaymentMethod tự động.
+///
+/// CardType follows VNPay token spec codes:
+///   "01" = ATM domestic card (default)
+///   "02" = international credit/debit card
+/// Do not pass gateway-pay values like "vnpay" here.
 /// </summary>
 public sealed record LinkCardViaVnPayCommand(
     string? CardType = null) : ICommand<LinkCardViaVnPayResponse>;
+
+internal static class LinkCardViaVnPayCardTypes
+{
+    public const string DomesticAtm = "01";
+    public const string InternationalCard = "02";
+
+    /// <summary>
+    /// Resolves user-supplied card type to a spec-compliant code.
+    /// Rejects legacy values like "vnpay" by falling back to the domestic default.
+    /// </summary>
+    public static string Resolve(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return DomesticAtm;
+        var trimmed = raw.Trim();
+        return trimmed is DomesticAtm or InternationalCard ? trimmed : DomesticAtm;
+    }
+}
 
 public sealed record LinkCardViaVnPayResponse(
     string RedirectUrl,
@@ -77,7 +99,7 @@ internal sealed class LinkCardViaVnPayCommandHandler
         _dbContext.Insert(transaction);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        // Generate VnPay token_create URL
+        // Generate VnPay token_create URL. CardType must be spec code (01/02).
         var urlResult = _paymentGateway.CreateTokenOnlyUrl(new CreateTokenPaymentUrlRequest
         {
             TransactionRef = txnRef,
@@ -85,7 +107,7 @@ internal sealed class LinkCardViaVnPayCommandHandler
             OrderDescription = "Lien ket the thanh toan",
             AppUserId = _currentUser.UserId.Value.ToString(),
             IpAddress = "127.0.0.1",
-            CardType = request.CardType,
+            CardType = LinkCardViaVnPayCardTypes.Resolve(request.CardType),
         });
 
         if (urlResult.IsFailure)

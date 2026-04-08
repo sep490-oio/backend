@@ -69,6 +69,19 @@ internal sealed class AuctionActivationService
         if (startResult.IsFailure)
             return startResult.Error;
 
+        // Sync linked Item to InAuction now that the auction has gone Active.
+        // MarkInAuction is idempotent (no-op unless item is Approved/Active).
+        var startItem = await _dbContext.GetByIdAsync<Item, ItemId>(
+            auction.ItemId,
+            cancellationToken: cancellationToken);
+
+        if (startItem is not null)
+        {
+            var startItemSyncResult = startItem.MarkInAuction(nowUtc);
+            if (startItemSyncResult.IsFailure)
+                return startItemSyncResult.Error;
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         await _scheduler.ScheduleEndAsync(auction.Id.Value, auction.Info.EndTime, cancellationToken);
 

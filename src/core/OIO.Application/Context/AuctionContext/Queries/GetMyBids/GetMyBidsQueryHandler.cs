@@ -98,6 +98,45 @@ internal sealed class GetMyBidsQueryHandler
                 _dbContext.Set<Bid>().Count(b => b.BidderId == userId && b.AuctionId == x.AuctionId)))
             .ToPagedListAsync(totalCount, parameters, cancellationToken);
 
+        // Enrich won bids with their corresponding order (for direct-pay from
+        // /me/bids → /checkout/{orderId}). Batch-load in one query to stay
+        // N+1 safe.
+        var wonAuctionIds = myBids.Items
+            .Where(b => b.Position == "won")
+            .Select(b => OIO.Domain.Context.AuctionContext.ValueObjects.Ids.AuctionId.From(b.AuctionId))
+            .Distinct()
+            .ToList();
+
+        if (wonAuctionIds.Count > 0)
+        {
+            var orders = await _dbContext.Set<OIO.Domain.Context.OrderContext.Aggregates.Orders.Order>()
+                .AsNoTracking()
+                .Where(o => o.BuyerId == userId && wonAuctionIds.Contains(o.AuctionId))
+                .Select(o => new { o.Id, o.AuctionId, o.Status })
+                .ToListAsync(cancellationToken);
+
+            var orderByAuctionId = orders.ToDictionary(o => o.AuctionId, o => o);
+
+            var enrichedItems = myBids.Items
+                .Select(b =>
+                {
+                    if (b.Position != "won") return b;
+                    var auctionId = OIO.Domain.Context.AuctionContext.ValueObjects.Ids.AuctionId.From(b.AuctionId);
+                    if (!orderByAuctionId.TryGetValue(auctionId, out var order)) return b;
+                    var statusId = order.Status.Id;
+                    var canPayNow = statusId == "pending_payment";
+                    return b with
+                    {
+                        OrderId = order.Id.Value,
+                        OrderStatus = statusId,
+                        CanPayNow = canPayNow,
+                    };
+                })
+                .ToList();
+
+            return new PagedList<MyBidDto>(enrichedItems, myBids.Metadata.TotalCount, myBids.Metadata.CurrentPage, myBids.Metadata.PageSize);
+        }
+
         return myBids;
     }
 }

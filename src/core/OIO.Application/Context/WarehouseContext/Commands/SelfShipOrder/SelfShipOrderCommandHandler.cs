@@ -47,11 +47,18 @@ internal sealed class SelfShipOrderCommandHandler
         // 2. Create the OutboundShipment in SellerSelfShip mode
         var clientOrderCode = $"SELF-{Guid.NewGuid():N}"[..20];
         
-        var dimensions = PackageDimensions.Create(
+        // Check IsFailure explicitly — reading .Value on a failed Result would
+        // throw and surface as an opaque 500 to the caller. Propagate the
+        // validation error so the API responds with 400/422 and a readable
+        // message ("weight must be > 0") instead.
+        var dimensionsResult = PackageDimensions.Create(
             weightGrams: request.WeightGrams,
             lengthCm:    null,
             widthCm:     null,
-            heightCm:    null).Value;
+            heightCm:    null);
+        if (dimensionsResult.IsFailure)
+            return dimensionsResult.Error;
+        var dimensions = dimensionsResult.Value;
 
         var shipment = OutboundShipment.Create(
             orderId:             OrderId.From(request.OrderId),

@@ -71,7 +71,6 @@ public static partial class App
             public static class Auctions
             {
                 public const string Create = "auctions:create";
-                public const string Publish = "auctions:publish";
                 public const string Submit = "auctions:submit";
                 public const string Cancel = "auctions:cancel";
                 public const string Bid = "auctions:bid";
@@ -214,7 +213,6 @@ public static partial class App
 
                 // Auctions
                 Auctions.Create,
-                Auctions.Publish,
                 Auctions.Submit,
                 Auctions.Cancel,
                 Auctions.Bid,
@@ -368,7 +366,6 @@ public static partial class App
                 // ==================== Auctions (4001-5000) ====================
                 // Auction management permissions (4001 - 4050)
                 public static readonly Permission Create = Permission.Create(Catalogs.Auctions.Create);
-                public static readonly Permission Publish = Permission.Create(Catalogs.Auctions.Publish);
                 public static readonly Permission Submit = Permission.Create(Catalogs.Auctions.Submit);
                 public static readonly Permission Cancel = Permission.Create(Catalogs.Auctions.Cancel);
                 public static readonly Permission BuyNow = Permission.Create(Catalogs.Auctions.BuyNow);
@@ -454,7 +451,6 @@ public static partial class App
 
                 // Auctions
                 [Catalogs.Auctions.Create] = Auctions.Create,
-                [Catalogs.Auctions.Publish] = Auctions.Publish,
                 [Catalogs.Auctions.Submit] = Auctions.Submit,
                 [Catalogs.Auctions.Cancel] = Auctions.Cancel,
                 [Catalogs.Auctions.Bid] = Auctions.Bid,

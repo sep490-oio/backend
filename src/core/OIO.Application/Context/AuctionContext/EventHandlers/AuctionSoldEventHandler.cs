@@ -4,14 +4,13 @@ using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Context.NotificationContext;
 using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
+using OIO.Application.Context.OrderContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Events;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.NotificationContext.Enums;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.Enums;
-using OIO.Domain.Context.OrderContext.ValueObjects;
-using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 
@@ -25,17 +24,20 @@ internal sealed class AuctionSoldEventHandler
     private readonly IDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ISender _sender;
+    private readonly IWinnerOrderProvisioner _winnerOrderProvisioner;
     private readonly ILogger<AuctionSoldEventHandler> _logger;
 
     public AuctionSoldEventHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         ISender sender,
+        IWinnerOrderProvisioner winnerOrderProvisioner,
         ILogger<AuctionSoldEventHandler> logger)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _sender = sender;
+        _winnerOrderProvisioner = winnerOrderProvisioner;
         _logger = logger;
     }
 
@@ -52,6 +54,21 @@ internal sealed class AuctionSoldEventHandler
                 .Include(a => a.Watchers)
                 .Include(a => a.Item),
             cancellationToken: cancellationToken);
+
+        // Canonical item lifecycle: mark the sold item as sold in the same
+        // transaction as the auction transitions to sold. This replaces the
+        // previous job-only path; the auto-complete job remains as an
+        // idempotent fallback.
+        if (auction?.Item is not null)
+        {
+            var trackedItem = await _dbContext.Set<OIO.Domain.Context.CatalogContext.Aggregates.Items.Item>()
+                .FirstOrDefaultAsync(i => i.Id == auction.Item.Id, cancellationToken);
+            if (trackedItem is not null && trackedItem.Status != OIO.Domain.Context.CatalogContext.Enums.ItemStatus.Sold)
+            {
+                trackedItem.MarkSold(DateTime.UtcNow);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+        }
 
         var winner = await _dbContext.GetByIdAsync<User, UserId>(
             id: winnerId,
@@ -70,12 +87,15 @@ internal sealed class AuctionSoldEventHandler
         }
 
         var winnerDisplayName = AuctionNotificationDisplayNames.Resolve(winner);
-        var order = await EnsureOrderAsync(
-            auction,
-            winner,
-            sellerId,
-            notification,
-            cancellationToken);
+        var orderResult = await _winnerOrderProvisioner.EnsureAsync(
+            auctionId: auctionId.Value,
+            winnerId: winnerId.Value,
+            sellerId: sellerId.Value,
+            finalPrice: notification.FinalPrice,
+            currency: notification.Currency,
+            occurredAt: notification.OccurredAt,
+            ct: cancellationToken);
+        var order = orderResult.IsSuccess ? orderResult.Value : null;
 
         var winnerMetadata = NotificationDispatch.SerializeMetadata(new
         {
@@ -234,93 +254,6 @@ internal sealed class AuctionSoldEventHandler
             order?.Id.Value,
             watcherUserIds.Count,
             losingBidderIds.Count);
-    }
-
-    private async Task<Order?> EnsureOrderAsync(
-        Auction auction,
-        User winner,
-        UserId sellerId,
-        AuctionSoldEvent notification,
-        CancellationToken cancellationToken)
-    {
-        var existingOrder = await _dbContext.Set<Order>()
-            .FirstOrDefaultAsync(
-                order => order.AuctionId == auction.Id && order.BuyerId == winner.Id,
-                cancellationToken);
-
-        if (existingOrder is not null)
-            return existingOrder;
-
-        var moneyResult = Money.Create(notification.FinalPrice, notification.Currency);
-        if (moneyResult.IsFailure)
-        {
-            _logger.LogWarning(
-                "Unable to create order pricing for auction {AuctionId}. Error={Error}",
-                notification.AuctionId,
-                moneyResult.Error.Message);
-            return null;
-        }
-
-        var shippingAddress = winner.Addresses.FirstOrDefault(address => address.IsDefault)
-                              ?? winner.Addresses.FirstOrDefault();
-
-        var shippingSnapshot = shippingAddress is null
-            ? ShippingSnapshot.Create(
-                recipientName: winnerDisplayNameOrUserName(winner),
-                phone: null,
-                address: "Address pending update",
-                ward: null,
-                district: null,
-                city: null)
-            : ShippingSnapshot.Create(
-                recipientName: shippingAddress.Recipient.RecipientName,
-                phone: shippingAddress.Recipient.Phone.Value,
-                address: shippingAddress.Address.Street,
-                ward: shippingAddress.Address.Ward,
-                district: shippingAddress.Address.District,
-                city: shippingAddress.Address.City);
-
-        var pricing = OrderPricing.Create(
-            itemPrice: moneyResult.Value,
-            shippingFee: 0m,
-            platformFee: 0m,
-            taxAmount: 0m,
-            totalAmount: moneyResult.Value);
-
-        var orderResult = Order.Create(
-            auctionId: auction.Id,
-            buyerId: winner.Id,
-            sellerId: sellerId,
-            shipping: shippingSnapshot,
-            shippingAddressId: shippingAddress?.Id,
-            billingAddressId: shippingAddress?.Id,
-            pricing: pricing,
-            currency: notification.Currency,
-            paymentDueAt: notification.OccurredAt.AddHours(PaymentDeadlineHours),
-            nowUtc: notification.OccurredAt,
-            notes: shippingAddress is null
-                ? "Winner had no default address when order was generated."
-                : null);
-
-        if (orderResult.IsFailure)
-        {
-            _logger.LogWarning(
-                "Unable to create order for auction {AuctionId}. Error={Error}",
-                notification.AuctionId,
-                orderResult.Error.Message);
-            return null;
-        }
-
-        _dbContext.Insert(orderResult.Value);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        return orderResult.Value;
-    }
-
-    private static string winnerDisplayNameOrUserName(User winner)
-    {
-        var displayName = AuctionNotificationDisplayNames.Resolve(winner);
-        return string.IsNullOrWhiteSpace(displayName) ? winner.UserName.Value : displayName;
     }
 
     private static string BuildWinnerMessage(

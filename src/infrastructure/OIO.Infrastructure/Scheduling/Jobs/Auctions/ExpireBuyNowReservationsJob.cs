@@ -7,6 +7,8 @@ using OIO.Application.Abstractions.Clock;
 using OIO.Application.Context.AuctionContext.Commands.EndAuction;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Enums;
+using OIO.Domain.Context.OrderContext.Aggregates.Orders;
+using OIO.Domain.Context.OrderContext.Enums;
 using OIO.Infrastructure.Persistence;
 
 namespace OIO.Infrastructure.Scheduling.Jobs.Auctions;
@@ -60,21 +62,50 @@ public sealed class ExpireBuyNowReservationsJob : BackgroundService
 
         foreach (var auction in auctions)
         {
-            var expiredReservationIds = auction.BuyNowReservations
+            var expiringReservations = auction.BuyNowReservations
                 .Where(r => r.Status == BuyNowReservationStatus.PendingPayment && r.ExpiresAt <= nowUtc)
-                .Select(r => r.Id)
+                .Select(r => new { r.Id, r.OrderId })
                 .ToList();
 
-            foreach (var reservationId in expiredReservationIds)
+            var linkedOrderIds = expiringReservations
+                .Where(r => r.OrderId is not null)
+                .Select(r => r.OrderId!)
+                .ToList();
+
+            var linkedOrders = linkedOrderIds.Count == 0
+                ? new List<Order>()
+                : await dbContext.Set<Order>()
+                    .Where(o => linkedOrderIds.Contains(o.Id))
+                    .ToListAsync(cancellationToken);
+
+            foreach (var reservation in expiringReservations)
             {
-                var expireResult = auction.ExpireBuyNowReservation(reservationId, nowUtc);
+                var expireResult = auction.ExpireBuyNowReservation(reservation.Id, nowUtc);
                 if (expireResult.IsFailure)
                 {
                     _logger.LogWarning(
                         "Failed to expire buy-now reservation {ReservationId} for auction {AuctionId}: {Error}",
-                        reservationId.Value,
+                        reservation.Id.Value,
                         auction.Id.Value,
                         expireResult.Error.Message);
+                    continue;
+                }
+
+                if (reservation.OrderId is null)
+                    continue;
+
+                var linkedOrder = linkedOrders.FirstOrDefault(o => o.Id == reservation.OrderId);
+                if (linkedOrder is null || linkedOrder.Status != OrderStatus.PendingPayment)
+                    continue;
+
+                var cancelResult = linkedOrder.Cancel("buy_now_reservation_expired", nowUtc);
+                if (cancelResult.IsFailure)
+                {
+                    _logger.LogWarning(
+                        "Failed to cancel order {OrderId} linked to expired buy-now reservation {ReservationId}: {Error}",
+                        linkedOrder.Id.Value,
+                        reservation.Id.Value,
+                        cancelResult.Error.Message);
                 }
             }
 
