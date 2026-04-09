@@ -19,8 +19,10 @@ namespace OIO.Infrastructure.Scheduling.Jobs.Orders;
 /// payload as <c>{FeUrl}/me/shipments/scan?token=...</c>, and stamps the version
 /// / issued-at audit fields on the aggregate.
 ///
-/// Idempotent — re-running is a no-op once every eligible row carries a
-/// <c>?token=</c> payload. Runs once at app start, in batches of 100.
+/// Idempotent — re-running is a no-op once every eligible row carries the
+/// canonical <c>/me/shipments/{id}/receive?token=</c> payload. Also re-issues
+/// rows still using the legacy <c>/me/shipments/scan?token=</c> format.
+/// Runs once at app start, in batches of 100.
 /// </summary>
 public sealed class BackfillDirectShipmentQrTokensJob : IHostedService
 {
@@ -71,13 +73,14 @@ public sealed class BackfillDirectShipmentQrTokensJob : IHostedService
         while (!ct.IsCancellationRequested)
         {
             // Candidates: in-flight shipments (not accepted/disputed/completed)
-            // that either have no token issued yet OR carry a legacy payload
-            // lacking the scan URL.
+            // that either have no token issued yet, OR still carry the legacy
+            // /me/shipments/scan?token= URL (needs rewrite to canonical format).
             var batch = await dbContext.Set<SellerDirectShipment>()
                 .Where(s => s.Status != SellerDirectShipmentStatus.Accepted
                             && s.Status != SellerDirectShipmentStatus.Disputed
                             && s.Status != SellerDirectShipmentStatus.Completed
-                            && (s.QrTokenIssuedAt == null || !s.QrPayload.Contains("scan?token=")))
+                            && (s.QrTokenIssuedAt == null
+                                || s.QrPayload.Contains("/me/shipments/scan?token=")))
                 .OrderBy(s => s.CreatedAt)
                 .Take(BatchSize)
                 .ToListAsync(ct);
@@ -108,7 +111,7 @@ public sealed class BackfillDirectShipmentQrTokensJob : IHostedService
                     InitialVersion,
                     now);
 
-                var qrCodeUrl = $"{feBase}/me/shipments/scan?token={token}";
+                var qrCodeUrl = $"{feBase}/me/shipments/{shipment.Id.Value}/receive?token={token}";
                 shipment.OverwriteQrPayload(qrCodeUrl, qrCodeUrl, now);
                 shipment.RecordQrTokenIssued(InitialVersion, now, now);
                 totalRepaired++;

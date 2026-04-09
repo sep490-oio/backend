@@ -83,9 +83,6 @@ internal sealed class InspectWarehouseItemCommandHandler(
         if (shipment is null)
             return WarehouseErrors.InboundShipment.NotFound(request.InboundShipmentId.ToString());
 
-        if (shipment.Status != InboundShipmentStatus.Arrived)
-            return WarehouseErrors.InboundShipment.CannotInspect;
-
         var existingInspection = await db.Set<WarehouseInspection>()
             .FirstOrDefaultAsync(i => i.InboundShipmentId == shipmentId, cancellationToken);
 

@@ -8,11 +8,18 @@ namespace OIO.Application.Context.WarehouseContext.Commands.BookInboundShipment;
 /// <summary>
 /// Represents a single item to be included in a batch inbound shipment booking.
 /// ItemName is auto-resolved from the Items table (Item.Title).
+/// <para>
+/// <b>WeightGrams is ignored by the batch inbound flow.</b> The canonical source
+/// for package weight is <see cref="BookInboundShipmentCommand.WeightGrams"/>
+/// (total parcel weight). Carrier item-level weights are derived internally by
+/// evenly distributing the total weight across items. The field is kept nullable
+/// only for backward compatibility with older clients.
+/// </para>
 /// </summary>
 public sealed record BookInboundShipmentItem(
     Guid     ItemId,
-    decimal? ItemPrice,   // Optional: per-item custom price declared to carrier
-    int      WeightGrams  // per-item weight reported to carrier in Items[] metadata
+    decimal? ItemPrice,        // Optional: per-item custom price declared to carrier
+    int?     WeightGrams = null // IGNORED by the inbound batch flow (see doc above)
 );
 
 /// <summary>

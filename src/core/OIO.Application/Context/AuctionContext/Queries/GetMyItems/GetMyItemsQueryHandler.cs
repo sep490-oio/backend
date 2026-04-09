@@ -8,6 +8,8 @@ using OIO.Application.Context.AuctionContext.Mappings;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Application.Extensions;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
+using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
+using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.AuctionContext.Queries.GetMyItems;
@@ -33,11 +35,53 @@ internal sealed class GetMyItemsQueryHandler
         var parameters = request.Parameters;
         var query = _dbContext.Set<Item>()
             .AsNoTracking()
-            .Where(i => i.SellerId == _currentUser.UserId)
-            .ApplySort(parameters, ItemMappings.ItemDtoSortMapping);
+            .Where(i => i.SellerId == _currentUser.UserId);
+
+        // Server-side status filter — was previously missing, which made the
+        // /seller/items status pills effectively no-ops.
+        if (!string.IsNullOrWhiteSpace(parameters.Status))
+        {
+            var statusId = parameters.Status;
+            query = query.Where(i => i.Status.Id == statusId);
+        }
+
+        // requiresPlatformInspection is a canonical persisted flag on Item,
+        // set at Submit/Resubmit time.
+        if (parameters.RequiresPlatformInspection.HasValue)
+        {
+            var flag = parameters.RequiresPlatformInspection.Value;
+            query = query.Where(i => i.RequiresPlatformInspection == flag);
+        }
+
+        // hasActiveInbound = item has an InboundShipment whose status is neither
+        // Cancelled nor Failed. The inbound-book picker passes hasActiveInbound=false
+        // so a re-attempt is allowed once a previous shipment is cancelled/failed.
+        // EF cannot translate a nested subquery that crosses InboundShipment.ItemId
+        // (raw Guid) vs Item.Id.Value (value-object id), so materialize the guid set
+        // first and map to ItemId to match the VO column on the Item side.
+        if (parameters.HasActiveInbound.HasValue)
+        {
+            var wantsActive = parameters.HasActiveInbound.Value;
+            var activeInboundItemGuids = await _dbContext.Set<InboundShipment>()
+                .Where(s => s.Status != InboundShipmentStatus.Cancelled
+                         && s.Status != InboundShipmentStatus.Failed)
+                .Select(s => s.ItemId)
+                .Distinct()
+                .ToListAsync(cancellationToken);
+
+            var activeInboundItemIds = activeInboundItemGuids
+                .Select(g => OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId.From(g))
+                .ToList();
+
+            query = wantsActive
+                ? query.Where(i => activeInboundItemIds.Contains(i.Id))
+                : query.Where(i => !activeInboundItemIds.Contains(i.Id));
+        }
+
+        query = query.ApplySort(parameters, ItemMappings.ItemDtoSortMapping);
 
         var totalCount = await query.CountAsync(cancellationToken);
-        
+
 
         var items = await query
             .Select(item => new ItemDto(
@@ -50,7 +94,7 @@ internal sealed class GetMyItemsQueryHandler
                 Status: item.Status.Id,
                 Quantity: item.Quantity,
                 Images: item.Media
-                    .Select(media => 
+                    .Select(media =>
                         new ItemMediaDto(
                             Id: media.Id.Value,
                             Url: media.Info.SecureUrl,
@@ -65,7 +109,8 @@ internal sealed class GetMyItemsQueryHandler
                             Height: media.Info.Height,
                             DurationSeconds: media.Info.DurationSeconds))
                     .ToList(),
-                CreatedAt: item.CreatedAt))
+                CreatedAt: item.CreatedAt,
+                RequiresPlatformInspection: item.RequiresPlatformInspection))
             .ToPagedListAsync(totalCount, parameters, cancellationToken);
 
         return items;

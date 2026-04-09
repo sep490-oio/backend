@@ -96,6 +96,13 @@ internal sealed class RequestUploadSignatureCommandHandler
         var prefix = resourceType.ToFilePrefix();
         var mediaName = $"{prefix}_{uniqueSuffix}";
 
+        // Preserve .pdf extension on Cloudinary public_id for term_document so the
+        // delivered URL stays a browser-openable PDF (res.cloudinary.com/.../raw/upload/.../xxx.pdf).
+        if (_contextRegistry.IsTermContext(request.Context) && IsPdfFileName(request.FileName))
+        {
+            mediaName += ".pdf";
+        }
+
         // Generate Cloudinary signature
         var signatureResult = _signatureService.GenerateSignature(
             resourceType: resourceType,
@@ -148,6 +155,10 @@ internal sealed class RequestUploadSignatureCommandHandler
             MaxFileSize: contextConfig.MaxFileSizeBytes,
             AllowedFormats: contextConfig.AllowedFormats);
     }
+
+    private static bool IsPdfFileName(string? fileName)
+        => !string.IsNullOrWhiteSpace(fileName)
+           && fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
 }
 
 

@@ -99,6 +99,15 @@ internal sealed class BatchRequestUploadSignatureCommandHandler
             var prefix = resourceType.ToFilePrefix();
             var mediaName = $"{prefix}_{uniqueSuffix}";
 
+            // Preserve .pdf extension on Cloudinary public_id for term_document so the
+            // delivered URL stays a browser-openable PDF.
+            if (_contextRegistry.IsTermContext(item.Context)
+                && !string.IsNullOrWhiteSpace(item.FileName)
+                && item.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                mediaName += ".pdf";
+            }
+
             // Generate Cloudinary signature
             var signatureResult = _signatureService.GenerateSignature(
                 resourceType: resourceType,

@@ -14,10 +14,15 @@ namespace OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 
 /// <summary>
 /// Represents a physical item stored inside the warehouse.
-/// Created when an InboundShipment reaches Inspected status.
+/// Created when warehouse staff receive an inbound package.
 ///
 /// Lifecycle:
-///   Pending → Received → Inspected → Stored → Reserved → Dispatched
+///   Pending → Received → Stored → Inspected → Reserved → Dispatched
+///
+/// Receive happens at the package level (warehouse staff). Store assigns the
+/// item to a shelf. Inspection happens AFTER the item is on a shelf — the
+/// happy path for MarkInspected is the Stored state. Received is also accepted
+/// for backward compatibility with legacy data that bypassed the store step.
 /// </summary>
 public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
 {
@@ -79,14 +84,19 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
         return UnitResult.Success<e>();
     }
 
-    /// <summary>Mark physical inspection as completed. Inspection details are stored separately.</summary>
+    /// <summary>
+    /// Mark physical inspection as completed. Inspection details are stored separately.
+    /// Happy path: the item is already <see cref="WarehouseItemStatus.Stored"/> on a shelf.
+    /// Received is also accepted for backward compatibility with legacy data that bypassed
+    /// the store step. StorageLocationId is preserved when the item was already stored.
+    /// </summary>
     public UnitResult<e> MarkInspected(DateTime now)
     {
-        if (Status != WarehouseItemStatus.Received)
-            return WarehouseErrors.WarehouseItem.NotInspected;
+        if (Status != WarehouseItemStatus.Stored && Status != WarehouseItemStatus.Received)
+            return WarehouseErrors.WarehouseItem.NotReceived;
 
-        Status             = WarehouseItemStatus.Inspected;
-        ModifiedAt         = now;
+        Status     = WarehouseItemStatus.Inspected;
+        ModifiedAt = now;
 
         return UnitResult.Success<e>();
     }

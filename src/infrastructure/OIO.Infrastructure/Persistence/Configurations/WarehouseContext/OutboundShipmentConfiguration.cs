@@ -174,6 +174,16 @@ internal sealed class OutboundShipmentConfiguration : IEntityTypeConfiguration<O
         builder.Property(e => e.DeliveredAt)
             .HasColumnName("delivered_at");
 
+        builder.Property(e => e.BuyerReceivedPackageAt)
+            .HasColumnName("buyer_received_package_at");
+
+        builder.Property(e => e.BuyerAcceptedAt)
+            .HasColumnName("buyer_accepted_at");
+
+        builder.Property(e => e.BuyerAcknowledgedSource)
+            .HasColumnName("buyer_acknowledged_source")
+            .HasMaxLength(30);
+
         builder.Property(e => e.CreatedAt)
             .HasColumnName("created_at")
             .HasDefaultValueSql("CURRENT_TIMESTAMP")
@@ -181,6 +191,26 @@ internal sealed class OutboundShipmentConfiguration : IEntityTypeConfiguration<O
 
         builder.Property(e => e.ModifiedAt)
             .HasColumnName("modified_at");
+
+        // ==================== QR token (ExternalCarrier only) ====================
+        builder.Property(e => e.QrPayload)
+            .HasColumnName("qr_payload")
+            .HasColumnType("text");
+
+        builder.Property(e => e.QrCodeUrl)
+            .HasColumnName("qr_code_url")
+            .HasColumnType("text");
+
+        builder.Property(e => e.QrTokenVersion)
+            .HasColumnName("qr_token_version")
+            .HasDefaultValue(0)
+            .IsRequired();
+
+        builder.Property(e => e.QrTokenIssuedAt)
+            .HasColumnName("qr_token_issued_at");
+
+        builder.Property(e => e.QrTokenRevokedAt)
+            .HasColumnName("qr_token_revoked_at");
 
         // ==================== Relationships ====================
         // EF FK to warehouse_items (1-to-1 — each item ships exactly once outbound)
@@ -193,6 +223,11 @@ internal sealed class OutboundShipmentConfiguration : IEntityTypeConfiguration<O
         builder.HasMany(e => e.TrackingEvents)
             .WithOne()
             .HasForeignKey("OutboundShipmentId")
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(e => e.Evidence)
+            .WithOne()
+            .HasForeignKey(ev => ev.ShipmentId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // ==================== Indexes ====================

@@ -7,6 +7,7 @@ using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.NotificationContext;
 using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
+using OIO.Application.Context.OrderContext.Services;
 using OIO.Domain.Context.NotificationContext.Enums;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
@@ -119,6 +120,7 @@ internal sealed class OrderMarkedDeliveredEventHandler(
     IUnitOfWork unitOfWork,
     IClock clock,
     IRuntimeSettings runtimeSettings,
+    IOrderDeliveryService orderDeliveryService,
     ISender sender,
     ILogger<OrderMarkedDeliveredEventHandler> logger)
     : INotificationHandler<OutboundShipmentDeliveredEvent>
@@ -133,12 +135,11 @@ internal sealed class OrderMarkedDeliveredEventHandler(
 
         var decisionWindowDays = runtimeSettings.Order.ReturnDecisionWindowDays;
 
-        var result = order.MarkAsDelivered(
-            notification.DeliveredAt,
-            notification.DeliveredAt.AddDays(decisionWindowDays),
-            clock.UtcNow);
-
-        if (result.IsFailure)
+        // Route through IOrderDeliveryService so the warehouse (platform_managed)
+        // delivery path mirrors the seller direct-shipment delivered path. The
+        // service is idempotent and keeps buyer-protection window logic in one place.
+        var deliveryResult = await orderDeliveryService.MarkAsDeliveredAsync(order, clock.UtcNow, cancellationToken);
+        if (deliveryResult.IsFailure)
             return;
 
         await unitOfWork.SaveChangesAsync(cancellationToken);

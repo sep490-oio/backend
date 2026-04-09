@@ -85,22 +85,45 @@ internal sealed class CheckoutOrderCommandHandler
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        // Resolve buy-now reservation offset (live value). When the order is
+        // linked to a pending buy-now reservation carrying DepositAppliedAmount,
+        // the payable amount at checkout must already be net of the held
+        // deposit — BuyNowReservationFinalizer will later convert the held
+        // deposit to a ledger entry.
+        var buyNowReservation = await _dbContext.Set<AuctionBuyNowReservation>()
+            .FirstOrDefaultAsync(
+                r => r.OrderId == order.Id && r.Status == BuyNowReservationStatus.PendingPayment,
+                cancellationToken);
+        var buyNowDepositOffset = buyNowReservation?.DepositAppliedAmountValue ?? 0m;
+
         // 3. Branch on PaymentMethod
         if (request.PaymentMethod is "wallet" or "wallet_vnpay")
-            return await HandleWalletPaymentAsync(request, order, now, cancellationToken);
+            return await HandleWalletPaymentAsync(request, order, buyNowReservation, buyNowDepositOffset, now, cancellationToken);
 
         // Existing VNPay flow
-        return await HandleVnPayPaymentAsync(request, order, now, cancellationToken);
+        return await HandleVnPayPaymentAsync(request, order, buyNowReservation, buyNowDepositOffset, now, cancellationToken);
     }
 
     private async Task<Result<CheckoutOrderResponse, Error>> HandleVnPayPaymentAsync(
         CheckoutOrderCommand request,
         Order order,
+        AuctionBuyNowReservation? buyNowReservation,
+        decimal buyNowDepositOffset,
         DateTime now,
         CancellationToken cancellationToken)
     {
+        // For buy-now orders, charge the gateway only for the portion not covered
+        // by the held deposit. If the deposit fully covers the order, settle the
+        // order internally (mirrors the full-wallet path) rather than issuing a
+        // zero-amount VNPay URL.
+        var vnpayChargeAmount = order.Pricing.TotalAmount.Amount - buyNowDepositOffset;
+        if (vnpayChargeAmount <= 0m && buyNowReservation is not null)
+        {
+            return await SettleBuyNowOrderWithDepositOnlyAsync(order, now, cancellationToken);
+        }
+
         var createUrlCommand = new CreateVnPayPaymentUrlCommand(
-            Amount: order.Pricing.TotalAmount.Amount,
+            Amount: vnpayChargeAmount,
             Currency: order.Currency,
             Purpose: PaymentPurpose.OrderPayment.Id,
             IpAddress: request.IpAddress,
@@ -123,6 +146,8 @@ internal sealed class CheckoutOrderCommandHandler
     private async Task<Result<CheckoutOrderResponse, Error>> HandleWalletPaymentAsync(
         CheckoutOrderCommand request,
         Order order,
+        AuctionBuyNowReservation? buyNowReservation,
+        decimal buyNowDepositOffset,
         DateTime now,
         CancellationToken cancellationToken)
     {
@@ -142,10 +167,7 @@ internal sealed class CheckoutOrderCommandHandler
         // is the single source of truth for converting the Held deposit into payment funding.
         // Running this block here would double-convert the deposit and cause the finalizer
         // to fail with "Held buyer deposit not found".
-        var isLinkedBuyNowReservation = await _dbContext.Set<AuctionBuyNowReservation>()
-            .AnyAsync(
-                r => r.OrderId == order.Id && r.Status == BuyNowReservationStatus.PendingPayment,
-                cancellationToken);
+        var isLinkedBuyNowReservation = buyNowReservation is not null;
 
         var winnerDeposit = isLinkedBuyNowReservation
             ? null
@@ -159,8 +181,22 @@ internal sealed class CheckoutOrderCommandHandler
         if (winnerDeposit is not null)
             depositAmount = winnerDeposit.Amount.Amount;
 
+        // Buy-now reservation carries its own held deposit value. The
+        // finalizer converts it to a ledger entry later, so here we only
+        // subtract it from the payable amount (do not touch the deposit row).
+        if (isLinkedBuyNowReservation)
+            depositAmount = buyNowDepositOffset;
+
         var remainingAmount = orderAmount - depositAmount;
         if (remainingAmount < 0) remainingAmount = 0;
+
+        // Full coverage by buy-now reservation deposit: short-circuit to
+        // internal settlement (no wallet debit, no VNPay URL). Mirrors the
+        // "amount due <= 0" branch in the VNPay path.
+        if (remainingAmount <= 0m && isLinkedBuyNowReservation)
+        {
+            return await SettleBuyNowOrderWithDepositOnlyAsync(order, now, cancellationToken);
+        }
 
         // 3. Branch based on payment method
         if (request.PaymentMethod == "wallet")
@@ -386,4 +422,67 @@ internal sealed class CheckoutOrderCommandHandler
             PaymentUrl: urlResult.Value.PaymentUrl);
     }
 
+    /// <summary>
+    /// Settles a buy-now order that is fully covered by the reservation's
+    /// held deposit — no wallet debit, no VNPay charge. Marks the order paid
+    /// and hands off to <see cref="BuyNowReservationFinalizer"/> to convert
+    /// the held deposit into the ledger entry (same path as any other
+    /// buy-now payment), avoiding the creation of a zero-amount VNPay URL.
+    /// </summary>
+    private async Task<Result<CheckoutOrderResponse, Error>> SettleBuyNowOrderWithDepositOnlyAsync(
+        Order order,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var txnRef = $"BNZERO-{now:yyyyMMddHHmmss}_{Guid.NewGuid():N}"[..36];
+        var txnNumberResult = TransactionNumber.Create(txnRef);
+        if (txnNumberResult.IsFailure)
+            return txnNumberResult.Error;
+
+        var moneyResult = Money.Create(0m, order.Currency);
+        if (moneyResult.IsFailure)
+            return moneyResult.Error;
+
+        var transactionResult = Transaction.Create(
+            userId: order.BuyerId,
+            transactionNumber: txnNumberResult.Value,
+            type: TransactionType.Payment,
+            amount: moneyResult.Value,
+            currency: order.Currency,
+            description: $"[OrderPayment] Buy-now fully covered by deposit for order {order.Id.Value}",
+            nowUtc: now,
+            orderId: order.Id,
+            auctionId: order.AuctionId);
+        if (transactionResult.IsFailure)
+            return transactionResult.Error;
+
+        var transaction = transactionResult.Value;
+        _dbContext.Insert(transaction);
+
+        var markResult = transaction.MarkAsCompleted(GatewayInfo.Empty, now);
+        if (markResult.IsFailure)
+            return markResult.Error;
+
+        var markPaidResult = order.MarkAsPaid(now);
+        if (markPaidResult.IsFailure)
+            return markPaidResult.Error;
+
+        // Hand off to the finalizer — converts the held buy-now deposit into
+        // the AuctionBuyNowDepositApplied ledger entry and transitions the
+        // auction to Sold.
+        var finalizeBuyNowResult = await _buyNowReservationFinalizer.FinalizeAsync(order, now, cancellationToken);
+        if (finalizeBuyNowResult.IsFailure)
+            return finalizeBuyNowResult.Error;
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "Buy-now order fully settled by reservation deposit. OrderId={OrderId}",
+            order.Id.Value);
+
+        return new CheckoutOrderResponse(
+            TransactionId: transaction.Id.Value,
+            TransactionRef: txnRef,
+            PaymentUrl: null);
+    }
 }

@@ -14,8 +14,14 @@ public sealed class RecordAuctionViewEndpoint : IEndpoint
                 ISender sender,
                 CancellationToken ct) =>
             {
+                var browserViewerId = httpContext.Request.Headers["X-Viewer-Id"].FirstOrDefault();
                 var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString();
-                var command = new RecordAuctionViewCommand(auctionId, ipAddress);
+
+                var command = new RecordAuctionViewCommand(
+                    auctionId,
+                    browserViewerId,
+                    ipAddress);
+
                 var result = await sender.Send(command, ct);
                 return result.ToNoContentHttpResult();
             })

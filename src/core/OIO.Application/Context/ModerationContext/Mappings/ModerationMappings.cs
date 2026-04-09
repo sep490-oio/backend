@@ -4,6 +4,7 @@ using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.ModerationContext.Aggregates.Disputes;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 
 namespace OIO.Application.Context.ModerationContext.Mappings;
@@ -68,6 +69,9 @@ internal static class ModerationMappings
             dispute.Title,
             dispute.Status.Id,
             dispute.Priority.Id,
+            dispute.CaseDomain,
+            dispute.CaseType,
+            dispute.Description,
             ToNullableGuid(dispute.AuctionId),
             ToNullableGuid(dispute.VerificationId),
             ToNullableGuid(dispute.OrderId),
@@ -154,13 +158,20 @@ internal static class ModerationMappings
         return new DisputeMessageAttachmentDto(
             attachment.Id.Value,
             attachment.Info.FileName,
-            attachment.Info.IsVideo ? "video" : "image",
+            ResolveResourceType(attachment.Info),
             attachment.Info.SecureUrl ?? string.Empty,
             attachment.Info.Bytes ?? 0,
             attachment.Info.Format ?? string.Empty,
             attachment.Info.Width,
             attachment.Info.Height,
             attachment.Info.DurationSeconds);
+    }
+
+    private static string ResolveResourceType(MediaInfo info)
+    {
+        if (info.IsVideo) return "video";
+        if (info.IsImage) return "image";
+        return "raw";
     }
 
     public static bool IsVisibleTo(this DisputeMessage message, bool canViewInternal)

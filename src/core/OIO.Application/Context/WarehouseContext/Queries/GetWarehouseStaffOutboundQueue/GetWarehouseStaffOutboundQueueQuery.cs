@@ -11,6 +11,7 @@ using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.Enums;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
+using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseStorage;
 using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.SeedWork.Errors;
 
@@ -37,20 +38,29 @@ internal sealed class GetWarehouseStaffOutboundQueueQueryHandler(IDbContext dbCo
     {
         var parameters = request.Parameters;
 
-        // Base filter: paid/processing orders (same "awaiting outbound book" window
-        // that BuildSellerFulfillment treats as actionable for fulfillment).
+        // Base filter: Processing orders only. Paid orders haven't been confirmed by
+        // the seller yet; only once they transition to Processing do they become
+        // actionable for the warehouse outbound booking workflow.
         var ordersQuery = dbContext.Set<Order>()
-            .Where(o => o.Status == OrderStatus.Paid || o.Status == OrderStatus.Processing);
+            .Where(o => o.Status == OrderStatus.Processing);
 
         // Narrow to warehouse-managed orders by intersecting against the set of
-        // auction item ids that have at least one WarehouseItem row. We test on
-        // auction.ItemId (the path the seller fulfillment mapping uses).
-        var warehouseItemIds = dbContext.Set<WarehouseItem>()
-            .Select(wi => wi.ItemId);
+        // auction item ids that have at least one WarehouseItem row.
+        // EF cannot translate nested subqueries that cross the WarehouseItem.ItemId (raw Guid)
+        // vs Auction.Item.Id.Value (value-object id) boundary — so materialize each step.
+        var whRawItemGuids = await dbContext.Set<WarehouseItem>()
+            .Select(wi => wi.ItemId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
 
-        var warehouseManagedAuctionIds = dbContext.Set<Auction>()
-            .Where(a => warehouseItemIds.Contains(a.Item.Id.Value))
-            .Select(a => a.Id);
+        var whItemIds = whRawItemGuids
+            .Select(g => OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId.From(g))
+            .ToList();
+
+        var warehouseManagedAuctionIds = await dbContext.Set<Auction>()
+            .Where(a => whItemIds.Contains(a.ItemId))
+            .Select(a => a.Id)
+            .ToListAsync(cancellationToken);
 
         ordersQuery = ordersQuery.Where(o => warehouseManagedAuctionIds.Contains(o.AuctionId));
 
@@ -90,14 +100,37 @@ internal sealed class GetWarehouseStaffOutboundQueueQueryHandler(IDbContext dbCo
 
         // Batch-load warehouse items for these auction items so we can surface
         // the WarehouseItemId on each row (used by the FE to open the booking UI).
+        // Tighten to shippable statuses — the happy path is Stored, but legacy
+        // rows may still be in Received / Inspected (WarehouseItem.Reserve accepts
+        // all three).
+        var shippable = new[]
+        {
+            WarehouseItemStatus.Stored,
+            WarehouseItemStatus.Received,
+            WarehouseItemStatus.Inspected,
+        };
         var itemGuidIds = auctions.Select(a => a.Item.Id.Value).Distinct().ToList();
         var warehouseItems = await dbContext.Set<WarehouseItem>()
             .AsNoTracking()
-            .Where(wi => itemGuidIds.Contains(wi.ItemId))
+            .Where(wi => itemGuidIds.Contains(wi.ItemId) && shippable.Contains(wi.Status))
             .ToListAsync(cancellationToken);
         var warehouseItemByItemId = warehouseItems
             .GroupBy(wi => wi.ItemId)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(wi => wi.CreatedAt).First());
+
+        // Batch-load storage location labels for the picked warehouse items.
+        var locationIds = warehouseItems
+            .Where(wi => wi.StorageLocationId is not null)
+            .Select(wi => wi.StorageLocationId!)
+            .Distinct()
+            .ToList();
+        var locations = locationIds.Count == 0
+            ? new List<WarehouseStorageLocation>()
+            : await dbContext.Set<WarehouseStorageLocation>()
+                .AsNoTracking()
+                .Where(l => locationIds.Contains(l.Id))
+                .ToListAsync(cancellationToken);
+        var locationLabelById = locations.ToDictionary(l => l.Id, l => l.Label);
 
         // Batch-load sellers for seller display name resolution (store name preferred).
         var sellerIds = pagedOrders.Select(o => o.SellerId).Distinct().ToList();
@@ -121,10 +154,16 @@ internal sealed class GetWarehouseStaffOutboundQueueQueryHandler(IDbContext dbCo
                     .FirstOrDefault();
 
                 Guid warehouseItemId = Guid.Empty;
+                string? storageLocationLabel = null;
                 if (item is not null &&
                     warehouseItemByItemId.TryGetValue(item.Id.Value, out var wi))
                 {
                     warehouseItemId = wi.Id.Value;
+                    if (wi.StorageLocationId is { } locId &&
+                        locationLabelById.TryGetValue(locId, out var label))
+                    {
+                        storageLocationLabel = label;
+                    }
                 }
 
                 sellersById.TryGetValue(o.SellerId, out var seller);
@@ -156,7 +195,8 @@ internal sealed class GetWarehouseStaffOutboundQueueQueryHandler(IDbContext dbCo
                     ItemPrimaryImageUrl: primaryImageUrl,
                     BuyerRecipientName: o.Shipping?.RecipientName,
                     BuyerShippingAddress: shippingSummary,
-                    SellerDisplayName: sellerDisplayName);
+                    SellerDisplayName: sellerDisplayName,
+                    StorageLocationLabel: storageLocationLabel);
             })
             // Drop any orders whose WarehouseItem lookup failed after the narrowing
             // subquery (should be rare; guards against race with dispatch cleanup).

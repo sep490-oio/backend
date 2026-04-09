@@ -9,4 +9,5 @@ public sealed record AuctionSnapshotGrain(
     int BidCount,
     string Status,
     DateTime EndTime,
-    Guid? WinnerId);
+    Guid? WinnerId,
+    decimal? BuyNowPrice = null);

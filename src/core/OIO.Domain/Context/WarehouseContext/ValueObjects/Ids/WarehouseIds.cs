@@ -22,6 +22,9 @@ public readonly partial struct OutboundShipmentId : IEntityId;
 public readonly partial struct ShipmentTrackingEventId : IEntityId;
 
 [ValueObject<Guid>]
+public readonly partial struct OutboundShipmentEvidenceId : IEntityId;
+
+[ValueObject<Guid>]
 public readonly partial struct ShippingProviderConfigId : IEntityId;
 
 [ValueObject<Guid>]

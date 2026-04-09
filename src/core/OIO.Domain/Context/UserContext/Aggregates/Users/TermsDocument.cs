@@ -52,7 +52,7 @@ public sealed class TermsDocument : BaseEntity<TermsDocumentId>, ICreatedAtEntit
             .Field(upload.StorageRef.Folder)
             .NotWhiteSpace()
             .Field(version)
-            .NonNegative()
+            .GreaterThanOrEqual(1)
             .ToUnitResult();
 
         if (check.IsFailure)
@@ -63,7 +63,7 @@ public sealed class TermsDocument : BaseEntity<TermsDocumentId>, ICreatedAtEntit
         var termsDocument = new TermsDocument(
             TermsDocumentId.From(Guid.CreateVersion7()),
             termType.Trim(),
-            0,
+            version,
             upload.StorageRef,
             upload.Info,
             nowUtc);

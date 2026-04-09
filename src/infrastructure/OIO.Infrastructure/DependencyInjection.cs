@@ -242,6 +242,7 @@ public static class DependencyInjection
             services.AddScoped<ISecureTokenStore, SecureTokenStore>();
             services.AddScoped<ISealedBidEncryptionService, SealedBidEncryptionService>();
             services.AddScoped<OIO.Application.Context.OrderContext.Services.ISellerDirectShipmentTokenService, SellerDirectShipmentTokenService>();
+            services.AddScoped<OIO.Application.Context.WarehouseContext.Services.IOutboundShipmentQrTokenService, OutboundShipmentQrTokenService>();
 
             return services;
         }
@@ -290,7 +291,7 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
             services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Orders.CancelExpiredOrdersJob>();
             services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Orders.ScanOverdueSelfShipOrdersJob>();
             services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Orders.BackfillDirectShipmentQrTokensJob>();
-            services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Orders.ReleaseExpiredDecisionWindowJob>();
+            services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Orders.BackfillOutboundShipmentQrTokensJob>();
             services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Auctions.ExpireRunnerUpOffersJob>();
             services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Auctions.ExpireBuyNowReservationsJob>();
             services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Auctions.ScanActiveAuctionsForCollusionJob>();

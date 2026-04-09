@@ -211,6 +211,7 @@ public static partial class App
                     Permissions.Catalogs.Warehouse.BookOutbound,
                     Permissions.Catalogs.Warehouse.UpdateExternalStatus,
                     Permissions.Catalogs.Warehouse.ManageLocations,
+                    Permissions.Catalogs.Warehouse.Store,
                     Permissions.Catalogs.Warehouse.CalculateShippingFee,
                     Permissions.Catalogs.Warehouse.CalculateLeadTime,
                 ],
@@ -232,7 +233,6 @@ public static partial class App
                     // Warehouse — inspection only
                     Permissions.Catalogs.Warehouse.ReadShipments,
                     Permissions.Catalogs.Warehouse.Inspect,
-                    Permissions.Catalogs.Warehouse.Store,
                 ],
 
                 [Admin] = Permissions.Catalogs.All

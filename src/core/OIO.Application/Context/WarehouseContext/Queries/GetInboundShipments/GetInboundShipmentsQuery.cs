@@ -86,10 +86,12 @@ internal sealed class GetInboundShipmentsQueryHandler(IDbContext db, ICurrentUse
 
         if (parameters.RequiresPlatformInspection.HasValue)
         {
+            // Source of truth is Item.RequiresPlatformInspection (set at Submit/Resubmit).
+            // Auction.VerifyByPlatform is only a compatibility snapshot and no longer queried.
             var flag = parameters.RequiresPlatformInspection.Value;
-            var itemIdsWithFlag = db.Set<Auction>()
-                .Where(a => a.VerifyByPlatform == flag)
-                .Select(a => a.ItemId.Value);
+            var itemIdsWithFlag = db.Set<OIO.Domain.Context.CatalogContext.Aggregates.Items.Item>()
+                .Where(i => i.RequiresPlatformInspection == flag)
+                .Select(i => i.Id.Value);
             query = query.Where(s => itemIdsWithFlag.Contains(s.ItemId));
         }
 

@@ -10,4 +10,5 @@ public sealed record ItemDto(
     string Status,
     int Quantity,
     IReadOnlyList<ItemMediaDto> Images,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    bool RequiresPlatformInspection = false);

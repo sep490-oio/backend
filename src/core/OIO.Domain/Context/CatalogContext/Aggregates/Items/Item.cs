@@ -36,6 +36,14 @@ public sealed class Item : AggregateRoot<ItemId>, IAuditableEntity
     public UserId? ReviewedBy { get; private set; }
     public string? RejectionReason { get; private set; }
     public int ResubmissionCount { get; private set; }
+    /// <summary>
+    /// Canonical flag indicating whether this item is going through the platform
+    /// verification workflow (seller ships physical item to warehouse for inspection).
+    /// Set at Submit/Resubmit time and used as the source of truth for downstream
+    /// flows (seller items filter, inbound eligibility, etc). Auction.VerifyByPlatform
+    /// is retained only as a compatibility snapshot of this field.
+    /// </summary>
+    public bool RequiresPlatformInspection { get; private set; }
     public UserId? AssignedAdminId { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? ModifiedAt { get; private set; }
@@ -95,6 +103,7 @@ public sealed class Item : AggregateRoot<ItemId>, IAuditableEntity
             return result.Error;
 
         SubmittedAt = nowUtc;
+        RequiresPlatformInspection = verifyByPlatform;
         ChangeStatus(targetStatus, nowUtc);
 
         _moderationReviews.Add(ItemModerationReview.Create(
@@ -268,6 +277,7 @@ public sealed class Item : AggregateRoot<ItemId>, IAuditableEntity
         ResubmissionCount++;
         SubmittedAt = nowUtc;
         RejectionReason = null;
+        RequiresPlatformInspection = verifyByPlatform;
         ChangeStatus(targetStatus, nowUtc);
 
         _moderationReviews.Add(ItemModerationReview.Create(

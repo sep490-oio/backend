@@ -6,7 +6,6 @@ using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Application.Context.WarehouseContext.Mappings;
-using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseStorage;
 using OIO.Domain.Context.WarehouseContext.Errors;
@@ -15,6 +14,11 @@ using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.WarehouseContext.Commands.StoreWarehouseItem;
 
+/// <summary>
+/// Manual / fallback path for placing an existing WarehouseItem onto a storage location.
+/// The primary receiving flow (multipart receiving) does this in one step; this command
+/// remains available for cases where staff needs to retroactively place or relocate an item.
+/// </summary>
 public sealed record StoreWarehouseItemCommand(
     Guid WarehouseItemId,
     Guid StorageLocationId
@@ -61,22 +65,11 @@ internal sealed class StoreWarehouseItemCommandHandler(
         // ── 4. Mark the physical shelf as occupied ────────────────────────────
         location.MarkOccupied();
 
-        // ── 5. Complete the InboundShipment lifecycle (Inspected → Completed) ─
-        var shipment = await db.Set<InboundShipment>()
-            .FirstOrDefaultAsync(s => s.Id == warehouseItem.InboundShipmentId, cancellationToken);
-
-        if (shipment is not null)
-        {
-            var completeResult = shipment.Complete(now);
-            if (completeResult.IsFailure)
-                return completeResult.Error;
-        }
-
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
-            "WarehouseItem {WarehouseItemId} stored at location {LocationLabel} (shipment {ShipmentId} completed).",
-            warehouseItem.Id.Value, location.Label, warehouseItem.InboundShipmentId.Value);
+            "WarehouseItem {WarehouseItemId} stored at location {LocationLabel}.",
+            warehouseItem.Id.Value, location.Label);
 
         return warehouseItem.ToDto();
     }

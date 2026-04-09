@@ -50,19 +50,24 @@ internal sealed class BookInboundShipmentCommandHandler
         var isExternal = request.ShipmentMode == InboundShipmentMode.ExternalCarrier.Id;
 
         // ── 1. Validate & Build package dimensions ───────────────────────────
-        var sumItemWeights = request.Items.Sum(i => i.WeightGrams);
+        // The inbound batch flow uses request.WeightGrams as the single source of
+        // truth for the whole parcel. Item-level WeightGrams from the request are
+        // intentionally ignored (older clients may still send them but they must
+        // not influence carrier pricing — we derive item weights from the total).
         var totalWeight = request.WeightGrams;
-
-        if (totalWeight == 0)
+        if (totalWeight <= 0)
         {
-            totalWeight = sumItemWeights;
+            return Error.Validation(
+                "WeightGrams",
+                "BookInboundShipment.WeightRequired",
+                "Total package weight must be greater than 0.");
         }
-        else if (totalWeight < sumItemWeights)
+        if (totalWeight < request.Items.Count)
         {
             return Error.Validation(
                 "WeightGrams",
                 "BookInboundShipment.WeightTooLow",
-                $"Total weight ({totalWeight}g) cannot be less than the sum of item weights ({sumItemWeights}g).");
+                $"Total package weight ({totalWeight}g) must be at least 1g per selected item ({request.Items.Count} items).");
         }
 
         if (!isExternal && (request.LengthCm <= 0 || request.WidthCm <= 0 || request.HeightCm <= 0))
@@ -102,6 +107,52 @@ internal sealed class BookInboundShipmentCommandHandler
 
             if (hasActive)
                 return WarehouseErrors.InboundShipment.AlreadyExists(item.ItemId.ToString());
+        }
+
+        // Third: verify each item is actually eligible for platform verification.
+        //   - item must belong to the current seller
+        //   - item.Status must be pending_verify
+        //   - item.RequiresPlatformInspection must be true (canonical flag)
+        // This stops manual/misrouted requests from booking inbound for items that
+        // were never routed through the platform verification workflow.
+        var requestItemIds = request.Items.Select(i => ItemId.From(i.ItemId)).ToList();
+        var eligibilityRows = await _dbContext.Set<Item>()
+            .AsNoTracking()
+            .Where(i => requestItemIds.Contains(i.Id) && i.SellerId == _currentUser.UserId)
+            .Select(i => new
+            {
+                ItemId = i.Id.Value,
+                StatusId = i.Status.Id,
+                RequiresPlatformInspection = i.RequiresPlatformInspection,
+            })
+            .ToListAsync(cancellationToken);
+
+        var eligibilityMap = eligibilityRows.ToDictionary(r => r.ItemId);
+        foreach (var item in request.Items)
+        {
+            if (!eligibilityMap.TryGetValue(item.ItemId, out var row))
+            {
+                return Error.Validation(
+                    "Items",
+                    "BookInboundShipment.ItemNotFoundOrNotOwned",
+                    $"Item {item.ItemId} does not exist or does not belong to the current seller.");
+            }
+
+            if (!row.RequiresPlatformInspection)
+            {
+                return Error.Validation(
+                    "Items",
+                    "BookInboundShipment.ItemDoesNotRequirePlatformInspection",
+                    $"Item {item.ItemId} is not flagged for platform verification. Only items submitted with platform verification may be booked for inbound.");
+            }
+
+            if (!string.Equals(row.StatusId, "pending_verify", StringComparison.OrdinalIgnoreCase))
+            {
+                return Error.Validation(
+                    "Items",
+                    "BookInboundShipment.ItemNotPendingVerify",
+                    $"Item {item.ItemId} must be in status 'pending_verify' to book inbound (current: {row.StatusId}).");
+            }
         }
 
         // ── 3. Resolve Sender Address ─────────────────────────────────────────
@@ -245,15 +296,11 @@ internal sealed class BookInboundShipmentCommandHandler
 
             GhnHandlingNote = request.GhnHandlingNote,
 
-            // All items declared in a single GHN order
-            Items = request.Items.Select(i => new BookShipmentItem
-            {
-                Name        = itemTitlesDict.GetValueOrDefault(i.ItemId, "Unknown Item"),
-                Code        = clientOrderCode,
-                Quantity    = 1,
-                Price       = i.ItemPrice ?? fallbackPricePerItem,
-                WeightGrams = i.WeightGrams
-            }).ToList()
+            // All items declared in a single GHN order.
+            // Item-level weights are derived from the top-level total weight using
+            // an even distribution: base = totalWeight / itemCount, remainder is
+            // added to the first `remainder` items so the sum == totalWeight.
+            Items = BuildCarrierItemList(request, itemTitlesDict, totalWeight, fallbackPricePerItem, clientOrderCode)
         };
 
         var bookingResult = await _shippingService.BookShipmentAsync(
@@ -309,5 +356,38 @@ internal sealed class BookInboundShipmentCommandHandler
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return createdShipments.Select(s => s.ToDto()).ToList();
+    }
+
+    /// <summary>
+    /// Distributes the top-level package weight evenly across the requested items
+    /// for carrier metadata. Base = total / count, remainder is added to the first
+    /// <c>remainder</c> items. The resulting sum is exactly <paramref name="totalWeight"/>.
+    /// Item-level WeightGrams from the incoming request is intentionally ignored.
+    /// </summary>
+    private static List<BookShipmentItem> BuildCarrierItemList(
+        BookInboundShipmentCommand request,
+        Dictionary<Guid, string> itemTitlesDict,
+        int totalWeight,
+        decimal fallbackPricePerItem,
+        string clientOrderCode)
+    {
+        var count = request.Items.Count;
+        var baseWeight = totalWeight / count;
+        var remainder = totalWeight - (baseWeight * count);
+        var list = new List<BookShipmentItem>(count);
+        for (int idx = 0; idx < count; idx++)
+        {
+            var i = request.Items[idx];
+            var weight = baseWeight + (idx < remainder ? 1 : 0);
+            list.Add(new BookShipmentItem
+            {
+                Name        = itemTitlesDict.GetValueOrDefault(i.ItemId, "Unknown Item"),
+                Code        = clientOrderCode,
+                Quantity    = 1,
+                Price       = i.ItemPrice ?? fallbackPricePerItem,
+                WeightGrams = weight,
+            });
+        }
+        return list;
     }
 }

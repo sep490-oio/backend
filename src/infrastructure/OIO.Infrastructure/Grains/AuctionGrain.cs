@@ -712,7 +712,8 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
             BidCount: auction.BidCount,
             Status: auction.Status.Id,
             EndTime: auction.Info?.EndTime ?? DateTime.MinValue,
-            WinnerId: auction.WinnerId?.Value);
+            WinnerId: auction.WinnerId?.Value,
+            BuyNowPrice: auction.Pricing.HasBuyNowPrice ? auction.Pricing.BuyNowAmount : null);
     }
 
     // ==================== Internal Helpers ====================

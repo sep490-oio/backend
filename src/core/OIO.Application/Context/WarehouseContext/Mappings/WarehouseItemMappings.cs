@@ -5,14 +5,14 @@ namespace OIO.Application.Context.WarehouseContext.Mappings;
 
 internal static class WarehouseItemMappings
 {
-    public static WarehouseItemDto ToDto(this WarehouseItem item) =>
+    public static WarehouseItemDto ToDto(this WarehouseItem item, string? storageLocationLabel = null) =>
         new(
             Id:                   item.Id.Value,
             ItemId:               item.ItemId,
             InboundShipmentId:    item.InboundShipmentId.Value,
             InboundShipmentCode:  null,
             StorageLocationId:    item.StorageLocationId?.Value,
-            StorageLocationLabel: null,
+            StorageLocationLabel: storageLocationLabel,
             ItemTitle:            null,
             SellerId:             null,
             SellerName:           null,

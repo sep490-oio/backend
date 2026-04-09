@@ -40,6 +40,9 @@ public static partial class ApiEndpoint
             public const string GetMyWallet = nameof(GetMyWallet);
             public const string GetMyOrders = nameof(GetMyOrders);
             public const string GetMyOutboundShipments = nameof(GetMyOutboundShipments);
+            public const string AcknowledgeOutboundShipmentReceived = nameof(AcknowledgeOutboundShipmentReceived);
+            public const string GetBuyerOutboundShipmentById = nameof(GetBuyerOutboundShipmentById);
+            public const string SubmitOutboundShipmentReceiptProof = nameof(SubmitOutboundShipmentReceiptProof);
             public const string GetMyInboundShipments = nameof(GetMyInboundShipments);
             public const string GetSellerDirectShipOrders = nameof(GetSellerDirectShipOrders);
             public const string GetSellerOutboundShipments = nameof(GetSellerOutboundShipments);
@@ -47,6 +50,9 @@ public static partial class ApiEndpoint
             public const string GetSellerShippingProviderOptions = nameof(GetSellerShippingProviderOptions);
             public const string GetSellerDirectShipmentById = nameof(GetSellerDirectShipmentById);
             public const string GetSellerDirectShipments = nameof(GetSellerDirectShipments);
+
+            // Unified buyer shipments feed
+            public const string GetMyShipments = nameof(GetMyShipments);
 
             // Seller direct shipments (buyer-facing)
             public const string GetMyDirectShipments = nameof(GetMyDirectShipments);
@@ -73,6 +79,12 @@ public static partial class ApiEndpoint
             // Notification Preferences
             public const string GetNotificationPreferences = nameof(GetNotificationPreferences);
             public const string UpdateNotificationPreferences = nameof(UpdateNotificationPreferences);
+
+            // Disputes
+            public const string GetMyDisputes = nameof(GetMyDisputes);
+            public const string GetMyDisputeById = nameof(GetMyDisputeById);
+            public const string AddBuyerDisputeMessage = nameof(AddBuyerDisputeMessage);
+            public const string AddBuyerDisputeEvidence = nameof(AddBuyerDisputeEvidence);
         }
 
         public static class Media
@@ -100,6 +112,7 @@ public static partial class ApiEndpoint
             public const string RevokePermission = nameof(RevokePermission);
             public const string TogglePermission = nameof(TogglePermission);
             public const string UnlockUser = nameof(UnlockUser);
+            public const string RepairStuckInAuctionItems = nameof(RepairStuckInAuctionItems);
             public const string CreateTermsDocument = nameof(CreateTermsDocument);
             public const string ActivateTermsDocument = nameof(ActivateTermsDocument);
             public const string GetAllTermsDocuments = nameof(GetAllTermsDocuments);
@@ -116,7 +129,16 @@ public static partial class ApiEndpoint
             public const string RejectSellerProfile = nameof(RejectSellerProfile);
 
             // Disputes
-            public const string ResolveDispute = nameof(ResolveDispute);
+            public const string GetAdminDisputes = nameof(GetAdminDisputes);
+            public const string GetAdminDisputeById = nameof(GetAdminDisputeById);
+            public const string AssignDispute = nameof(AssignDispute);
+            public const string TransitionDisputeStatus = nameof(TransitionDisputeStatus);
+            public const string RequestDisputeEvidence = nameof(RequestDisputeEvidence);
+            public const string AddDisputeFinding = nameof(AddDisputeFinding);
+            public const string ResolveCaseDispute = nameof(ResolveCaseDispute);
+            public const string RejectDispute = nameof(RejectDispute);
+            public const string AddAdminDisputeMessage = nameof(AddAdminDisputeMessage);
+            public const string GetDisputeAssignableUsers = nameof(GetDisputeAssignableUsers);
 
             // Item Moderation
             public const string GetItemReviewQueue = nameof(GetItemReviewQueue);
@@ -242,6 +264,9 @@ public static partial class ApiEndpoint
             public const string BookOutboundShipment = nameof(BookOutboundShipment);
             public const string GetWarehouseStaffOutboundQueue = nameof(GetWarehouseStaffOutboundQueue);
             public const string GetWarehouseStaffOutboundOrder = nameof(GetWarehouseStaffOutboundOrder);
+            public const string GetWarehouseStaffOutboundShipments      = nameof(GetWarehouseStaffOutboundShipments);
+            public const string GetWarehouseStaffOutboundShipmentById   = nameof(GetWarehouseStaffOutboundShipmentById);
+            public const string UpdateExternalOutboundShipmentStatus    = nameof(UpdateExternalOutboundShipmentStatus);
             public const string GhnWebhook           = nameof(GhnWebhook);
             public const string GetInspectionQueue   = nameof(GetInspectionQueue);
             public const string InspectWarehouseItem = nameof(InspectWarehouseItem);
@@ -254,6 +279,7 @@ public static partial class ApiEndpoint
             public const string GetOutboundShipments     = nameof(GetOutboundShipments);
             public const string GetOutboundShipmentById  = nameof(GetOutboundShipmentById);
             public const string GetWarehouseItems = nameof(GetWarehouseItems);
+            public const string GetWarehouseItemById = nameof(GetWarehouseItemById);
             public const string CancelInboundShipment          = nameof(CancelInboundShipment);
             public const string CancelOutboundShipment         = nameof(CancelOutboundShipment);
             public const string DeleteStorageLocation          = nameof(DeleteStorageLocation);
@@ -268,6 +294,17 @@ public static partial class ApiEndpoint
             public const string CalculateLeadTime    = nameof(CalculateLeadTime);
             public const string MoveWarehouseItem    = nameof(MoveWarehouseItem);
             public const string AdjustWarehouseItem  = nameof(AdjustWarehouseItem);
+            public const string GetInboundPackages       = nameof(GetInboundPackages);
+            public const string GetInboundPackageByCode  = nameof(GetInboundPackageByCode);
+            public const string ReceiveInboundPackageMultipart = nameof(ReceiveInboundPackageMultipart);
+            public const string CancelInboundPackage          = nameof(CancelInboundPackage);
+            public const string SetInboundPackageTracking     = nameof(SetInboundPackageTracking);
+            public const string UpdateInboundPackageStatus    = nameof(UpdateInboundPackageStatus);
+
+            public const string GetSellerWarehouseItems     = nameof(GetSellerWarehouseItems);
+            public const string GetSellerWarehouseItemById  = nameof(GetSellerWarehouseItemById);
+
+            public const string GetBuyerOutboundShipmentByToken = nameof(GetBuyerOutboundShipmentByToken);
         }
 
         public static class VnPay
@@ -349,6 +386,13 @@ public static partial class ApiEndpoint
             public const string GetDisputeMessages = nameof(GetDisputeMessages);
             public const string SendDisputeMessage = nameof(SendDisputeMessage);
             public const string MarkDisputeRead = nameof(MarkDisputeRead);
+
+            // Intake
+            public const string CreateOrderDispute = nameof(CreateOrderDispute);
+            public const string CreateAuctionDispute = nameof(CreateAuctionDispute);
+            public const string CreatePaymentDispute = nameof(CreatePaymentDispute);
+            public const string CreateWarehouseItemDispute = nameof(CreateWarehouseItemDispute);
+            public const string CreateShipmentDispute = nameof(CreateShipmentDispute);
         }
 
         public static class Notifications

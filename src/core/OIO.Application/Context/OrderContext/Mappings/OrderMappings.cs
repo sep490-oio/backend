@@ -1,5 +1,6 @@
 using System.Linq;
 using OIO.Application.Context.OrderContext.DTOs;
+using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.Aggregates.SellerDirectShipments;
 using OIO.Domain.Context.OrderContext.Enums;
@@ -20,7 +21,9 @@ internal static class OrderMappings
         string? buyerDisplayName = null,
         string? sellerDisplayName = null,
         IReadOnlyList<Transaction>? orderTransactions = null,
-        SellerDirectShipment? directShipment = null)
+        SellerDirectShipment? directShipment = null,
+        OrderWarehouseOutboundShipmentDto? warehouseOutboundShipment = null,
+        AuctionBuyNowReservation? buyNowReservation = null)
     {
         // Amount paid from escrows (holding or released_to_seller). Null when
         // no escrows exist so FE can distinguish "unpaid" from "0".
@@ -69,6 +72,18 @@ internal static class OrderMappings
                 .ToList();
             if (gatewayTxs.Count > 0)
                 gatewayPaidAmount = gatewayTxs.Sum(t => t.Amount.Amount);
+        }
+
+        // Buy-now reservation offset: when the ledger hasn't posted the
+        // AuctionBuyNowDepositApplied transaction yet (pending_payment state),
+        // fall back to the live reservation's DepositAppliedAmount so the FE
+        // sees the offset immediately from the moment the buy-now order is
+        // created.
+        if (depositAppliedAmount is null &&
+            buyNowReservation is not null &&
+            buyNowReservation.DepositAppliedAmountValue > 0m)
+        {
+            depositAppliedAmount = buyNowReservation.DepositAppliedAmountValue;
         }
 
         var escrowStatus =
@@ -123,7 +138,8 @@ internal static class OrderMappings
             DepositAppliedAmount: depositAppliedAmount,
             WalletAppliedAmount: walletAppliedAmount,
             GatewayPaidAmount: gatewayPaidAmount,
-            DirectShipment: directShipment?.ToDto());
+            DirectShipment: directShipment?.ToDto(),
+            WarehouseOutboundShipment: warehouseOutboundShipment);
     }
 
     /// <summary>

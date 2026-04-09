@@ -2,6 +2,7 @@ using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Context.UserContext.Services;
+using OIO.Domain.Context.ModerationContext.Aggregates.Disputes;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.Aggregates.SellerDirectShipments;
 using OIO.Domain.Context.OrderContext.Errors;
@@ -45,6 +46,16 @@ internal sealed class OrderReceiptService : IOrderReceiptService
 
         if (!systemInvoked && order.BuyerId != _currentUser.UserId)
             return Error.Forbidden("Order.Forbidden", "Only the buyer can confirm receipt for this order.");
+
+        // Guard: block escrow release when the order has an active (non-terminal) dispute
+        var terminalStatuses = new[] { "resolved", "rejected", "cancelled" };
+        var hasActiveDispute = await _dbContext.Set<Dispute>()
+            .AnyAsync(d => d.OrderId == orderIdValue
+                           && !terminalStatuses.Contains(d.Status.Id), cancellationToken);
+
+        if (hasActiveDispute)
+            return Error.Conflict("Order.ActiveDispute",
+                "Cannot release escrow — this order has an active dispute.");
 
         UserId? actorId = systemInvoked ? null : _currentUser.UserId;
 

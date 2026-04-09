@@ -132,11 +132,23 @@ internal sealed class PlaceBidCommandHandler
             Status: bid.Status,
             CreatedAt: bid.CreatedAt);
 
+        // Buy-now cap detection: a manual bid >= buyNowPrice is capped inside the
+        // domain aggregate to buyNowPrice. Use the pre-bid snapshot's buy-now price
+        // and the raw request amount to detect the cap path so the FE can show a
+        // dedicated modal and jump straight to checkout.
+        var snapshotBuyNowPrice = snapshotBeforeFailure ? (decimal?)null : snapshotBefore.BuyNowPrice;
+        var triggeredBuyNowCap = snapshotBuyNowPrice.HasValue
+                                 && request.Amount >= snapshotBuyNowPrice.Value
+                                 && !snapshotAfterFailure
+                                 && string.Equals(snapshotAfter.Status, AuctionStatus.Sold.Id, StringComparison.OrdinalIgnoreCase)
+                                 && snapshotAfter.WinnerId == _currentUser.UserId.Value;
+
         // Buy-now-price-hit-via-bid: when a bid sweeps through the buy-now threshold
         // the auction grain transitions to Sold immediately. Provision the winner
         // order eagerly so the FE doesn't have to wait for the AuctionSoldEvent
         // handler. Skipped when an active buy-now reservation exists (that flow
         // owns its own order via BuyNowReservationFinalizer).
+        Guid? eagerOrderId = null;
         try
         {
             var auctionIdVo = AuctionId.From(request.AuctionId);
@@ -167,6 +179,10 @@ internal sealed class PlaceBidCommandHandler
                         request.AuctionId,
                         provisionResult.Error.Message);
                 }
+                else
+                {
+                    eagerOrderId = provisionResult.Value.Id.Value;
+                }
             }
         }
         catch (Exception ex)
@@ -182,7 +198,9 @@ internal sealed class PlaceBidCommandHandler
             Bid: bidDto,
             AutoBidsCascaded: autoBidsCascaded,
             FinalPrice: finalPrice,
-            WasImmediatelyOutbid: wasImmediatelyOutbid);
+            WasImmediatelyOutbid: wasImmediatelyOutbid,
+            TriggeredBuyNowCap: triggeredBuyNowCap,
+            OrderId: eagerOrderId);
     }
 
     private async Task TrackInvalidBidAttemptAsync(

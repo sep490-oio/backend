@@ -12,6 +12,8 @@ using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
+using OIO.Application.Context.WarehouseContext.Queries.GetBuyerOutboundShipmentByToken;
+using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.SeedWork.Errors;
@@ -111,10 +113,60 @@ internal sealed class GetOrderByIdQueryHandler(
 
         // Seller direct-ship shipment is a separate aggregate (no navigation
         // on Order). Load the 1:1 row by FK so OrderDto can expose it.
+        // Load the linked buy-now reservation (if any) so the DTO can surface
+        // the deposit-applied offset immediately — even before the ledger posts
+        // the AuctionBuyNowDepositApplied transaction (pending_payment state).
+        var buyNowReservation = await dbContext.Set<AuctionBuyNowReservation>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.OrderId == order.Id, cancellationToken);
+
         var directShipment = await dbContext.Set<SellerDirectShipmentEntity>()
             .AsNoTracking()
             .Include(s => s.Evidence)
             .FirstOrDefaultAsync(s => s.OrderId == order.Id, cancellationToken);
+
+        // Buyer-scoped warehouse outbound snapshot. Only populated for the
+        // order buyer and when an active (non-terminal) outbound shipment
+        // exists. Mirrors BuyerOutboundShipmentDetailBuilder's flag logic so
+        // the order detail page renders the same action hub as the QR deep
+        // link page.
+        OrderWarehouseOutboundShipmentDto? warehouseOutboundDto = null;
+        if (order.BuyerId == currentUser.UserId)
+        {
+            var activeOutbound = order.OutboundShipments
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefault(s => BuyerOutboundShipmentDetailBuilder.IsAllowedShipmentStatus(s.Status));
+            if (activeOutbound is not null)
+            {
+                var detail = await BuyerOutboundShipmentDetailBuilder.BuildAsync(
+                    dbContext, activeOutbound, order, cancellationToken);
+                // QrPayload guarded by buyer ownership (mirrors the token
+                // query). Since this branch already requires the viewer is
+                // the buyer, always expose it.
+                warehouseOutboundDto = new OrderWarehouseOutboundShipmentDto(
+                    ShipmentId: activeOutbound.Id.Value,
+                    Status: activeOutbound.Status.Id,
+                    ShipmentMode: activeOutbound.ShipmentMode.Id,
+                    ProviderCode: activeOutbound.ProviderCode.Id,
+                    ExternalCarrierName: activeOutbound.ExternalCarrierName,
+                    CarrierTrackingNumber: activeOutbound.CarrierTrackingNumber,
+                    ClientOrderCode: activeOutbound.ClientOrderCode,
+                    QrPayload: activeOutbound.QrPayload,
+                    QrAvailable: detail.QrAvailable,
+                    DispatchedAt: activeOutbound.DispatchedAt,
+                    DeliveredAt: activeOutbound.DeliveredAt,
+                    BuyerReceivedPackageAt: activeOutbound.BuyerReceivedPackageAt,
+                    BuyerAcceptedAt: activeOutbound.BuyerAcceptedAt,
+                    CanAcknowledgeReceived: false,
+                    CanAccept: detail.CanAccept,
+                    CanOpenDispute: detail.CanOpenDispute,
+                    HasActiveDispute: detail.HasActiveDispute,
+                    DecisionWindowEndsAt: order.DecisionWindowEndsAt,
+                    CanSubmitProof: false,
+                    HasBuyerReceiptProof: detail.HasBuyerReceiptProof,
+                    CanSubmitReceiptProof: false);
+            }
+        }
 
         return order.ToDto(
             item: itemSummary,
@@ -123,7 +175,9 @@ internal sealed class GetOrderByIdQueryHandler(
             buyerDisplayName: buyerDisplayName,
             sellerDisplayName: sellerDisplayName,
             orderTransactions: orderTransactions,
-            directShipment: directShipment);
+            directShipment: directShipment,
+            warehouseOutboundShipment: warehouseOutboundDto,
+            buyNowReservation: buyNowReservation);
     }
 
     private static string? ResolveUserDisplayName(User? user)

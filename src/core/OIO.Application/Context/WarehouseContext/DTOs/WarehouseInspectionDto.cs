@@ -43,4 +43,6 @@ public sealed record InspectionQueueItemDto(
     DateTime? ArrivedAt,
     string DeclaredCondition,
     string? ConditionOnArrival,
-    DateTime? InspectedAt);
+    DateTime? InspectedAt,
+    string? StorageLocationLabel = null,
+    string? ItemImageUrl = null);

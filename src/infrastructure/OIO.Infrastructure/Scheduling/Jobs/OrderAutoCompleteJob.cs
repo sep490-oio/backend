@@ -7,12 +7,23 @@ using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Context.OrderContext.Services;
+using OIO.Domain.Context.ModerationContext.Aggregates.Disputes;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
+using OIO.Domain.Context.OrderContext.Aggregates.SellerDirectShipments;
 using OIO.Domain.Context.OrderContext.Enums;
 using Quartz;
 
 namespace OIO.Infrastructure.Scheduling.Jobs;
 
+/// <summary>
+/// Canonical auto-complete job for all fulfillment types. Picks up every
+/// <see cref="OrderStatus.Delivered"/> order whose buyer decision window has
+/// elapsed — regardless of whether fulfillment was <c>SellerDirectShipment</c>
+/// or warehouse-managed <c>OutboundShipment</c>. Delegates the actual
+/// transition to <see cref="IOrderReceiptService.ConfirmAsync"/> with
+/// <c>systemInvoked: true</c> so the same code path runs as a buyer
+/// "Confirm receipt" click.
+/// </summary>
 [DisallowConcurrentExecution]
 internal sealed class OrderAutoCompleteJob : IJob
 {
@@ -38,19 +49,38 @@ internal sealed class OrderAutoCompleteJob : IJob
         var stopwatch = Stopwatch.StartNew();
         using var scope = _scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<IDbContext>();
-        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-        var escrowSettlementService = scope.ServiceProvider.GetRequiredService<EscrowSettlementService>();
+        var receiptService = scope.ServiceProvider.GetRequiredService<IOrderReceiptService>();
 
         var ct = context.CancellationToken;
         var now = _clock.UtcNow;
-        var autoCompletedThreshold = now.AddDays(-7);
 
-        // Find all Delivered orders whose 7-day auto-complete window has expired
-        var eligibleOrderIds = await dbContext.Set<Order>()
-            .Where(o => o.Status == OrderStatus.Delivered
-                        && o.DeliveredAt.HasValue
-                        && o.DeliveredAt.Value <= autoCompletedThreshold)
-            .Select(o => o.Id)
+        // Canonical window: DecisionWindowEndsAt is populated by MarkAsDelivered
+        // from the runtime-configured ReturnDecisionWindowDays. We filter on it
+        // directly rather than recomputing DeliveredAt + window so the job honors
+        // the exact window the order was stamped with at delivery time.
+        // Filter is fulfillment-type agnostic — seller direct and warehouse
+        // outbound are both covered by Order.Status == Delivered.
+        // Exclude seller direct shipments flagged for manual review — those are
+        // handled by ScanOverdueSelfShipOrdersJob which raises a MonitoringAlert
+        // instead of auto-completing. Warehouse outbound orders have no matching
+        // row in SellerDirectShipments so the left-join keeps them eligible.
+        // Terminal dispute statuses — orders with active disputes are excluded
+        var terminalStatuses = new[] { "resolved", "rejected", "cancelled" };
+
+        var eligibleOrderIds = await (
+            from o in dbContext.Set<Order>()
+            join s in dbContext.Set<SellerDirectShipment>() on o.Id equals s.OrderId into sj
+            from s in sj.DefaultIfEmpty()
+            where o.Status == OrderStatus.Delivered
+                  && o.DecisionWindowEndsAt != null
+                  && o.DecisionWindowEndsAt < now
+                  && (s == null || !s.ManualReviewRequired)
+                  && !dbContext.Set<Dispute>().Any(d =>
+                      d.OrderId == o.Id
+                      && !terminalStatuses.Contains(d.Status.Id))
+            orderby o.DecisionWindowEndsAt
+            select o.Id)
+            .Take(200)
             .ToListAsync(ct);
 
         var completedCount = 0;
@@ -60,37 +90,22 @@ internal sealed class OrderAutoCompleteJob : IJob
         {
             try
             {
-                // Load full entity inside the loop (memory efficient for large batches)
-                var order = await dbContext.Set<Order>()
-                    .FirstOrDefaultAsync(o => o.Id == orderId, ct);
-
-                if (order is null)
-                {
-                    _logger.LogWarning("Order {OrderId} not found, skipping.", orderId);
-                    continue;
-                }
-
-                // EscrowSettlementService.ReleaseToSellerAsync handles both order.Complete()
-                // and escrow release in a single operation — no need to call Complete() separately.
-                var releaseResult = await escrowSettlementService.ReleaseToSellerAsync(
-                    order, "Auto-completed: decision window expired", null, ct);
-
-                if (releaseResult.IsFailure)
+                var result = await receiptService.ConfirmAsync(orderId.Value, systemInvoked: true, now, ct);
+                if (result.IsFailure)
                 {
                     failedCount++;
                     _logger.LogWarning(
-                        "Failed to release escrow for Order {OrderId}: {Error}",
-                        orderId, releaseResult.Error);
+                        "Auto-complete ConfirmAsync failed for Order {OrderId}: {Error}",
+                        orderId.Value, result.Error.Message);
                     continue;
                 }
 
-                await unitOfWork.SaveChangesAsync(ct);
                 completedCount++;
             }
             catch (Exception ex)
             {
                 failedCount++;
-                _logger.LogError(ex, "Error auto-completing Order {OrderId}", orderId);
+                _logger.LogError(ex, "Error auto-completing Order {OrderId}", orderId.Value);
             }
         }
 

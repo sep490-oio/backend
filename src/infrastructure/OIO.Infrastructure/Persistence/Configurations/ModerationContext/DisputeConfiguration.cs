@@ -91,9 +91,58 @@ internal sealed class DisputeConfiguration : IEntityTypeConfiguration<Dispute>
         
         builder.Property(d => d.AssignedTo)
             .HasColumnName("assigned_to");
-        
+
         builder.Property(d => d.EscalatedTo)
             .HasColumnName("escalated_to");
+
+        // ── Case-engine columns (Phase 1) ──
+        builder.Property(d => d.CaseDomain)
+            .HasColumnName("case_domain");
+
+        builder.Property(d => d.CaseType)
+            .HasColumnName("case_type");
+
+        builder.Property(d => d.PrimaryTargetType)
+            .HasColumnName("primary_target_type");
+
+        builder.Property(d => d.CaseOrderId)
+            .HasColumnName("case_order_id");
+
+        builder.Property(d => d.CaseAuctionId)
+            .HasColumnName("case_auction_id");
+
+        builder.Property(d => d.ShipmentId)
+            .HasColumnName("shipment_id");
+
+        builder.Property(d => d.WarehouseItemId)
+            .HasColumnName("warehouse_item_id");
+
+        builder.Property(d => d.PaymentId)
+            .HasColumnName("payment_id");
+
+        builder.Property(d => d.ResolutionOutcome)
+            .HasColumnName("resolution_outcome");
+
+        builder.Property(d => d.ResolutionReason)
+            .HasColumnName("resolution_reason");
+
+        builder.Property(d => d.ResolutionActionSetJson)
+            .HasColumnName("resolution_action_set_json");
+
+        builder.Property(d => d.ResolvedBy)
+            .HasColumnName("resolved_by");
+
+        builder.Property(d => d.CaseResolvedAt)
+            .HasColumnName("case_resolved_at");
+
+        builder.Property(d => d.AssignedToUserId)
+            .HasColumnName("assigned_to_user_id");
+
+        builder.Property(d => d.AssignedAt)
+            .HasColumnName("assigned_at");
+
+        builder.Property(d => d.ContextSnapshotJson)
+            .HasColumnName("context_snapshot_json");
         
         builder.Property(d => d.ResponseDeadline)
             .HasColumnName("response_deadline");
@@ -134,6 +183,11 @@ internal sealed class DisputeConfiguration : IEntityTypeConfiguration<Dispute>
         builder.HasMany(d => d.StatusHistory)
             .WithOne(sh => sh.Dispute)
             .HasForeignKey(sh => sh.DisputeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(d => d.Findings)
+            .WithOne(f => f.Dispute)
+            .HasForeignKey(f => f.DisputeId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne<IdentityVerification>()

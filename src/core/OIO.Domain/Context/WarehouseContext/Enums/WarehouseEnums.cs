@@ -21,6 +21,7 @@ public sealed class OutboundShipmentMode : EnumValueObject<OutboundShipmentMode>
 {
     public static readonly OutboundShipmentMode PlatformManaged = new("platform_managed");
     public static readonly OutboundShipmentMode SellerSelfShip    = new("seller_self_ship");
+    public static readonly OutboundShipmentMode ExternalCarrier  = new("external_carrier");
 
     private OutboundShipmentMode(string id) : base(id) { }
 }

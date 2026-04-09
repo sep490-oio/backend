@@ -92,6 +92,11 @@ internal sealed class ItemConfiguration : IEntityTypeConfiguration<Item>
         builder.Property(i => i.ResubmissionCount)
             .HasColumnName("resubmission_count")
             .IsRequired();
+
+        builder.Property(i => i.RequiresPlatformInspection)
+            .HasColumnName("requires_platform_inspection")
+            .HasDefaultValue(false)
+            .IsRequired();
         
         builder.Property(i => i.AssignedAdminId)
             .HasColumnName("assigned_admin_id")

@@ -1,6 +1,7 @@
 using CSharpFunctionalExtensions;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
+using OIO.Domain.Context.Shared.Entities;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.Events;
 using OIO.Domain.Context.WarehouseContext.Enums;
@@ -28,6 +29,7 @@ namespace OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments;
 public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
 {
     private readonly List<ShipmentTrackingEvent> _trackingEvents = [];
+    private readonly List<OutboundShipmentEvidence> _evidence = [];
 
     private OutboundShipment() { }
 
@@ -115,11 +117,123 @@ public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
     public DateTime? DispatchedAt { get; private set; }
     public DateTime? EstimatedDeliveryAt { get; private set; }
     public DateTime? DeliveredAt { get; private set; }
+    public DateTime? BuyerReceivedPackageAt { get; private set; }
+    public DateTime? BuyerAcceptedAt { get; private set; }
+    public string? BuyerAcknowledgedSource { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? ModifiedAt { get; private set; }
 
     public Order Order { get; private set; }
     public IReadOnlyCollection<ShipmentTrackingEvent> TrackingEvents => _trackingEvents.AsReadOnly();
+    public IReadOnlyCollection<OutboundShipmentEvidence> Evidence => _evidence.AsReadOnly();
+
+    public bool HasBuyerReceiptProof => _evidence.Any(e => e.Category == "buyer_receipt_photo");
+
+    /// <summary>
+    /// Attaches an evidence photo to this shipment. The <paramref name="upload"/>
+    /// must already be confirmed. Caller is responsible for linking + relocating.
+    /// </summary>
+    public OutboundShipmentEvidence AddEvidence(DateTime now, string category, MediaUpload upload)
+    {
+        var evidence = new OutboundShipmentEvidence(
+            OutboundShipmentEvidenceId.From(Guid.CreateVersion7()),
+            Id,
+            category,
+            upload.Id,
+            upload.Info.SecureUrl,
+            upload.Info.FileName,
+            upload.ResourceType,
+            DateTime.SpecifyKind(now, DateTimeKind.Utc));
+
+        _evidence.Add(evidence);
+        ModifiedAt = now;
+        return evidence;
+    }
+
+    // QR token lifecycle — only populated for ExternalCarrier shipments. Version
+    // starts at 0, bumped each time a new QR is issued; revoke timestamps audit.
+    public string? QrPayload { get; private set; }
+    public string? QrCodeUrl { get; private set; }
+    public int QrTokenVersion { get; private set; }
+    public DateTime? QrTokenIssuedAt { get; private set; }
+    public DateTime? QrTokenRevokedAt { get; private set; }
+
+    /// <summary>
+    /// Issues a new QR token for an ExternalCarrier shipment. Bumps
+    /// <see cref="QrTokenVersion"/>, stamps <see cref="QrTokenIssuedAt"/>, and
+    /// clears any previous revoke.
+    /// </summary>
+    public UnitResult<e> IssueQr(string qrPayload, string? qrCodeUrl, DateTime now)
+    {
+        QrPayload        = qrPayload;
+        QrCodeUrl        = qrCodeUrl;
+        QrTokenVersion  += 1;
+        QrTokenIssuedAt  = DateTime.SpecifyKind(now, DateTimeKind.Utc);
+        QrTokenRevokedAt = null;
+        ModifiedAt       = now;
+        return UnitResult.Success<e>();
+    }
+
+    /// <summary>
+    /// Idempotently revokes the current QR token. No-op if already revoked.
+    /// </summary>
+    public UnitResult<e> RevokeQr(DateTime now)
+    {
+        if (QrTokenRevokedAt is not null) return UnitResult.Success<e>();
+
+        QrTokenRevokedAt = DateTime.SpecifyKind(now, DateTimeKind.Utc);
+        ModifiedAt       = now;
+        return UnitResult.Success<e>();
+    }
+
+    /// <summary>
+    /// Buyer stamps that they physically received the package. Stamp-only —
+    /// does NOT change Status. Idempotent: subsequent calls leave the original
+    /// timestamp untouched. Allowed from PickedUp, InTransit, Delivering, Delivered.
+    /// </summary>
+    public UnitResult<e> AcknowledgeReceivedByBuyer(DateTime now, string source)
+    {
+        if (BuyerReceivedPackageAt is not null)
+            return UnitResult.Success<e>();
+
+        if (Status != OutboundShipmentStatus.PickedUp &&
+            Status != OutboundShipmentStatus.InTransit &&
+            Status != OutboundShipmentStatus.Delivering &&
+            Status != OutboundShipmentStatus.Delivered)
+            return e.Validation(
+                "status",
+                "OutboundShipment.CannotAcknowledgeReceived",
+                $"Cannot acknowledge receipt while shipment is in status '{Status.Id}'.");
+
+        BuyerReceivedPackageAt  = DateTime.SpecifyKind(now, DateTimeKind.Utc);
+        BuyerAcknowledgedSource = source;
+        ModifiedAt              = now;
+        return UnitResult.Success<e>();
+    }
+
+    /// <summary>
+    /// Buyer accepts the package as satisfactory. Stamp-only — does NOT change
+    /// Status. Idempotent: subsequent calls leave the original timestamp
+    /// untouched. Allowed from PickedUp, InTransit, Delivering, Delivered.
+    /// </summary>
+    public UnitResult<e> MarkBuyerAccepted(DateTime now)
+    {
+        if (BuyerAcceptedAt is not null)
+            return UnitResult.Success<e>();
+
+        if (Status != OutboundShipmentStatus.PickedUp &&
+            Status != OutboundShipmentStatus.InTransit &&
+            Status != OutboundShipmentStatus.Delivering &&
+            Status != OutboundShipmentStatus.Delivered)
+            return e.Validation(
+                "status",
+                "OutboundShipment.CannotMarkBuyerAccepted",
+                $"Cannot mark buyer-accepted while shipment is in status '{Status.Id}'.");
+
+        BuyerAcceptedAt = DateTime.SpecifyKind(now, DateTimeKind.Utc);
+        ModifiedAt      = now;
+        return UnitResult.Success<e>();
+    }
 
     public static OutboundShipment Create(
         OrderId orderId,
@@ -240,6 +354,23 @@ public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
         return UnitResult.Success<e>();
     }
 
+    /// <summary>
+    /// Mark an external-carrier shipment as dispatched/in-transit immediately
+    /// after booking. Used by the external-carrier flow where there's no
+    /// integrated carrier webhook to drive status progression.
+    /// </summary>
+    public UnitResult<e> MarkDispatched(DateTime now)
+    {
+        Status       = OutboundShipmentStatus.InTransit;
+        DispatchedAt = now;
+        ModifiedAt   = now;
+
+        RaiseDomainEvent(new OutboundShipmentInTransitEvent(
+            Id.ToString(), OrderId.ToString(), ProviderCode.Id, now));
+
+        return UnitResult.Success<e>();
+    }
+
     /// <summary>Called when carrier picks up the package from warehouse.</summary>
     public UnitResult<e> RecordPickedUp(DateTime now)
     {
@@ -257,11 +388,34 @@ public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
         return UnitResult.Success<e>();
     }
 
+    /// <summary>
+    /// Marks the shipment as out for final delivery (last-mile). Idempotent: no-op
+    /// if already Delivering or past that state.
+    /// </summary>
+    public UnitResult<e> MarkDelivering(DateTime now)
+    {
+        if (Status == OutboundShipmentStatus.Delivering ||
+            Status == OutboundShipmentStatus.Delivered ||
+            Status == OutboundShipmentStatus.Failed ||
+            Status == OutboundShipmentStatus.Returning ||
+            Status == OutboundShipmentStatus.Returned)
+            return UnitResult.Success<e>();
+
+        Status     = OutboundShipmentStatus.Delivering;
+        ModifiedAt = now;
+
+        RaiseDomainEvent(new OutboundShipmentDeliveringEvent(
+            Id.ToString(), OrderId.ToString(), ProviderCode.Id, now));
+
+        return UnitResult.Success<e>();
+    }
+
     /// <summary>Called when carrier webhook reports delivery confirmed.</summary>
     public UnitResult<e> RecordDelivered(DateTime deliveredAt, DateTime now)
     {
         if (Status != OutboundShipmentStatus.InTransit &&
-            Status != OutboundShipmentStatus.PickedUp)
+            Status != OutboundShipmentStatus.PickedUp &&
+            Status != OutboundShipmentStatus.Delivering)
             return WarehouseErrors.OutboundShipment.CannotMarkDelivered;
 
         Status      = OutboundShipmentStatus.Delivered;

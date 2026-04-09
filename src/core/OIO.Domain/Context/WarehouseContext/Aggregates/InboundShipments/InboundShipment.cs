@@ -286,6 +286,15 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
         return UnitResult.Success<e>();
     }
 
+    /// <summary>
+    /// Set the shipment's ExtraData (used for storing package-level receipt JSON).
+    /// </summary>
+    public void SetExtraData(ShipmentExtraData extraData, DateTime now)
+    {
+        ExtraData = extraData;
+        ModifiedAt = now;
+    }
+
     public UnitResult<e> RecordArrived(DateTime now)
     {
         if (Status == InboundShipmentStatus.Arrived)

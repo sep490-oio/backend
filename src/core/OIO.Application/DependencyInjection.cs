@@ -51,6 +51,8 @@ public static class DependencyInjection
         services.AddScoped<ModerationAuditService>();
         services.AddScoped<VerificationDuplicateIdentityService>();
         services.AddScoped<DisputeAccessService>();
+        services.AddScoped<IDisputeResolutionService, DisputeResolutionService>();
+        services.AddScoped<IDisputeIntakeService, DisputeIntakeService>();
 
         return services;
     }

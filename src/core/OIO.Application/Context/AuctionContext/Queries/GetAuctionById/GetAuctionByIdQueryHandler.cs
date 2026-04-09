@@ -9,6 +9,7 @@ using OIO.Application.Context.AuctionContext.EventHandlers;
 using OIO.Application.Context.AuctionContext.Mappings;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
+using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
@@ -54,6 +55,7 @@ internal sealed class GetAuctionByIdQueryHandler
                 .Include(a => a.AutoBids)
                 .Include(a => a.Watchers)
                 .Include(a => a.BuyNowReservations)
+                .Include(a => a.SealedBids)
                 .Include(a => a.PriceHistories.OrderByDescending(ph => ph.CreatedAt))
                 .Include(x => x.Item)
                 .ThenInclude(x => x.Media)
@@ -210,6 +212,33 @@ internal sealed class GetAuctionByIdQueryHandler
             }
         }
 
+        // ── Sealed bid info ────────────────────────────────────────────
+        SealedBidInfoDto? sealedBidInfo = null;
+
+        if (auction.AuctionType == AuctionType.Sealed)
+        {
+            var sealedBidCount = auction.SealedBids.Count;
+            var hasSubmitted = false;
+            string? userSealedBidStatus = null;
+
+            if (_currentUser.IsAuthenticated)
+            {
+                var userSealedBid = auction.SealedBids
+                    .FirstOrDefault(sb => sb.BidderId == _currentUser.UserId);
+
+                if (userSealedBid is not null)
+                {
+                    hasSubmitted = true;
+                    userSealedBidStatus = userSealedBid.Status.Id;
+                }
+            }
+
+            sealedBidInfo = new SealedBidInfoDto(
+                SealedBidCount: sealedBidCount,
+                CurrentUserHasSubmittedSealedBid: hasSubmitted,
+                CurrentUserSealedBidStatus: userSealedBidStatus);
+        }
+
         return new AuctionDetailDto(
             Auction: auction.ToDto(nowUtc, _runtimeSettings.Auction.ExtensionThreshold),
             Item: auction.Item.ToDto(),
@@ -232,7 +261,8 @@ internal sealed class GetAuctionByIdQueryHandler
                 .ToList(),
             CurrentUserParticipant: currentUserParticipant,
             CurrentUserBidState: currentUserBidState,
-            CurrentBuyerOrder: currentBuyerOrder);
+            CurrentBuyerOrder: currentBuyerOrder,
+            SealedBidInfo: sealedBidInfo);
     }
 }
 

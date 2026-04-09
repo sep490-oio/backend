@@ -96,7 +96,7 @@ internal sealed class CreateSellerDirectShipmentCommandHandler(
 
         // Issue the first QR token (version 1) and build an absolute deep-link
         // URL embedding it. Both QrPayload and legacy QrCodeUrl point at the
-        // buyer-facing /me/shipments/scan?token=... landing.
+        // canonical buyer-facing /me/shipments/{id}/receive?token=... route.
         const int initialVersion = 1;
         var token = tokenService.Issue(
             SellerDirectShipmentId.From(shipmentId),
@@ -106,7 +106,7 @@ internal sealed class CreateSellerDirectShipmentCommandHandler(
             now);
 
         var feBase = (appInfo.FeUrl ?? string.Empty).TrimEnd('/');
-        var qrCodeUrl = $"{feBase}/me/shipments/scan?token={token}";
+        var qrCodeUrl = $"{feBase}/me/shipments/{shipmentId}/receive?token={token}";
         var qrPayload = qrCodeUrl;
 
         var shipment = ShipmentAggregate.CreateWithId(

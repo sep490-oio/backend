@@ -45,7 +45,41 @@ public sealed record OrderDto(
     /// don't use the self-ship-direct fulfillment flow, or when the shipment
     /// has not been created yet.
     /// </summary>
-    SellerDirectShipmentDto? DirectShipment = null);
+    SellerDirectShipmentDto? DirectShipment = null,
+    /// <summary>
+    /// Warehouse outbound shipment snapshot (1:1 with the active outbound for
+    /// warehouse_managed orders). Null for orders that don't use the warehouse
+    /// outbound flow or when viewed by a non-buyer.
+    /// </summary>
+    OrderWarehouseOutboundShipmentDto? WarehouseOutboundShipment = null);
+
+/// <summary>
+/// Compact warehouse outbound shipment snapshot exposed on the buyer-scoped
+/// OrderDto so the order detail page can render the action hub panel (view,
+/// acknowledge received, accept, dispute) without a second round-trip.
+/// </summary>
+public sealed record OrderWarehouseOutboundShipmentDto(
+    Guid ShipmentId,
+    string Status,
+    string ShipmentMode,
+    string ProviderCode,
+    string? ExternalCarrierName,
+    string? CarrierTrackingNumber,
+    string? ClientOrderCode,
+    string? QrPayload,
+    bool QrAvailable,
+    DateTime? DispatchedAt,
+    DateTime? DeliveredAt,
+    DateTime? BuyerReceivedPackageAt,
+    DateTime? BuyerAcceptedAt,
+    bool CanAcknowledgeReceived,
+    bool CanAccept,
+    bool CanOpenDispute,
+    bool HasActiveDispute,
+    DateTime? DecisionWindowEndsAt,
+    bool CanSubmitProof,
+    bool HasBuyerReceiptProof = false,
+    bool CanSubmitReceiptProof = false);
 
 /// <summary>
 /// Compact item summary attached to every OrderDto so Checkout / MyOrders /

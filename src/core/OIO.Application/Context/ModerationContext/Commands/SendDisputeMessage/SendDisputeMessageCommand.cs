@@ -15,6 +15,7 @@ using OIO.Domain.Context.ModerationContext.Aggregates.Disputes;
 using OIO.Domain.Context.ModerationContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.Entities;
 using OIO.Domain.Context.Shared.Errors;
+using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.Shared.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
@@ -47,7 +48,12 @@ internal sealed class SendDisputeMessageCommandHandler(
     ILogger<SendDisputeMessageCommandHandler> logger)
     : ICommandHandler<SendDisputeMessageCommand, DisputeMessageDto>
 {
-    private const string DisputeAttachmentContext = "dispute_attachment";
+    private static readonly HashSet<string> DisputeAttachmentContexts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "dispute_attachment",
+        "dispute_attachment_video",
+        "dispute_attachment_document"
+    };
 
     public async Task<Result<DisputeMessageDto, Error>> Handle(
         SendDisputeMessageCommand request,
@@ -187,7 +193,7 @@ internal sealed class SendDisputeMessageCommandHandler(
         if (uploads.Any(x => !x.IsConfirmed))
             return MediaErrors.NotConfirm;
 
-        if (uploads.Any(x => !string.Equals(x.Context, DisputeAttachmentContext, StringComparison.OrdinalIgnoreCase)))
+        if (uploads.Any(x => !DisputeAttachmentContexts.Contains(x.Context)))
             return MediaErrors.WrongContext("dispute attachments", contextRegistry.GetAllContext());
 
         if (uploads.Any(x => x.IsLinked))
@@ -201,13 +207,20 @@ internal sealed class SendDisputeMessageCommandHandler(
         return new DisputeMessageAttachmentDto(
             attachment.Id.Value,
             attachment.Info.FileName,
-            attachment.Info.IsVideo ? "video" : "image",
+            ResolveResourceType(attachment.Info),
             attachment.Info.SecureUrl ?? string.Empty,
             attachment.Info.Bytes ?? 0,
             attachment.Info.Format ?? string.Empty,
             attachment.Info.Width,
             attachment.Info.Height,
             attachment.Info.DurationSeconds);
+    }
+
+    private static string ResolveResourceType(MediaInfo info)
+    {
+        if (info.IsVideo) return "video";
+        if (info.IsImage) return "image";
+        return "raw";
     }
 }
 

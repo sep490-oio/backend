@@ -24,3 +24,32 @@ public sealed record WarehouseItemMediaDto(
     int    SortOrder,
     string SecureUrl,
     string? FileName);
+
+public sealed record WarehouseItemDetailDto(
+    // Warehouse item
+    Guid      Id,
+    string    Status,
+    DateTime? ReceivedAt,
+    DateTime  CreatedAt,
+    DateTime? ModifiedAt,
+    Guid?     StorageLocationId,
+    string?   StorageLocationLabel,
+    Guid      InboundShipmentId,
+    string?   InboundShipmentCode,
+    // Original item
+    Guid      ItemId,
+    string?   ItemTitle,
+    string?   ItemImageUrl,
+    string?   Condition,
+    string?   Description,
+    // Seller
+    Guid?     SellerId,
+    string?   SellerName,
+    // Receiving media
+    List<WarehouseItemMediaDto> Media,
+    // Staff action affordances
+    bool      CanAssignOrMoveLocation = false,
+    bool      CanBookOutbound = false,
+    Guid?     OutboundBookingOrderId = null,
+    bool      CanViewOutboundShipment = false,
+    Guid?     OutboundShipmentId = null);

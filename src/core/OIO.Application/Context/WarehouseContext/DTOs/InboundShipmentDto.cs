@@ -28,4 +28,6 @@ public sealed record InboundShipmentDto(
     DateTime? ArrivedAt,
     DateTime  CreatedAt,
     DateTime? ModifiedAt,
-    IReadOnlyList<ShipmentTrackingEventDto> TrackingEvents);
+    IReadOnlyList<ShipmentTrackingEventDto> TrackingEvents,
+    string? ItemTitle = null,
+    string? ItemImageUrl = null);

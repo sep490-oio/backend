@@ -30,24 +30,47 @@ internal sealed class GetShipmentByScanCodeQueryHandler
             return Error.Validation("ScanCode", "GetShipment.ScanCodeEmpty", "Scan code cannot be empty.");
         }
 
-        // Try parsing as GUID first (QR codes encode shipment ID directly)
+        var scanCode = request.ScanCode.Trim();
+
+        // Package-level token: "pkg:{clientOrderCode}" (case-insensitive prefix).
+        // Emitted by InboundPackageDetailDto.packageQrToken on the seller page.
+        const string PackagePrefix = "pkg:";
         InboundShipment? primary = null;
-        if (Guid.TryParse(request.ScanCode, out var parsedId))
+        if (scanCode.StartsWith(PackagePrefix, StringComparison.OrdinalIgnoreCase))
         {
-            var shipmentId = InboundShipmentId.From(parsedId);
+            var clientOrderCode = scanCode.Substring(PackagePrefix.Length).Trim();
+            if (string.IsNullOrWhiteSpace(clientOrderCode))
+            {
+                return Error.Validation(
+                    "ScanCode",
+                    "GetShipment.PackageTokenEmpty",
+                    "Package scan token must include a client order code after 'pkg:'.");
+            }
+
             primary = await _dbContext.Set<InboundShipment>()
                 .AsNoTracking()
                 .Include(s => s.TrackingEvents)
-                .FirstOrDefaultAsync(s => s.Id == shipmentId, cancellationToken);
+                .FirstOrDefaultAsync(s => s.ClientOrderCode == clientOrderCode, cancellationToken);
         }
+        else
+        {
+            // Raw scan: Guid shipment id first, then ClientOrderCode / CarrierTrackingNumber.
+            if (Guid.TryParse(scanCode, out var parsedId))
+            {
+                var shipmentId = InboundShipmentId.From(parsedId);
+                primary = await _dbContext.Set<InboundShipment>()
+                    .AsNoTracking()
+                    .Include(s => s.TrackingEvents)
+                    .FirstOrDefaultAsync(s => s.Id == shipmentId, cancellationToken);
+            }
 
-        // Fallback: search by ClientOrderCode or CarrierTrackingNumber
-        primary ??= await _dbContext.Set<InboundShipment>()
-            .AsNoTracking()
-            .Include(s => s.TrackingEvents)
-            .FirstOrDefaultAsync(
-                s => s.ClientOrderCode == request.ScanCode || s.CarrierTrackingNumber == request.ScanCode,
-                cancellationToken);
+            primary ??= await _dbContext.Set<InboundShipment>()
+                .AsNoTracking()
+                .Include(s => s.TrackingEvents)
+                .FirstOrDefaultAsync(
+                    s => s.ClientOrderCode == scanCode || s.CarrierTrackingNumber == scanCode,
+                    cancellationToken);
+        }
 
         if (primary is null)
         {

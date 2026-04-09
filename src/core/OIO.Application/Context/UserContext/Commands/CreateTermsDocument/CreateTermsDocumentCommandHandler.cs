@@ -88,8 +88,21 @@ internal sealed class CreateTermsDocumentCommandHandler : ICommandHandler<Create
         _dbContext.Insert(document);
 
         await _mediaRelocationService.RelocateLinkedUploadAsync(mediaUpload, cancellationToken);
-        
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message?.Contains("uq_terms_documents_type_version") == true)
+        {
+            // Race: another admin created the next version for this term type concurrently.
+            _logger.LogWarning(ex,
+                "Terms document version conflict for type {TermType} at version {Version}.",
+                normalizedType, currentMaxVersion + 1);
+            return Error.Conflict(
+                "TermsDocument.VersionConflict",
+                "A newer terms version for this type already exists. Refresh and try again.");
+        }
 
         return document.ToDto();
     }

@@ -14,7 +14,11 @@ internal static class TermsMappings
             IsActive: document.IsActive,
             PublishedAt: document.PublishedAt,
             CreatedAt: document.CreatedAt,
-            ContentUrl: document.Info?.SecureUrl ?? string.Empty,
+            ContentUrl: NormalizePdfUrl(
+                document.Info?.SecureUrl,
+                document.StorageRef?.PublicId,
+                document.Info?.FileName,
+                document.Info?.Format),
             FileName: document.Info?.FileName,
             FileSize: document.Info?.Bytes ?? 0,
             Format: document.Info?.Format,
@@ -23,6 +27,35 @@ internal static class TermsMappings
             DurationSeconds: document.Info?.DurationSeconds,
             StoragePublicId: document.StorageRef?.PublicId,
             StorageFolder: document.StorageRef?.Folder);
+    }
+
+    /// <summary>
+    /// Defensively appends a ".pdf" extension to legacy term document URLs whose
+    /// Cloudinary public_id was created before the .pdf-preserving fix. Never
+    /// mutates URLs that already have a recognizable file extension.
+    /// </summary>
+    private static string NormalizePdfUrl(string? secureUrl, string? publicId, string? fileName, string? format)
+    {
+        if (string.IsNullOrWhiteSpace(secureUrl))
+            return string.Empty;
+
+        // Already ends with .pdf — trust it.
+        if (secureUrl.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+            return secureUrl;
+
+        // If the URL already has some other well-known extension, don't touch it.
+        var lastSegment = secureUrl.Split('?')[0].Split('/').LastOrDefault() ?? string.Empty;
+        var hasExtension = lastSegment.Contains('.', StringComparison.Ordinal);
+        if (hasExtension)
+            return secureUrl;
+
+        // Only append .pdf if we have positive signal that the source is a PDF.
+        var looksLikePdf =
+            string.Equals(format, "pdf", StringComparison.OrdinalIgnoreCase)
+            || (!string.IsNullOrWhiteSpace(fileName) && fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+            || (!string.IsNullOrWhiteSpace(publicId) && publicId.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase));
+
+        return looksLikePdf ? secureUrl + ".pdf" : secureUrl;
     }
 
     public static TermsAcceptanceDto ToDto(this TermsAcceptance acceptance)

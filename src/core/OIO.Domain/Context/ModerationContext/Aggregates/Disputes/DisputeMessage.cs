@@ -12,6 +12,7 @@ public sealed class DisputeMessage : BaseEntity<DisputeMessageId>, ICreatedAtEnt
     public UserId SenderId { get; private set; }
     public string Message { get; private set; }
     public bool IsInternal { get; private set; }
+    public string Visibility { get; private set; } = "external";
     public DateTime CreatedAt { get; private set; }
 
     public Dispute Dispute { get; private set; } = null!;
@@ -23,7 +24,8 @@ public sealed class DisputeMessage : BaseEntity<DisputeMessageId>, ICreatedAtEnt
         UserId senderId,
         string message,
         DateTime nowUtc,
-        bool isInternal = false)
+        bool isInternal = false,
+        string visibility = "external")
     {
         return new DisputeMessage
         {
@@ -32,6 +34,7 @@ public sealed class DisputeMessage : BaseEntity<DisputeMessageId>, ICreatedAtEnt
             SenderId = senderId,
             Message = message,
             IsInternal = isInternal,
+            Visibility = visibility,
             CreatedAt = nowUtc
         };
     }

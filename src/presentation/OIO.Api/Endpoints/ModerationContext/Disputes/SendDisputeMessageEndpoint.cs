@@ -21,13 +21,14 @@ public sealed class SendDisputeMessageEndpoint : IEndpoint
                 ISender sender,
                 CancellationToken ct) =>
             {
-                return await sender.Send(
+                var result = await sender.Send(
                     new SendDisputeMessageCommand(
                         disputeId,
                         request.Message,
                         request.MediaUploadIds,
                         request.IsInternal),
                     ct);
+                return result.ToOkHttpResult();
             })
             .AddEndpointFilter(new IdempotencyFilter<DisputeMessageDto>(
                 IdempotencyHttpPolicies.SendDisputeMessage()))

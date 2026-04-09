@@ -50,11 +50,11 @@ public sealed class ScanOverdueSelfShipOrdersJob : BackgroundService
 
             try
             {
-                await AutoCompleteExpiredDecisionWindowsAsync(stoppingToken);
+                await RaiseManualReviewAlertsAsync(stoppingToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while auto-completing expired decision-window direct shipments.");
+                _logger.LogError(ex, "Error occurred while raising manual-review alerts for direct shipments.");
             }
 
             await Task.Delay(_interval, stoppingToken);
@@ -162,38 +162,21 @@ public sealed class ScanOverdueSelfShipOrdersJob : BackgroundService
     }
 
     /// <summary>
-    /// Second pass — auto-complete direct-ship orders whose buyer decision
-    /// window has elapsed without an explicit accept or dispute. Mirrors the
-    /// buyer's "Confirm receipt" action via <see cref="IOrderReceiptService"/>
-    /// with <c>systemInvoked: true</c>.
+    /// Second pass — raise <see cref="MonitoringAlert"/> entries for
+    /// direct-ship orders flagged for manual review whose decision window has
+    /// elapsed. Normal auto-complete (both seller-direct and warehouse
+    /// outbound) is handled by the canonical
+    /// <c>OrderAutoCompleteJob</c>; this pass only covers the manual-review
+    /// escape hatch so flagged orders are surfaced to ops instead of being
+    /// auto-settled.
     /// </summary>
-    private async Task AutoCompleteExpiredDecisionWindowsAsync(CancellationToken ct)
+    private async Task RaiseManualReviewAlertsAsync(CancellationToken ct)
     {
         using var scope = _scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var clock = scope.ServiceProvider.GetRequiredService<IClock>();
-        var receiptService = scope.ServiceProvider.GetRequiredService<IOrderReceiptService>();
 
         var nowUtc = clock.UtcNow;
-
-        // Join orders with their 1:1 direct shipment so we only process the
-        // self-ship-direct flow. Status filter: Delivered, not yet Completed
-        // or Disputed, decision window elapsed.
-        // Eligible auto-completes: exclude shipments flagged for manual review.
-        var eligibleQuery =
-            from o in dbContext.Set<Order>().AsNoTracking()
-            join s in dbContext.Set<SellerDirectShipment>().AsNoTracking()
-                on o.Id equals s.OrderId
-            where o.Status == OrderStatus.Delivered
-                  && o.DecisionWindowEndsAt != null
-                  && o.DecisionWindowEndsAt < nowUtc
-                  && o.Status != OrderStatus.Completed
-                  && o.Status != OrderStatus.Disputed
-                  && !s.ManualReviewRequired
-            orderby o.DecisionWindowEndsAt
-            select o.Id;
-
-        var orderIds = await eligibleQuery.Take(100).ToListAsync(ct);
 
         // Manual-review shipments past window → create MonitoringAlert, skip auto-complete.
         var manualReviewQuery =
@@ -254,34 +237,6 @@ public sealed class ScanOverdueSelfShipOrdersJob : BackgroundService
             }
 
             await dbContext.SaveChangesAsync(ct);
-        }
-
-        if (orderIds.Count == 0) return;
-
-        foreach (var orderId in orderIds)
-        {
-            try
-            {
-                var result = await receiptService.ConfirmAsync(orderId.Value, systemInvoked: true, nowUtc, ct);
-                if (result.IsFailure)
-                {
-                    _logger.LogWarning(
-                        "Auto-complete ConfirmAsync failed for order {OrderId}: {Error}",
-                        orderId.Value, result.Error.Message);
-                }
-                else
-                {
-                    _logger.LogInformation(
-                        "Auto-completed direct-ship order {OrderId} after decision window expiry.",
-                        orderId.Value);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Exception auto-completing direct-ship order {OrderId}.",
-                    orderId.Value);
-            }
         }
     }
 }

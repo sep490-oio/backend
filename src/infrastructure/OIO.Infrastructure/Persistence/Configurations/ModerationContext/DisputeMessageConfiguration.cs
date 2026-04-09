@@ -28,6 +28,11 @@ internal sealed class DisputeMessageConfiguration : IEntityTypeConfiguration<Dis
             .HasColumnName("is_internal")
             .HasDefaultValue(false);
 
+        builder.Property(m => m.Visibility)
+            .HasColumnName("visibility")
+            .HasDefaultValue("external")
+            .IsRequired();
+
         builder.Property(m => m.CreatedAt)
             .HasColumnName("created_at")
             .HasDefaultValueSql("CURRENT_TIMESTAMP")

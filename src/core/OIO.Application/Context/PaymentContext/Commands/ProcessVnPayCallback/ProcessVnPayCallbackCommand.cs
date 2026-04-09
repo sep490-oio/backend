@@ -40,7 +40,8 @@ public sealed record ProcessVnPayCallbackResponse(
     bool IsSuccess,
     string ResponseCode,
     string Message,
-    string? ClientReturnPath = null);
+    string? ClientReturnPath = null,
+    string? Purpose = null);
 
 internal sealed class ProcessVnPayCallbackCommandHandler
     : ICommandHandler<ProcessVnPayCallbackCommand, ProcessVnPayCallbackResponse>
@@ -113,7 +114,8 @@ internal sealed class ProcessVnPayCallbackCommandHandler
                 IsSuccess: transaction.Status == TransactionStatus.Completed,
                 ResponseCode: callback.ResponseCode,
                 Message: "Transaction already processed.",
-                ClientReturnPath: transaction.ClientReturnPath);
+                ClientReturnPath: transaction.ClientReturnPath,
+                Purpose: ResolvePurposeString(transaction, ResolvePaymentPurpose(transaction)));
         }
 
         // 4. Táº¡o GatewayInfo tá»« callback
@@ -176,7 +178,8 @@ internal sealed class ProcessVnPayCallbackCommandHandler
             IsSuccess: true,
             ResponseCode: callback.ResponseCode,
             Message: "Thanh toan thanh cong",
-            ClientReturnPath: transaction.ClientReturnPath);
+            ClientReturnPath: transaction.ClientReturnPath,
+            Purpose: ResolvePurposeString(transaction, purpose));
     }
 
     private async Task<Result<ProcessVnPayCallbackResponse, Error>> HandleFailedCallbackAsync(
@@ -210,7 +213,17 @@ internal sealed class ProcessVnPayCallbackCommandHandler
             IsSuccess: false,
             ResponseCode: callback.ResponseCode,
             Message: $"Thanh toan that bai (ma: {callback.ResponseCode})",
-            ClientReturnPath: transaction.ClientReturnPath);
+            ClientReturnPath: transaction.ClientReturnPath,
+            Purpose: ResolvePurposeString(transaction, purpose));
+    }
+
+    private static string ResolvePurposeString(Transaction transaction, PaymentPurpose purpose)
+    {
+        // Link-card flow uses a LINK- TxnRef prefix and has no matching PaymentPurpose enum.
+        if (transaction.TransactionNumber.Value.StartsWith("LINK-", StringComparison.OrdinalIgnoreCase))
+            return "link_card";
+
+        return purpose.Id;
     }
 
     private static PaymentPurpose ResolvePaymentPurpose(Transaction transaction)

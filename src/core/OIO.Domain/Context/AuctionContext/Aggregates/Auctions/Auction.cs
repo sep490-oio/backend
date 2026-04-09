@@ -634,9 +634,18 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
         var minimumBid = GetMinimumBidAmount();
         var previousHighestBid = Pricing.CurrentAmount;
-        
+
         if (amount < minimumBid)
             return AuctionErrors.Bid.TooLow(amount, minimumBid);
+
+        // Buy-now cap: any bid that meets or exceeds the buy-now ceiling settles the
+        // auction at exactly buyNowPrice, not at the raw overbid amount. This keeps
+        // order pricing, checkout, notifications and read models aligned with the
+        // dedicated Buy Now flow.
+        if (Pricing.HasBuyNowPrice && amount.Amount > Pricing.BuyNowAmount!.Value)
+        {
+            amount = Money.Of(Pricing.BuyNowAmount.Value, amount.Currency);
+        }
 
         // Mark previous winning bid as outbid
         var previousWinning = GetCurrentWinningBid();
@@ -1274,6 +1283,12 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         // Cap at winner's ceiling
         if (resolvedAmount > winnerCeiling)
             resolvedAmount = winnerCeiling;
+
+        // Buy-now cap: auto-bid resolution may cross the buy-now threshold; when it does,
+        // settle the auction at exactly buyNowPrice rather than the raw ceiling. This keeps
+        // AuctionSoldEvent.FinalPrice and downstream order pricing aligned with Buy Now.
+        if (Pricing.HasBuyNowPrice && resolvedAmount > Pricing.BuyNowAmount!.Value)
+            resolvedAmount = Pricing.BuyNowAmount.Value;
 
         var resolvedPrice = Money.Of(resolvedAmount, currency);
 

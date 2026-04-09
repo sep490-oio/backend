@@ -61,7 +61,16 @@ public static partial class ApiEndpoint
             public const string RejectSellerProfile = $"{Base}/seller-profiles/{{id:guid}}/reject";
 
             // Disputes
-            public const string ResolveDispute = $"{Base}/disputes/{{disputeId:guid}}/resolve";
+            public const string GetAdminDisputes = $"{Base}/disputes";
+            public const string GetAdminDisputeById = $"{Base}/disputes/{{disputeId:guid}}";
+            public const string AssignDispute = $"{Base}/disputes/{{disputeId:guid}}/assign";
+            public const string TransitionDisputeStatus = $"{Base}/disputes/{{disputeId:guid}}/transition";
+            public const string RequestDisputeEvidence = $"{Base}/disputes/{{disputeId:guid}}/request-evidence";
+            public const string AddDisputeFinding = $"{Base}/disputes/{{disputeId:guid}}/findings";
+            public const string ResolveCaseDispute = $"{Base}/disputes/{{disputeId:guid}}/resolve-case";
+            public const string RejectDispute = $"{Base}/disputes/{{disputeId:guid}}/reject";
+            public const string AddAdminDisputeMessage = $"{Base}/disputes/{{disputeId:guid}}/messages";
+            public const string GetDisputeAssignableUsers = $"{Base}/disputes/{{disputeId:guid}}/assignees";
 
             // Item Moderation
             public const string GetItemReviewQueue = $"{Base}/items/review-queue";
@@ -89,6 +98,9 @@ public static partial class ApiEndpoint
             // Completed Auctions (post-sale monitoring)
             public const string GetCompletedAuctions = $"{Base}/auctions/completed";
             public const string GetCompletedAuctionById = $"{Base}/auctions/completed/{{auctionId:guid}}";
+
+            // Repair utilities (one-off)
+            public const string RepairStuckInAuctionItems = $"{Base}/repair/stuck-in-auction-items";
         }
 
         public static class Auth
@@ -217,12 +229,16 @@ public static partial class ApiEndpoint
             public const string BookOutbound = $"{Base}/outbound-shipments";
             public const string WarehouseStaffOutboundQueue = $"{Base}-staff/outbound-orders";
             public const string WarehouseStaffOutboundOrderById = $"{Base}-staff/outbound-orders/{{orderId:guid}}";
+            public const string WarehouseStaffOutboundShipments           = $"{Base}-staff/outbound-shipments";
+            public const string WarehouseStaffOutboundShipmentById        = $"{Base}-staff/outbound-shipments/{{shipmentId:guid}}";
+            public const string WarehouseStaffOutboundShipmentStatus      = $"{Base}-staff/outbound-shipments/{{shipmentId:guid}}/status";
             public const string StoreItem   = $"{Base}/warehouse-items/{{warehouseItemId}}/store";
             public const string GhnWebhook   = "webhooks/ghn";
             public const string StorageLocations = $"{Base}/storage-locations";
             public const string InboundShipmentById  = $"{Base}/inbound-shipments/{{shipmentId:guid}}";
             public const string OutboundShipmentById = $"{Base}/outbound-shipments/{{shipmentId:guid}}";
             public const string WarehouseItems = $"{Base}/warehouse-items";
+            public const string WarehouseItemById = $"{Base}/warehouse-items/{{warehouseItemId:guid}}";
             public const string CancelInbound              = $"{Base}/inbound-shipments/{{shipmentId:guid}}/cancel";
             public const string CancelOutbound             = $"{Base}/outbound-shipments/{{shipmentId:guid}}/cancel";
             public const string StorageLocationById        = $"{Base}/storage-locations/{{locationId:guid}}";
@@ -234,6 +250,19 @@ public static partial class ApiEndpoint
             public const string SelfShipOutbound = $"{Base}/outbound-shipments/self-ship";
             public const string CalculateShippingFee = $"{Base}/shipping/calculate-fee";
             public const string CalculateLeadTime    = $"{Base}/shipping/calculate-lead-time";
+
+            public const string InboundPackages              = $"{Base}/inbound-packages";
+            public const string InboundPackageByCode         = $"{Base}/inbound-packages/{{clientOrderCode}}";
+            public const string ReceiveInboundPackageMultipart = $"{Base}/inbound-packages/{{clientOrderCode}}/receive/multipart";
+            public const string CancelInboundPackage          = $"{Base}/inbound-packages/{{clientOrderCode}}/cancel";
+            public const string SetInboundPackageTracking     = $"{Base}/inbound-packages/{{clientOrderCode}}/tracking";
+            public const string UpdateInboundPackageStatus    = $"{Base}/inbound-packages/{{clientOrderCode}}/status";
+
+            public const string SellerWarehouseItems     = "api/seller/warehouse/items";
+            public const string SellerWarehouseItemById  = "api/seller/warehouse/items/{warehouseItemId:guid}";
+
+            // Buyer-facing outbound shipment QR deep-link (external-carrier flow)
+            public const string BuyerOutboundShipmentByToken = "api/buyer/outbound-shipments/by-token";
         }
 
         public static class VnPay
@@ -349,6 +378,9 @@ public static partial class ApiEndpoint
             public const string CancelWithdrawal = $"{Base}/wallet/withdrawals/{{withdrawalId:guid}}/cancel";
             public const string GetMyOrders = $"{Base}/orders";
             public const string GetMyOutboundShipments = $"{Base}/outbound-shipments";
+            public const string AcknowledgeOutboundShipmentReceived = $"{Base}/outbound-shipments/{{shipmentId:guid}}/acknowledge-received";
+            public const string GetBuyerOutboundShipmentById = $"{Base}/outbound-shipments/{{shipmentId:guid}}";
+            public const string SubmitOutboundShipmentReceiptProof = $"{Base}/outbound-shipments/{{shipmentId:guid}}/proof-of-receipt";
             public const string GetMyInboundShipments = $"{Base}/inbound-shipments";
             public const string GetSellerDirectShipOrders = $"{Base}/orders/seller-direct-ship";
             public const string GetSellerOutboundShipments = $"{Base}/orders/seller-direct-ship/outbound-shipments";
@@ -357,8 +389,14 @@ public static partial class ApiEndpoint
             public const string GetSellerDirectShipmentById = $"{Base}/orders/seller-direct-ship/shipments/{{shipmentId:guid}}";
             public const string GetSellerDirectShipments = $"{Base}/orders/seller-direct-ship/shipments";
 
-            // Seller direct shipments (buyer-facing deep link)
-            public const string GetMyDirectShipments = $"{Base}/shipments";
+            // Unified buyer shipments feed (seller-direct + warehouse-outbound).
+            public const string GetMyShipments = $"{Base}/shipments";
+
+            // Seller direct shipments (buyer-facing deep link). Legacy list
+            // endpoint now lives at /me/direct-shipments so the unified feed
+            // can own /me/shipments. Per-shipment routes keep their original
+            // paths since they're keyed by id and never collide.
+            public const string GetMyDirectShipments = $"{Base}/direct-shipments";
             public const string GetMyDirectShipmentById = $"{Base}/shipments/{{shipmentId:guid}}";
             public const string AcknowledgeDirectShipmentReceived = $"{Base}/shipments/{{shipmentId:guid}}/acknowledge-received";
             public const string SubmitProofOfDelivery = $"{Base}/shipments/{{shipmentId:guid}}/proof-of-delivery";
@@ -381,6 +419,12 @@ public static partial class ApiEndpoint
 
             // Notification Preferences
             public const string NotificationPreferences = $"{Base}/notification-preferences";
+
+            // Disputes
+            public const string GetMyDisputes = $"{Base}/disputes";
+            public const string GetMyDisputeById = $"{Base}/disputes/{{disputeId:guid}}";
+            public const string AddBuyerDisputeMessage = $"{Base}/disputes/{{disputeId:guid}}/messages";
+            public const string AddBuyerDisputeEvidence = $"{Base}/disputes/{{disputeId:guid}}/evidence";
         }
 
         public static class Reports
@@ -400,6 +444,13 @@ public static partial class ApiEndpoint
             public const string GetMessages = $"{Base}/{{disputeId:guid}}/messages";
             public const string SendMessage = $"{Base}/{{disputeId:guid}}/messages";
             public const string MarkRead = $"{Base}/{{disputeId:guid}}/read";
+
+            // Intake endpoints
+            public const string CreateOrderDispute = "api/orders/{orderId:guid}/disputes";
+            public const string CreateAuctionDispute = "api/auctions/{auctionId:guid}/disputes";
+            public const string CreatePaymentDispute = "api/payments/{paymentId:guid}/disputes";
+            public const string CreateWarehouseItemDispute = "api/warehouse/items/{warehouseItemId:guid}/disputes";
+            public const string CreateShipmentDispute = "api/shipments/{shipmentId:guid}/disputes";
         }
 
         public static class Notifications
