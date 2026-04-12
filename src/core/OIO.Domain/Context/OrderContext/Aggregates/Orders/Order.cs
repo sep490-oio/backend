@@ -81,7 +81,7 @@ public sealed class Order : AggregateRoot<OrderId>, IAuditableEntity
         if (orderNumberResult.IsFailure)
             return orderNumberResult.Error;
 
-        return new Order
+        var order = new Order
         {
             Id = OrderId.From(Guid.CreateVersion7()),
             OrderNumber = orderNumberResult.Value,
@@ -100,6 +100,15 @@ public sealed class Order : AggregateRoot<OrderId>, IAuditableEntity
             CreatedAt = nowUtc,
             ModifiedAt = nowUtc
         };
+
+        order.RaiseDomainEvent(new OrderCreatedEvent(
+            order.Id.ToString(),
+            order.BuyerId.ToString(),
+            order.SellerId.ToString(),
+            order.OrderNumber.Value,
+            nowUtc));
+
+        return order;
     }
 
     /// <summary>
