@@ -11,6 +11,7 @@ public static partial class ApiEndpoint
         public const string Categories = nameof(Categories);
         public const string Media = nameof(Media);
         public const string Me = nameof(Me);
+        public const string Search = nameof(Search);
         public const string Hub = nameof(Hub);
         public const string Warehouse = nameof(Warehouse);
         public const string Webhooks  = nameof(Webhooks);

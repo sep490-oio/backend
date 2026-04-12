@@ -17,6 +17,8 @@ using OIO.Application.Abstractions.Media;
 using OIO.Application.Abstractions.Scheduling;
 using OIO.Application.Abstractions.Security;
 using OIO.Application.Abstractions.Shipping;
+using OIO.Application.Abstractions.Search;
+using OIO.Infrastructure.Elasticsearch;
 using OIO.Application.Context.AuctionContext.Services;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.UserContext.Services;
@@ -86,7 +88,13 @@ public static class DependencyInjection
                 .AddSecurityServices()
                 .AddShipping(configuration)
                 .AddEkyc(configuration)
-                .AddPayment(configuration);
+                .AddPayment(configuration)
+                .AddElasticsearch(configuration);
+
+            services.AddMediatR(cfg =>
+            {
+                cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly);
+            });
 
             return services;
         }
@@ -397,6 +405,20 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
             services.AddScoped<Payment.Webhooks.GatewayWebhookProcessor>();
 
             services.ConfigureOptions<Payment.Reconciliation.GatewayReconciliationJobSetup>();
+
+            return services;
+        }
+
+        private IServiceCollection AddElasticsearch(IConfiguration configuration)
+        {
+            services.Configure<ElasticsearchSettings>(
+                configuration.GetSection(ElasticsearchSettings.SectionName));
+
+            services.AddSingleton<IElasticsearchService, ElasticsearchService>();
+            services.AddScoped<IElasticsearchSyncService, ElasticsearchSyncService>();
+
+            // Jobs
+            services.ConfigureOptions<Elasticsearch.Jobs.ElasticsearchReconciliationJobSetup>();
 
             return services;
         }

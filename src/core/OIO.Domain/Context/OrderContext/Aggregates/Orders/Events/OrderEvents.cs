@@ -18,3 +18,11 @@ public sealed record OrderCompletedEvent(
     DateTime CompletedAt,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
+
+public sealed record OrderCreatedEvent(
+    string OrderId,
+    string BuyerId,
+    string SellerId,
+    string OrderNumber,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);

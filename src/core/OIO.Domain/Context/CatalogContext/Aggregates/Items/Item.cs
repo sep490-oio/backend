@@ -445,6 +445,14 @@ public sealed class Item : AggregateRoot<ItemId>, IAuditableEntity
 
         ModifiedAt = nowUtc;
         
+        RaiseDomainEvent(new ItemUpdatedEvent(
+            ItemId: $"{Id}",
+            Title: title?.Value,
+            Description: description,
+            Condition: condition?.Id,
+            Quantity: quantity,
+            nowUtc));
+
         return UnitResult.Success<Error>();
     }
     
@@ -500,6 +508,14 @@ public sealed class Item : AggregateRoot<ItemId>, IAuditableEntity
         ModifiedAt = nowUtc;
         
         upload.LinkToEntity(Id, nowUtc);
+
+        RaiseDomainEvent(new MediaAddedToItemEvent(
+            ItemId: $"{Id}",
+            MediaId: $"{image.Id}",
+            PublicId: upload.StorageRef.PublicId,
+            ResourceType: upload.ResourceType,
+            IsPrimary: isPrimary,
+            nowUtc));
 
         return image;
     }
@@ -580,6 +596,11 @@ public sealed class Item : AggregateRoot<ItemId>, IAuditableEntity
         
         image.SetAsPrimary();
         ModifiedAt = nowUtc;
+
+        RaiseDomainEvent(new ItemMediaPrimarySetEvent(
+            ItemId: $"{Id}",
+            MediaId: $"{mediaId}",
+            nowUtc));
         
         return UnitResult.Success<Error>();
     }
@@ -595,6 +616,10 @@ public sealed class Item : AggregateRoot<ItemId>, IAuditableEntity
         }
 
         ModifiedAt = nowUtc;
+
+        RaiseDomainEvent(new ItemMediaReorderedEvent(
+            ItemId: $"{Id}",
+            nowUtc));
     }
     
     public Result<ItemQuestion, Error> AskQuestion(

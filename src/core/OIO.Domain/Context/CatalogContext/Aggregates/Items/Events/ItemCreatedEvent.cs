@@ -59,3 +59,32 @@ public sealed record ItemRejectedEvent(
     string Reason,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
+
+public sealed record ItemUpdatedEvent(
+    string ItemId,
+    string? Title,
+    string? Description,
+    string? Condition,
+    int? Quantity,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
+public sealed record MediaAddedToItemEvent(
+    string ItemId,
+    string MediaId,
+    string PublicId,
+    string ResourceType,
+    bool IsPrimary,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
+public sealed record ItemMediaPrimarySetEvent(
+    string ItemId,
+    string MediaId,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
+public sealed record ItemMediaReorderedEvent(
+    string ItemId,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
