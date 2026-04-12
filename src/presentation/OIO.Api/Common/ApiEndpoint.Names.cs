@@ -4,6 +4,14 @@ public static partial class ApiEndpoint
 {
     public static class Names
     {
+        public static class Search
+        {
+            public const string Global = "GlobalSearch";
+            public const string Suggestions = "GetSearchSuggestions";
+            public const string MySearch = "MyPersonalizedSearch";
+            public const string SyncSearchIndex = "SyncSearchIndex";
+        }
+
         public static class Terms
         {
             public const string GetActiveTerms = nameof(GetActiveTerms);

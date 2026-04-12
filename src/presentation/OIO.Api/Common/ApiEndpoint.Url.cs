@@ -4,6 +4,20 @@ public static partial class ApiEndpoint
 {
     public static class Url
     {
+        public static class Search
+        {
+            public const string Global = "api/search";
+            public const string Suggestions = $"{Global}/suggestions";
+            public const string Auctions = $"{Global}/auctions";
+            public const string MySearch = "api/me/search";
+            public const string Sync = "api/search/sync";
+            public const string Items = $"{Global}/items";
+            public const string Orders = $"{Global}/orders";
+            public const string Users = $"{Global}/users";
+            public const string Shipments = $"{Global}/shipments";
+            public const string Warehouse = $"{Global}/warehouse";
+        }
+
         public static class Media
         {
             private const string Base = "api/media";
