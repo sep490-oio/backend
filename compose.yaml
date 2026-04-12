@@ -34,6 +34,8 @@ services:
       - VnptEkyc__TokenKey=${VNPT_EKYC_TOKEN_KEY}
       - VnPay__TmnCode=${VNPAY_TMN_CODE}
       - VnPay__HashSecret=${VNPAY_HASH_SECRET}
+      - Elasticsearch__Endpoint=${Elasticsearch__Endpoint}
+      - Elasticsearch__ApiKey=${Elasticsearch__ApiKey}
     volumes:
       - ./config/appsettings.Production.json:/app/appsettings.Production.json
     depends_on:
