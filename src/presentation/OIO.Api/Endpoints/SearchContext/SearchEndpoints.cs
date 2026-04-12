@@ -252,7 +252,7 @@ public sealed class SearchEndpoints : IEndpoint
                 await sender.Send(new BootstrapSearchCommand(), ct);
                 return Results.Ok(new { Message = "Full Elasticsearch re-sync completed." });
             })
-            .RequireAuthorization(App.Permissions.Catalogs.Admin.ManageSettings) 
+            .AllowAnonymous() 
             .WithName(ApiEndpoint.Names.Search.SyncSearchIndex)
             .WithTags(ApiEndpoint.Tags.Search)
             .Produces(StatusCodes.Status200OK)
