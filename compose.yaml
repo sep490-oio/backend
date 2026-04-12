@@ -1,9 +1,9 @@
-﻿services:
+services:
   database:
     image: "postgres:17.6"
     environment:
       POSTGRES_USER: "postgres"
-      POSTGRES_PASSWORD: "${DATABASE_PASSWORD}"
+      POSTGRES_PASSWORD: "${DATABASE_PASSWORD:-12345}"
     ports:
       - "5432:5432" 
     volumes:
@@ -69,7 +69,18 @@
     container_name: Seq
     environment:
       - ACCEPT_EULA=Y
-      - SEQ_FIRSTRUN_ADMINPASSWORD=${SEQ_ADMIN_PASSWORD}
+      - SEQ_FIRSTRUN_ADMINPASSWORD=${SEQ_ADMIN_PASSWORD:-Admin@123}
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    labels:
+      - "com.docker.compose.project=oio"
 
 volumes:
   postgres_data:
