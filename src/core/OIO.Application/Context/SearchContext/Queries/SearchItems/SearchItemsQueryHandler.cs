@@ -27,10 +27,10 @@ public class SearchItemsQueryHandler(IElasticsearchService searchService)
         var mappedResults = searchResult.Results.Select(doc =>
         {
             PublicSellerItemAuctionSummaryDto? auctionSummary = null;
-            if (doc.AuctionId != null)
+            if (!string.IsNullOrWhiteSpace(doc.AuctionId) && Guid.TryParse(doc.AuctionId, out var auctionIdGuid))
             {
                 auctionSummary = new PublicSellerItemAuctionSummaryDto(
-                    AuctionId: Guid.Parse(doc.AuctionId),
+                    AuctionId: auctionIdGuid,
                     AuctionStatus: doc.AuctionStatus ?? string.Empty,
                     AuctionType: doc.AuctionType ?? string.Empty,
                     CurrentPrice: doc.AuctionCurrentPrice ?? 0,

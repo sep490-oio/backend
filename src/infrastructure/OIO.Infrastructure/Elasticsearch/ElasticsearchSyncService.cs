@@ -171,8 +171,8 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
     public async Task SyncUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var user = await _dbContext.Set<User>()
-            .Include(u => u.Profile)
             .Include(u => u.Roles)
+            .Include(u => u.Profile)
             .FirstOrDefaultAsync(u => u.Id == UserId.From(userId), cancellationToken);
 
         if (user == null) return;
