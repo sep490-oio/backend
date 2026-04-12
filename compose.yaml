@@ -3,7 +3,7 @@ services:
     image: "postgres:17.6"
     environment:
       POSTGRES_USER: "postgres"
-      POSTGRES_PASSWORD: "${DATABASE_PASSWORD:-12345}"
+      POSTGRES_PASSWORD: "${DATABASE_PASSWORD}"
     ports:
       - "5432:5432" 
     volumes:
@@ -69,7 +69,7 @@ services:
     container_name: Seq
     environment:
       - ACCEPT_EULA=Y
-      - SEQ_FIRSTRUN_ADMINPASSWORD=${SEQ_ADMIN_PASSWORD:-Admin@123}
+      - SEQ_FIRSTRUN_ADMINPASSWORD=${SEQ_ADMIN_PASSWORD}
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
