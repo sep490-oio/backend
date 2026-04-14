@@ -55,6 +55,39 @@ internal sealed class GhnCreateOrderRequest
     [JsonPropertyName("items")] public required List<GhnOrderItem> Items { get; init; }
 }
 
+internal sealed class GhnSpecializedCreateOrderRequest
+{
+    [JsonPropertyName("payment_type_id")]  public required int    PaymentTypeId  { get; init; }
+    [JsonPropertyName("required_note")]    public required string RequiredNote   { get; init; }
+    [JsonPropertyName("client_order_code")] public required string ClientOrderCode { get; init; }
+
+    [JsonPropertyName("to_name")]        public required string ToName       { get; init; }
+    [JsonPropertyName("to_phone")]       public required string ToPhone      { get; init; }
+    [JsonPropertyName("to_address")]     public required string ToAddress    { get; init; }
+    [JsonPropertyName("to_ward_code")]   public required string ToWardCode   { get; init; }
+    [JsonPropertyName("to_district_id")] public required int    ToDistrictId { get; init; }
+
+    [JsonPropertyName("from_name")]          public string? FromName         { get; init; }
+    [JsonPropertyName("from_phone")]         public string? FromPhone        { get; init; }
+    [JsonPropertyName("from_address")]       public string? FromAddress      { get; init; }
+    [JsonPropertyName("from_ward_name")]     public string? FromWardName     { get; init; }
+    [JsonPropertyName("from_district_name")] public string? FromDistrictName { get; init; }
+    [JsonPropertyName("from_ward_code")]     public string? FromWardCode     { get; init; }
+    [JsonPropertyName("from_district_id")]   public int?    FromDistrictId   { get; init; }
+
+    [JsonPropertyName("weight")] public required int  Weight { get; init; }
+    [JsonPropertyName("length")] public          int? Length { get; init; }
+    [JsonPropertyName("width")]  public          int? Width  { get; init; }
+    [JsonPropertyName("height")] public          int? Height { get; init; }
+
+    [JsonPropertyName("insurance_value")] public decimal InsuranceValue { get; init; }
+    [JsonPropertyName("cod_amount")]      public decimal CodAmount      { get; init; }
+
+    [JsonPropertyName("service_type_id")] public int ServiceTypeId { get; init; } = 2;
+
+    [JsonPropertyName("items")] public required List<GhnOrderItem> Items { get; init; }
+}
+
 internal sealed class GhnOrderItem
 {
     [JsonPropertyName("name")]     public required string Name     { get; init; }

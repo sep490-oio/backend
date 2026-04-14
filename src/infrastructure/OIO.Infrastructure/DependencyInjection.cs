@@ -344,6 +344,7 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
             services.ConfigureOptions<AuctionJobSetup>();
             services.ConfigureOptions<AuctionAutoCompleteJobSetup>();
             services.ConfigureOptions<RecalculateSellerTrustScoresJobSetup>();
+            services.ConfigureOptions<SyncGhnAddressJobSetup>();
             services.AddScoped<SellerTrustScoreCalculator>();
 
             // Notification Delivery Job
