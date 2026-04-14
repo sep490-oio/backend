@@ -51,6 +51,12 @@ internal sealed class GhnShippingProvider : IShippingProvider
         ShippingProviderConfig config,
         CancellationToken ct = default)
     {
+        var (sender, recipient) = ParseSpecializedMetadata(request.ExtraDataJson);
+        if (sender != null || recipient != null)
+        {
+            return await CreateSpecializedShipmentAsync(request, config, sender, recipient, ct);
+        }
+
         var credsResult = ParseCredentials(config);
         if (credsResult.IsFailure) return credsResult.Error;
 
@@ -388,7 +394,7 @@ internal sealed class GhnShippingProvider : IShippingProvider
                 code: "Ghn.Webhook.EmptyPayload",
                 description: "GHN webhook body deserialized to null.");
 
-        // Verify ShopId matches our config — this is the only auth GHN provides
+        // Verify ShopId matches our config 窶・this is the only auth GHN provides
         if (payload.ShopId != creds.ShopId)
         {
             _logger.LogWarning(
@@ -399,7 +405,7 @@ internal sealed class GhnShippingProvider : IShippingProvider
                 description: $"GHN webhook ShopId {payload.ShopId} does not match configured ShopId {creds.ShopId}.");
         }
 
-        // Parse event time — try Time field first, fall back to Timestamp (Unix)
+        // Parse event time 窶・try Time field first, fall back to Timestamp (Unix)
         DateTime eventTime;
         if (!string.IsNullOrWhiteSpace(payload.Time) &&
             DateTime.TryParse(payload.Time, out var parsedTime))
@@ -467,7 +473,7 @@ internal sealed class GhnShippingProvider : IShippingProvider
 
     /// <summary>
     /// Parses {"district_id": 1442, "ward_code": "21012"} from CarrierAddressData JSON.
-    /// GHN requires these IDs — plain text addresses are not accepted.
+    /// GHN requires these IDs 窶・plain text addresses are not accepted.
     /// </summary>
     private static Result<(int districtId, string wardCode), Error> ParseCarrierAddressData(
         string? json,
@@ -524,7 +530,7 @@ internal sealed class GhnShippingProvider : IShippingProvider
             if (doc.RootElement.TryGetProperty("service_type_id", out var el))
                 return el.GetInt32();
         }
-        catch { /* ignore — use default */ }
+        catch { /* ignore 窶・use default */ }
         return 2;
     }
 
@@ -559,7 +565,7 @@ internal sealed class GhnShippingProvider : IShippingProvider
 
     /// <summary>
     /// Builds an HttpClient with GHN auth headers pre-set.
-    /// Token and ShopId are static per config — no OAuth flow.
+    /// Token and ShopId are static per config 窶・no OAuth flow.
     /// </summary>
     private HttpClient BuildClient(ShippingProviderConfig config, GhnCredentials creds)
     {
@@ -570,4 +576,153 @@ internal sealed class GhnShippingProvider : IShippingProvider
         http.DefaultRequestHeaders.Add("ShopId", creds.ShopId.ToString());
         return http;
     }
+
+    /// <summary>
+    /// Specialized GHN shipment creation using GhnSpecializedCreateOrderRequest.
+    /// Supports DistrictID and WardCode overrides for sender and recipient.
+    /// </summary>
+    private async Task<Result<CreateShipmentResponse, Error>> CreateSpecializedShipmentAsync(
+        CreateShipmentRequest request,
+        ShippingProviderConfig config,
+        GhnMetadataOverride? senderOverride,
+        GhnMetadataOverride? recipientOverride,
+        CancellationToken ct = default)
+    {
+        var credsResult = ParseCredentials(config);
+        if (credsResult.IsFailure) return credsResult.Error;
+
+        var creds = credsResult.Value;
+
+        var addrResult = ParseCarrierAddressData(request.RecipientCarrierAddressDataJson, "RecipientCarrierAddressDataJson");
+        if (addrResult.IsFailure) return addrResult.Error;
+
+        var (toDistrictId, toWardCode) = addrResult.Value;
+
+        var ghnRequest = new GhnSpecializedCreateOrderRequest
+        {
+            PaymentTypeId   = ParsePaymentTypeId(request.GhnPaymentTypeId),
+            RequiredNote    = string.IsNullOrWhiteSpace(request.GhnHandlingNote)
+                                  ? "CHOTHUHANG"
+                                  : request.GhnHandlingNote,
+            ClientOrderCode = request.ClientOrderCode,
+
+            ToName       = request.RecipientName,
+            ToPhone      = request.RecipientPhone,
+            ToAddress    = request.RecipientAddress,
+            ToWardCode   = recipientOverride?.Code ?? toWardCode,
+            ToDistrictId = recipientOverride?.Id   ?? toDistrictId,
+
+            FromName         = request.SenderName,
+            FromPhone        = request.SenderPhone,
+            FromAddress      = request.SenderAddress,
+            FromWardName     = request.SenderWard,
+            FromDistrictName = request.SenderDistrict,
+            FromWardCode     = senderOverride?.Code,
+            FromDistrictId   = senderOverride?.Id,
+
+            Weight = request.WeightGrams,
+            Length = request.LengthCm,
+            Width  = request.WidthCm,
+            Height = request.HeightCm,
+
+            InsuranceValue = request.InsuranceValue,
+            CodAmount      = request.CodAmount,
+
+            ServiceTypeId = ParseServiceTypeId(request.ExtraDataJson),
+
+            Items = request.Items.Select(i => new GhnOrderItem
+            {
+                Name     = i.Name,
+                Code     = i.Code,
+                Quantity = i.Quantity,
+                Price    = (int)i.Price,
+                Weight   = i.WeightGrams,
+                Length   = i.LengthCm,
+                Width    = i.WidthCm,
+                Height   = i.HeightCm
+            }).ToList()
+        };
+
+        using var http = BuildClient(config, creds);
+
+        try
+        {
+            var response = await http.PostAsJsonAsync(
+                "/shiip/public-api/v2/shipping-order/create",
+                ghnRequest,
+                ct);
+
+            var body = await response.Content.ReadAsStringAsync(ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("GHN CreateOrder specialized HTTP {StatusCode}: {Body}", response.StatusCode, body);
+                return Error.Unexpected(
+                    code: "Ghn.CreateOrder.HttpError",
+                    description: $"GHN returned HTTP {(int)response.StatusCode}: {body}");
+            }
+
+            var result = JsonSerializer.Deserialize<GhnCreateOrderResponse>(body, _jsonOptions);
+
+            if (result is null || result.Code != 200 || result.Data is null)
+            {
+                _logger.LogWarning("GHN CreateOrder specialized failed: code={Code} msg={Message}", result?.Code, result?.Message);
+                return Error.Unexpected(
+                    code: "Ghn.CreateOrder.ApiError",
+                    description: $"GHN error {result?.Code}: {result?.Message}");
+            }
+
+            DateTime? estimatedDelivery = null;
+            if (!string.IsNullOrWhiteSpace(result.Data.ExpectedDeliveryTime) &&
+                DateTime.TryParse(result.Data.ExpectedDeliveryTime, out var parsed))
+            {
+                estimatedDelivery = parsed.ToUniversalTime();
+            }
+
+            return new CreateShipmentResponse
+            {
+                CarrierTrackingNumber = result.Data.OrderCode,
+                ShippingLabelUrl      = null,
+                ShippingFee           = result.Data.TotalFee,
+                EstimatedDeliveryAt   = estimatedDelivery
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "GHN CreateShipmentAsync specialized exception");
+            return Error.Unexpected(
+                code: "Ghn.CreateOrder.Exception",
+                description: ex.Message);
+        }
+    }
+
+    private (GhnMetadataOverride? sender, GhnMetadataOverride? recipient) ParseSpecializedMetadata(string? extraDataJson)
+    {
+        if (string.IsNullOrWhiteSpace(extraDataJson)) return (null, null);
+        GhnMetadataOverride? sender = null;
+        GhnMetadataOverride? recipient = null;
+        try
+        {
+            using var doc = JsonDocument.Parse(extraDataJson);
+            if (doc.RootElement.TryGetProperty("ghn_sender_metadata", out var sEl))
+            {
+                var id = sEl.GetProperty("Id").GetInt32();
+                var code = sEl.GetProperty("Code").GetString();
+                if (id > 0 && !string.IsNullOrWhiteSpace(code)) 
+                    sender = new GhnMetadataOverride(id, code);
+            }
+
+            if (doc.RootElement.TryGetProperty("ghn_recipient_metadata", out var rEl))
+            {
+                var id = rEl.GetProperty("Id").GetInt32();
+                var code = rEl.GetProperty("Code").GetString();
+                if (id > 0 && !string.IsNullOrWhiteSpace(code)) 
+                    recipient = new GhnMetadataOverride(id, code);
+            }
+        }
+        catch { /* ignore */ }
+        return (sender, recipient);
+    }
+
+    private record GhnMetadataOverride(int Id, string Code);
 }
