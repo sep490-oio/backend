@@ -50,8 +50,8 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
 
         if (item == null) return;
 
-        // Only index Active items
-        if (item.Status != ItemStatus.Active)
+        // Only index Active or InAuction items
+        if (item.Status != ItemStatus.Active && item.Status != ItemStatus.InAuction)
         {
             await _esService.DeleteDocumentAsync(item.Id.ToString(), _settings.ItemsIndex, cancellationToken);
             return;
@@ -299,9 +299,9 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
 
     public async Task SyncAllAsync(CancellationToken cancellationToken = default)
     {
-        // Items - Only Active
+        // Items - Only Active or InAuction
         var itemIds = await _dbContext.Set<Item>()
-            .Where(i => i.Status == ItemStatus.Active)
+            .Where(i => i.Status == ItemStatus.Active || i.Status == ItemStatus.InAuction)
             .Select(i => i.Id.Value)
             .ToListAsync(cancellationToken);
         foreach (var id in itemIds)
