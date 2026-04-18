@@ -58,6 +58,7 @@ public class AuctionSearchDocument : BaseSearchDocument
     public int WatchCount { get; init; }
     public int ViewCount { get; init; }
     public bool IsFeatured { get; init; }
+    public string Condition { get; init; } = string.Empty;
     public string ItemStatus { get; init; } = string.Empty;
 }
 

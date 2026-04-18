@@ -18,7 +18,7 @@ public class SearchWarehouseQueryHandler(IElasticsearchService searchService)
             request.SortBy,
             request.SortDescending,
             null,
-            cancellationToken);
+            cancellationToken: cancellationToken);
 
         var mappedResults = searchResult.Results.Select(doc => new WarehouseItemDto(
             Id: Guid.Parse(doc.Id),

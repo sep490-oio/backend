@@ -15,4 +15,5 @@ public record SearchAuctionsQuery(
     decimal? MaxPrice = null,
     string? Status = null,
     string? Category = null,
-    string? AuctionType = null) : IRequest<PagedList<AuctionListItemDto>>;
+    string? AuctionType = null,
+    string? Condition = null) : IRequest<PagedList<AuctionListItemDto>>;

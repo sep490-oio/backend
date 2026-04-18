@@ -159,6 +159,7 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
             WatchCount = auction.WatchCount,
             ViewCount = auction.ViewCount,
             IsFeatured = auction.IsFeatured,
+            Condition = auction.Item.Condition.Id,
             ItemStatus = auction.Item.Status.Id,
             SellerId = auction.Item.SellerId.ToString(),
             SellerName = auction.Item.SellerId.ToString(), 
