@@ -10,6 +10,8 @@ public sealed record SellerProfileDto(
     decimal TotalSalesAmount,
     decimal TrustScore,
     DateTime? TrustScoreCalculatedAt,
+    decimal AverageRating,
+    int RatingCount,
     DateTime CreatedAt,
     DateTime? ModifiedAt);
 
@@ -20,4 +22,6 @@ public sealed record PublicSellerProfileDto(
     string Status,
     int TotalSalesCount,
     decimal TrustScore,
+    decimal AverageRating,
+    int RatingCount,
     DateTime CreatedAt);
