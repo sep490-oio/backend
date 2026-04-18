@@ -21,6 +21,9 @@ public sealed class SearchAuctionsQueryHandler(IElasticsearchService searchServi
         if (!string.IsNullOrEmpty(request.Category))
             filters["categoryName.keyword"] = request.Category;
 
+        if (!string.IsNullOrEmpty(request.AuctionType))
+            filters["auctionType.keyword"] = request.AuctionType;
+
         var indices = new[] { searchService.AuctionsIndex };
 
         var searchResult = await searchService.SearchAsync<AuctionSearchDocument>(
@@ -59,7 +62,8 @@ public sealed class SearchAuctionsQueryHandler(IElasticsearchService searchServi
                 IsEndingSoon: doc.EndTime.HasValue && (doc.EndTime.Value - nowUtc).TotalHours < 1,
                 IsFeatured: doc.IsFeatured,
                 SellerId: Guid.Parse(doc.SellerId),
-                ItemStatus: doc.ItemStatus
+                ItemStatus: doc.ItemStatus,
+                AuctionType: doc.AuctionType
             );
         }).ToList();
 

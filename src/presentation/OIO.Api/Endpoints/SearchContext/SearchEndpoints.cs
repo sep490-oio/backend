@@ -61,10 +61,11 @@ public sealed class SearchEndpoints : IEndpoint
                 [FromQuery(Name = "sort_by")] string? sortBy = null,
                 [FromQuery(Name = "desc")] bool desc = true,
                 [FromQuery(Name = "category")] string? category = null,
-                [FromQuery(Name = "status")] string? status = null) =>
+                [FromQuery(Name = "status")] string? status = null,
+                [FromQuery(Name = "auction_type")] string? auctionType = null) =>
             {
                 var result = await sender.Send(
-                    new SearchAuctionsQuery(q, page, pageSize, sortBy, desc, null, null, status, category), ct);
+                    new SearchAuctionsQuery(q, page, pageSize, sortBy, desc, null, null, status, category, auctionType), ct);
                 return Results.Ok(result);
             })
             .AllowAnonymous()

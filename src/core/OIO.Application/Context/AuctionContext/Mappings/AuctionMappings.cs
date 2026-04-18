@@ -37,7 +37,8 @@ internal static class AuctionMappings
             CreatedAt: auction.CreatedAt,
             IsFeatured: auction.IsFeatured,
             SellerId: auction.Item.SellerId.Value,
-            ItemStatus: auction.Item.Status.Id);
+            ItemStatus: auction.Item.Status.Id,
+            AuctionType: auction.AuctionType?.Id ?? "Regular");
     }
 
     public static AuctionDto ToDto(this Auction auction, DateTime nowUtc, TimeSpan extensionThresholdMinutes)
