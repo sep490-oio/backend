@@ -121,10 +121,16 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
         var auction = await _dbContext.Set<Auction>()
             .Include(a => a.Item)
                 .ThenInclude(i => i.Media)
+            .Include(a => a.Item)
+                .ThenInclude(i => i.Category)
             .Include(a => a.BuyNowReservations)
             .FirstOrDefaultAsync(a => a.Id == AuctionId.From(auctionId), cancellationToken);
 
         if (auction == null) return;
+
+        var sellerProfile = await _dbContext.Set<SellerProfile>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == auction.Item.SellerId, cancellationToken);
 
         // Only index Scheduled or Active auctions
         if (auction.Status != AuctionStatus.Scheduled && auction.Status != AuctionStatus.Active)
@@ -162,7 +168,8 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
             Condition = auction.Item.Condition.Id,
             ItemStatus = auction.Item.Status.Id,
             SellerId = auction.Item.SellerId.ToString(),
-            SellerName = auction.Item.SellerId.ToString(), 
+            SellerName = sellerProfile?.StoreName ?? "Private Seller",
+            CategoryName = auction.Item.Category?.Name ?? "Uncategorized",
             Suggest = new List<string> { auction.Item.Title.Value }
         };
 

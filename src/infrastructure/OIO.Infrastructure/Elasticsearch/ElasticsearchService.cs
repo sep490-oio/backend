@@ -111,10 +111,23 @@ public class ElasticsearchService : IElasticsearchService
                         }
                         else
                         {
-                            m.MultiMatch(mm => mm
-                                .Query(query)
-                                .Fields(new[] { "title^3", "description", "categoryName", "id", "sellerName", "entityType" })
-                                .Fuzziness(new Fuzziness("AUTO"))
+                            m.Bool(b => b
+                                .Should(
+                                    sh => sh.MultiMatch(mm => mm
+                                        .Query(query)
+                                        .Fields(new[] { "title^3", "displayName^3", "description", "categoryName", "id", "sellerName", "entityType" })
+                                        .Fuzziness(new Fuzziness("AUTO"))
+                                    ),
+                                    sh => sh.MatchPhrasePrefix(mpp => mpp
+                                        .Field("title")
+                                        .Query(query)
+                                    ),
+                                    sh => sh.MatchPhrasePrefix(mpp => mpp
+                                        .Field("displayName")
+                                        .Query(query)
+                                    )
+                                )
+                                .MinimumShouldMatch(1)
                             );
                         }
                     });
