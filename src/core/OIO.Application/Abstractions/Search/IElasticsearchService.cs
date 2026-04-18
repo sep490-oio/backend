@@ -21,6 +21,8 @@ public interface IElasticsearchService
         string? sortBy = null,
         bool sortDescending = true,
         Dictionary<string, string>? filters = null,
+        decimal? minPrice = null,
+        decimal? maxPrice = null,
         CancellationToken cancellationToken = default) where T : class;
 
     Task<List<string>> GetSuggestionsAsync(

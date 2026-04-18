@@ -24,6 +24,11 @@ public sealed class SearchAuctionsQueryHandler(IElasticsearchService searchServi
         if (!string.IsNullOrEmpty(request.AuctionType))
             filters["auctionType.keyword"] = request.AuctionType;
 
+        if (!string.IsNullOrEmpty(request.Condition))
+            filters["condition.keyword"] = request.Condition;
+
+        var (sortField, sortDescending) = MapSortOptions(request.SortBy, request.SortDescending);
+
         var indices = new[] { searchService.AuctionsIndex };
 
         var searchResult = await searchService.SearchAsync<AuctionSearchDocument>(
@@ -31,9 +36,11 @@ public sealed class SearchAuctionsQueryHandler(IElasticsearchService searchServi
             indices,
             request.Page,
             request.PageSize,
-            request.SortBy,
-            request.SortDescending,
+            sortField,
+            sortDescending,
             filters,
+            request.MinPrice,
+            request.MaxPrice,
             cancellationToken);
 
         var nowUtc = DateTime.UtcNow;
@@ -72,5 +79,20 @@ public sealed class SearchAuctionsQueryHandler(IElasticsearchService searchServi
             (int)searchResult.Total,
             searchResult.Page,
             searchResult.PageSize);
+    }
+
+    private static (string? Field, bool Descending) MapSortOptions(string? sortBy, bool defaultDescending)
+    {
+        if (string.IsNullOrEmpty(sortBy)) return (null, defaultDescending);
+
+        return sortBy.ToLowerInvariant() switch
+        {
+            "ending_soon" => ("endTime", false),
+            "price_asc" => ("currentPrice", false),
+            "price_desc" => ("currentPrice", true),
+            "most_bids" => ("bidCount", true),
+            "newest" => ("createdAt", true),
+            _ => (sortBy, defaultDescending)
+        };
     }
 }

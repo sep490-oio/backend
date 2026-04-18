@@ -28,6 +28,6 @@ public class GlobalSearchQueryHandler(IElasticsearchService searchService)
             request.SortBy,
             request.SortDescending,
             request.Filters,
-            cancellationToken);
+            cancellationToken: cancellationToken);
     }
 }

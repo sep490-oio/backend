@@ -22,7 +22,7 @@ public class SearchItemsQueryHandler(IElasticsearchService searchService)
             request.SortBy,
             request.SortDescending,
             filters,
-            cancellationToken);
+            cancellationToken: cancellationToken);
 
         var mappedResults = searchResult.Results.Select(doc =>
         {

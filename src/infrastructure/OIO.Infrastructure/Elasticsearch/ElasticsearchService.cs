@@ -69,13 +69,15 @@ public class ElasticsearchService : IElasticsearchService
         string? sortBy = null,
         bool sortDescending = true,
         Dictionary<string, string>? filters = null,
+        decimal? minPrice = null,
+        decimal? maxPrice = null,
         CancellationToken cancellationToken = default) where T : class
     {
-        var cacheKey = GetCacheKey("search", query, indices, page, pageSize, sortBy, sortDescending, filters);
+        var cacheKey = GetCacheKey("search", query, indices, page, pageSize, sortBy, sortDescending, filters, minPrice, maxPrice);
 
         return await _cache.GetOrCreateAsync(
             cacheKey,
-            async ct => await ExecuteSearchAsync<T>(query, indices, page, pageSize, sortBy, sortDescending, filters, ct),
+            async ct => await ExecuteSearchAsync<T>(query, indices, page, pageSize, sortBy, sortDescending, filters, minPrice, maxPrice, ct),
             cancellationToken: cancellationToken);
     }
 
@@ -87,6 +89,8 @@ public class ElasticsearchService : IElasticsearchService
         string? sortBy,
         bool sortDescending,
         Dictionary<string, string>? filters,
+        decimal? minPrice,
+        decimal? maxPrice,
         CancellationToken cancellationToken) where T : class
     {
         var from = (page - 1) * pageSize;
@@ -115,15 +119,32 @@ public class ElasticsearchService : IElasticsearchService
                         }
                     });
 
+                    var filterList = new List<Action<QueryDescriptor<T>>>();
+
                     if (filters != null && filters.Count > 0)
                     {
-                        b.Filter(f =>
+                        foreach (var filter in filters)
                         {
-                            foreach (var filter in filters)
-                            {
-                                f.Term(t => t.Field(filter.Key).Value(filter.Value));
-                            }
-                        });
+                            filterList.Add(f => f.Term(t => t.Field(filter.Key).Value(filter.Value)));
+                        }
+                    }
+
+                    if (minPrice.HasValue || maxPrice.HasValue)
+                    {
+                        // Use CurrentPrice for Auctions or AuctionCurrentPrice for Items
+                        var priceField = indices.Contains(_settings.AuctionsIndex) ? "currentPrice" : "auctionCurrentPrice";
+                        filterList.Add(f => f.Range(r => r
+                            .NumberRange(nr => {
+                                nr.Field(priceField);
+                                if (minPrice.HasValue) nr.Gte((double)minPrice.Value);
+                                if (maxPrice.HasValue) nr.Lte((double)maxPrice.Value);
+                            })
+                        ));
+                    }
+
+                    if (filterList.Count > 0)
+                    {
+                        b.Filter(filterList.ToArray());
                     }
                 })
              );
@@ -136,6 +157,8 @@ public class ElasticsearchService : IElasticsearchService
             s.Aggregations(agg => agg
                 .Add("categories", a => a.Terms(t => t.Field("categoryName.keyword")))
                 .Add("statuses", a => a.Terms(t => t.Field("status.keyword")))
+                .Add("auctionTypes", a => a.Terms(t => t.Field("auctionType.keyword")))
+                .Add("conditions", a => a.Terms(t => t.Field("condition.keyword")))
             );
         }, cancellationToken);
 
@@ -158,6 +181,18 @@ public class ElasticsearchService : IElasticsearchService
             {
                 facets.Add(new FacetDto("Statuses", statusTerms.Buckets.Select(b => new FacetBucketDto(b.Key.ToString()!, b.DocCount)).ToList()));
             }
+
+            var typeTerms = response.Aggregations.GetStringTerms("auctionTypes");
+            if (typeTerms != null)
+            {
+                facets.Add(new FacetDto("Auction Types", typeTerms.Buckets.Select(b => new FacetBucketDto(b.Key.ToString()!, b.DocCount)).ToList()));
+            }
+
+            var conditionTerms = response.Aggregations.GetStringTerms("conditions");
+            if (conditionTerms != null)
+            {
+                facets.Add(new FacetDto("Conditions", conditionTerms.Buckets.Select(b => new FacetBucketDto(b.Key.ToString()!, b.DocCount)).ToList()));
+            }
         }
 
         return new SearchResponseDto<T>
@@ -170,12 +205,14 @@ public class ElasticsearchService : IElasticsearchService
         };
     }
 
-    private string GetCacheKey(string prefix, string query, string[] indices, int? page = null, int? pageSize = null, string? sortBy = null, bool? sortDesc = null, Dictionary<string, string>? filters = null)
+    private string GetCacheKey(string prefix, string query, string[] indices, int? page = null, int? pageSize = null, string? sortBy = null, bool? sortDesc = null, Dictionary<string, string>? filters = null, decimal? minPrice = null, decimal? maxPrice = null)
     {
         var key = $"{prefix}:{string.Join(",", indices)}:q={query}";
         if (page.HasValue) key += $":p={page}";
         if (pageSize.HasValue) key += $":s={pageSize}";
         if (!string.IsNullOrEmpty(sortBy)) key += $":sb={sortBy}:{sortDesc}";
+        if (minPrice.HasValue) key += $":min={minPrice}";
+        if (maxPrice.HasValue) key += $":max={maxPrice}";
 
         if (filters != null)
         {
@@ -268,6 +305,7 @@ public class ElasticsearchService : IElasticsearchService
                         .Text("shipmentType", t => t.Fields(f => f.Keyword("keyword", k => { })))
                         .Text("providerCode", t => t.Fields(f => f.Keyword("keyword", k => { })))
                         .Text("condition", t => t.Fields(f => f.Keyword("keyword", k => { })))
+                        .Text("auctionType", t => t.Fields(f => f.Keyword("keyword", k => { })))
                     )
                 )
             , cancellationToken);

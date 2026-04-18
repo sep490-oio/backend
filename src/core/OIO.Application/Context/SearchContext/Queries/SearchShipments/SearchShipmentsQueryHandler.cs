@@ -20,6 +20,6 @@ public class SearchShipmentsQueryHandler(IElasticsearchService searchService)
             request.SortBy,
             request.SortDescending,
             filters,
-            cancellationToken);
+            cancellationToken: cancellationToken);
     }
 }
