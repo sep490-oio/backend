@@ -126,11 +126,6 @@ internal static class PackageStateResolver
             .Cast<WarehouseItem>()
             .ToList();
 
-        var anyArrived = siblings.Any(s =>
-            s.Status == InboundShipmentStatus.Arrived ||
-            s.Status == InboundShipmentStatus.Inspected ||
-            s.Status == InboundShipmentStatus.Completed);
-
         if (wis.Count == siblings.Count && wis.Count > 0 &&
             wis.All(w => w.Status == WarehouseItemStatus.Inspected ||
                          w.Status == WarehouseItemStatus.Reserved ||
@@ -148,7 +143,7 @@ internal static class PackageStateResolver
             return Stored;
         }
 
-        if (anyArrived || wis.Count > 0)
+        if (wis.Count > 0)
             return Received;
 
         return PendingArrival;
@@ -186,13 +181,16 @@ internal static class PackageStateResolver
             return "stored";
         }
 
+        if (wis.Count > 0)
+            return "received";
+
         var anyArrived = siblings.Any(s =>
             s.Status == InboundShipmentStatus.Arrived ||
             s.Status == InboundShipmentStatus.Inspected ||
             s.Status == InboundShipmentStatus.Completed);
 
-        if (anyArrived || wis.Count > 0)
-            return "received";
+        if (anyArrived)
+            return "arrived";
 
         if (siblings.Any(s => s.Status == InboundShipmentStatus.SellerClaimsArrived))
             return "seller_claims_arrived";
