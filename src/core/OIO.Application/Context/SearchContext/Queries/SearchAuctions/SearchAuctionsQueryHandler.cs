@@ -16,16 +16,16 @@ public sealed class SearchAuctionsQueryHandler(IElasticsearchService searchServi
         var filters = new Dictionary<string, string>();
         
         if (!string.IsNullOrEmpty(request.Status))
-            filters["status.keyword"] = request.Status;
+            filters["status.keyword"] = request.Status.ToLowerInvariant();
             
         if (!string.IsNullOrEmpty(request.Category))
             filters["categoryName.keyword"] = request.Category;
 
         if (!string.IsNullOrEmpty(request.AuctionType))
-            filters["auctionType.keyword"] = request.AuctionType;
+            filters["auctionType.keyword"] = request.AuctionType.ToLowerInvariant();
 
         if (!string.IsNullOrEmpty(request.Condition))
-            filters["condition.keyword"] = request.Condition;
+            filters["condition.keyword"] = request.Condition.ToLowerInvariant();
 
         var (sortField, sortDescending) = MapSortOptions(request.SortBy, request.SortDescending);
 
@@ -87,11 +87,12 @@ public sealed class SearchAuctionsQueryHandler(IElasticsearchService searchServi
 
         return sortBy.ToLowerInvariant() switch
         {
-            "ending_soon" => ("endTime", false),
+            "ending_soon" or "endtime" => ("endTime", false),
             "price_asc" => ("currentPrice", false),
             "price_desc" => ("currentPrice", true),
-            "most_bids" => ("bidCount", true),
-            "newest" => ("createdAt", true),
+            "most_bids" or "bid_count" or "bidcount" => ("bidCount", true),
+            "newest" or "created_at" or "createdat" => ("createdAt", true),
+            "currentprice" => ("currentPrice", defaultDescending),
             _ => (sortBy, defaultDescending)
         };
     }
