@@ -268,6 +268,7 @@ public class ElasticsearchService : IElasticsearchService
                         .Text("shipmentType", t => t.Fields(f => f.Keyword("keyword", k => { })))
                         .Text("providerCode", t => t.Fields(f => f.Keyword("keyword", k => { })))
                         .Text("condition", t => t.Fields(f => f.Keyword("keyword", k => { })))
+                        .Text("auctionType", t => t.Fields(f => f.Keyword("keyword", k => { })))
                     )
                 )
             , cancellationToken);
