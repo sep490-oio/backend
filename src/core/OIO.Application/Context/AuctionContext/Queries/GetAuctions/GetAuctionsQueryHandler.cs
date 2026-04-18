@@ -63,6 +63,13 @@ internal sealed class GetAuctionsQueryHandler
             query = query.Where(x => x.Item.CategoryId == categoryId);
         }
 
+        // Auction Type filter
+        if (!string.IsNullOrWhiteSpace(parameters.AuctionType) && AuctionType.Is(parameters.AuctionType))
+        {
+            var auctionType = AuctionType.FromId(parameters.AuctionType).Value;
+            query = query.Where(x => x.AuctionType == auctionType);
+        }
+
         // Search
         if (!string.IsNullOrWhiteSpace(parameters.Search))
         {

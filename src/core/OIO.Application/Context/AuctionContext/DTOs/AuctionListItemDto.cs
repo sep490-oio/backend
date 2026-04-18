@@ -1,4 +1,4 @@
-﻿namespace OIO.Application.Context.AuctionContext.DTOs;
+namespace OIO.Application.Context.AuctionContext.DTOs;
 
 public sealed record AuctionListItemDto(
     Guid Id,
@@ -21,4 +21,5 @@ public sealed record AuctionListItemDto(
     bool? IsEndingSoon,
     bool? IsFeatured,
     Guid SellerId,
-    string ItemStatus);
+    string ItemStatus,
+    string AuctionType);

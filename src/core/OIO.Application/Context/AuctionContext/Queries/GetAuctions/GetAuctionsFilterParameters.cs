@@ -19,4 +19,6 @@ public record GetAuctionsFilterParameters : PagedParameters, ISortByParameter
     public int? EndingWithinHours { get; init; }
 
     public bool? IsFeatured { get; init; }
+
+    public string? AuctionType { get; init; }
 }
