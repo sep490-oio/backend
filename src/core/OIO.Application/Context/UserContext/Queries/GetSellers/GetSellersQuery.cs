@@ -6,6 +6,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.DTOs;
 using OIO.Application.Context.UserContext.Mappings;
 using OIO.Application.Extensions;
+using OIO.Domain.Context.ReviewContext.Aggregates;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Enums;
 using OIO.Domain.SeedWork.Errors;
@@ -46,7 +47,12 @@ internal sealed class GetSellersQueryHandler(IDbContext dbContext)
         var totalCount = await query.CountAsync(cancellationToken);
         
         var pagedResult = await query
-            .Select(p => p.ToPublicDto())
+            .GroupJoin(
+                dbContext.Set<SellerRatingSummary>(),
+                p => p.Id,
+                r => r.SellerId,
+                (p, ratings) => new { Profile = p, Rating = ratings.FirstOrDefault() })
+            .Select(x => x.Profile.ToPublicDto(x.Rating))
             .ToPagedListAsync(totalCount, parameters, cancellationToken);
 
         return pagedResult;

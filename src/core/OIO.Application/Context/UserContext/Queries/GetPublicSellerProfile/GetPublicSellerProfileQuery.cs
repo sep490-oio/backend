@@ -4,6 +4,7 @@ using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.DTOs;
 using OIO.Application.Context.UserContext.Mappings;
+using OIO.Domain.Context.ReviewContext.Aggregates;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Errors;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
@@ -38,13 +39,19 @@ internal sealed class GetPublicSellerProfileQueryHandler
     {
         var sellerId = UserId.From(request.SellerId);
 
-        var profile = await _dbContext.Set<SellerProfile>()
+        var profileWithRating = await _dbContext.Set<SellerProfile>()
             .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == sellerId, cancellationToken);
-
-        if (profile is null)
+            .Where(p => p.Id == sellerId)
+            .GroupJoin(
+                _dbContext.Set<SellerRatingSummary>(),
+                p => p.Id,
+                r => r.SellerId,
+                (p, ratings) => new { Profile = p, Rating = ratings.FirstOrDefault() })
+            .FirstOrDefaultAsync(cancellationToken);
+            
+        if (profileWithRating is null)
             return UserErrors.SellerProfile.NotFoundById(sellerId);
-
-        return profile.ToPublicDto();
+            
+        return profileWithRating.Profile.ToPublicDto(profileWithRating.Rating);
     }
 }
