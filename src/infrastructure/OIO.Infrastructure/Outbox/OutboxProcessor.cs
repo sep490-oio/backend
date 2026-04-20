@@ -145,7 +145,7 @@ internal sealed class OutboxProcessor
                             WHERE processed_at IS NULL AND attempt_count < @MaxAttempts
                             ORDER BY occurred_at
                             LIMIT @BatchSize
-                            FOR UPDATE
+                            FOR NO KEY UPDATE
                             """;
 
         var command = new CommandDefinition(
