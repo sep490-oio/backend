@@ -43,6 +43,7 @@ using OIO.Infrastructure.Scheduling.JobSetup;
 using OIO.Infrastructure.Security;
 using OIO.Infrastructure.Settings.Apps;
 using Quartz;
+using Microsoft.AspNetCore.DataProtection;
 using StackExchange.Redis;
 using OIO.Infrastructure.Auth;
 using OIO.Infrastructure.Ekyc;
@@ -96,7 +97,7 @@ public static class DependencyInjection
                 .AddSchedulingServices(configuration, connectionString)
                 .AddOutbox(configuration)
                 .AddMedia(configuration)
-                .AddSecurityServices()
+                .AddSecurityServices(configuration)
                 .AddShipping(configuration)
                 .AddEkyc(configuration)
                 .AddPayment(configuration)
@@ -104,14 +105,18 @@ public static class DependencyInjection
 
             services.AddMediatR(cfg =>
             {
+                // Exclude IdempotentDomainEventHandler<> from auto-registration. MediatR's assembly
+                // scanner would otherwise register it as an OPEN-GENERIC INotificationHandler<>,
+                // applying it to ALL events including handler-less ones (e.g., RefreshTokenRotatedEvent),
+                // causing a circular dependency when DI tries to resolve the decorator's inner handler
+                // (which would be itself).
+                cfg.TypeEvaluator = type =>
+                    type != typeof(IdempotentDomainEventHandler<>);
                 cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly);
             });
 
             // Decorate only INotificationHandler<T> types that have real (non-decorator) registrations.
             // This MUST run after all AddMediatR calls so all handlers from both assemblies are registered.
-            // Using per-type decoration avoids circular dependency for domain events with no handlers
-            // (e.g., RefreshTokenRotatedEvent), where IdempotentDomainEventHandler<T> would be the only
-            // registration and would try to resolve itself as the inner handler.
             DecorateRegisteredNotificationHandlers(services);
 
             return services;
@@ -261,9 +266,20 @@ public static class DependencyInjection
             return services;
         }
 
-        private IServiceCollection AddSecurityServices()
+        private IServiceCollection AddSecurityServices(IConfiguration configuration)
         {
-            services.AddDataProtection();
+            var redisConnection = configuration.GetConnectionString("Cache");
+
+            var dpBuilder = services.AddDataProtection();
+
+            if (!string.IsNullOrWhiteSpace(redisConnection))
+            {
+                var dpMultiplexer = ConnectionMultiplexer.Connect(redisConnection);
+                dpBuilder
+                    .PersistKeysToStackExchangeRedis(dpMultiplexer, "DataProtection-Keys:OIO")
+                    .SetApplicationName("oio-api");
+            }
+
             services.AddSingleton<ISecureTokenGenerator, SecureTokenGenerator>();
             services.AddScoped<ISecureTokenStore, SecureTokenStore>();
             services.AddScoped<ISealedBidEncryptionService, SealedBidEncryptionService>();

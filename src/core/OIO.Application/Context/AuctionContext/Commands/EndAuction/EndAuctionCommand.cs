@@ -1,5 +1,6 @@
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
+using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.AuctionContext.Services;
@@ -30,9 +31,11 @@ public sealed record EndAuctionCommand(Guid AuctionId) : ICommand, IHasValidate
 
 internal sealed class EndAuctionCommandHandler(
     IDbContext dbContext,
+    IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
     ISealedBidEncryptionService sealedBidEncryptionService,
-    IGrainFactory grainFactory)
+    IGrainFactory grainFactory,
+    IClock clock)
     : ICommandHandler<EndAuctionCommand>
 {
     public async Task<UnitResult<Error>> Handle(
@@ -74,7 +77,23 @@ internal sealed class EndAuctionCommandHandler(
             {
                 var decryptedAmount = sealedBidEncryptionService.Decrypt(sealedBid.AmountEncrypted);
                 if (decryptedAmount.IsFailure)
-                    return decryptedAmount.Error;
+                {
+                    // Sealed-bid ciphertext is unrecoverable (typically Data Protection key
+                    // ring loss from a container restart prior to the Redis key persistence).
+                    // Auto-cancel via existing CancelAuction so deposits refund via
+                    // AuctionCancelledDepositReleaseEventHandler and item releases via
+                    // AuctionTerminalItemReleaseHandler. Polling fallback also stops here.
+                    var cancelResult = auction.CancelAuction(
+                        reason: $"SealedBidDecryptionFailure: {decryptedAmount.Error.Code}",
+                        nowUtc: clock.UtcNow);
+
+                    if (cancelResult.IsFailure)
+                        return cancelResult.Error;
+
+                    await unitOfWork.SaveChangesAsync(cancellationToken);
+
+                    return UnitResult.Success<Error>();
+                }
 
                 var amount = Domain.Context.Shared.ValueObjects.Money.Create(
                     decryptedAmount.Value,
