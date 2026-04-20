@@ -29,6 +29,7 @@ public interface IElasticsearchService
         string query,
         string[] indices,
         CancellationToken cancellationToken = default);
+    Task<List<string>> GetAllIdsAsync(string index, CancellationToken cancellationToken = default);
 
     Task ClearCacheAsync(CancellationToken cancellationToken = default);
 
