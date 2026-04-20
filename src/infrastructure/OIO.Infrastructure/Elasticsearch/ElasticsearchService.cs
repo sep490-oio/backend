@@ -15,6 +15,7 @@ public class ElasticsearchService : IElasticsearchService
     private readonly ElasticsearchClient _client;
     private readonly ElasticsearchSettings _settings;
     private readonly HybridCache _cache;
+    private const string CacheTag = "elasticsearch";
 
     public ElasticsearchService(IOptions<ElasticsearchSettings> settings, HybridCache cache)
     {
@@ -36,28 +37,38 @@ public class ElasticsearchService : IElasticsearchService
     public string ShipmentsIndex => _settings.ShipmentsIndex;
     public string WarehouseIndex => _settings.WarehouseIndex;
 
-    public async Task IndexDocumentAsync<T>(T document, string indexName, CancellationToken cancellationToken = default) where T : class
+    public async Task IndexDocumentAsync<T>(T document, string indexName, bool bypassCacheInvalidation = false, CancellationToken cancellationToken = default) where T : class
     {
         var response = await _client.IndexAsync(document, (IndexName)indexName, cancellationToken);
         if (!response.IsSuccess())
         {
             throw new Exception($"Failed to index document: {response.ElasticsearchServerError?.Error.Reason}");
         }
+
+        if (!bypassCacheInvalidation)
+        {
+            await ClearCacheAsync(cancellationToken);
+        }
     }
 
-    public async Task UpdateDocumentAsync<T>(T document, string indexName, CancellationToken cancellationToken = default) where T : class
+    public async Task UpdateDocumentAsync<T>(T document, string indexName, bool bypassCacheInvalidation = false, CancellationToken cancellationToken = default) where T : class
     {
         // In ES, IndexAsync handles both create and replace (upsert) if ID is provided.
         // For specific updates we could use UpdateAsync, but here we usually push the full doc.
-        await IndexDocumentAsync(document, indexName, cancellationToken);
+        await IndexDocumentAsync(document, indexName, bypassCacheInvalidation, cancellationToken);
     }
 
-    public async Task DeleteDocumentAsync(string id, string indexName, CancellationToken cancellationToken = default)
+    public async Task DeleteDocumentAsync(string id, string indexName, bool bypassCacheInvalidation = false, CancellationToken cancellationToken = default)
     {
         var response = await _client.DeleteAsync(index: (IndexName)indexName, id: (Id)id, cancellationToken: cancellationToken);
         if (!response.IsSuccess() && response.ElasticsearchServerError?.Status != 404)
         {
             throw new Exception($"Failed to delete document: {response.ElasticsearchServerError?.Error.Reason}");
+        }
+
+        if (!bypassCacheInvalidation)
+        {
+            await ClearCacheAsync(cancellationToken);
         }
     }
 
@@ -78,6 +89,7 @@ public class ElasticsearchService : IElasticsearchService
         return await _cache.GetOrCreateAsync(
             cacheKey,
             async ct => await ExecuteSearchAsync<T>(query, indices, page, pageSize, sortBy, sortDescending, filters, minPrice, maxPrice, ct),
+            tags: [CacheTag],
             cancellationToken: cancellationToken);
     }
 
@@ -246,6 +258,7 @@ public class ElasticsearchService : IElasticsearchService
         return await _cache.GetOrCreateAsync(
             cacheKey,
             async ct => await ExecuteGetSuggestionsAsync(query, indices, ct),
+            tags: [CacheTag],
             cancellationToken: cancellationToken);
     }
 
@@ -295,6 +308,11 @@ public class ElasticsearchService : IElasticsearchService
         return suggestions.Distinct().ToList();
     }
 
+    public async Task ClearCacheAsync(CancellationToken cancellationToken = default)
+    {
+        await _cache.RemoveByTagAsync(CacheTag, cancellationToken);
+    }
+
     public async Task RecreateIndicesAsync(CancellationToken cancellationToken = default)
     {
         var indices = new[]
@@ -338,5 +356,7 @@ public class ElasticsearchService : IElasticsearchService
                 )
             , cancellationToken);
         }
+
+        await ClearCacheAsync(cancellationToken);
     }
 }
