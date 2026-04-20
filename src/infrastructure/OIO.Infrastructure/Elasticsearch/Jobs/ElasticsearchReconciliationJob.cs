@@ -43,5 +43,7 @@ public class ElasticsearchReconciliationJob(
         
         var outShipmentIds = await dbContext.Set<OutboundShipment>().Select(s => s.Id.Value).ToListAsync(context.CancellationToken);
         foreach (var id in outShipmentIds) await syncService.SyncShipmentAsync(id, true, context.CancellationToken);
+
+        await syncService.ClearCacheAsync(context.CancellationToken);
     }
 }

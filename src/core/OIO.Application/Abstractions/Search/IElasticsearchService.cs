@@ -2,9 +2,9 @@ namespace OIO.Application.Abstractions.Search;
 
 public interface IElasticsearchService
 {
-    Task IndexDocumentAsync<T>(T document, string indexName, CancellationToken cancellationToken = default) where T : class;
-    Task UpdateDocumentAsync<T>(T document, string indexName, CancellationToken cancellationToken = default) where T : class;
-    Task DeleteDocumentAsync(string id, string indexName, CancellationToken cancellationToken = default);
+    Task IndexDocumentAsync<T>(T document, string indexName, bool bypassCacheInvalidation = false, CancellationToken cancellationToken = default) where T : class;
+    Task UpdateDocumentAsync<T>(T document, string indexName, bool bypassCacheInvalidation = false, CancellationToken cancellationToken = default) where T : class;
+    Task DeleteDocumentAsync(string id, string indexName, bool bypassCacheInvalidation = false, CancellationToken cancellationToken = default);
 
     string AuctionsIndex { get; }
     string ItemsIndex { get; }
@@ -29,6 +29,8 @@ public interface IElasticsearchService
         string query,
         string[] indices,
         CancellationToken cancellationToken = default);
+
+    Task ClearCacheAsync(CancellationToken cancellationToken = default);
 
     Task RecreateIndicesAsync(CancellationToken cancellationToken = default);
 }
