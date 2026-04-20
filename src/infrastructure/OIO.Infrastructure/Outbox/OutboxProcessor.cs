@@ -215,7 +215,7 @@ internal sealed class OutboxProcessor
             OutboxMessagesProcessorLoggers.LogFailedToDeserialize(logger, new Exception(errorText),message.Id);
             updateQueue.Enqueue(
                 new OutboxUpdate(Id: message.Id,
-                    ProcessedOnUtc: clock.UtcNow,
+                    ProcessedAt: clock.UtcNow,
                     Error: errorText));
             return;
         }
@@ -226,7 +226,7 @@ internal sealed class OutboxProcessor
             await publisher.Publish(deserialized, cancellationToken);
             updateQueue.Enqueue(
                 new OutboxUpdate(Id: message.Id,
-                    ProcessedOnUtc: clock.UtcNow,
+                    ProcessedAt: clock.UtcNow,
                     Error: null));
         }
         catch (Exception ex)
@@ -235,7 +235,7 @@ internal sealed class OutboxProcessor
             
             updateQueue.Enqueue(
                 new OutboxUpdate(Id: message.Id,
-                    ProcessedOnUtc: null,
+                    ProcessedAt: null,
                     Error: ex.ToString()));
         }
     }
@@ -243,7 +243,7 @@ internal sealed class OutboxProcessor
 
     private readonly record struct OutboxUpdate(
         Guid Id,
-        DateTimeOffset? ProcessedOnUtc,
+        DateTimeOffset? ProcessedAt,
         string? Error
     );
 }
