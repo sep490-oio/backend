@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
+using OIO.Application.Abstractions.Address;
 using OIO.Application.Abstractions.Auth;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
@@ -23,6 +24,8 @@ using OIO.Application.Context.AuctionContext.Services;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.UserContext.Services;
 using OIO.Application.Abstractions.Ekyc;
+using OIO.Application.Abstractions.Payment;
+using OIO.Application.Context.NotificationContext.Services;
 using OIO.Infrastructure.Authorizations;
 using OIO.Infrastructure.Clock;
 using OIO.Infrastructure.Persistence;
@@ -43,6 +46,14 @@ using Quartz;
 using StackExchange.Redis;
 using OIO.Infrastructure.Auth;
 using OIO.Infrastructure.Ekyc;
+using OIO.Infrastructure.Elasticsearch.Jobs;
+using OIO.Infrastructure.Notification.BackgroundJobs;
+using OIO.Infrastructure.Notification.Providers;
+using OIO.Infrastructure.Payment.Reconciliation;
+using OIO.Infrastructure.Payment.VnPay;
+using OIO.Infrastructure.Payment.Webhooks;
+using OIO.Infrastructure.Scheduling.Jobs.Auctions;
+using OIO.Infrastructure.Scheduling.Jobs.Orders;
 using OIO.Infrastructure.Shipping;
 using OIO.Infrastructure.Shipping.Ghn;
 
@@ -95,6 +106,13 @@ public static class DependencyInjection
             {
                 cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly);
             });
+
+            // Decorate only INotificationHandler<T> types that have real (non-decorator) registrations.
+            // This MUST run after all AddMediatR calls so all handlers from both assemblies are registered.
+            // Using per-type decoration avoids circular dependency for domain events with no handlers
+            // (e.g., RefreshTokenRotatedEvent), where IdempotentDomainEventHandler<T> would be the only
+            // registration and would try to resolve itself as the inner handler.
+            DecorateRegisteredNotificationHandlers(services);
 
             return services;
         }
@@ -288,7 +306,11 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
                 .AddNpgSql(
                     name: "database",
                     failureStatus: HealthStatus.Unhealthy,
-                    tags: ["ready", "db"]);
+                    tags: ["ready", "db"])
+                .AddCheck<OutboxHealthCheck>(
+                    "outbox",
+                    failureStatus: HealthStatus.Degraded,
+                    tags: ["ready", "outbox"]);
 
             return services;
         }
@@ -296,14 +318,14 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
         private IServiceCollection AddBackgroundJobs()
         {
             services.AddHostedService<ExpiredSessionCleanupJob>();
-            services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Orders.CancelExpiredOrdersJob>();
-            services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Orders.ScanOverdueSelfShipOrdersJob>();
-            services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Orders.BackfillDirectShipmentQrTokensJob>();
-            services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Orders.BackfillOutboundShipmentQrTokensJob>();
-            services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Auctions.ExpireRunnerUpOffersJob>();
-            services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Auctions.ExpireBuyNowReservationsJob>();
-            services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Auctions.ScanActiveAuctionsForCollusionJob>();
-            services.AddHostedService<OIO.Infrastructure.Scheduling.Jobs.Auctions.BackfillScheduledAuctionStartsJob>();
+            services.AddHostedService<CancelExpiredOrdersJob>();
+            services.AddHostedService<ScanOverdueSelfShipOrdersJob>();
+            services.AddHostedService<BackfillDirectShipmentQrTokensJob>();
+            services.AddHostedService<BackfillOutboundShipmentQrTokensJob>();
+            services.AddHostedService<ExpireRunnerUpOffersJob>();
+            services.AddHostedService<ExpireBuyNowReservationsJob>();
+            services.AddHostedService<ScanActiveAuctionsForCollusionJob>();
+            services.AddHostedService<BackfillScheduledAuctionStartsJob>();
 
             return services;
         }
@@ -348,8 +370,8 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
             services.AddScoped<SellerTrustScoreCalculator>();
 
             // Notification Delivery Job
-            services.ConfigureOptions<OIO.Infrastructure.Notification.BackgroundJobs.ProcessNotificationDeliveriesJobSetup>();
-            services.AddScoped<OIO.Application.Context.NotificationContext.Services.INotificationProvider, OIO.Infrastructure.Notification.Providers.EmailNotificationProvider>();
+            services.ConfigureOptions<ProcessNotificationDeliveriesJobSetup>();
+            services.AddScoped<INotificationProvider, EmailNotificationProvider>();
 
             return services;
         }
@@ -362,14 +384,24 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
                 .Validate(
                     validation: outboxSettings =>
                         outboxSettings.Interval > TimeSpan.Zero &&
-                        outboxSettings.CleanupRetention > TimeSpan.Zero,
-                    failureMessage: "Outbox Interval and CleanupRetention must be greater than zero.")
+                        outboxSettings.CleanupRetention > TimeSpan.Zero &&
+                        outboxSettings.PoisonMessageRetention > TimeSpan.Zero,
+                    failureMessage: "Outbox Interval, CleanupRetention, and PoisonMessageRetention must be greater than zero.")
+                .Validate(
+                    validation: outboxSettings =>
+                        outboxSettings.MaxAttempts == OutboxConstants.MaxAttemptsIndexFilter,
+                    failureMessage:
+                        $"Outbox MaxAttempts must be {OutboxConstants.MaxAttemptsIndexFilter} " +
+                        "to match the partial index idx_outbox_messages_unprocessed. " +
+                        "Changing MaxAttempts requires a database migration to update the index filter.")
+                .Validate(
+                    validation: outboxSettings =>
+                        outboxSettings.HealthyThreshold < outboxSettings.UnhealthyThreshold,
+                    failureMessage: "Outbox HealthyThreshold must be less than UnhealthyThreshold.")
                 .ValidateOnStart();
             services.AddTransient<IOutboxMessageResolver, OutboxMessageResolver>();
             services.ConfigureOptions<OutboxMessagesProcessorJobSetup>();
             services.AddScoped<OutboxProcessor>();
-            //For idempotent notification
-            services.Decorate(typeof(INotificationHandler<>), typeof(IdempotentDomainEventHandler<>));
 
             return services;
         }
@@ -384,28 +416,27 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
 
         private IServiceCollection AddShipping(IConfiguration configuration)
         {
-            services.Configure<Settings.GhnAddressOptions>(
+            services.Configure<GhnAddressOptions>(
                 configuration.GetSection(Settings.GhnAddressOptions.SectionName));
             services.AddHttpClient("GhnClient");
             services.AddHttpClient("GhnAddressClient");
             services.AddTransient<IShippingProvider, GhnShippingProvider>();
             services.AddTransient<IShippingProviderSelector, ShippingProviderSelector>();
             services.AddScoped<IShippingService, ShippingService>();
-            services.AddScoped<OIO.Application.Abstractions.Address.IGhnAddressService, GhnAddressService>();
+            services.AddScoped<IGhnAddressService, GhnAddressService>();
             return services;
         }
 
         private IServiceCollection AddPayment(IConfiguration configuration)
         {
-            services.Configure<Payment.VnPay.VnPayConfig>(
-                configuration.GetSection(Payment.VnPay.VnPayConfig.SectionName));
-            services.AddHttpClient<Application.Abstractions.Payment.IPaymentGatewayService,
-                Payment.VnPay.VnPayGateway>();
+            services.Configure<VnPayConfig>(
+                configuration.GetSection(VnPayConfig.SectionName));
+            services.AddHttpClient<IPaymentGatewayService, VnPayGateway>();
 
-            services.ConfigureOptions<Payment.Webhooks.ProcessGatewayWebhooksJobSetup>();
-            services.AddScoped<Payment.Webhooks.GatewayWebhookProcessor>();
+            services.ConfigureOptions<ProcessGatewayWebhooksJobSetup>();
+            services.AddScoped<GatewayWebhookProcessor>();
 
-            services.ConfigureOptions<Payment.Reconciliation.GatewayReconciliationJobSetup>();
+            services.ConfigureOptions<GatewayReconciliationJobSetup>();
 
             return services;
         }
@@ -419,9 +450,27 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
             services.AddScoped<IElasticsearchSyncService, ElasticsearchSyncService>();
 
             // Jobs
-            services.ConfigureOptions<Elasticsearch.Jobs.ElasticsearchReconciliationJobSetup>();
+            services.ConfigureOptions<ElasticsearchReconciliationJobSetup>();
 
             return services;
+        }
+        
+    }
+    
+    private static void DecorateRegisteredNotificationHandlers(IServiceCollection services)
+    {
+        var handlerServiceTypes = services
+            .Where(sd => sd.ServiceType.IsGenericType
+                         && sd.ServiceType.GetGenericTypeDefinition() == typeof(INotificationHandler<>))
+            .Select(sd => sd.ServiceType)
+            .Distinct()
+            .ToList();
+
+        foreach (var serviceType in handlerServiceTypes)
+        {
+            var eventType = serviceType.GetGenericArguments()[0];
+            var decoratorType = typeof(IdempotentDomainEventHandler<>).MakeGenericType(eventType);
+            services.Decorate(serviceType, decoratorType);
         }
     }
 }

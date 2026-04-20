@@ -23,4 +23,28 @@ internal sealed record OutboxSettings
     public required int MaxCleanupBatchesPerRun { get; init; }
 
     public required TimeSpan CleanupDelay { get; init; }
+
+    /// <summary>
+    /// Retention period for poison messages (processed_at IS NULL, attempt_count >= MaxAttempts)
+    /// before they are eligible for cleanup. Default: 7 days.
+    /// </summary>
+    public TimeSpan PoisonMessageRetention { get; init; } = TimeSpan.FromDays(7);
+
+    /// <summary>
+    /// Threshold for the outbox health check: queue depth below this is Healthy.
+    /// </summary>
+    [Range(minimum: 1, maximum: 100_000)]
+    public int HealthyThreshold { get; init; } = 100;
+
+    /// <summary>
+    /// Threshold for the outbox health check: queue depth at or above this is Unhealthy.
+    /// </summary>
+    [Range(minimum: 1, maximum: 100_000)]
+    public int UnhealthyThreshold { get; init; } = 1000;
+
+    /// <summary>
+    /// Threshold for the outbox health check: poison count at or above this triggers Degraded status.
+    /// </summary>
+    [Range(minimum: 1, maximum: 100_000)]
+    public int PoisonThreshold { get; init; } = 50;
 }

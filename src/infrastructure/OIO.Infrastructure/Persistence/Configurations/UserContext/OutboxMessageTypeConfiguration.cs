@@ -41,14 +41,28 @@ internal sealed class OutboxMessageTypeConfiguration : IEntityTypeConfiguration<
             .HasDefaultValue(0)
             .HasColumnName("attempt_count");
 
+        // Partial index for the processor query: only includes messages eligible for processing.
+        // The attempt_count filter MUST match OutboxConstants.MaxAttemptsIndexFilter (validated at startup).
         builder
             .HasIndex(o => new { o.OccurredAt })
             .HasDatabaseName("idx_outbox_messages_unprocessed")
-            .HasFilter("processed_at IS NULL");
+            .HasFilter($"processed_at IS NULL AND attempt_count < {OutboxConstants.MaxAttemptsIndexFilter}");
 
         builder
             .HasIndex(om => new { om.OccurredAt, om.Id })
             .HasDatabaseName("idx_outbox_cleanup")
             .HasFilter("processed_at IS NOT NULL AND error IS NULL");
+
+        // Index for poison message cleanup
+        builder
+            .HasIndex(o => new { o.OccurredAt, o.Id })
+            .HasDatabaseName("idx_outbox_cleanup_poison")
+            .HasFilter($"processed_at IS NULL AND attempt_count >= {OutboxConstants.MaxAttemptsIndexFilter}");
+
+        // Index for error message cleanup (deserialization failures)
+        builder
+            .HasIndex(o => new { o.OccurredAt, o.Id })
+            .HasDatabaseName("idx_outbox_cleanup_error")
+            .HasFilter("processed_at IS NOT NULL AND error IS NOT NULL");
     }
 }

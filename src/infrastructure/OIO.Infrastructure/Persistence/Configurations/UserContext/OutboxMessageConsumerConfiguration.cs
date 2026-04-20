@@ -13,5 +13,10 @@ public sealed class OutboxMessageConsumerConfiguration : IEntityTypeConfiguratio
         builder.HasKey(o => new { o.OutboxMessageId, o.Name });
 
         builder.Property(o => o.Name).HasMaxLength(500);
+
+        builder.HasOne<OutboxMessage>()
+            .WithMany()
+            .HasForeignKey(o => o.OutboxMessageId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
