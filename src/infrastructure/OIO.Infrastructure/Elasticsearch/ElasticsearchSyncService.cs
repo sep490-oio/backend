@@ -70,6 +70,17 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
             .OrderByDescending(a => a.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);
 
+        var titleWords = item.Title.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var itemSuggestInputs = new List<string> { item.Title.Value };
+        for (int i = 1; i < titleWords.Length; i++)
+        {
+            itemSuggestInputs.Add(string.Join(" ", titleWords.Skip(i)));
+        }
+        if (!string.IsNullOrEmpty(item.Category?.Name))
+        {
+            itemSuggestInputs.Add(item.Category.Name);
+        }
+
         var doc = new ItemSearchDocument
         {
             Id = item.Id.ToString(),
@@ -110,7 +121,7 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
                 Width = m.Info.Width,
                 Height = m.Info.Height
             }).ToList(),
-            Suggest = new[] { item.Title.Value, item.Category?.Name }.Where(s => !string.IsNullOrEmpty(s)).ToList()!
+            Suggest = itemSuggestInputs
         };
 
         await _esService.IndexDocumentAsync(doc, _settings.ItemsIndex, cancellationToken);
@@ -142,6 +153,17 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
         var nowUtc = _clock.UtcNow;
         var activeReservation = auction.GetActiveBuyNowReservation(nowUtc);
 
+        var auctionTitleWords = auction.Item.Title.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var auctionSuggestInputs = new List<string> { auction.Item.Title.Value };
+        for (int i = 1; i < auctionTitleWords.Length; i++)
+        {
+            auctionSuggestInputs.Add(string.Join(" ", auctionTitleWords.Skip(i)));
+        }
+        if (!string.IsNullOrEmpty(auction.Item.Category?.Name))
+        {
+            auctionSuggestInputs.Add(auction.Item.Category.Name);
+        }
+
         var doc = new AuctionSearchDocument
         {
             Id = auction.Id.ToString(),
@@ -170,7 +192,7 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
             SellerId = auction.Item.SellerId.ToString(),
             SellerName = sellerProfile?.StoreName ?? "Private Seller",
             CategoryName = auction.Item.Category?.Name ?? "Uncategorized",
-            Suggest = new List<string> { auction.Item.Title.Value }
+            Suggest = auctionSuggestInputs
         };
 
         await _esService.IndexDocumentAsync(doc, _settings.AuctionsIndex, cancellationToken);
