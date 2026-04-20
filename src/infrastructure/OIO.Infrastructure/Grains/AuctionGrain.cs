@@ -117,6 +117,27 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
             var isAutoBid = bid.IsAutoBid;
             var bidTime = bid.CreatedAt;
 
+            // Detect auto-bid counter-bid produced by ResolveProxyBids inside PlaceBid.
+            // When a third party has an active autobid with a higher max than this manual bid,
+            // the domain creates an additional Bid entity (IsAutoBid=true) that becomes the
+            // current winner. We must publish a second realtime event for that bid so the
+            // frontend bid history and outbid notifications stay in sync.
+            var winningBid = auction.GetCurrentWinningBid();
+            var hasAutoBidCascade = winningBid is not null && winningBid.Id.Value != bidId;
+
+            Guid autoBidCounterId = default;
+            Guid autoBidCounterBidderId = default;
+            decimal autoBidCounterAmount = default;
+            DateTime autoBidCounterTime = default;
+
+            if (hasAutoBidCascade)
+            {
+                autoBidCounterId = winningBid!.Id.Value;
+                autoBidCounterBidderId = winningBid.BidderId.Value;
+                autoBidCounterAmount = winningBid.Amount.Amount;
+                autoBidCounterTime = winningBid.CreatedAt;
+            }
+
             await SaveAsync(auction, cancellationToken);
 
             // Publish realtime events immediately after commit
@@ -125,7 +146,14 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 var displayName = await ResolveBidderDisplayNameAsync(dbContext, bidderId, cancellationToken);
                 var bidTimestamp = new DateTimeOffset(DateTime.SpecifyKind(bidTime, DateTimeKind.Utc));
 
-                // BidPlaced + AuctionStateChanged
+                // For the manual bid event, when the autobid cascade overrode it the "current price"
+                // shown to outbid recipients should still be the manual bid's own amount (the autobid
+                // gets its own event below). Without this split the FE would receive a single event
+                // where currentPrice > lastBid.amount which breaks price-history and outbid messaging.
+                var manualCurrentPrice = hasAutoBidCascade ? bidAmount : currentPrice;
+                var manualMinNextBid = hasAutoBidCascade ? bidAmount : minNextBid;
+
+                // BidPlaced + AuctionStateChanged for the MANUAL bid
                 await publisher.PublishBidPlacedAsync(
                     auctionId,
                     new BidNotification(
@@ -134,9 +162,9 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                         BidderId: bidderId,
                         BidderDisplayName: displayName,
                         Amount: bidAmount,
-                        CurrentPrice: currentPrice,
-                        MinimumNextBid: minNextBid,
-                        TotalBids: totalBids,
+                        CurrentPrice: manualCurrentPrice,
+                        MinimumNextBid: manualMinNextBid,
+                        TotalBids: hasAutoBidCascade ? totalBids - 1 : totalBids,
                         IsAutoBid: isAutoBid,
                         Timestamp: bidTimestamp),
                     new AuctionStateSyncOptions(
@@ -148,35 +176,91 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                             IsAutoBid: isAutoBid,
                             Timestamp: bidTimestamp),
                         NewPriceHistoryPoint: new AuctionStatePriceHistoryPoint(
-                            Price: currentPrice,
+                            Price: manualCurrentPrice,
                             Type: "bid",
                             BidId: bidId,
                             BidderDisplayName: displayName,
                             RecordedAt: bidTimestamp)),
                     cancellationToken);
 
-                // Outbid notification (targeted to previous winner)
+                // Outbid notification to the previous winner (before any of this action)
                 if (previousWinnerIdRaw is not null && previousWinnerIdRaw.Value != bidderId)
                 {
                     await publisher.PublishOutbidAsync(
                         previousWinnerIdRaw.Value,
                         new OutbidNotification(
                             AuctionId: auctionId,
-                            NewHighAmount: currentPrice,
-                            MinimumNextBid: minNextBid,
+                            NewHighAmount: manualCurrentPrice,
+                            MinimumNextBid: manualMinNextBid,
                             NewHighBidderDisplayName: displayName),
                         cancellationToken);
+                }
+
+                // Second event pair for the auto-bid counter-bid (if one won proxy resolution)
+                if (hasAutoBidCascade)
+                {
+                    var autoBidderDisplayName = await ResolveBidderDisplayNameAsync(
+                        dbContext, autoBidCounterBidderId, cancellationToken);
+                    var autoBidTimestamp = new DateTimeOffset(
+                        DateTime.SpecifyKind(autoBidCounterTime, DateTimeKind.Utc));
+
+                    await publisher.PublishBidPlacedAsync(
+                        auctionId,
+                        new BidNotification(
+                            AuctionId: auctionId,
+                            BidId: autoBidCounterId,
+                            BidderId: autoBidCounterBidderId,
+                            BidderDisplayName: autoBidderDisplayName,
+                            Amount: autoBidCounterAmount,
+                            CurrentPrice: currentPrice,
+                            MinimumNextBid: minNextBid,
+                            TotalBids: totalBids,
+                            IsAutoBid: true,
+                            Timestamp: autoBidTimestamp),
+                        new AuctionStateSyncOptions(
+                            LastBid: new AuctionStateLastBidInfo(
+                                BidId: autoBidCounterId,
+                                BidderId: autoBidCounterBidderId,
+                                BidderDisplayName: autoBidderDisplayName,
+                                Amount: autoBidCounterAmount,
+                                IsAutoBid: true,
+                                Timestamp: autoBidTimestamp),
+                            NewPriceHistoryPoint: new AuctionStatePriceHistoryPoint(
+                                Price: currentPrice,
+                                Type: "bid",
+                                BidId: autoBidCounterId,
+                                BidderDisplayName: autoBidderDisplayName,
+                                RecordedAt: autoBidTimestamp)),
+                        cancellationToken);
+
+                    // The manual bidder was briefly winning, then immediately outbid by the autobid.
+                    if (autoBidCounterBidderId != bidderId)
+                    {
+                        await publisher.PublishOutbidAsync(
+                            bidderId,
+                            new OutbidNotification(
+                                AuctionId: auctionId,
+                                NewHighAmount: currentPrice,
+                                MinimumNextBid: minNextBid,
+                                NewHighBidderDisplayName: autoBidderDisplayName),
+                            cancellationToken);
+                    }
                 }
             });
 
             // Publish auto-bid state changes for all affected bidders in the cascade
             await PublishAllAutoBidStatesAsync(auctionId, cancellationToken);
 
-            // Publish position changes for manual bidder + previous winner
+            // Publish position changes for manual bidder + previous winner (+ auto-bidder when cascade ran)
             await PublishPositionAsync(auctionId, bidderId, cancellationToken);
             if (previousWinnerIdRaw is not null && previousWinnerIdRaw.Value != bidderId)
             {
                 await PublishPositionAsync(auctionId, previousWinnerIdRaw.Value, cancellationToken);
+            }
+            if (hasAutoBidCascade && autoBidCounterBidderId != bidderId
+                && (previousWinnerIdRaw is null || autoBidCounterBidderId != previousWinnerIdRaw.Value))
+            {
+                await PublishPositionAsync(auctionId, autoBidCounterBidderId, cancellationToken);
             }
 
             return BidGrain.From(bid);
