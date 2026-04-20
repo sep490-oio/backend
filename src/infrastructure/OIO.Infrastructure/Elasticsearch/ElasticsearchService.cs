@@ -263,7 +263,12 @@ public class ElasticsearchService : IElasticsearchService
                         .Completion(c => c
                             .Field(f => f.Suggest!)
                             .Size(5)
-                            .Fuzzy(fz => fz.Fuzziness(new Fuzziness("AUTO")))
+                            .SkipDuplicates(true)
+                            .Fuzzy(fz => fz
+                                .Fuzziness(new Fuzziness(1))
+                                .MinLength(3)       // chỉ fuzzy khi gõ >= 3 ký tự
+                                .PrefixLength(2)    // 2 ký tự đầu phải khớp chính xác
+                            )
                         )
                     )
                 )
@@ -309,9 +314,19 @@ public class ElasticsearchService : IElasticsearchService
 
             // Create with mapping
             await _client.Indices.CreateAsync<BaseSearchDocument>(index, c => c
+                .Settings(s => s
+                    .Analysis(a => a
+                        .Analyzers(an => an
+                            .Custom("vietnamese_autocomplete", ca => ca
+                                .Tokenizer("standard")
+                                .Filter(new[] { "lowercase", "asciifolding" })
+                            )
+                        )
+                    )
+                )
                 .Mappings(m => m
                     .Properties(p => p
-                        .Completion(f => f.Suggest!, cp => { })
+                        .Completion(f => f.Suggest!, cp => cp.Analyzer("vietnamese_autocomplete"))
                         .Text("status", t => t.Fields(f => f.Keyword("keyword", k => { })))
                         .Text("categoryName", t => t.Fields(f => f.Keyword("keyword", k => { })))
                         .Text("roles", t => t.Fields(f => f.Keyword("keyword", k => { })))
