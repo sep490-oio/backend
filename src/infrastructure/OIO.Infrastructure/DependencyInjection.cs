@@ -459,9 +459,16 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
     
     private static void DecorateRegisteredNotificationHandlers(IServiceCollection services)
     {
+        // Only decorate handlers for event types that satisfy IDomainEvent constraint,
+        // since IdempotentDomainEventHandler<T> requires `where TDomainEvent : IDomainEvent`.
+        // This excludes integration events (e.g., OrderPaidIntegrationEvent) that implement
+        // INotification directly without implementing IDomainEvent.
+        var domainEventInterface = typeof(Domain.SeedWork.DomainEvents.IDomainEvent);
+
         var handlerServiceTypes = services
             .Where(sd => sd.ServiceType.IsGenericType
-                         && sd.ServiceType.GetGenericTypeDefinition() == typeof(INotificationHandler<>))
+                         && sd.ServiceType.GetGenericTypeDefinition() == typeof(INotificationHandler<>)
+                         && domainEventInterface.IsAssignableFrom(sd.ServiceType.GetGenericArguments()[0]))
             .Select(sd => sd.ServiceType)
             .Distinct()
             .ToList();
