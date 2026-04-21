@@ -16,4 +16,5 @@ public interface IElasticsearchSyncService
     Task SyncShipmentAsync(Guid shipmentId, bool isOutbound, CancellationToken cancellationToken = default);
     Task SyncWarehouseItemAsync(Guid warehouseItemId, CancellationToken cancellationToken = default);
     Task SyncAllAsync(CancellationToken cancellationToken = default);
+    Task ClearCacheAsync(CancellationToken cancellationToken = default);
 }

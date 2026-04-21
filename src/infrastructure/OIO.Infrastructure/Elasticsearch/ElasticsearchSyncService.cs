@@ -43,6 +43,11 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
 
     public async Task SyncItemAsync(Guid itemId, CancellationToken cancellationToken = default)
     {
+        await SyncItemInternalAsync(itemId, false, cancellationToken);
+    }
+
+    private async Task SyncItemInternalAsync(Guid itemId, bool bypassCacheInvalidation, CancellationToken cancellationToken)
+    {
         var item = await _dbContext.Set<Item>()
             .Include(i => i.Category)
             .Include(i => i.Media)
@@ -53,7 +58,7 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
         // Only index Active or InAuction items
         if (item.Status != ItemStatus.Active && item.Status != ItemStatus.InAuction)
         {
-            await _esService.DeleteDocumentAsync(item.Id.ToString(), _settings.ItemsIndex, cancellationToken);
+            await _esService.DeleteDocumentAsync(item.Id.ToString(), _settings.ItemsIndex, bypassCacheInvalidation, cancellationToken);
             return;
         }
 
@@ -124,10 +129,15 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
             Suggest = itemSuggestInputs
         };
 
-        await _esService.IndexDocumentAsync(doc, _settings.ItemsIndex, cancellationToken);
+        await _esService.IndexDocumentAsync(doc, _settings.ItemsIndex, bypassCacheInvalidation, cancellationToken);
     }
 
     public async Task SyncAuctionAsync(Guid auctionId, CancellationToken cancellationToken = default)
+    {
+        await SyncAuctionInternalAsync(auctionId, false, cancellationToken);
+    }
+
+    private async Task SyncAuctionInternalAsync(Guid auctionId, bool bypassCacheInvalidation, CancellationToken cancellationToken)
     {
         var auction = await _dbContext.Set<Auction>()
             .Include(a => a.Item)
@@ -146,7 +156,7 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
         // Only index Scheduled or Active auctions
         if (auction.Status != AuctionStatus.Scheduled && auction.Status != AuctionStatus.Active)
         {
-            await _esService.DeleteDocumentAsync(auction.Id.ToString(), _settings.AuctionsIndex, cancellationToken);
+            await _esService.DeleteDocumentAsync(auction.Id.ToString(), _settings.AuctionsIndex, bypassCacheInvalidation, cancellationToken);
             return;
         }
 
@@ -195,10 +205,15 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
             Suggest = auctionSuggestInputs
         };
 
-        await _esService.IndexDocumentAsync(doc, _settings.AuctionsIndex, cancellationToken);
+        await _esService.IndexDocumentAsync(doc, _settings.AuctionsIndex, bypassCacheInvalidation, cancellationToken);
     }
 
     public async Task SyncUserAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        await SyncUserInternalAsync(userId, false, cancellationToken);
+    }
+
+    private async Task SyncUserInternalAsync(Guid userId, bool bypassCacheInvalidation, CancellationToken cancellationToken)
     {
         var user = await _dbContext.Set<User>()
             .Include(u => u.Roles)
@@ -221,10 +236,15 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
             Roles = user.Roles.Select(r => r.RoleName).ToList()
         };
 
-        await _esService.IndexDocumentAsync(doc, _settings.UsersIndex, cancellationToken);
+        await _esService.IndexDocumentAsync(doc, _settings.UsersIndex, bypassCacheInvalidation, cancellationToken);
     }
 
     public async Task SyncOrderAsync(Guid orderId, CancellationToken cancellationToken = default)
+    {
+        await SyncOrderInternalAsync(orderId, false, cancellationToken);
+    }
+
+    private async Task SyncOrderInternalAsync(Guid orderId, bool bypassCacheInvalidation, CancellationToken cancellationToken)
     {
         var order = await _dbContext.Set<Order>()
             .FirstOrDefaultAsync(o => o.Id == OrderId.From(orderId), cancellationToken);
@@ -247,10 +267,15 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
             Notes = order.Notes
         };
 
-        await _esService.IndexDocumentAsync(doc, _settings.OrdersIndex, cancellationToken);
+        await _esService.IndexDocumentAsync(doc, _settings.OrdersIndex, bypassCacheInvalidation, cancellationToken);
     }
 
     public async Task SyncShipmentAsync(Guid shipmentId, bool isOutbound, CancellationToken cancellationToken = default)
+    {
+        await SyncShipmentInternalAsync(shipmentId, isOutbound, false, cancellationToken);
+    }
+
+    private async Task SyncShipmentInternalAsync(Guid shipmentId, bool isOutbound, bool bypassCacheInvalidation, CancellationToken cancellationToken)
     {
         if (isOutbound)
         {
@@ -273,7 +298,7 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
                 Suggest = new List<string> { shipment.CarrierTrackingNumber ?? string.Empty, shipment.ClientOrderCode }
             };
 
-            await _esService.IndexDocumentAsync(doc, _settings.ShipmentsIndex, cancellationToken);
+            await _esService.IndexDocumentAsync(doc, _settings.ShipmentsIndex, bypassCacheInvalidation, cancellationToken);
         }
         else
         {
@@ -296,11 +321,16 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
                 SenderName = shipment.SenderName
             };
 
-            await _esService.IndexDocumentAsync(doc, _settings.ShipmentsIndex, cancellationToken);
+            await _esService.IndexDocumentAsync(doc, _settings.ShipmentsIndex, bypassCacheInvalidation, cancellationToken);
         }
     }
 
     public async Task SyncWarehouseItemAsync(Guid warehouseItemId, CancellationToken cancellationToken = default)
+    {
+        await SyncWarehouseItemInternalAsync(warehouseItemId, false, cancellationToken);
+    }
+
+    private async Task SyncWarehouseItemInternalAsync(Guid warehouseItemId, bool bypassCacheInvalidation, CancellationToken cancellationToken)
     {
         var warehouseItem = await _dbContext.Set<WarehouseItem>()
             .FirstOrDefaultAsync(w => w.Id == WarehouseItemId.From(warehouseItemId), cancellationToken);
@@ -324,46 +354,64 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
             StorageLocation = warehouseItem.StorageLocationId?.ToString()
         };
 
-        await _esService.IndexDocumentAsync(doc, _settings.WarehouseIndex, cancellationToken);
+        await _esService.IndexDocumentAsync(doc, _settings.WarehouseIndex, bypassCacheInvalidation, cancellationToken);
     }
 
     public async Task SyncAllAsync(CancellationToken cancellationToken = default)
     {
-        // Items - Only Active or InAuction
-        var itemIds = await _dbContext.Set<Item>()
+        // 1. Reconcile Items
+        var validItemIds = await _dbContext.Set<Item>()
             .Where(i => i.Status == ItemStatus.Active || i.Status == ItemStatus.InAuction)
-            .Select(i => i.Id.Value)
+            .Select(i => i.Id.Value.ToString())
             .ToListAsync(cancellationToken);
-        foreach (var id in itemIds)
-            await SyncItemAsync(id, cancellationToken);
+        await ReconcileOrphansAsync(_settings.ItemsIndex, validItemIds, cancellationToken);
+        foreach (var id in validItemIds) await SyncItemInternalAsync(Guid.Parse(id), true, cancellationToken);
 
-        // Auctions - Only Scheduled and Active
-        var auctionIds = await _dbContext.Set<Auction>()
+        // 2. Reconcile Auctions
+        var validAuctionIds = await _dbContext.Set<Auction>()
             .Where(a => a.Status == AuctionStatus.Scheduled || a.Status == AuctionStatus.Active)
-            .Select(a => a.Id.Value)
+            .Select(a => a.Id.Value.ToString())
             .ToListAsync(cancellationToken);
-        foreach (var id in auctionIds)
-            await SyncAuctionAsync(id, cancellationToken);
+        await ReconcileOrphansAsync(_settings.AuctionsIndex, validAuctionIds, cancellationToken);
+        foreach (var id in validAuctionIds) await SyncAuctionInternalAsync(Guid.Parse(id), true, cancellationToken);
 
-        // Users
-        var userIds = await _dbContext.Set<User>()
-            .Select(u => u.Id.Value)
+        // 3. Reconcile Users
+        var validUserIds = await _dbContext.Set<User>()
+            .Select(u => u.Id.Value.ToString())
             .ToListAsync(cancellationToken);
-        foreach (var id in userIds)
-            await SyncUserAsync(id, cancellationToken);
+        await ReconcileOrphansAsync(_settings.UsersIndex, validUserIds, cancellationToken);
+        foreach (var id in validUserIds) await SyncUserInternalAsync(Guid.Parse(id), true, cancellationToken);
 
-        // Orders
-        var orderIds = await _dbContext.Set<Order>()
-            .Select(o => o.Id.Value)
+        // 4. Reconcile Orders
+        var validOrderIds = await _dbContext.Set<Order>()
+            .Select(o => o.Id.Value.ToString())
             .ToListAsync(cancellationToken);
-        foreach (var id in orderIds)
-            await SyncOrderAsync(id, cancellationToken);
+        await ReconcileOrphansAsync(_settings.OrdersIndex, validOrderIds, cancellationToken);
+        foreach (var id in validOrderIds) await SyncOrderInternalAsync(Guid.Parse(id), true, cancellationToken);
 
-        // Warehouse Items
-        var warehouseItemIds = await _dbContext.Set<WarehouseItem>()
-            .Select(w => w.Id.Value)
+        // 5. Reconcile Warehouse Items
+        var validWarehouseItemIds = await _dbContext.Set<WarehouseItem>()
+            .Select(w => w.Id.Value.ToString())
             .ToListAsync(cancellationToken);
-        foreach (var id in warehouseItemIds)
-            await SyncWarehouseItemAsync(id, cancellationToken);
+        await ReconcileOrphansAsync(_settings.WarehouseIndex, validWarehouseItemIds, cancellationToken);
+        foreach (var id in validWarehouseItemIds) await SyncWarehouseItemInternalAsync(Guid.Parse(id), true, cancellationToken);
+
+        await ClearCacheAsync(cancellationToken);
+    }
+
+    private async Task ReconcileOrphansAsync(string index, List<string> validIds, CancellationToken cancellationToken)
+    {
+        var existingEsIds = await _esService.GetAllIdsAsync(index, cancellationToken);
+        var orphans = existingEsIds.Except(validIds).ToList();
+
+        foreach (var orphanId in orphans)
+        {
+            await _esService.DeleteDocumentAsync(orphanId, index, true, cancellationToken);
+        }
+    }
+
+    public async Task ClearCacheAsync(CancellationToken cancellationToken = default)
+    {
+        await _esService.ClearCacheAsync(cancellationToken);
     }
 }
