@@ -50,10 +50,12 @@ internal sealed class CreateAuctionDisputeCommandHandler(
         var userId = currentUser.UserId;
         var sellerId = auction.Item.SellerId;
 
-        // Caller must be the seller or the winner
-        if (userId != sellerId && userId != auction.WinnerId)
-            return Error.Forbidden("Auction.NotParticipant", "You are not a participant of this auction.");
-
+        // Any authenticated user may file a dispute/report against an auction listing:
+        //   - Seller  → respondent = winner (bilateral payment/winner-behavior dispute)
+        //   - Winner  → respondent = seller (bilateral payment/delivery dispute)
+        //   - 3rd party (bidder, watcher, visitor) → respondent = seller
+        //     (moderation report: counterfeit listing, misleading info, fraud, etc.)
+        // Abuse mitigation: rely on rate-limiting + moderator triage, not gatekeeping.
         var respondentUserId = userId == sellerId
             ? auction.WinnerId?.Value
             : sellerId.Value;

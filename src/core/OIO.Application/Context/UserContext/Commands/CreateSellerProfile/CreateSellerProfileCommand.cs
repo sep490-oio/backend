@@ -23,7 +23,7 @@ public sealed record CreateSellerProfileCommand(
         return CreateSellerProfileCommand.Check()
             .WithOwnerName("CreateSellerProfile")
             .Field(StoreName).NotWhiteSpace().MaxLength(200)
-            .Field(StoreDescription).NotWhiteSpace().MaxLength(2000);
+            .Field(StoreDescription).NotWhiteSpace();
     }
 }
 

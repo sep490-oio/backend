@@ -198,6 +198,7 @@ public static partial class ApiEndpoint
             public const string GetMyItems = nameof(GetMyItems);
             public const string SubmitItem = nameof(SubmitItem);
             public const string ActivateItem = nameof(ActivateItem);
+            public const string AdminRemoveItem = nameof(AdminRemoveItem);
             public const string ResubmitItem = nameof(ResubmitItem);
             public const string ConfirmInspectedCondition = nameof(ConfirmInspectedCondition);
             public const string ChooseItemShipping = nameof(ChooseItemShipping);
@@ -220,6 +221,7 @@ public static partial class ApiEndpoint
             public const string UpdateAuction = nameof(UpdateAuction);
             public const string GetAuctionBids = nameof(GetAuctionBids);
             public const string CancelAuction = nameof(CancelAuction);
+            public const string AdminRejectAuction = nameof(AdminRejectAuction);
             public const string CloseAuction = nameof(CloseAuction);
             public const string SubmitAuction = nameof(SubmitAuction);
             public const string SetAuctionTiming = nameof(SetAuctionTiming);

@@ -65,6 +65,8 @@ public static partial class App
                 public const string ManageMedia = "items:media:manage";
                 public const string AskQuestion = "items:questions:ask";
                 public const string AnswerQuestion = "items:questions:answer";
+                // Bug #11 fix: admin-only, removes an item from any state including InAuction.
+                public const string AdminRemove = "items:admin:remove";
             }
 
             // ==================== Auctions ====================
@@ -79,6 +81,8 @@ public static partial class App
                 public const string ReadAutoBid = "auctions:auto-bid:read";
                 public const string Watch = "auctions:watch";
                 public const string Unwatch = "auctions:unwatch";
+                // Bug #1 fix: admin-only soft reject of pending/approved/scheduled auctions.
+                public const string AdminReject = "auctions:admin:reject";
             }
             
             // ==================== Warehouses ====================
@@ -211,6 +215,7 @@ public static partial class App
                 Items.Resubmit,
                 Items.ReadMy,
                 Items.ManageMedia,
+                Items.AdminRemove,
                 Items.AskQuestion,
                 Items.AnswerQuestion,
 
@@ -224,7 +229,8 @@ public static partial class App
                 Auctions.ReadAutoBid,
                 Auctions.Watch,
                 Auctions.Unwatch,
-                
+                Auctions.AdminReject,
+
                 //Warehouse
                 Warehouse.BookInbound,
                 Warehouse.BookOutbound,
@@ -365,6 +371,7 @@ public static partial class App
                 // Item questions and answers permissions (3101 - 3150)
                 public static readonly Permission AskQuestion = Permission.Create(Catalogs.Items.AskQuestion);
                 public static readonly Permission AnswerQuestion = Permission.Create(Catalogs.Items.AnswerQuestion);
+                public static readonly Permission AdminRemove = Permission.Create(Catalogs.Items.AdminRemove);
             }
 
             public static class Auctions
@@ -382,6 +389,7 @@ public static partial class App
                 // Watchlist permissions (4101 - 4150)
                 public static readonly Permission Watch = Permission.Create(Catalogs.Auctions.Watch);
                 public static readonly Permission Unwatch = Permission.Create(Catalogs.Auctions.Unwatch);
+                public static readonly Permission AdminReject = Permission.Create(Catalogs.Auctions.AdminReject);
             }
 
             public static class Warehouse
@@ -457,6 +465,7 @@ public static partial class App
                 [Catalogs.Items.ManageMedia] = Items.ManageMedia,
                 [Catalogs.Items.AskQuestion] = Items.AskQuestion,
                 [Catalogs.Items.AnswerQuestion] = Items.AnswerQuestion,
+                [Catalogs.Items.AdminRemove] = Items.AdminRemove,
 
                 // Auctions
                 [Catalogs.Auctions.Create] = Auctions.Create,
@@ -468,6 +477,7 @@ public static partial class App
                 [Catalogs.Auctions.ReadAutoBid] = Auctions.ReadAutoBid,
                 [Catalogs.Auctions.Watch] = Auctions.Watch,
                 [Catalogs.Auctions.Unwatch] = Auctions.Unwatch,
+                [Catalogs.Auctions.AdminReject] = Auctions.AdminReject,
 
                 //Warehouse
                 [Catalogs.Warehouse.BookInbound] = Warehouse.BookInbound,

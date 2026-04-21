@@ -1,3 +1,4 @@
+using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Domain.Context.WarehouseContext.Errors;
@@ -77,6 +78,17 @@ public static class WarehouseErrors
         public static readonly Error NotReceived = Error.Conflict(
             code: "WarehouseItem.NotReceived",
             description: "Item must be received before this operation is allowed.");
+
+        // Bug #8 fix: prevent same physical item being committed to two auctions/orders.
+        public static Error AlreadyBoundToAuction(WarehouseItemId id, Guid existingAuctionId) =>
+            Error.Conflict(
+                code: "WarehouseItem.AlreadyBoundToAuction",
+                description: $"Warehouse item '{id}' is already bound to auction '{existingAuctionId}'.");
+
+        public static Error AlreadyBoundToOrder(WarehouseItemId id, Guid existingOrderId) =>
+            Error.Conflict(
+                code: "WarehouseItem.AlreadyBoundToOrder",
+                description: $"Warehouse item '{id}' is already bound to order '{existingOrderId}'.");
 
         public static readonly Error AlreadyStored = Error.Conflict(
             code: "WarehouseItem.AlreadyStored",

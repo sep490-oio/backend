@@ -96,6 +96,19 @@ internal sealed class WarehouseItemConfiguration : IEntityTypeConfiguration<Ware
         builder.HasIndex(e => e.Status)
             .HasDatabaseName("idx_warehouse_items_status");
 
+        // Bug #8 fix: unique-when-not-null indexes prevent the same physical item being
+        // committed to two auctions/orders simultaneously. The domain method LinkToAuction
+        // already enforces this in-memory; the partial unique index is the DB-level guarantee.
+        builder.HasIndex(e => e.AuctionId)
+            .IsUnique()
+            .HasDatabaseName("idx_unique_warehouse_items_auction_id")
+            .HasFilter("auction_id IS NOT NULL");
+
+        builder.HasIndex(e => e.OrderId)
+            .IsUnique()
+            .HasDatabaseName("idx_unique_warehouse_items_order_id")
+            .HasFilter("order_id IS NOT NULL");
+
         // ==================== Ignore ====================
         builder.Ignore(e => e.DomainEvents);
     }

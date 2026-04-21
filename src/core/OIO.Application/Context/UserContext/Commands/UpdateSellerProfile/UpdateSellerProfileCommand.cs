@@ -22,7 +22,7 @@ public sealed record UpdateSellerProfileCommand(
         return UpdateSellerProfileCommand.Check()
             .WithOwnerName("UpdateSellerProfile")
             .Field(StoreName).NotWhiteSpace().MaxLength(200)
-            .Field(StoreDescription).NotWhiteSpace().MaxLength(2000);
+            .Field(StoreDescription).NotWhiteSpace();
     }
 }
 

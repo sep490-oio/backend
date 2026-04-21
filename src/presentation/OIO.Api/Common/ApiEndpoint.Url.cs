@@ -142,6 +142,7 @@ public static partial class ApiEndpoint
             public const string GetById = $"{Base}/{{itemId:guid}}";
             public const string Submit = $"{Base}/{{itemId:guid}}/submit";
             public const string Activate = $"{Base}/{{itemId:guid}}/activate";
+            public const string AdminRemove = $"{Base}/{{itemId:guid}}/admin-remove";
             public const string GetBySeller = $"{Base}/my";
             public const string Shipping = $"{Base}/{{itemId:guid}}/shipping";
             public const string CreateAuction = $"{Base}/{{itemId:guid}}/auctions";
@@ -173,6 +174,7 @@ public static partial class ApiEndpoint
             public const string Update = $"{Base}/{{auctionId:guid}}";
             public const string GetBids = $"{Base}/{{auctionId:guid}}/bids";
             public const string Cancel = $"{Base}/{{auctionId:guid}}/cancel";
+            public const string AdminReject = $"{Base}/{{auctionId:guid}}/admin-reject";
             public const string Close = $"{Base}/{{auctionId:guid}}/close";
             public const string Submit = $"{Base}/{{auctionId:guid}}/submit";
             public const string SetTiming = $"{Base}/{{auctionId:guid}}/timing";

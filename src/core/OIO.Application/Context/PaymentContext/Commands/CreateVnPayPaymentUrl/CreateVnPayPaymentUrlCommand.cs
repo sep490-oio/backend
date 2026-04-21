@@ -117,9 +117,12 @@ internal sealed class CreateVnPayPaymentUrlCommandHandler
             if (auction.Item.SellerId == _currentUser.UserId)
                 return AuctionErrors.Auction.SelfBid;
 
+            // IsPostWinnerTransient — pure C# guard, use helper directly.
+            // Completed is also terminal and must be blocked from new deposits.
             if (auction.Status == AuctionStatus.Cancelled ||
                 auction.Status == AuctionStatus.Ended ||
-                auction.Status == AuctionStatus.Sold ||
+                auction.Status.IsPostWinnerTransient ||
+                auction.Status == AuctionStatus.Completed ||
                 auction.Status == AuctionStatus.Failed)
             {
                 return AuctionErrors.Auction.InvalidState(auction.Status.Id, "create auction deposit");

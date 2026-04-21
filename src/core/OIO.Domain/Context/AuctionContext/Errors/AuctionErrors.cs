@@ -75,10 +75,15 @@ public static class AuctionErrors
             Error.Forbidden("Auction.OnlyOwnerOfItem", 
                 "Only the owner of the item can create an auction for it.");
         
-        public static readonly Error OnlyOwnerCanCancel = 
-            Error.Forbidden("Auction.OnlyOwnerCanCancel", 
+        public static readonly Error OnlyOwnerCanCancel =
+            Error.Forbidden("Auction.OnlyOwnerCanCancel",
                 "Only the auction owner can cancel.");
-        
+
+        public static Error CancelBlockedActiveBids(AuctionId id, int activeBidCount) =>
+            Error.Conflict("Auction.CancelBlocked.ActiveBids",
+                $"Cannot cancel auction '{id}' because it has {activeBidCount} active bid(s). " +
+                "Use the admin emergency-terminate path for live auctions with bidders.");
+
 public static readonly Error NoRunnerUp =
             Error.NotFound("Auction.NoRunnerUp",
                 "No eligible runner-up bidder found.");

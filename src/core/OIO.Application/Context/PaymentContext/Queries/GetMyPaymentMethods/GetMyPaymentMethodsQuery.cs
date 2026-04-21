@@ -29,7 +29,7 @@ internal sealed class GetMyPaymentMethodsQueryHandler
     {
         var items = await _dbContext.Set<PaymentMethod>()
             .AsNoTracking()
-            .Where(x => x.UserId == _currentUser.UserId)
+            .Where(x => x.UserId == _currentUser.UserId && x.IsActive)
             .OrderByDescending(x => x.IsDefault)
             .ThenByDescending(x => x.CreatedAt)
             .ToListAsync(cancellationToken);

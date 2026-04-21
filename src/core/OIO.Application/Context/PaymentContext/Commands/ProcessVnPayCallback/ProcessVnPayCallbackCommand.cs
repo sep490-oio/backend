@@ -273,9 +273,12 @@ internal sealed class ProcessVnPayCallbackCommandHandler
         if (auction.Item.SellerId == transaction.UserId)
             return AuctionErrors.Auction.SelfBid;
 
+        // IsPostWinnerTransient — pure C# guard, use helper directly.
+        // Completed is also terminal and must block late deposit callbacks.
         if (auction.Status == AuctionStatus.Cancelled ||
             auction.Status == AuctionStatus.Ended ||
-            auction.Status == AuctionStatus.Sold ||
+            auction.Status.IsPostWinnerTransient ||
+            auction.Status == AuctionStatus.Completed ||
             auction.Status == AuctionStatus.Failed ||
             auction.Status == AuctionStatus.Terminated)
         {

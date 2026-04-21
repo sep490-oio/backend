@@ -87,17 +87,25 @@ public static class VnPayHelper
 
     /// <summary>
     /// Xác thực chữ ký VNPay trong callback.
+    /// Hỗ trợ cả Token API (snake_case: vnp_secure_hash) và Pay API (camelCase: vnp_SecureHash).
+    /// Token API được ưu tiên; Pay API là fallback.
     /// </summary>
     public static bool ValidateSignature(IDictionary<string, string> queryParams, string hashSecret)
     {
-        if (!queryParams.TryGetValue("vnp_SecureHash", out var receivedHash))
+        // Token API (snake_case) — primary
+        // Pay API (camelCase)  — fallback
+        if (!queryParams.TryGetValue("vnp_secure_hash", out var receivedHash) &&
+            !queryParams.TryGetValue("vnp_SecureHash", out receivedHash))
             return false;
 
         var sorted = new SortedDictionary<string, string>(StringComparer.Ordinal);
 
         foreach (var (key, value) in queryParams)
         {
-            if (key.Equals("vnp_SecureHash", StringComparison.OrdinalIgnoreCase) ||
+            // Exclude signature-envelope fields in BOTH naming conventions
+            if (key.Equals("vnp_secure_hash", StringComparison.OrdinalIgnoreCase) ||
+                key.Equals("vnp_secure_hash_type", StringComparison.OrdinalIgnoreCase) ||
+                key.Equals("vnp_SecureHash", StringComparison.OrdinalIgnoreCase) ||
                 key.Equals("vnp_SecureHashType", StringComparison.OrdinalIgnoreCase))
                 continue;
 
@@ -109,6 +117,18 @@ public static class VnPayHelper
         var computedHash = HmacSha512(hashSecret, signData);
 
         return string.Equals(computedHash, receivedHash, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Đọc field từ VNPay callback. Ưu tiên Token API (snake_case), fallback Pay API (camelCase).
+    /// </summary>
+    public static string? ReadCallbackField(IDictionary<string, string> queryParams, string tokenKey, string payKey)
+    {
+        if (queryParams.TryGetValue(tokenKey, out var value) && !string.IsNullOrEmpty(value))
+            return value;
+        if (queryParams.TryGetValue(payKey, out value) && !string.IsNullOrEmpty(value))
+            return value;
+        return null;
     }
 
     /// <summary>

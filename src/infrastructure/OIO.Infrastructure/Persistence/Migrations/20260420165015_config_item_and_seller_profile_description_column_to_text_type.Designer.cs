@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OIO.Infrastructure.Persistence;
@@ -13,9 +14,11 @@ using OIO.Infrastructure.Persistence;
 namespace OIO.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260420165015_config_item_and_seller_profile_description_column_to_text_type")]
+    partial class config_item_and_seller_profile_description_column_to_text_type
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -7604,10 +7607,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<Guid?>("AuctionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("auction_id");
-
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -7626,10 +7625,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("modified_at");
 
-                    b.Property<Guid?>("OrderId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("order_id");
-
                     b.Property<DateTime?>("ReceivedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("received_at");
@@ -7647,22 +7642,12 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_warehouse_items");
 
-                    b.HasIndex("AuctionId")
-                        .IsUnique()
-                        .HasDatabaseName("idx_unique_warehouse_items_auction_id")
-                        .HasFilter("auction_id IS NOT NULL");
-
                     b.HasIndex("InboundShipmentId")
                         .IsUnique()
                         .HasDatabaseName("idx_unique_warehouse_items_inbound_shipment_id");
 
                     b.HasIndex("ItemId")
                         .HasDatabaseName("idx_warehouse_items_item_id");
-
-                    b.HasIndex("OrderId")
-                        .IsUnique()
-                        .HasDatabaseName("idx_unique_warehouse_items_order_id")
-                        .HasFilter("order_id IS NOT NULL");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("idx_warehouse_items_status");

@@ -30,6 +30,7 @@ using OIO.Infrastructure.Authorizations;
 using OIO.Infrastructure.Clock;
 using OIO.Infrastructure.Persistence;
 using OIO.Infrastructure.Persistence.Interceptors;
+using OIO.Infrastructure.Persistence.Repositories;
 using OIO.Infrastructure.Services;
 using OIO.Infrastructure.Settings;
 using OIO.Domain.AppDefinitions;
@@ -168,6 +169,9 @@ public static class DependencyInjection
 
             services.AddScoped<IUnitOfWork>(serviceProvider =>
                 serviceProvider.GetRequiredService<ApplicationDbContext>());
+
+            // Repositories
+            services.AddScoped<IAuctionLockRepository, AuctionLockRepository>();
 
             return services;
         }

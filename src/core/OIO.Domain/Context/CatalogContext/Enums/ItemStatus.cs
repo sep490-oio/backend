@@ -25,7 +25,8 @@ public sealed class ItemStatus : EnumValueObject<ItemStatus>
         {
             _ when this == Draft && target == PendingVerify => true,
             _ when this == Draft && target == PendingReview => true,
-            _ when this == Draft && target == Active => true,
+            // SECURITY: Draft → Active removed — items must pass moderation review (PendingVerify/PendingReview → Approved)
+            // before becoming Active. Previously allowed sellers to bypass review via ActivateItemCommand.
             _ when this == Draft && target == Removed => true,
             _ when this == PendingVerify && target == Approved => true,
             _ when this == PendingVerify && target == Rejected => true,
@@ -44,6 +45,10 @@ public sealed class ItemStatus : EnumValueObject<ItemStatus>
             _ when this == Active && target == Removed => true,
             _ when this == InAuction && target == Sold => true,
             _ when this == InAuction && target == Active => true,
+            // Bug #11 fix: allow item to be removed even mid-auction
+            // (physical item destroyed/lost, counterfeit confirmed, admin emergency).
+            // Caller must ensure auction is also terminated/cancelled to avoid split-brain.
+            _ when this == InAuction && target == Removed => true,
             _ when this == Sold && target == Removed => true,
             _ => false
         };

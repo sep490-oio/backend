@@ -137,6 +137,9 @@ internal sealed class PlaceBidCommandHandler
         // and the raw request amount to detect the cap path so the FE can show a
         // dedicated modal and jump straight to checkout.
         var snapshotBuyNowPrice = snapshotBeforeFailure ? (decimal?)null : snapshotBefore.BuyNowPrice;
+        // Buy-now cap short-circuits only while the grain is in the transient winner-resolved
+        // state (Sold). Completed is a later, post-delivery terminal state and must NOT fire
+        // the buy-now modal path — use IsPostWinnerTransient semantics.
         var triggeredBuyNowCap = snapshotBuyNowPrice.HasValue
                                  && request.Amount >= snapshotBuyNowPrice.Value
                                  && !snapshotAfterFailure
@@ -157,8 +160,11 @@ internal sealed class PlaceBidCommandHandler
                 queryBuilder: q => q.AsNoTracking().Include(a => a.Item),
                 cancellationToken: cancellationToken);
 
+            // Eager order provisioning fires only in the transient Sold state. By the time the
+            // auction reaches Completed, the winner order has already been provisioned via the
+            // AuctionSoldEvent handler path, so IsPostWinnerTransient is the correct gate here.
             if (auctionEntity is not null
-                && auctionEntity.Status == AuctionStatus.Sold
+                && auctionEntity.Status.IsPostWinnerTransient
                 && auctionEntity.WinnerId is not null
                 && auctionEntity.WinnerId == _currentUser.UserId
                 && auctionEntity.GetActiveBuyNowReservation(DateTime.UtcNow) is null)

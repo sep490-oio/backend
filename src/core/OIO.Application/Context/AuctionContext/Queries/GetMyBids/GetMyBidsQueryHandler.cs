@@ -50,7 +50,9 @@ internal sealed class GetMyBidsQueryHandler
             var pos = parameters.Status.ToLowerInvariant();
             query = pos switch
             {
-                "won"     => query.Where(b => b.Auction.Status == AuctionStatus.Sold
+                // IsSuccessfullyClosed expansion — EF translation requires the inlined predicate.
+                "won"     => query.Where(b => (b.Auction.Status == AuctionStatus.Sold
+                                              || b.Auction.Status == AuctionStatus.Completed)
                                            && b.Auction.WinnerId == userId),
                 "lost"    => query.Where(b => (b.Auction.Status == AuctionStatus.Ended
                                               || b.Auction.Status == AuctionStatus.Failed
@@ -81,7 +83,9 @@ internal sealed class GetMyBidsQueryHandler
                 x.Auction.Pricing.CurrentPrice.ToDto(),
                 x.Amount.ToDto(),
                 // Compute position
-                x.Auction.Status == AuctionStatus.Sold && x.Auction.WinnerId == userId
+                // IsSuccessfullyClosed expansion — EF translation requires the inlined predicate.
+                (x.Auction.Status == AuctionStatus.Sold || x.Auction.Status == AuctionStatus.Completed)
+                  && x.Auction.WinnerId == userId
                     ? "won"
                     : (x.Auction.Status == AuctionStatus.Ended
                        || x.Auction.Status == AuctionStatus.Failed
