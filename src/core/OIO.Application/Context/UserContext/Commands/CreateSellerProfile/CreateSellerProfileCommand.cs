@@ -34,23 +34,33 @@ internal sealed class CreateSellerProfileCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
     private readonly ICurrentUser _currentUser;
+    private readonly IEnsureTermsAcceptedService _ensureTermsAccepted;
 
     public CreateSellerProfileCommandHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         IClock clock,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IEnsureTermsAcceptedService ensureTermsAccepted)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _clock = clock;
         _currentUser = currentUser;
+        _ensureTermsAccepted = ensureTermsAccepted;
     }
 
     public async Task<Result<SellerProfileDto, Error>> Handle(
         CreateSellerProfileCommand request,
         CancellationToken cancellationToken)
     {
+        // Forced re-acceptance gate (plan §3.6.4 / B7): seller profile submission requires both
+        // platform and seller terms to be current.
+        var gateResult = await _ensureTermsAccepted.EnsureAsync(
+            _currentUser.UserId, ["platform", "seller"], cancellationToken);
+        if (gateResult.IsFailure)
+            return gateResult.Error;
+
         var userId = _currentUser.UserId;
 
         var existingProfile = await _dbContext.Set<SellerProfile>()

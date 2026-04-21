@@ -36,13 +36,21 @@ internal sealed class DepositFromWalletCommandHandler(
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
     IClock clock,
-    IGrainFactory grainFactory)
+    IGrainFactory grainFactory,
+    IEnsureTermsAcceptedService ensureTermsAccepted)
     : ICommandHandler<DepositFromWalletCommand>
 {
     public async Task<UnitResult<Error>> Handle(
         DepositFromWalletCommand request,
         CancellationToken cancellationToken)
     {
+        // Forced re-acceptance gate (plan §3.6.4 / B7): wallet-funded deposits require both
+        // platform and bidder terms to be current.
+        var gateResult = await ensureTermsAccepted.EnsureAsync(
+            currentUser.UserId, ["platform", "bidder"], cancellationToken);
+        if (gateResult.IsFailure)
+            return gateResult.Error;
+
         var now = clock.UtcNow;
         var userId = currentUser.UserId;
         var auctionId = AuctionId.From(request.AuctionId);

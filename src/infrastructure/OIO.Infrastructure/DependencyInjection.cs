@@ -39,6 +39,7 @@ using OIO.Infrastructure.Mail.RazorEmails.Rendering;
 using OIO.Infrastructure.Media;
 using OIO.Infrastructure.Outbox;
 using OIO.Infrastructure.Scheduling;
+using OIO.Infrastructure.Scheduling.HostedServices;
 using OIO.Infrastructure.Scheduling.Jobs;
 using OIO.Infrastructure.Scheduling.JobSetup;
 using OIO.Infrastructure.Security;
@@ -346,6 +347,7 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
             services.AddHostedService<ExpireBuyNowReservationsJob>();
             services.AddHostedService<ScanActiveAuctionsForCollusionJob>();
             services.AddHostedService<BackfillScheduledAuctionStartsJob>();
+            services.AddHostedService<TermsNotificationOutboxProcessor>();
 
             return services;
         }

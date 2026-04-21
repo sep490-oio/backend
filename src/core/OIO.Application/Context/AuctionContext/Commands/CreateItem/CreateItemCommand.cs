@@ -96,6 +96,7 @@ internal sealed class CreateItemCommandHandler
     private readonly IClock _clock;
     private readonly UploadContextRegistry _contextRegistry;
     private readonly IMediaRelocationService _mediaRelocationService;
+    private readonly IEnsureTermsAcceptedService _ensureTermsAccepted;
     private readonly ILogger<CreateItemCommandHandler> _logger;
 
     public CreateItemCommandHandler(
@@ -105,6 +106,7 @@ internal sealed class CreateItemCommandHandler
         IClock clock,
         UploadContextRegistry contextRegistry,
         IMediaRelocationService mediaRelocationService,
+        IEnsureTermsAcceptedService ensureTermsAccepted,
         ILogger<CreateItemCommandHandler> logger)
     {
         _dbContext = dbContext;
@@ -113,6 +115,7 @@ internal sealed class CreateItemCommandHandler
         _clock = clock;
         _contextRegistry = contextRegistry;
         _mediaRelocationService = mediaRelocationService;
+        _ensureTermsAccepted = ensureTermsAccepted;
         _logger = logger;
     }
 
@@ -120,6 +123,12 @@ internal sealed class CreateItemCommandHandler
         CreateItemCommand request,
         CancellationToken cancellationToken)
     {
+        // Forced re-acceptance gate (plan §3.6.4 / B7).
+        var gateResult = await _ensureTermsAccepted.EnsureAsync(
+            _currentUser.UserId, ["seller"], cancellationToken);
+        if (gateResult.IsFailure)
+            return gateResult.Error;
+
         var nowUtc = _clock.UtcNow;
         
         CategoryId? categoryId = null;

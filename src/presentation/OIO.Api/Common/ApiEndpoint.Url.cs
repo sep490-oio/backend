@@ -49,7 +49,10 @@ public static partial class ApiEndpoint
             public const string GetUser = $"{Base}/users/{{userId:guid}}";
             public const string GetAllTerms = $"{Base}/terms";
             public const string CreateTerms = $"{Base}/terms";
+            public const string UpdateTerms = $"{Base}/terms/{{id:guid}}";
             public const string ActivateTerms = $"{Base}/terms/{{id:guid}}/activate";
+            public const string ArchiveTerms = $"{Base}/terms/{{id:guid}}/archive";
+            public const string DeleteTerms = $"{Base}/terms/{{id:guid}}";
 
             
             public const string RevokeRole = $"{Base}/users/{{userId:guid}}/roles/{{role}}";

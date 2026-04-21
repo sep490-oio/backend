@@ -42,6 +42,7 @@ internal sealed class BuyNowCommandHandler
     private readonly IDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
+    private readonly IEnsureTermsAcceptedService _ensureTermsAccepted;
     private readonly ILogger<BuyNowCommandHandler> _logger;
 
     public BuyNowCommandHandler(
@@ -50,6 +51,7 @@ internal sealed class BuyNowCommandHandler
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         IClock clock,
+        IEnsureTermsAcceptedService ensureTermsAccepted,
         ILogger<BuyNowCommandHandler> logger)
     {
         _grainFactory = grainFactory;
@@ -57,6 +59,7 @@ internal sealed class BuyNowCommandHandler
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _clock = clock;
+        _ensureTermsAccepted = ensureTermsAccepted;
         _logger = logger;
     }
 
@@ -64,6 +67,12 @@ internal sealed class BuyNowCommandHandler
         BuyNowCommand request,
         CancellationToken cancellationToken)
     {
+        // Forced re-acceptance gate (plan §3.6.4 / B7).
+        var gateResult = await _ensureTermsAccepted.EnsureAsync(
+            _currentUser.UserId, ["bidder"], cancellationToken);
+        if (gateResult.IsFailure)
+            return gateResult.Error;
+
         var grain = _grainFactory.GetGrain<IAuctionGrain>(request.AuctionId);
 
         var (_, isFailure, reservation, error) = await grain.InitiateBuyNowReservationAsync(

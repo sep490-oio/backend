@@ -5803,17 +5803,31 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid?>("ActivatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("activated_by");
+
+                    b.Property<DateTime?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("archived_at");
+
+                    b.Property<Guid?>("ArchivedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("archived_by");
+
+                    b.Property<string>("ArchivedReason")
+                        .HasColumnType("text")
+                        .HasColumnName("archived_reason");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_active");
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
 
                     b.Property<DateTime?>("PublishedAt")
                         .HasColumnType("timestamp with time zone")
@@ -5862,6 +5876,20 @@ namespace OIO.Infrastructure.Persistence.Migrations
                             b1.Property<int?>("Width")
                                 .HasColumnType("integer")
                                 .HasColumnName("width");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Status", "OIO.Domain.Context.UserContext.Aggregates.Users.TermsDocument.Status#TermsDocumentStatus", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<string>("Id")
+                                .IsRequired()
+                                .HasMaxLength(30)
+                                .HasColumnType("character varying(30)")
+                                .HasColumnName("status")
+                                .HasAnnotation("CustomIndex:IsIndexed", true)
+                                .HasAnnotation("CustomIndex:IsUnique", false)
+                                .HasAnnotation("CustomIndex:Name", "idx_terms_documents_status");
                         });
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "StorageRef", "OIO.Domain.Context.UserContext.Aggregates.Users.TermsDocument.StorageRef#StorageRef", b1 =>

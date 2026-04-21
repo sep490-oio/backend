@@ -5,6 +5,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.DTOs;
 using OIO.Application.Context.UserContext.Mappings;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
+using OIO.Domain.Context.UserContext.Enums;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.UserContext.Queries.GetActiveTerms;
@@ -22,7 +23,7 @@ internal sealed class GetActiveTermsQueryHandler : IQueryHandler<GetActiveTermsQ
     {
         var entities = await _dbContext.Set<TermsDocument>()
             .AsNoTracking()
-            .Where(x => x.IsActive)
+            .Where(x => x.Status == TermsDocumentStatus.Active)
             .OrderBy(x => x.TermType)
             .ThenByDescending(x => x.Version)
             .ToListAsync(cancellationToken);

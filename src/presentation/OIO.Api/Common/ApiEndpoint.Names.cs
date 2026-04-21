@@ -122,7 +122,10 @@ public static partial class ApiEndpoint
             public const string UnlockUser = nameof(UnlockUser);
             public const string RepairStuckInAuctionItems = nameof(RepairStuckInAuctionItems);
             public const string CreateTermsDocument = nameof(CreateTermsDocument);
+            public const string UpdateTermsDocument = nameof(UpdateTermsDocument);
             public const string ActivateTermsDocument = nameof(ActivateTermsDocument);
+            public const string ArchiveTermsDocument = nameof(ArchiveTermsDocument);
+            public const string DeleteTermsDocument = nameof(DeleteTermsDocument);
             public const string GetAllTermsDocuments = nameof(GetAllTermsDocuments);
 
             // Verifications

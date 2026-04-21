@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OIO.Application.Abstractions.Behaviors;
+using OIO.Application.Abstractions.Caching;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Settings;
 using OIO.Application.Context.AuctionContext.Services;
@@ -53,6 +54,10 @@ public static class DependencyInjection
         services.AddScoped<DisputeAccessService>();
         services.AddScoped<IDisputeResolutionService, DisputeResolutionService>();
         services.AddScoped<IDisputeIntakeService, DisputeIntakeService>();
+
+        // Forced re-acceptance (plan §3.6.4 / B6).
+        services.AddSingleton<ICacheInvalidator, HybridCacheInvalidator>();
+        services.AddScoped<IEnsureTermsAcceptedService, EnsureTermsAcceptedService>();
 
         return services;
     }

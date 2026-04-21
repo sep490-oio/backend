@@ -30,25 +30,35 @@ internal sealed class SubmitVerificationCommandHandler
     private readonly IClock _clock;
     private readonly ICurrentUser _currentUser;
     private readonly VerificationDuplicateIdentityService _duplicateIdentityService;
+    private readonly IEnsureTermsAcceptedService _ensureTermsAccepted;
 
     public SubmitVerificationCommandHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         IClock clock,
         ICurrentUser currentUser,
-        VerificationDuplicateIdentityService duplicateIdentityService)
+        VerificationDuplicateIdentityService duplicateIdentityService,
+        IEnsureTermsAcceptedService ensureTermsAccepted)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _clock = clock;
         _currentUser = currentUser;
         _duplicateIdentityService = duplicateIdentityService;
+        _ensureTermsAccepted = ensureTermsAccepted;
     }
 
     public async Task<UnitResult<Error>> Handle(
         SubmitVerificationCommand request,
         CancellationToken cancellationToken)
     {
+        // Forced re-acceptance gate (plan §3.6.4 / B7): verification submission requires both
+        // platform and seller terms to be current.
+        var gateResult = await _ensureTermsAccepted.EnsureAsync(
+            _currentUser.UserId, ["platform", "seller"], cancellationToken);
+        if (gateResult.IsFailure)
+            return gateResult.Error;
+
         var userId = _currentUser.UserId;
         var verificationId = IdentityVerificationId.From(request.VerificationId);
 
