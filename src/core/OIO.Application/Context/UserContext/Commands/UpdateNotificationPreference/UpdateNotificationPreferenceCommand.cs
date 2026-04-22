@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
@@ -6,6 +7,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.DTOs;
 using OIO.Application.Context.UserContext.Mappings;
 using OIO.Application.Context.UserContext.Services;
+using OIO.Domain.Context.NotificationContext.Enums;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.SeedWork.Errors;
 
@@ -14,7 +16,49 @@ namespace OIO.Application.Context.UserContext.Commands.UpdateNotificationPrefere
 public sealed record UpdateNotificationPreferenceCommand(
     bool IsEnabled,
     string Channels,
-    string? QuietHours) : ICommand<UserNotificationPreferenceDto>;
+    string? QuietHours) : ICommand<UserNotificationPreferenceDto>, IHasValidate
+{
+    public ViolationsError Validate()
+    {
+        var violations = new ViolationsError(prefix: "UpdateNotificationPreference");
+
+        string[] parsed;
+        try
+        {
+            parsed = JsonSerializer.Deserialize<string[]>(Channels) ?? [];
+        }
+        catch (JsonException)
+        {
+            violations.Add(Error.Validation(
+                "Preference.Channels",
+                "UpdateNotificationPreference.MalformedChannels",
+                "Malformed JSON"));
+            return violations;
+        }
+
+        var allowed = NotificationChannel.All.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+        foreach (var entry in parsed)
+        {
+            if (!allowed.Contains(entry))
+            {
+                violations.Add(Error.Validation(
+                    "Preference.Channels",
+                    "UpdateNotificationPreference.UnknownChannel",
+                    $"Unknown channel: {entry}"));
+            }
+        }
+
+        if (IsEnabled && parsed.Length == 0)
+        {
+            violations.Add(Error.Validation(
+                "Preference.Channels",
+                "UpdateNotificationPreference.AtLeastOneChannel",
+                "At least one channel required when notifications are enabled"));
+        }
+
+        return violations;
+    }
+}
 
 internal sealed class UpdateNotificationPreferenceCommandHandler
     : ICommandHandler<UpdateNotificationPreferenceCommand, UserNotificationPreferenceDto>

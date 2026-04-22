@@ -365,18 +365,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "outbox_message_consumers",
-                columns: table => new
-                {
-                    outbox_message_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_outbox_message_consumers", x => new { x.outbox_message_id, x.name });
-                });
-
-            migrationBuilder.CreateTable(
                 name: "outbox_messages",
                 columns: table => new
                 {
@@ -695,9 +683,13 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     term_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     version = table.Column<int>(type: "integer", nullable: false),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     published_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    activated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    archived_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    archived_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    archived_reason = table.Column<string>(type: "text", nullable: true),
                     file_size = table.Column<long>(type: "bigint", nullable: true),
                     duration_seconds = table.Column<double>(type: "double precision", nullable: true),
                     file_name = table.Column<string>(type: "text", nullable: true),
@@ -705,6 +697,7 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     height = table.Column<int>(type: "integer", nullable: true),
                     content_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
                     width = table.Column<int>(type: "integer", nullable: true),
+                    status = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false),
                     storage_folder = table.Column<string>(type: "text", nullable: false),
                     storage_public_id = table.Column<string>(type: "text", nullable: false)
                 },
@@ -1033,6 +1026,24 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         name: "fk_seller_direct_shipments_orders_order_id",
                         column: x => x.order_id,
                         principalTable: "orders",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "outbox_message_consumers",
+                columns: table => new
+                {
+                    outbox_message_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_outbox_message_consumers", x => new { x.outbox_message_id, x.name });
+                    table.ForeignKey(
+                        name: "fk_outbox_message_consumers_outbox_message_outbox_message_id",
+                        column: x => x.outbox_message_id,
+                        principalTable: "outbox_messages",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -1535,6 +1546,8 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     item_id = table.Column<Guid>(type: "uuid", nullable: false),
                     inbound_shipment_id = table.Column<Guid>(type: "uuid", nullable: false),
                     storage_location_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    auction_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    order_id = table.Column<Guid>(type: "uuid", nullable: true),
                     status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     received_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
@@ -3284,16 +3297,16 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "idx_outbox_cleanup",
+                name: "idx_outbox_cleanup_error",
                 table: "outbox_messages",
                 columns: new[] { "occurred_at", "id" },
-                filter: "processed_at IS NOT NULL AND error IS NULL");
+                filter: "processed_at IS NOT NULL AND error IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "idx_outbox_messages_unprocessed",
                 table: "outbox_messages",
                 column: "occurred_at",
-                filter: "processed_at IS NULL");
+                filter: "processed_at IS NULL AND attempt_count < 3");
 
             migrationBuilder.CreateIndex(
                 name: "idx_payment_methods_user_active",
@@ -3768,10 +3781,24 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 column: "warehouse_item_id");
 
             migrationBuilder.CreateIndex(
+                name: "idx_unique_warehouse_items_auction_id",
+                table: "warehouse_items",
+                column: "auction_id",
+                unique: true,
+                filter: "auction_id IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
                 name: "idx_unique_warehouse_items_inbound_shipment_id",
                 table: "warehouse_items",
                 column: "inbound_shipment_id",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "idx_unique_warehouse_items_order_id",
+                table: "warehouse_items",
+                column: "order_id",
+                unique: true,
+                filter: "order_id IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "idx_warehouse_items_item_id",
@@ -3993,6 +4020,13 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 .Annotation("Relational:ColumnName", "status");
 
             migrationBuilder.CreateIndex(
+                name: "idx_terms_documents_status",
+                table: "terms_documents",
+                column: "status")
+                .Annotation("MaxLength", 30)
+                .Annotation("Relational:ColumnName", "status");
+
+            migrationBuilder.CreateIndex(
                 name: "idx_unique_users_normalized_email_active",
                 table: "users",
                 column: "normalized_email",
@@ -4113,9 +4147,6 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "outbox_message_consumers");
-
-            migrationBuilder.DropTable(
-                name: "outbox_messages");
 
             migrationBuilder.DropTable(
                 name: "qrtz_blob_triggers",
@@ -4254,6 +4285,9 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "notifications");
+
+            migrationBuilder.DropTable(
+                name: "outbox_messages");
 
             migrationBuilder.DropTable(
                 name: "qrtz_triggers",

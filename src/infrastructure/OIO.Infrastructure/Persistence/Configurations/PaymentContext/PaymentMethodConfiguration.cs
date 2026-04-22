@@ -1,3 +1,4 @@
+using EFCore.ComplexIndexes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OIO.Domain.Context.PaymentContext.Aggregates.PaymentMethods;
@@ -90,8 +91,34 @@ internal sealed class PaymentMethodConfiguration : IEntityTypeConfiguration<Paym
         builder.HasIndex(p => new { p.UserId, p.IsActive })
             .HasDatabaseName("idx_payment_methods_user_active");
 
+        builder.HasComplexCompositeIndex(
+            columns: x => new { x.UserId, x.Type.Id, x.Provider, x.Card.LastFour, x.Card.ExpiryMonth, x.Card.ExpiryYear },
+            filter: "is_active = true AND type IN ('credit_card','debit_card')",
+            isUnique: true,
+            indexName: "uq_payment_methods_user_card_active");
+        
+        builder.HasComplexCompositeIndex(
+            columns: x => new { x.UserId, x.Type.Id, x.Provider, x.Card.HolderName },
+            filter: "is_active = true AND type = 'e_wallet'",
+            isUnique: true,
+            indexName: "uq_payment_methods_user_e-wallet_active");
+        
+        builder.HasComplexCompositeIndex(
+                columns: x => new { x.UserId, x.Type.Id, x.Provider, x.MaskedCardNumber, x.Card.LastFour },
+                filter: "is_active = true AND type = 'bank_account'",
+                isUnique: true,
+                indexName: "uq_payment_methods_user_bank_active");
+
         builder.HasIndex(p => new { p.UserId, p.VnPayToken })
             .HasDatabaseName("idx_payment_methods_user_token")
             .HasFilter("vnpay_token IS NOT NULL");
+        
+        // VnPay card identity = (user, bank_code, masked_card_number). The
+        // vnp_token VNPay issues is NOT stable across re-links for the same
+        // physical card — keying on token would accept duplicates.
+        builder.HasIndex(x => new { x.UserId, x.BankCode, x.MaskedCardNumber })
+            .HasDatabaseName("uq_payment_methods_user_vnpay_active")
+            .IsUnique()
+            .HasFilter("is_active = true AND type = 'vnpay' AND masked_card_number IS NOT NULL");
     }
 }

@@ -75,12 +75,17 @@ internal sealed class CancelAuctionCommandHandler
         if (auction is null)
             return AuctionErrors.Auction.NotFound(auctionId);
 
-        if (auction.Item.SellerId != _currentUser.UserId && !_currentUser.IsInRole(App.Roles.Catalogs.Admin))
+        var isAdmin = _currentUser.IsInRole(App.Roles.Catalogs.Admin);
+
+        if (auction.Item.SellerId != _currentUser.UserId && !isAdmin)
             return AuctionErrors.Auction.OnlyOwnerCanCancel;
 
         var nowUtc = _clock.UtcNow;
-        
-        var result = auction.CancelAuction(request.Reason, nowUtc);
+
+        // SECURITY: Pass isAdminOverride so the bid-count guard in Auction.CancelAuction
+        // only applies to non-admin sellers. Admins can still cancel hot auctions but
+        // should prefer the emergency-terminate path with audit trail.
+        var result = auction.CancelAuction(request.Reason, nowUtc, isAdminOverride: isAdmin);
 
         if (result.IsFailure)
         {

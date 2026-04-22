@@ -1,3 +1,4 @@
+using EFCore.ComplexIndexes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
@@ -59,9 +60,14 @@ internal sealed class TermsDocumentConfiguration : IEntityTypeConfiguration<Term
             info.Ignore(x => x.IsImage);
         });
 
-        builder.Property(t => t.IsActive)
-            .HasColumnName("is_active")
-            .HasDefaultValue(false);
+        builder.ComplexProperty(t => t.Status, statusBuilder =>
+        {
+            statusBuilder.Property(s => s.Id)
+                .HasColumnName("status")
+                .HasMaxLength(30)
+                .IsRequired()
+                .HasComplexIndex(indexName: "idx_terms_documents_status");
+        });
 
         builder.Property(t => t.PublishedAt)
             .HasColumnName("published_at");

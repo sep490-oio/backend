@@ -94,6 +94,7 @@ public static class DependencyInjection
         services.AddScoped<IUserNotificationService, UserNotificationService>();
         services.AddScoped<INotificationProvider, SignalRNotificationProvider>();
         services.AddScoped<IDisputeRealtimeService, DisputeRealtimeService>();
+        services.AddScoped<ITermsHubBroadcaster, TermsHubBroadcaster>();
         services.AddSignalR()
             .AddHubOptions<AuctionHub>(options => options.AddFilter<AuctionBidIdempotencyHubFilter>());
     }

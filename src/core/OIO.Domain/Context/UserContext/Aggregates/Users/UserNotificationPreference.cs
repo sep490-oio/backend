@@ -24,7 +24,7 @@ public sealed class UserNotificationPreference : BaseEntity<UserNotificationPref
             UserId = userId,
             IsEnabled = true,
             TypePreferences = "{}",
-            Channels = "{}",
+            Channels = "[\"SignalR\"]",
             CreatedAt = nowUtc
         };
     }

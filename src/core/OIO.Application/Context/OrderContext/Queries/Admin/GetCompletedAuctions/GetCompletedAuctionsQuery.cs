@@ -43,14 +43,16 @@ internal sealed class GetCompletedAuctionsQueryHandler(
         var pageSize = parameters.PageSize ?? 20;
         var nowUtc = clock.UtcNow;
 
-        // Base: auctions that are already sold (includes buy-now which also
-        // transitions to AuctionStatus.Sold). Orders are joined via AuctionId
-        // — every sold auction has exactly one order created at close time.
+        // Base: auctions that are successfully closed — Sold (winner resolved)
+        // or Completed (delivery confirmed, terminal). Includes buy-now which also
+        // transitions to AuctionStatus.Sold. Orders are joined via AuctionId —
+        // every successfully-closed auction has exactly one order created at close time.
+        // IsSuccessfullyClosed expansion — EF translation requires the inlined predicate.
         var auctionsQuery = dbContext.Set<Auction>()
             .AsNoTracking()
             .Include(a => a.Item)
                 .ThenInclude(i => i.Media)
-            .Where(a => a.Status == AuctionStatus.Sold);
+            .Where(a => a.Status == AuctionStatus.Sold || a.Status == AuctionStatus.Completed);
 
         if (!string.IsNullOrWhiteSpace(parameters.Search))
         {

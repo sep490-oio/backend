@@ -65,7 +65,20 @@ internal sealed class AuctionSoldEventHandler
                 .FirstOrDefaultAsync(i => i.Id == auction.Item.Id, cancellationToken);
             if (trackedItem is not null && trackedItem.Status != OIO.Domain.Context.CatalogContext.Enums.ItemStatus.Sold)
             {
-                trackedItem.MarkSold(DateTime.UtcNow);
+                var markResult = trackedItem.MarkSold(DateTime.UtcNow);
+                if (markResult.IsFailure)
+                {
+                    // Bug #5 fix: previously the result was discarded, leading to split-brain
+                    // where Auction=Sold but Item stayed in prior state with no signal.
+                    // Throw so the outbox processor retries this handler. If the item is
+                    // legitimately in a non-transitionable terminal state (Removed), a future
+                    // run will keep failing until ops intervene — visible via dashboard alerts.
+                    _logger.LogError(
+                        "AuctionSoldEventHandler: failed to mark Item={ItemId} as Sold after Auction={AuctionId} sold. Item.Status={Status}, Error={Error}",
+                        trackedItem.Id.Value, auctionId.Value, trackedItem.Status.Id, markResult.Error.Message);
+                    throw new InvalidOperationException(
+                        $"AuctionSold-Item sync failed for Item {trackedItem.Id.Value}: {markResult.Error.Message}");
+                }
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
             }
         }

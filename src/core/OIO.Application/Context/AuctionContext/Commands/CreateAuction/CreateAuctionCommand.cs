@@ -106,6 +106,7 @@ internal sealed class CreateAuctionCommandHandler
     private readonly UploadContextRegistry _contextRegistry;
     private readonly IMediaRelocationService _mediaRelocationService;
     private readonly AuctionDraftCreationService _auctionDraftCreationService;
+    private readonly IEnsureTermsAcceptedService _ensureTermsAccepted;
     private readonly ILogger<CreateAuctionCommandHandler> _logger;
 
     public CreateAuctionCommandHandler(
@@ -117,6 +118,7 @@ internal sealed class CreateAuctionCommandHandler
         UploadContextRegistry contextRegistry,
         IMediaRelocationService mediaRelocationService,
         AuctionDraftCreationService auctionDraftCreationService,
+        IEnsureTermsAcceptedService ensureTermsAccepted,
         ILogger<CreateAuctionCommandHandler> logger)
     {
         _dbContext = dbContext;
@@ -127,6 +129,7 @@ internal sealed class CreateAuctionCommandHandler
         _contextRegistry = contextRegistry;
         _mediaRelocationService = mediaRelocationService;
         _auctionDraftCreationService = auctionDraftCreationService;
+        _ensureTermsAccepted = ensureTermsAccepted;
         _logger = logger;
     }
 
@@ -134,6 +137,12 @@ internal sealed class CreateAuctionCommandHandler
         CreateAuctionCommand request,
         CancellationToken cancellationToken)
     {
+        // Forced re-acceptance gate (plan §3.6.4 / B7).
+        var gateResult = await _ensureTermsAccepted.EnsureAsync(
+            _currentUser.UserId, ["seller"], cancellationToken);
+        if (gateResult.IsFailure)
+            return gateResult.Error;
+
         var nowUtc = _clock.UtcNow;
         var sellerId = _currentUser.UserId;
 

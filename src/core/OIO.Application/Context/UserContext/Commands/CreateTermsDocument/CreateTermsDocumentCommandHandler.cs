@@ -78,6 +78,7 @@ internal sealed class CreateTermsDocumentCommandHandler : ICommandHandler<Create
             normalizedType,
             currentMaxVersion + 1,
             mediaUpload,
+            _currentUser.UserId,
             _clock.UtcNow);
 
         if (documentResult.IsFailure)

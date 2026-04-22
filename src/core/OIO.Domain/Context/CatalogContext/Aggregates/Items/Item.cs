@@ -313,8 +313,14 @@ public sealed class Item : AggregateRoot<ItemId>, IAuditableEntity
 
     public UnitResult<Error> Activate(DateTime nowUtc)
     {
+        // SECURITY: Items must be Approved before they can be Activated.
+        // Previously sellers could bypass moderation via Draft → Active.
+        if (Status != ItemStatus.Approved)
+            return AuctionErrors.Item.CannotActivate(
+                $"Item must be in 'Approved' state before activation (current: '{Status.Id}'). Submit for review first.");
+
         var result = EnsureCanTransition(ItemStatus.Active);
-        
+
         if (result.IsFailure)
         {
             return result.Error;
@@ -322,9 +328,9 @@ public sealed class Item : AggregateRoot<ItemId>, IAuditableEntity
 
         if (_media.Count == 0)
             return AuctionErrors.Item.CannotActivate("Item must have at least one image before activation.");
-        
+
         ChangeStatus(ItemStatus.Active, nowUtc);
-        
+
         return result;
     }
 

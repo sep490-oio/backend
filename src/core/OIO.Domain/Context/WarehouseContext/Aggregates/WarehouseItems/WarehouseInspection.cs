@@ -2,6 +2,7 @@ using CSharpFunctionalExtensions;
 using OIO.Domain.Context.CatalogContext.Enums;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.Events;
 using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.Context.WarehouseContext.Errors;
 using OIO.Domain.Context.WarehouseContext.ValueObjects;
@@ -121,6 +122,14 @@ public sealed class WarehouseInspection : AggregateRoot<WarehouseInspectionId>
         ReviewedBy = reviewerId;
         ReviewedAt = now;
         ModifiedAt = now;
+
+        RaiseDomainEvent(new WarehouseInspectionRejectedEvent(
+            WarehouseInspectionId: Id.Value,
+            WarehouseItemId: WarehouseItemId.Value,
+            RejectedBy: reviewerId.Value,
+            Reason: reason,
+            OccurredAt: now));
+
         return UnitResult.Success<e>();
     }
 

@@ -4,12 +4,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
+using OIO.Application.Abstractions.Security;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
 using OIO.Domain.Context.ModerationContext.Aggregates.Disputes;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
+using OIO.Domain.Context.OrderContext.Enums;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments;
 using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
@@ -27,6 +29,18 @@ public sealed record DisputeResolutionActionSet
     public string? ItemAction { get; init; }
     public string? AuctionAction { get; init; }
     public string? PenaltyAction { get; init; }
+
+    /// <summary>
+    /// Optional fee-payer selector for <c>open_return</c>. Accepts <c>"buyer"</c>,
+    /// <c>"seller"</c>, or <c>"platform"</c>; parsed via
+    /// <see cref="ShippingFeePayer.FromId"/>. Defaults to Buyer when null / invalid.
+    /// </summary>
+    public string? ReturnShippingFeePayer { get; init; }
+
+    /// <summary>
+    /// Optional override for the buyer's ship-back decision window. Null ⇒ 7 days.
+    /// </summary>
+    public int? BuyerDecisionDueDays { get; init; }
 }
 
 internal sealed class DisputeResolutionService : IDisputeResolutionService
@@ -35,6 +49,7 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
     private readonly EscrowSettlementService _escrowSettlementService;
+    private readonly IReturnShipmentQrTokenService _qrTokenService;
     private readonly ILogger<DisputeResolutionService> _logger;
 
     public DisputeResolutionService(
@@ -42,12 +57,14 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
         IUnitOfWork unitOfWork,
         IClock clock,
         EscrowSettlementService escrowSettlementService,
+        IReturnShipmentQrTokenService qrTokenService,
         ILogger<DisputeResolutionService> logger)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _clock = clock;
         _escrowSettlementService = escrowSettlementService;
+        _qrTokenService = qrTokenService;
         _logger = logger;
     }
 
@@ -87,14 +104,23 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
 
         var now = _clock.UtcNow;
 
-        // 1. Escrow action
-        await ApplyEscrowActionAsync(actionSet, order, dispute, ct);
+        // D8: compute deferred-refund intent BEFORE escrow/refund actions so both
+        // call sites can short-circuit when the resolution also opens a return.
+        // OR-composition — handles EscrowAction=refund_buyer AND RefundAction=full_refund
+        // simultaneously (moderator ActionSet has no mutual exclusion).
+        var (deferredIntent, deferredAmount) = ComputeDeferredRefundIntent(actionSet);
+        var skipRefund = IsOpenReturn(actionSet)
+            && deferredIntent != DeferredRefundIntent.None;
 
-        // 2. Refund action
-        await ApplyRefundActionAsync(actionSet, order, dispute, ct);
+        // 1. Escrow action (skip refund sub-cases when deferring)
+        await ApplyEscrowActionAsync(actionSet, order, dispute, skipRefund, ct);
 
-        // 3. Shipment action
-        await ApplyShipmentActionAsync(actionSet, dispute, now, ct);
+        // 2. Refund action (skip refund sub-cases when deferring)
+        await ApplyRefundActionAsync(actionSet, order, dispute, skipRefund, ct);
+
+        // 3. Shipment action — carries the computed deferredIntent + amount into
+        //    Order.OpenReturnViaDispute when ShipmentAction == "open_return".
+        await ApplyShipmentActionAsync(actionSet, dispute, deferredIntent, deferredAmount, now, ct);
 
         // 4. Item action
         await ApplyItemActionAsync(actionSet, dispute, now, ct);
@@ -113,6 +139,7 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
         DisputeResolutionActionSet actionSet,
         Order? order,
         Dispute dispute,
+        bool skipRefund,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(actionSet.EscrowAction) || actionSet.EscrowAction == "no_action")
@@ -143,6 +170,13 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
 
                 case "refund_buyer":
                 {
+                    if (skipRefund)
+                    {
+                        _logger.LogInformation(
+                            "Dispute {DisputeId}: escrow refund_buyer DEFERRED — resolution also opens a return; refund fires at seller-confirm.",
+                            dispute.Id);
+                        break;
+                    }
                     var result = await _escrowSettlementService.RefundBuyerAsync(
                         order, null, "Dispute resolution: full refund to buyer", null, ct);
                     if (result.IsFailure)
@@ -154,6 +188,13 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
 
                 case "partial_refund":
                 {
+                    if (skipRefund)
+                    {
+                        _logger.LogInformation(
+                            "Dispute {DisputeId}: escrow partial_refund DEFERRED — resolution also opens a return; refund fires at seller-confirm.",
+                            dispute.Id);
+                        break;
+                    }
                     if (actionSet.RefundAmount is null or <= 0)
                     {
                         _logger.LogWarning(
@@ -196,6 +237,7 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
         DisputeResolutionActionSet actionSet,
         Order? order,
         Dispute dispute,
+        bool skipRefund,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(actionSet.RefundAction)
@@ -207,6 +249,14 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
         {
             _logger.LogWarning(
                 "Dispute {DisputeId}: refund action '{Action}' skipped — no linked order",
+                dispute.Id, actionSet.RefundAction);
+            return;
+        }
+
+        if (skipRefund)
+        {
+            _logger.LogInformation(
+                "Dispute {DisputeId}: refund action '{Action}' DEFERRED — resolution also opens a return; refund fires at seller-confirm.",
                 dispute.Id, actionSet.RefundAction);
             return;
         }
@@ -263,6 +313,8 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
     private async Task ApplyShipmentActionAsync(
         DisputeResolutionActionSet actionSet,
         Dispute dispute,
+        DeferredRefundIntent deferredIntent,
+        decimal? deferredAmount,
         DateTime now,
         CancellationToken ct)
     {
@@ -319,10 +371,7 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
                     break;
 
                 case "open_return":
-                    // TODO: V1 stub — open_return requires return shipment orchestration
-                    _logger.LogWarning(
-                        "Dispute {DisputeId}: open_return is a V1 stub — manual intervention required",
-                        dispute.Id);
+                    await ApplyOpenReturnAsync(actionSet, dispute, deferredIntent, deferredAmount, now, ct);
                     break;
 
                 default:
@@ -379,9 +428,16 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
                     break;
 
                 case "return_to_seller":
-                    // TODO: V1 stub — full item-return workflow is Phase 5+ territory
-                    _logger.LogWarning(
-                        "Dispute {DisputeId}: return_to_seller is a V1 stub — manual intervention required",
+                    // return_to_seller is now handled automatically by
+                    // CreateWarehouseToSellerShipmentOnRejectionHandler on
+                    // WarehouseInspectionRejectedEvent — no action needed in
+                    // ApplyItemActionAsync. Kept as an explicit case so the
+                    // "unknown item action" warning doesn't fire. V2 follow-up:
+                    // add a dispute-level explicit return-to-seller for rare
+                    // scenarios where the inspector has NOT rejected the item
+                    // but the moderator decides it should go back anyway.
+                    _logger.LogInformation(
+                        "Dispute {DisputeId}: return_to_seller is a no-op at dispute level — warehouse-inspection-reject handler covers this scenario.",
                         dispute.Id);
                     break;
 
@@ -559,6 +615,114 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
         return null;
     }
 
+    private async Task ApplyOpenReturnAsync(
+        DisputeResolutionActionSet actionSet,
+        Dispute dispute,
+        DeferredRefundIntent deferredRefundIntent,
+        decimal? deferredRefundAmount,
+        DateTime now,
+        CancellationToken ct)
+    {
+        if (dispute.OrderId.Value == Guid.Empty)
+        {
+            _logger.LogWarning(
+                "Dispute {DisputeId}: open_return skipped — dispute has no linked OrderId.",
+                dispute.Id);
+            return;
+        }
+
+        // Load Order with its 1:1 Return nav so the aggregate's ReturnAlreadyExists
+        // guard sees an existing non-terminal row. GetByIdAsync exposes a query-
+        // builder hook for includes.
+        var order = await _dbContext.GetByIdAsync<Order, OrderId>(
+            dispute.OrderId,
+            queryBuilder: q => q.Include(o => o.Return),
+            cancellationToken: ct);
+
+        if (order is null)
+        {
+            _logger.LogWarning(
+                "Dispute {DisputeId}: open_return skipped — Order {OrderId} not found.",
+                dispute.Id, dispute.OrderId);
+            return;
+        }
+
+        // Fee-payer resolution: prefer explicit moderator choice, fall back to Buyer.
+        var feePayer = ShippingFeePayer.Buyer;
+        if (!string.IsNullOrWhiteSpace(actionSet.ReturnShippingFeePayer))
+        {
+            var parsed = ShippingFeePayer.FromId(actionSet.ReturnShippingFeePayer);
+            if (parsed.HasValue)
+            {
+                feePayer = parsed.Value;
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Dispute {DisputeId}: open_return — unknown ReturnShippingFeePayer '{Value}'. Defaulting to Buyer.",
+                    dispute.Id, actionSet.ReturnShippingFeePayer);
+            }
+        }
+
+        var dueDays = actionSet.BuyerDecisionDueDays is > 0
+            ? actionSet.BuyerDecisionDueDays.Value
+            : 7;
+
+        var openResult = order.OpenReturnViaDispute(
+            reasonCode: "dispute_resolution",
+            description: "Opened via dispute resolution",
+            feePayer: feePayer,
+            deferredRefundIntent: deferredRefundIntent,
+            deferredRefundAmount: deferredRefundAmount,
+            buyerDecisionDueAt: now.AddDays(dueDays),
+            nowUtc: now);
+
+        if (openResult.IsFailure)
+        {
+            if (openResult.Error.Code == "Order.ReturnAlreadyExists")
+            {
+                // Idempotent re-apply — a prior apply already opened the return.
+                _logger.LogInformation(
+                    "Dispute {DisputeId}: open_return skipped — Order {OrderId} already has an active OrderReturn.",
+                    dispute.Id, dispute.OrderId);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Dispute {DisputeId}: open_return failed for Order {OrderId} — {Error}",
+                    dispute.Id, dispute.OrderId, openResult.Error.Message);
+            }
+            return;
+        }
+
+        // Mint a signed return-scoped QR token and stamp it onto the freshly
+        // opened OrderReturn so the buyer sees the shipping label IMMEDIATELY
+        // when the return is approved — before they book a courier or hand
+        // the parcel off. Bound to the real OrderReturnId (aggregate-minted).
+        var orderReturn = openResult.Value;
+        var qrToken = _qrTokenService.Issue(
+            kind:              "order_return",
+            shipmentOrReturnId: orderReturn.Id.Value,
+            issuedAt:          now,
+            expiresAt:         now.AddDays(30));
+        var qrResult = orderReturn.IssueReturnQr(qrToken, now);
+        if (qrResult.IsFailure)
+        {
+            _logger.LogWarning(
+                "Dispute {DisputeId}: open_return — QR token stamp failed for OrderReturn {OrderReturnId}: {Error}. Return remains usable; QR will be re-issued on MarkReturnShipped.",
+                dispute.Id, orderReturn.Id.Value, qrResult.Error.Message);
+        }
+
+        // Aggregate owns the lifecycle — update Order; the cascade persists the
+        // new OrderReturn. Do NOT call _dbContext.Insert(orderReturn). The
+        // OrderReturnOpenedByDisputeEvent is raised inside OpenReturnViaDispute.
+        _dbContext.Update(order);
+
+        _logger.LogInformation(
+            "Dispute {DisputeId}: open_return applied — OrderReturn {OrderReturnId} pre-approved for Order {OrderId}. FeePayer={FeePayer}, DueAt={DueAt:o}",
+            dispute.Id, openResult.Value.Id.Value, dispute.OrderId, feePayer.Id, now.AddDays(dueDays));
+    }
+
     private async Task<Auction?> LoadAuctionAsync(Dispute dispute, CancellationToken ct)
     {
         if (dispute.AuctionId.HasValue)
@@ -574,5 +738,46 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
         }
 
         return null;
+    }
+
+    // ── Deferred-refund helpers (B2) ──
+
+    private static bool IsOpenReturn(DisputeResolutionActionSet actionSet) =>
+        string.Equals(actionSet.ShipmentAction, "open_return", StringComparison.Ordinal);
+
+    /// <summary>
+    /// Computes the <see cref="DeferredRefundIntent"/> from the moderator's ActionSet.
+    /// D8 — OR-composition: when both <c>EscrowAction</c> and <c>RefundAction</c> carry
+    /// a refund verb simultaneously, the stronger intent wins (Full over Partial) and
+    /// only one intent is recorded; both skip-refund call sites suppress their
+    /// <c>RefundBuyerAsync</c> calls so the refund fires exactly once at seller-confirm.
+    /// </summary>
+    internal static (DeferredRefundIntent Intent, decimal? Amount) ComputeDeferredRefundIntent(
+        DisputeResolutionActionSet actionSet)
+    {
+        // Intent only applies when the resolution opens a return; otherwise refund
+        // fires immediately via the existing path and no deferral is recorded.
+        if (!IsOpenReturn(actionSet))
+            return (DeferredRefundIntent.None, null);
+
+        var escrowIsFullRefund    = actionSet.EscrowAction == "refund_buyer";
+        var refundIsFullRefund    = actionSet.RefundAction == "full_refund";
+        var escrowIsPartialRefund = actionSet.EscrowAction == "partial_refund";
+        var refundIsPartialRefund = actionSet.RefundAction == "partial_refund";
+
+        // Full wins over Partial if both are present (OR-composition).
+        if (escrowIsFullRefund || refundIsFullRefund)
+            return (DeferredRefundIntent.Full, null);
+
+        if (escrowIsPartialRefund || refundIsPartialRefund)
+        {
+            // Partial requires a positive amount — fall back to None if missing.
+            if (actionSet.RefundAmount is null or <= 0)
+                return (DeferredRefundIntent.None, null);
+            return (DeferredRefundIntent.Partial, actionSet.RefundAmount);
+        }
+
+        // open_return without a refund verb — pure return, no refund deferred.
+        return (DeferredRefundIntent.None, null);
     }
 }

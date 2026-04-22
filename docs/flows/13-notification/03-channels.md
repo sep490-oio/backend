@@ -141,8 +141,6 @@ public interface INotificationHubClient
 | `Priority` | `string` | `notification.Priority.Id` |
 | `CreatedAt` | `DateTime` | `notification.CreatedAt` |
 
-## InApp Channel
+## Reserved Channels
 
-The `NotificationChannel.InApp` value (`"In App"`) exists in the enum but **no `INotificationProvider` implementation** is registered for it. If a delivery is created with `Channel = InApp`, the background job will fail it with error code `NO_PROVIDER`.
-
-In practice, the `NotificationRoutingService` only creates deliveries for `Email` and `SignalR` channels, so InApp deliveries are never created by the current routing logic.
+No additional channels are currently registered. Only `Email` and `SignalR` are defined on `NotificationChannel` and supported by `NotificationRoutingService`. Historical builds exposed an `InApp` enum member with no registered `INotificationProvider`; that member has been removed, and in-app delivery is served by the `SignalR` channel.

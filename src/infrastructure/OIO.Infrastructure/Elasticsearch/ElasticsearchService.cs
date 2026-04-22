@@ -7,6 +7,7 @@ using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 using OIO.Application.Abstractions.Search;
 using OIO.Infrastructure.Settings;
+using StackExchange.Redis;
 
 namespace OIO.Infrastructure.Elasticsearch;
 
@@ -15,12 +16,14 @@ public class ElasticsearchService : IElasticsearchService
     private readonly ElasticsearchClient _client;
     private readonly ElasticsearchSettings _settings;
     private readonly HybridCache _cache;
+    private readonly IConnectionMultiplexer _redis;
     private const string CacheTag = "elasticsearch";
 
-    public ElasticsearchService(IOptions<ElasticsearchSettings> settings, HybridCache cache)
+    public ElasticsearchService(IOptions<ElasticsearchSettings> settings, HybridCache cache, IConnectionMultiplexer redis)
     {
         _settings = settings.Value;
         _cache = cache;
+        _redis = redis;
         
         var clientSettings = new ElasticsearchClientSettings(new Uri(_settings.Endpoint))
             .Authentication(new ApiKey(_settings.ApiKey))
@@ -308,9 +311,51 @@ public class ElasticsearchService : IElasticsearchService
         return suggestions.Distinct().ToList();
     }
 
+    public async Task<List<string>> GetAllIdsAsync(string index, CancellationToken cancellationToken = default)
+    {
+        var response = await _client.SearchAsync<BaseSearchDocument>(s => s
+            .Index(index)
+            .Size(10000),
+            cancellationToken);
+
+        if (!response.IsSuccess())
+            return [];
+
+        return response.Hits.Select(h => h.Id!).ToList();
+    }
+    
     public async Task ClearCacheAsync(CancellationToken cancellationToken = default)
     {
+        // 1. Remove by tag (for new tagged entries)
         await _cache.RemoveByTagAsync(CacheTag, cancellationToken);
+
+        // 2. Aggressively sweep by pattern (for old untagged entries)
+        // HybridCache with Redis usually uses 'instanceName:' prefix.
+        // As defined in DependencyInjection.AddCachingService, the instance name is 'oio:cache'
+        var instanceName = "oio:cache";
+        var patterns = new[] { 
+            $"{instanceName}:search:*", 
+            $"{instanceName}search:*",
+            $"{instanceName}:suggest:*",
+            $"{instanceName}suggest:*",
+            "*search:*",
+            "*suggest:*"
+        };
+        
+        var endpoints = _redis.GetEndPoints();
+        foreach (var endpoint in endpoints)
+        {
+            var server = _redis.GetServer(endpoint);
+            foreach (var pattern in patterns)
+            {
+                var keys = server.Keys(pattern: pattern).ToArray();
+                if (keys.Length > 0)
+                {
+                    var db = _redis.GetDatabase();
+                    await db.KeyDeleteAsync(keys);
+                }
+            }
+        }
     }
 
     public async Task RecreateIndicesAsync(CancellationToken cancellationToken = default)

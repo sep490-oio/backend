@@ -20,6 +20,7 @@ internal sealed class SellerProfileConfiguration : IEntityTypeConfiguration<Sell
 
         builder.Property(s => s.StoreDescription)
             .HasColumnName("store_description")
+            .HasColumnType("text")
             .HasDefaultValue("There are no description for this store.")
             .IsRequired();
 

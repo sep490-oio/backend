@@ -41,7 +41,8 @@ internal sealed class AuctionDraftCreationService(IDbContext dbContext)
         AuctionStatus.Scheduled.Id,
         AuctionStatus.Active.Id,
         AuctionStatus.Ended.Id,
-        AuctionStatus.Sold.Id
+        AuctionStatus.Sold.Id,
+        AuctionStatus.Completed.Id
     ];
 
     public async Task<Result<Auction, Error>> CreateAsync(

@@ -122,7 +122,10 @@ public static partial class ApiEndpoint
             public const string UnlockUser = nameof(UnlockUser);
             public const string RepairStuckInAuctionItems = nameof(RepairStuckInAuctionItems);
             public const string CreateTermsDocument = nameof(CreateTermsDocument);
+            public const string UpdateTermsDocument = nameof(UpdateTermsDocument);
             public const string ActivateTermsDocument = nameof(ActivateTermsDocument);
+            public const string ArchiveTermsDocument = nameof(ArchiveTermsDocument);
+            public const string DeleteTermsDocument = nameof(DeleteTermsDocument);
             public const string GetAllTermsDocuments = nameof(GetAllTermsDocuments);
 
             // Verifications
@@ -174,6 +177,9 @@ public static partial class ApiEndpoint
             // Completed Auctions
             public const string GetCompletedAuctions = nameof(GetCompletedAuctions);
             public const string GetCompletedAuctionById = nameof(GetCompletedAuctionById);
+
+            // Warehouse inspection reject recovery (Phase D)
+            public const string RetryPendingInspectionReject = nameof(RetryPendingInspectionReject);
         }
 
         public static class Auth
@@ -198,6 +204,7 @@ public static partial class ApiEndpoint
             public const string GetMyItems = nameof(GetMyItems);
             public const string SubmitItem = nameof(SubmitItem);
             public const string ActivateItem = nameof(ActivateItem);
+            public const string AdminRemoveItem = nameof(AdminRemoveItem);
             public const string ResubmitItem = nameof(ResubmitItem);
             public const string ConfirmInspectedCondition = nameof(ConfirmInspectedCondition);
             public const string ChooseItemShipping = nameof(ChooseItemShipping);
@@ -220,6 +227,7 @@ public static partial class ApiEndpoint
             public const string UpdateAuction = nameof(UpdateAuction);
             public const string GetAuctionBids = nameof(GetAuctionBids);
             public const string CancelAuction = nameof(CancelAuction);
+            public const string AdminRejectAuction = nameof(AdminRejectAuction);
             public const string CloseAuction = nameof(CloseAuction);
             public const string SubmitAuction = nameof(SubmitAuction);
             public const string SetAuctionTiming = nameof(SetAuctionTiming);
@@ -313,6 +321,18 @@ public static partial class ApiEndpoint
             public const string GetSellerWarehouseItemById  = nameof(GetSellerWarehouseItemById);
 
             public const string GetBuyerOutboundShipmentByToken = nameof(GetBuyerOutboundShipmentByToken);
+
+            // Warehouse → Seller returns (Phase D)
+            public const string MarkWarehouseReturnShipped          = nameof(MarkWarehouseReturnShipped);
+            public const string ConfirmWarehouseReturnReceipt       = nameof(ConfirmWarehouseReturnReceipt);
+            public const string RecordWarehouseReturnDeliveryFailure = nameof(RecordWarehouseReturnDeliveryFailure);
+            public const string GetMyWarehouseReturns               = nameof(GetMyWarehouseReturns);
+            public const string GetPendingStaffReturns              = nameof(GetPendingStaffReturns);
+
+            // Warehouse → Seller returns — evidence + QR scan (Phase C).
+            public const string AddWarehouseStaffReturnEvidence = nameof(AddWarehouseStaffReturnEvidence);
+            public const string AddSellerWarehouseReturnEvidence = nameof(AddSellerWarehouseReturnEvidence);
+            public const string ScanWarehouseReturn = nameof(ScanWarehouseReturn);
         }
 
         public static class VnPay
@@ -336,6 +356,8 @@ public static partial class ApiEndpoint
             public const string AddPaymentMethod = nameof(AddPaymentMethod);
             public const string GetPaymentMethods = nameof(GetPaymentMethods);
             public const string DeletePaymentMethod = nameof(DeletePaymentMethod);
+            public const string HardDeletePaymentMethod = nameof(HardDeletePaymentMethod);
+            public const string ReactivatePaymentMethod = nameof(ReactivatePaymentMethod);
             public const string CheckoutOrder =  nameof(CheckoutOrder);
             public const string SetDefaultPaymentMethod = nameof(SetDefaultPaymentMethod);
             public const string LinkCardViaVnPay = nameof(LinkCardViaVnPay);
@@ -364,6 +386,13 @@ public static partial class ApiEndpoint
             public const string ApproveOrderReturn = nameof(ApproveOrderReturn);
             public const string RejectOrderReturn = nameof(RejectOrderReturn);
             public const string ConfirmOrderReturnReceived = nameof(ConfirmOrderReturnReceived);
+
+            // Return flows — evidence + QR scan (Phase C).
+            public const string AddBuyerOrderReturnEvidence = nameof(AddBuyerOrderReturnEvidence);
+            public const string AddSellerOrderReturnEvidence = nameof(AddSellerOrderReturnEvidence);
+            public const string ScanOrderReturn = nameof(ScanOrderReturn);
+            public const string RetryDeferredRefund = nameof(RetryDeferredRefund);
+
             public const string ConfirmOrderReceipt = nameof(ConfirmOrderReceipt);
             public const string UpdateOrderShipping = nameof(UpdateOrderShipping);
             public const string ConfirmSellerOrder = nameof(ConfirmSellerOrder);

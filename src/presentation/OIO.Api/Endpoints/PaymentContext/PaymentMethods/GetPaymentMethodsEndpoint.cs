@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using OIO.Api.Common;
 using OIO.Application.Context.PaymentContext.DTOs;
 using OIO.Application.Context.PaymentContext.Queries.GetMyPaymentMethods;
@@ -10,10 +11,29 @@ public sealed class GetPaymentMethodsEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet(ApiEndpoint.Url.Payments.GetMethods, async (
+                string? status,
                 ISender sender,
+                ILogger<GetPaymentMethodsEndpoint> logger,
                 CancellationToken ct) =>
             {
-                var result = await sender.Send(new GetMyPaymentMethodsQuery(), ct);
+                PaymentMethodStatusFilter? filter = null;
+
+                if (!string.IsNullOrWhiteSpace(status))
+                {
+                    if (Enum.TryParse<PaymentMethodStatusFilter>(status, ignoreCase: true, out var parsed))
+                    {
+                        filter = parsed;
+                    }
+                    else
+                    {
+                        logger.LogWarning(
+                            "Unknown PaymentMethodStatusFilter value '{StatusValue}'; falling back to Active.",
+                            status);
+                        filter = PaymentMethodStatusFilter.Active;
+                    }
+                }
+
+                var result = await sender.Send(new GetMyPaymentMethodsQuery(filter), ct);
                 return result.ToOkHttpResult();
             })
             .RequireAuthorization()

@@ -5,6 +5,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.DTOs;
 using OIO.Application.Context.UserContext.Mappings;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
+using OIO.Domain.Context.UserContext.Enums;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.UserContext.Queries.GetAllTermsDocuments;
@@ -30,8 +31,14 @@ internal sealed class GetAllTermsDocumentsQueryHandler : IQueryHandler<GetAllTer
             query = query.Where(x => x.TermType.ToLower() == normalizedType);
         }
 
+        // IsActive filter maps directly to Status == Active (or != Active) — avoids
+        // using the computed IsActive property inside EF Where (untranslatable).
         if (request.IsActive.HasValue)
-            query = query.Where(x => x.IsActive == request.IsActive.Value);
+        {
+            query = request.IsActive.Value
+                ? query.Where(x => x.Status == TermsDocumentStatus.Active)
+                : query.Where(x => x.Status != TermsDocumentStatus.Active);
+        }
 
         var entities = await query
             .OrderBy(x => x.TermType)

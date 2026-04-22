@@ -48,7 +48,8 @@ internal sealed class ItemConfiguration : IEntityTypeConfiguration<Item>
         });
 
         builder.Property(i => i.Description)
-            .HasColumnName("description");
+            .HasColumnName("description")
+            .HasColumnType("text");
 
         builder.ComplexProperty(i => i.Condition, conditionBuilder =>
         {

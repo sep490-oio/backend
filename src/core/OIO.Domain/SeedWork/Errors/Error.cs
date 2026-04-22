@@ -12,14 +12,29 @@ public record Error
     public string Message { get; protected init; } = string.Empty;
     [Id(2)]
     public string Kind { get; protected init; } = string.Empty;
-    
+
+    // Optional structured payload surfaced to the HTTP response under the JSON "metadata"
+    // property. Wire format:
+    //   { "code": "PaymentMethod.Duplicate", "description": "...", "metadata": { "conflictingMethodId": "<guid>", "existingIsActive": true } }
+    // Default null for existing constructors so all existing call sites are unaffected.
+    [Id(3)]
+    public IReadOnlyDictionary<string, object>? Metadata { get; protected init; }
+
     protected Error(string code, string message, string kind)
     {
         Code = code;
         Message = message;
         Kind = kind;
     }
-    
+
+    protected Error(string code, string message, string kind, IReadOnlyDictionary<string, object>? metadata)
+    {
+        Code = code;
+        Message = message;
+        Kind = kind;
+        Metadata = metadata;
+    }
+
     protected Error()
     {}
     
@@ -36,6 +51,14 @@ public record Error
     
     public static Error Conflict(string code, string description) =>
         new(code, description, ErrorCatalog.Kind.Conflict);
+
+    /// <summary>
+    /// Creates a Conflict error with a structured metadata payload. The dictionary is surfaced
+    /// to the HTTP response body under the JSON "metadata" property, e.g.:
+    /// { "code": "PaymentMethod.Duplicate", "description": "...", "metadata": { "conflictingMethodId": "&lt;guid&gt;", "existingIsActive": true } }
+    /// </summary>
+    public static Error Conflict(string code, string description, IReadOnlyDictionary<string, object> metadata) =>
+        new(code, description, ErrorCatalog.Kind.Conflict, metadata);
 
     public static ValidationError Validation(string propertyName, string code, string description) =>
         new ValidationError(propertyName, code, description);

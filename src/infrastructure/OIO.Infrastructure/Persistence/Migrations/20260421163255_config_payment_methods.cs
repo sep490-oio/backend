@@ -5,38 +5,21 @@
 namespace OIO.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class config_outbox_consumer : Migration
+    public partial class config_payment_methods : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropIndex(
-                name: "idx_outbox_cleanup",
-                table: "outbox_messages");
-
-            migrationBuilder.DropIndex(
-                name: "idx_outbox_messages_unprocessed",
-                table: "outbox_messages");
+                name: "idx_payment_methods_user_token",
+                table: "payment_methods");
 
             migrationBuilder.CreateIndex(
-                name: "idx_outbox_cleanup_error",
-                table: "outbox_messages",
-                columns: new[] { "occurred_at", "id" },
-                filter: "processed_at IS NOT NULL AND error IS NOT NULL");
-
-            migrationBuilder.CreateIndex(
-                name: "idx_outbox_messages_unprocessed",
-                table: "outbox_messages",
-                column: "occurred_at",
-                filter: "processed_at IS NULL AND attempt_count < 3");
-
-            migrationBuilder.AddForeignKey(
-                name: "fk_outbox_message_consumers_outbox_message_outbox_message_id",
-                table: "outbox_message_consumers",
-                column: "outbox_message_id",
-                principalTable: "outbox_messages",
-                principalColumn: "id",
-                onDelete: ReferentialAction.Cascade);
+                name: "uq_payment_methods_user_vnpay_active",
+                table: "payment_methods",
+                columns: new[] { "user_id", "vnpay_token" },
+                unique: true,
+                filter: "is_active = true AND type = 'VnPay' AND vnpay_token IS NOT NULL");
 
             migrationBuilder.DropIndex(
                 name: "idx_auctions_priority",
@@ -101,6 +84,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
             migrationBuilder.DropIndex(
                 name: "idx_seller_profiles_status",
                 table: "seller_profiles");
+
+            migrationBuilder.DropIndex(
+                name: "idx_terms_documents_status",
+                table: "terms_documents");
 
             migrationBuilder.DropIndex(
                 name: "idx_unique_users_normalized_email_active",
@@ -222,6 +209,13 @@ namespace OIO.Infrastructure.Persistence.Migrations
                 .Annotation("Relational:ColumnName", "status");
 
             migrationBuilder.CreateIndex(
+                name: "idx_terms_documents_status",
+                table: "terms_documents",
+                column: "status")
+                .Annotation("MaxLength", 30)
+                .Annotation("Relational:ColumnName", "status");
+
+            migrationBuilder.CreateIndex(
                 name: "idx_unique_users_normalized_email_active",
                 table: "users",
                 column: "normalized_email",
@@ -247,29 +241,15 @@ namespace OIO.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "fk_outbox_message_consumers_outbox_message_outbox_message_id",
-                table: "outbox_message_consumers");
-
             migrationBuilder.DropIndex(
-                name: "idx_outbox_cleanup_error",
-                table: "outbox_messages");
-
-            migrationBuilder.DropIndex(
-                name: "idx_outbox_messages_unprocessed",
-                table: "outbox_messages");
+                name: "uq_payment_methods_user_vnpay_active",
+                table: "payment_methods");
 
             migrationBuilder.CreateIndex(
-                name: "idx_outbox_cleanup",
-                table: "outbox_messages",
-                columns: new[] { "occurred_at", "id" },
-                filter: "processed_at IS NOT NULL AND error IS NULL");
-
-            migrationBuilder.CreateIndex(
-                name: "idx_outbox_messages_unprocessed",
-                table: "outbox_messages",
-                column: "occurred_at",
-                filter: "processed_at IS NULL");
+                name: "idx_payment_methods_user_token",
+                table: "payment_methods",
+                columns: new[] { "user_id", "vnpay_token" },
+                filter: "vnpay_token IS NOT NULL");
 
             migrationBuilder.DropIndex(
                 name: "idx_auctions_priority",
@@ -334,6 +314,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
             migrationBuilder.DropIndex(
                 name: "idx_seller_profiles_status",
                 table: "seller_profiles");
+
+            migrationBuilder.DropIndex(
+                name: "idx_terms_documents_status",
+                table: "terms_documents");
 
             migrationBuilder.DropIndex(
                 name: "idx_unique_users_normalized_email_active",
@@ -465,6 +449,14 @@ namespace OIO.Infrastructure.Persistence.Migrations
             migrationBuilder.CreateIndex(
                 name: "idx_seller_profiles_status",
                 table: "seller_profiles",
+                column: "status")
+                .Annotation("MaxLength", 30)
+                .Annotation("Relational:ColumnName", "status")
+                .Annotation("Relational:ColumnType", "character varying(30)");
+
+            migrationBuilder.CreateIndex(
+                name: "idx_terms_documents_status",
+                table: "terms_documents",
                 column: "status")
                 .Annotation("MaxLength", 30)
                 .Annotation("Relational:ColumnName", "status")

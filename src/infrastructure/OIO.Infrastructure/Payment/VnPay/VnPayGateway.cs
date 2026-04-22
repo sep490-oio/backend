@@ -78,29 +78,26 @@ public sealed class VnPayGateway : IPaymentGatewayService
             return Error.Unauthorized("VnPay.InvalidSignature", "VNPay callback signature is invalid.");
         }
 
-        // 2. Parse response
-        queryParams.TryGetValue("vnp_TxnRef", out var txnRef);
-        queryParams.TryGetValue("vnp_TransactionNo", out var vnpTransactionNo);
-        queryParams.TryGetValue("vnp_Amount", out var amountStr);
-        queryParams.TryGetValue("vnp_ResponseCode", out var responseCode);
-        queryParams.TryGetValue("vnp_TransactionStatus", out var transactionStatus);
-        queryParams.TryGetValue("vnp_BankCode", out var bankCode);
-        queryParams.TryGetValue("vnp_CardType", out var cardType);
-        queryParams.TryGetValue("vnp_PayDate", out var payDate);
+        // 2. Parse response — Token API (snake_case) primary, Pay API (camelCase) fallback.
+        // VNPay's Token API (pay_and_create / token_create / token_pay) returns snake_case keys;
+        // the classic Pay API returns camelCase keys.
+        var txnRef = VnPayHelper.ReadCallbackField(queryParams, "vnp_txn_ref", "vnp_TxnRef");
+        var vnpTransactionNo = VnPayHelper.ReadCallbackField(queryParams, "vnp_transaction_no", "vnp_TransactionNo");
+        var amountStr = VnPayHelper.ReadCallbackField(queryParams, "vnp_amount", "vnp_Amount");
+        var responseCode = VnPayHelper.ReadCallbackField(queryParams, "vnp_response_code", "vnp_ResponseCode");
+        var transactionStatus = VnPayHelper.ReadCallbackField(queryParams, "vnp_transaction_status", "vnp_TransactionStatus");
+        var bankCode = VnPayHelper.ReadCallbackField(queryParams, "vnp_bank_code", "vnp_BankCode");
+        var cardType = VnPayHelper.ReadCallbackField(queryParams, "vnp_card_type", "vnp_CardType");
+        var payDate = VnPayHelper.ReadCallbackField(queryParams, "vnp_pay_date", "vnp_PayDate");
 
-        // Token fields (trả về từ pay_and_create / token_create / token_pay)
-        queryParams.TryGetValue("vnp_Token", out var vnpToken);
-        if (string.IsNullOrWhiteSpace(vnpToken))
-            queryParams.TryGetValue("vnp_token", out vnpToken); // case fallback
-
-        queryParams.TryGetValue("vnp_CardNumber", out var cardNumber);
-        if (string.IsNullOrWhiteSpace(cardNumber))
-            queryParams.TryGetValue("vnp_card_number", out cardNumber);
+        // Token-flow-specific fields (pay_and_create / token_create / token_pay)
+        var vnpToken = VnPayHelper.ReadCallbackField(queryParams, "vnp_token", "vnp_Token");
+        var cardNumber = VnPayHelper.ReadCallbackField(queryParams, "vnp_card_number", "vnp_CardNumber");
 
         if (string.IsNullOrWhiteSpace(txnRef) || string.IsNullOrWhiteSpace(responseCode))
         {
             return Error.Validation("QueryParams", "VnPay.MissingFields",
-                "VNPay callback is missing required fields (vnp_TxnRef, vnp_ResponseCode).");
+                "VNPay callback is missing required fields (vnp_txn_ref/vnp_TxnRef, vnp_response_code/vnp_ResponseCode).");
         }
 
         // VNPay amount đã nhân 100
@@ -381,7 +378,35 @@ public sealed class VnPayGateway : IPaymentGatewayService
                 "VNPay token remove completed for AppUserId={AppUserId} with HTTP {StatusCode}",
                 request.AppUserId, (int)response.StatusCode);
 
-            var jsonDoc = JsonDocument.Parse(responseBody);
+            // Sandbox/gateway may respond with an HTML error page (502/503). Guard the JSON parse
+            // so we return a Result.Failure instead of throwing — caller decides retry/severity.
+            var contentType = response.Content.Headers.ContentType?.MediaType;
+            var looksLikeJson = !string.IsNullOrEmpty(responseBody)
+                && (responseBody[0] == '{' || responseBody[0] == '[');
+            if (!response.IsSuccessStatusCode || (contentType is not null && !contentType.Contains("json")) || !looksLikeJson)
+            {
+                _logger.LogWarning(
+                    "VNPay token remove returned non-JSON response for AppUserId={AppUserId}: HTTP {StatusCode} ContentType={ContentType} BodyPreview={Preview}",
+                    request.AppUserId,
+                    (int)response.StatusCode,
+                    contentType ?? "<none>",
+                    responseBody.Length > 120 ? responseBody[..120] + "…" : responseBody);
+                return Error.Unavailable(
+                    "VnPay.TokenRemoveFailed",
+                    $"VNPay token remove returned non-JSON response (HTTP {(int)response.StatusCode}).");
+            }
+
+            JsonDocument jsonDoc;
+            try
+            {
+                jsonDoc = JsonDocument.Parse(responseBody);
+            }
+            catch (JsonException jex)
+            {
+                _logger.LogWarning(jex, "VNPay token remove returned unparseable JSON for AppUserId={AppUserId}", request.AppUserId);
+                return Error.Unavailable("VnPay.TokenRemoveFailed", "VNPay token remove returned unparseable JSON.");
+            }
+            using var _doc = jsonDoc;
             var root = jsonDoc.RootElement;
 
             var respCode = root.TryGetProperty("vnp_response_code", out var codeEl)
@@ -401,7 +426,7 @@ public sealed class VnPayGateway : IPaymentGatewayService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "VNPay token remove failed for AppUserId={AppUserId}", request.AppUserId);
+            _logger.LogWarning(ex, "VNPay token remove threw for AppUserId={AppUserId}", request.AppUserId);
             return Error.Unavailable("VnPay.TokenRemoveFailed", $"VNPay token remove request failed: {ex.Message}");
         }
     }

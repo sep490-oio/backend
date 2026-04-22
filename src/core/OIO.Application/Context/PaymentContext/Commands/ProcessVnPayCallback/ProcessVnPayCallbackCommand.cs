@@ -273,9 +273,12 @@ internal sealed class ProcessVnPayCallbackCommandHandler
         if (auction.Item.SellerId == transaction.UserId)
             return AuctionErrors.Auction.SelfBid;
 
+        // IsPostWinnerTransient — pure C# guard, use helper directly.
+        // Completed is also terminal and must block late deposit callbacks.
         if (auction.Status == AuctionStatus.Cancelled ||
             auction.Status == AuctionStatus.Ended ||
-            auction.Status == AuctionStatus.Sold ||
+            auction.Status.IsPostWinnerTransient ||
+            auction.Status == AuctionStatus.Completed ||
             auction.Status == AuctionStatus.Failed ||
             auction.Status == AuctionStatus.Terminated)
         {
@@ -881,23 +884,42 @@ internal sealed class ProcessVnPayCallbackCommandHandler
 
         try
         {
-            // Tìm PaymentMethod đã tồn tại với cùng token
+            // Identity of a VnPay card = (user, bank_code, masked_card_number).
+            // VNPay re-issues a fresh vnp_token on every link, so keying on
+            // VnPayToken alone would create a new row per re-link. Match on the
+            // stable fields instead; scope scans ALL rows (active + inactive)
+            // so a re-link of a previously-deactivated card reactivates rather
+            // than inserts a duplicate.
             var existing = await _dbContext.Set<PaymentMethod>()
                 .FirstOrDefaultAsync(
                     p => p.UserId == transaction.UserId &&
                          p.Type == PaymentMethodType.VnPay &&
-                         p.VnPayToken == callback.VnPayToken &&
-                         p.IsActive,
+                         p.MaskedCardNumber == callback.MaskedCardNumber &&
+                         p.BankCode == callback.BankCode,
                     ct);
 
             if (existing is not null)
             {
-                // Update nếu card info thay đổi
+                // Refresh token snapshot (new vnp_token from this link).
                 existing.UpdateVnPayToken(
                     callback.VnPayToken,
                     callback.MaskedCardNumber,
                     callback.CardType,
                     callback.BankCode);
+
+                // Re-link of a previously deactivated card: reactivate silently.
+                // The user just completed VNPay auth — a fresh add intent equals
+                // a reactivate when the physical card is already known.
+                if (!existing.IsActive)
+                {
+                    var reactivateResult = existing.Reactivate(now);
+                    if (reactivateResult.IsFailure)
+                    {
+                        _logger.LogWarning(
+                            "VNPay re-link: failed to reactivate existing PaymentMethodId={Id}: {Error}",
+                            existing.Id.Value, reactivateResult.Error.Message);
+                    }
+                }
 
                 transaction.AssociatePaymentMethod(existing.Id);
             }

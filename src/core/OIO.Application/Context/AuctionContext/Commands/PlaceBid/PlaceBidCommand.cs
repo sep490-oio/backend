@@ -56,6 +56,7 @@ internal sealed class PlaceBidCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly IRuntimeSettings _runtimeSettings;
     private readonly IWinnerOrderProvisioner _winnerOrderProvisioner;
+    private readonly IEnsureTermsAcceptedService _ensureTermsAccepted;
     private readonly ILogger<PlaceBidCommandHandler> _logger;
 
     public PlaceBidCommandHandler(
@@ -65,6 +66,7 @@ internal sealed class PlaceBidCommandHandler
         IUnitOfWork unitOfWork,
         IRuntimeSettings runtimeSettings,
         IWinnerOrderProvisioner winnerOrderProvisioner,
+        IEnsureTermsAcceptedService ensureTermsAccepted,
         ILogger<PlaceBidCommandHandler> logger)
     {
         _grainFactory = grainFactory;
@@ -73,6 +75,7 @@ internal sealed class PlaceBidCommandHandler
         _unitOfWork = unitOfWork;
         _runtimeSettings = runtimeSettings;
         _winnerOrderProvisioner = winnerOrderProvisioner;
+        _ensureTermsAccepted = ensureTermsAccepted;
         _logger = logger;
     }
 
@@ -80,6 +83,13 @@ internal sealed class PlaceBidCommandHandler
         PlaceBidCommand request,
         CancellationToken cancellationToken)
     {
+        // Forced re-acceptance gate (plan §3.6.4 / B7). First check — ahead of every other
+        // validation so admins can force users off-ramp the moment a new version goes live.
+        var gateResult = await _ensureTermsAccepted.EnsureAsync(
+            _currentUser.UserId, ["bidder"], cancellationToken);
+        if (gateResult.IsFailure)
+            return gateResult.Error;
+
         var grain = _grainFactory.GetGrain<IAuctionGrain>(request.AuctionId);
 
         var (_, isFailure, amount, error) = Money.Create(request.Amount, request.Currency);
@@ -137,6 +147,9 @@ internal sealed class PlaceBidCommandHandler
         // and the raw request amount to detect the cap path so the FE can show a
         // dedicated modal and jump straight to checkout.
         var snapshotBuyNowPrice = snapshotBeforeFailure ? (decimal?)null : snapshotBefore.BuyNowPrice;
+        // Buy-now cap short-circuits only while the grain is in the transient winner-resolved
+        // state (Sold). Completed is a later, post-delivery terminal state and must NOT fire
+        // the buy-now modal path — use IsPostWinnerTransient semantics.
         var triggeredBuyNowCap = snapshotBuyNowPrice.HasValue
                                  && request.Amount >= snapshotBuyNowPrice.Value
                                  && !snapshotAfterFailure
@@ -157,8 +170,11 @@ internal sealed class PlaceBidCommandHandler
                 queryBuilder: q => q.AsNoTracking().Include(a => a.Item),
                 cancellationToken: cancellationToken);
 
+            // Eager order provisioning fires only in the transient Sold state. By the time the
+            // auction reaches Completed, the winner order has already been provisioned via the
+            // AuctionSoldEvent handler path, so IsPostWinnerTransient is the correct gate here.
             if (auctionEntity is not null
-                && auctionEntity.Status == AuctionStatus.Sold
+                && auctionEntity.Status.IsPostWinnerTransient
                 && auctionEntity.WinnerId is not null
                 && auctionEntity.WinnerId == _currentUser.UserId
                 && auctionEntity.GetActiveBuyNowReservation(DateTime.UtcNow) is null)

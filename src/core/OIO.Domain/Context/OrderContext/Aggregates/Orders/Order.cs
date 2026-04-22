@@ -318,6 +318,122 @@ public sealed class Order : AggregateRoot<OrderId>, IAuditableEntity
         return orderReturn;
     }
 
+    /// <summary>
+    /// Opens a pre-approved OrderReturn in response to dispute resolution.
+    /// Unlike <see cref="RequestReturn"/> (which requires Status == Delivered), this
+    /// method is callable from Disputed/Completed/etc. — dispute resolution may fire
+    /// from any post-delivery status. The Dispute state-machine is the upstream guard.
+    /// </summary>
+    public Result<OrderReturn, Error> OpenReturnViaDispute(
+        string reasonCode,
+        string? description,
+        ShippingFeePayer feePayer,
+        DeferredRefundIntent deferredRefundIntent,
+        decimal? deferredRefundAmount,
+        DateTime buyerDecisionDueAt,
+        DateTime nowUtc,
+        string? qrToken = null)
+    {
+        // Refund-intent consistency: Partial requires a positive amount; Full / None must NOT carry an amount.
+        if (deferredRefundIntent == DeferredRefundIntent.Partial)
+        {
+            if (deferredRefundAmount is null or <= 0)
+                return Error.Validation(
+                    "deferredRefundAmount",
+                    "Order.InvalidDeferredRefund",
+                    "Partial deferred-refund intent requires a positive amount.");
+        }
+        else
+        {
+            if (deferredRefundAmount is not null)
+                return Error.Validation(
+                    "deferredRefundAmount",
+                    "Order.InvalidDeferredRefund",
+                    $"Deferred-refund amount is only valid for Partial intent, not '{deferredRefundIntent.Id}'.");
+        }
+
+        // Idempotency guard (mirrors line 311): if Return exists and is non-terminal, reject.
+        if (Return is not null
+            && Return.Status != OrderReturnStatus.Cancelled
+            && Return.Status != OrderReturnStatus.Resolved
+            && Return.Status != OrderReturnStatus.Rejected)
+        {
+            return Errors.OrderErrors.Order.ReturnAlreadyExists(Id);
+        }
+
+        var orderReturn = OrderReturn.Create(
+            Id, BuyerId, reasonCode, description, buyerDecisionDueAt, nowUtc);
+
+        var approveResult = orderReturn.Approve(
+            reason: "Pre-approved by dispute resolution",
+            nowUtc: nowUtc,
+            qrToken: qrToken);
+        if (approveResult.IsFailure)
+            return approveResult.Error;
+
+        orderReturn.ShippingFeePayer     = feePayer;              // internal set — same namespace access
+        orderReturn.DeferredRefundIntent = deferredRefundIntent;  // internal set — same namespace access
+        orderReturn.DeferredRefundAmount = deferredRefundAmount;
+
+        Return     = orderReturn;
+        ModifiedAt = nowUtc;
+
+        RaiseDomainEvent(new OrderReturnOpenedByDisputeEvent(
+            OrderReturnId: orderReturn.Id.Value,
+            OrderId: Id.Value,
+            BuyerId: BuyerId.Value,
+            SellerId: SellerId.Value,
+            FeePayer: feePayer.Id,
+            BuyerDecisionDueAt: buyerDecisionDueAt,
+            OccurredAt: nowUtc));
+
+        return orderReturn;
+    }
+
+    /// <summary>
+    /// Raises <see cref="OrderReturnExpiredEvent"/> for an already-cancelled
+    /// <see cref="OrderReturn"/>. Called by <c>OrderReturnDeadlineWatcherJob</c>
+    /// from the owning <see cref="Order"/> aggregate so the event ends up in the
+    /// transactional outbox with the rest of the order's state.
+    /// </summary>
+    public void RaiseOrderReturnExpired(OrderReturn orderReturn, DateTime nowUtc)
+    {
+        RaiseDomainEvent(new OrderReturnExpiredEvent(
+            OrderReturnId: orderReturn.Id.Value,
+            OrderId:       Id.Value,
+            BuyerId:       BuyerId.Value,
+            SellerId:      SellerId.Value,
+            Reason:        orderReturn.DecisionReason ?? "Deadline expired",
+            OccurredAt:    nowUtc));
+
+        ModifiedAt = nowUtc;
+    }
+
+    /// <summary>
+    /// Raises <see cref="DeferredRefundFailedEvent"/> for the owning <see cref="Return"/>.
+    /// Called by <c>ConfirmOrderReturnReceivedCommandHandler</c>'s D1 compensating
+    /// path after <c>RefundBuyerAsync</c> fails post-<see cref="OrderReturn.Resolve"/>.
+    /// Must be invoked via the aggregate root so the event lands in the same outbox
+    /// write as the admin retry ticket.
+    /// </summary>
+    public void RaiseDeferredRefundFailed(
+        OrderReturn orderReturn,
+        string intentJson,
+        string errorMessage,
+        DateTime nowUtc)
+    {
+        RaiseDomainEvent(new DeferredRefundFailedEvent(
+            OrderId:       Id.Value,
+            OrderReturnId: orderReturn.Id.Value,
+            BuyerId:       BuyerId.Value,
+            SellerId:      SellerId.Value,
+            IntentJson:    intentJson,
+            ErrorMessage:  errorMessage,
+            OccurredAt:    nowUtc));
+
+        ModifiedAt = nowUtc;
+    }
+
     public UnitResult<Error> MarkAsPaymentFailed(string reason, DateTime nowUtc)
     {
         if (Status != OrderStatus.PendingPayment)

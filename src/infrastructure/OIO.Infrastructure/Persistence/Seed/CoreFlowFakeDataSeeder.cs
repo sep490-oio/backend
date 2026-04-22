@@ -216,7 +216,7 @@ public static class CoreFlowFakeDataSeeder
         ILogger logger)
     {
         var existing = await dbContext.Set<TermsDocument>()
-            .FirstOrDefaultAsync(x => x.TermType == termType && x.IsActive);
+            .FirstOrDefaultAsync(x => x.TermType == termType && x.Status == TermsDocumentStatus.Active);
 
         if (existing is not null)
             return existing;
@@ -235,8 +235,8 @@ public static class CoreFlowFakeDataSeeder
 
         dbContext.Insert(upload);
 
-        var terms = TermsDocument.Create(termType, 1, upload, nowUtc).Value;
-        terms.Activate(nowUtc);
+        var terms = TermsDocument.Create(termType, 1, upload, owner.Id, nowUtc).Value;
+        terms.Activate(nowUtc, owner.Id);
 
         dbContext.Insert(terms);
 

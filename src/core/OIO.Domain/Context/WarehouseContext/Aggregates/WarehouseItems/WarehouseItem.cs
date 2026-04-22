@@ -50,10 +50,73 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
     /// <summary>Storage location — null until item is placed on a shelf.</summary>
     public WarehouseStorageLocationId? StorageLocationId { get; private set; }
 
+    /// <summary>
+    /// Bug #8 fix: link to the auction this physical item is currently committed to.
+    /// Null until LinkToAuction is called (typically by an event handler when the
+    /// auction is created). Prevents the same physical item from being listed in
+    /// multiple concurrent auctions — see LinkToAuction().
+    /// </summary>
+    public Guid? AuctionId { get; private set; }
+
+    /// <summary>
+    /// Bug #8 fix: link to the order produced when AuctionSoldEvent fires.
+    /// Null until LinkToOrder is called.
+    /// </summary>
+    public Guid? OrderId { get; private set; }
+
     public WarehouseItemStatus Status { get; private set; }
     public DateTime? ReceivedAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? ModifiedAt { get; private set; }
+
+    /// <summary>
+    /// Bug #8 fix: bind this physical item to an auction. Fails if already bound to
+    /// a different auction (prevents same item being listed in two auctions
+    /// simultaneously — collision was previously only detected at dispatch time).
+    /// Idempotent for the same auctionId.
+    /// </summary>
+    public UnitResult<e> LinkToAuction(Guid auctionId, DateTime now)
+    {
+        if (AuctionId.HasValue && AuctionId.Value != auctionId)
+            return WarehouseErrors.WarehouseItem.AlreadyBoundToAuction(Id, AuctionId.Value);
+
+        if (AuctionId == auctionId)
+            return UnitResult.Success<e>();
+
+        AuctionId = auctionId;
+        ModifiedAt = now;
+        return UnitResult.Success<e>();
+    }
+
+    /// <summary>
+    /// Bug #8 fix: clear the auction binding (called when auction is Cancelled/Failed/
+    /// Terminated and the physical item should become available again).
+    /// </summary>
+    public UnitResult<e> UnlinkAuction(DateTime now)
+    {
+        if (AuctionId is null)
+            return UnitResult.Success<e>();
+
+        AuctionId = null;
+        ModifiedAt = now;
+        return UnitResult.Success<e>();
+    }
+
+    /// <summary>
+    /// Bug #8 fix: bind this item to an order on auction-sold. Idempotent for same orderId.
+    /// </summary>
+    public UnitResult<e> LinkToOrder(Guid orderId, DateTime now)
+    {
+        if (OrderId.HasValue && OrderId.Value != orderId)
+            return WarehouseErrors.WarehouseItem.AlreadyBoundToOrder(Id, OrderId.Value);
+
+        if (OrderId == orderId)
+            return UnitResult.Success<e>();
+
+        OrderId = orderId;
+        ModifiedAt = now;
+        return UnitResult.Success<e>();
+    }
 
     public static WarehouseItem Create(
         Guid itemId,
@@ -231,6 +294,39 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
             locationLabel,
             now));
 
+        return UnitResult.Success<e>();
+    }
+
+    /// <summary>
+    /// Transition the item into the warehouse→seller return flow. Called when a
+    /// warehouse inspector rejects the item and the platform routes it back to
+    /// the seller. Allowed from {Received, Inspected, Stored}.
+    /// </summary>
+    public UnitResult<e> StartReturnToSeller(DateTime now)
+    {
+        if (Status != WarehouseItemStatus.Received
+            && Status != WarehouseItemStatus.Inspected
+            && Status != WarehouseItemStatus.Stored)
+            return WarehouseErrors.WarehouseItem.CannotStartReturnToSeller;
+
+        Status     = WarehouseItemStatus.AwaitingSellerReturn;
+        ModifiedAt = now;
+        return UnitResult.Success<e>();
+    }
+
+    /// <summary>
+    /// Transition an in-flight warehouse→seller return to the "awaiting disposition"
+    /// bucket after a delivery failure. The only legal predecessor is
+    /// <see cref="WarehouseItemStatus.AwaitingSellerReturn"/> — the shipment aggregate
+    /// is already flipped to <c>ReturnedToWarehouse</c> by the staff command.
+    /// </summary>
+    public UnitResult<e> MarkAwaitingDisposition(DateTime now)
+    {
+        if (Status != WarehouseItemStatus.AwaitingSellerReturn)
+            return WarehouseErrors.WarehouseItem.CannotMarkAwaitingDisposition;
+
+        Status     = WarehouseItemStatus.AwaitingDisposition;
+        ModifiedAt = now;
         return UnitResult.Success<e>();
     }
 

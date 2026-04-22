@@ -118,7 +118,29 @@ public sealed record AuctionSoldEvent(
     int TotalBids,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
-    
+
+public sealed record AuctionCompletedEvent(
+    string AuctionId,
+    string WinnerId,
+    string SellerId,
+    decimal FinalPrice,
+    string Currency,
+    DateTime DeliveredAt,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
+/// <summary>
+/// Bug #9 fix: raised when win is transferred to runner-up after defaulted winner.
+/// Carries both old and new winner IDs so handlers can cancel the old winner's pending order.
+/// Fires BEFORE AuctionSoldEvent so the old order is cancelled before the new one is created.
+/// </summary>
+public sealed record AuctionWinnerTransferredEvent(
+    string AuctionId,
+    string PreviousWinnerId,
+    string NewWinnerId,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
 public sealed record AuctionFailedEvent(
     string AuctionId,
     string SellerId,

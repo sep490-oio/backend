@@ -21,4 +21,10 @@
   <Folder Name="/src/presentation/">
     <Project Path="src/presentation/OIO.Api/OIO.Api.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/OIO.Domain.Tests/OIO.Domain.Tests.csproj" />
+    <Project Path="tests/OIO.Infrastructure.Tests/OIO.Infrastructure.Tests.csproj" />
+    <Project Path="tests/OIO.Application.Tests/OIO.Application.Tests.csproj" />
+    <Project Path="tests/OIO.Architecture.Tests/OIO.Architecture.Tests.csproj" />
+  </Folder>
 </Solution>

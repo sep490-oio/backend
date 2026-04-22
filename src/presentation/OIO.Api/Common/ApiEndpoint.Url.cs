@@ -49,7 +49,10 @@ public static partial class ApiEndpoint
             public const string GetUser = $"{Base}/users/{{userId:guid}}";
             public const string GetAllTerms = $"{Base}/terms";
             public const string CreateTerms = $"{Base}/terms";
+            public const string UpdateTerms = $"{Base}/terms/{{id:guid}}";
             public const string ActivateTerms = $"{Base}/terms/{{id:guid}}/activate";
+            public const string ArchiveTerms = $"{Base}/terms/{{id:guid}}/archive";
+            public const string DeleteTerms = $"{Base}/terms/{{id:guid}}";
 
             
             public const string RevokeRole = $"{Base}/users/{{userId:guid}}/roles/{{role}}";
@@ -115,6 +118,9 @@ public static partial class ApiEndpoint
 
             // Repair utilities (one-off)
             public const string RepairStuckInAuctionItems = $"{Base}/repair/stuck-in-auction-items";
+
+            // Warehouse inspection-reject recovery (Phase D).
+            public const string RetryPendingInspectionReject = $"{Base}/warehouse-returns/retry/{{inspectionId:guid}}";
         }
 
         public static class Auth
@@ -142,6 +148,7 @@ public static partial class ApiEndpoint
             public const string GetById = $"{Base}/{{itemId:guid}}";
             public const string Submit = $"{Base}/{{itemId:guid}}/submit";
             public const string Activate = $"{Base}/{{itemId:guid}}/activate";
+            public const string AdminRemove = $"{Base}/{{itemId:guid}}/admin-remove";
             public const string GetBySeller = $"{Base}/my";
             public const string Shipping = $"{Base}/{{itemId:guid}}/shipping";
             public const string CreateAuction = $"{Base}/{{itemId:guid}}/auctions";
@@ -173,6 +180,7 @@ public static partial class ApiEndpoint
             public const string Update = $"{Base}/{{auctionId:guid}}";
             public const string GetBids = $"{Base}/{{auctionId:guid}}/bids";
             public const string Cancel = $"{Base}/{{auctionId:guid}}/cancel";
+            public const string AdminReject = $"{Base}/{{auctionId:guid}}/admin-reject";
             public const string Close = $"{Base}/{{auctionId:guid}}/close";
             public const string Submit = $"{Base}/{{auctionId:guid}}/submit";
             public const string SetTiming = $"{Base}/{{auctionId:guid}}/timing";
@@ -277,6 +285,18 @@ public static partial class ApiEndpoint
 
             // Buyer-facing outbound shipment QR deep-link (external-carrier flow)
             public const string BuyerOutboundShipmentByToken = "api/buyer/outbound-shipments/by-token";
+
+            // Warehouse → Seller returns (Phase D).
+            public const string WarehouseStaffReturns                    = $"{Base}-staff/returns";
+            public const string WarehouseStaffReturnMarkShipped          = $"{Base}-staff/returns/{{id:guid}}/ship";
+            public const string WarehouseStaffReturnDeliveryFailure      = $"{Base}-staff/returns/{{id:guid}}/delivery-failure";
+            public const string SellerWarehouseReturns                   = "api/seller/warehouse-returns";
+            public const string SellerWarehouseReturnConfirmReceipt      = "api/seller/warehouse-returns/{id:guid}/confirm-receipt";
+
+            // Warehouse → Seller returns — evidence + QR scan (Phase C).
+            public const string WarehouseStaffReturnEvidence             = $"{Base}-staff/returns/{{id:guid}}/evidence";
+            public const string SellerWarehouseReturnEvidence            = "api/seller/warehouse-returns/{id:guid}/evidence";
+            public const string SellerWarehouseReturnScan                = "api/seller/warehouse-returns/{id:guid}/scan";
         }
 
         public static class VnPay
@@ -306,6 +326,8 @@ public static partial class ApiEndpoint
             public const string AddMethod = $"{Base}/methods";
             public const string GetMethods = $"{Base}/methods";
             public const string DeleteMethod = $"{Base}/methods/{{id:guid}}";
+            public const string HardDeleteMethod = $"{Base}/methods/{{id:guid}}/hard";
+            public const string ReactivateMethod = $"{Base}/methods/{{id:guid}}/reactivate";
             public const string CheckoutOrder = $"{Base}/checkout";
             public const string SetDefaultMethod = $"{Base}/methods/{{id:guid}}/default";
             public const string LinkCard = $"{Base}/methods/link-card";
@@ -338,6 +360,13 @@ public static partial class ApiEndpoint
             public const string ApproveReturn = $"{Base}/{{orderId:guid}}/returns/{{returnId:guid}}/approve";
             public const string RejectReturn = $"{Base}/{{orderId:guid}}/returns/{{returnId:guid}}/reject";
             public const string ConfirmReturnReceived = $"{Base}/{{orderId:guid}}/returns/{{returnId:guid}}/confirm-received";
+
+            // Return flows — evidence + QR scan (Phase C).
+            public const string AddBuyerReturnEvidence = $"api/me/orders/{{orderId:guid}}/returns/{{returnId:guid}}/evidence";
+            public const string AddSellerReturnEvidence = $"api/seller/orders/{{orderId:guid}}/returns/{{returnId:guid}}/evidence";
+            public const string ScanReturn = $"api/seller/orders/{{orderId:guid}}/returns/{{returnId:guid}}/scan";
+            public const string RetryDeferredRefund = $"api/admin/orders/{{orderId:guid}}/returns/{{returnId:guid}}/retry-refund";
+
             public const string ConfirmReceipt = $"{Base}/{{orderId:guid}}/confirm-receipt";
             public const string UpdateShipping = $"{Base}/{{orderId:guid}}/shipping";
             public const string Confirm = $"{Base}/{{orderId:guid}}/confirm";

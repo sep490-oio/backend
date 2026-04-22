@@ -14,8 +14,8 @@ using OIO.Infrastructure.Persistence;
 namespace OIO.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260420060552_config_outbox_consumer")]
-    partial class config_outbox_consumer
+    [Migration("20260422070015_add_warehouse-to-seller-shipment")]
+    partial class add_warehousetosellershipment
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -3703,6 +3703,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
+                    b.Property<DateTime?>("LastReminderSentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_reminder_sent_at");
+
                     b.Property<Guid>("OrderId")
                         .HasColumnType("uuid")
                         .HasColumnName("order_id");
@@ -3744,6 +3748,11 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("shipped_at");
 
+                    b.Property<string>("ShippingFeePayer")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("shipping_fee_payer");
+
                     b.Property<string>("TrackingNumber")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
@@ -3768,7 +3777,8 @@ namespace OIO.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("OrderId")
                         .IsUnique()
-                        .HasDatabaseName("uq_order_returns_order");
+                        .HasDatabaseName("uq_order_returns_order")
+                        .HasFilter("status NOT IN ('resolved','cancelled','rejected')");
 
                     b.HasIndex("TrackingNumber")
                         .HasDatabaseName("idx_order_returns_tracking_number");
@@ -4321,7 +4331,14 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("idx_payment_methods_user_token")
                         .HasFilter("vnpay_token IS NOT NULL");
 
+                    b.HasIndex("UserId", "BankCode", "MaskedCardNumber")
+                        .IsUnique()
+                        .HasDatabaseName("uq_payment_methods_user_vnpay_active")
+                        .HasFilter("is_active = true AND type = 'vnpay' AND masked_card_number IS NOT NULL");
+
                     b.ToTable("payment_methods", (string)null);
+
+                    b.HasAnnotation("CustomIndex:CompositeIndexes", "[{\"paths\":[\"UserId\",\"Type.Id\",\"Provider\",\"Card.LastFour\",\"Card.ExpiryMonth\",\"Card.ExpiryYear\"],\"unique\":true,\"filter\":\"is_active = true AND type IN (\\u0027credit_card\\u0027,\\u0027debit_card\\u0027)\",\"name\":\"uq_payment_methods_user_card_active\"},{\"paths\":[\"UserId\",\"Type.Id\",\"Provider\",\"Card.HolderName\"],\"unique\":true,\"filter\":\"is_active = true AND type = \\u0027e_wallet\\u0027\",\"name\":\"uq_payment_methods_user_e-wallet_active\"},{\"paths\":[\"UserId\",\"Type.Id\",\"Provider\",\"MaskedCardNumber\",\"Card.LastFour\"],\"unique\":true,\"filter\":\"is_active = true AND type = \\u0027bank_account\\u0027\",\"name\":\"uq_payment_methods_user_bank_active\"}]");
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.PaymentContext.Aggregates.Transactions.Transaction", b =>
@@ -5806,17 +5823,31 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid?>("ActivatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("activated_by");
+
+                    b.Property<DateTime?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("archived_at");
+
+                    b.Property<Guid?>("ArchivedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("archived_by");
+
+                    b.Property<string>("ArchivedReason")
+                        .HasColumnType("text")
+                        .HasColumnName("archived_reason");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_active");
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
 
                     b.Property<DateTime?>("PublishedAt")
                         .HasColumnType("timestamp with time zone")
@@ -5865,6 +5896,20 @@ namespace OIO.Infrastructure.Persistence.Migrations
                             b1.Property<int?>("Width")
                                 .HasColumnType("integer")
                                 .HasColumnName("width");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Status", "OIO.Domain.Context.UserContext.Aggregates.Users.TermsDocument.Status#TermsDocumentStatus", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<string>("Id")
+                                .IsRequired()
+                                .HasMaxLength(30)
+                                .HasColumnType("character varying(30)")
+                                .HasColumnName("status")
+                                .HasAnnotation("CustomIndex:IsIndexed", true)
+                                .HasAnnotation("CustomIndex:IsUnique", false)
+                                .HasAnnotation("CustomIndex:Name", "idx_terms_documents_status");
                         });
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "StorageRef", "OIO.Domain.Context.UserContext.Aggregates.Users.TermsDocument.StorageRef#StorageRef", b1 =>
@@ -6242,7 +6287,7 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("jsonb")
                         .HasColumnName("channels")
-                        .HasDefaultValueSql("'{\"push\": true, \"email\": true, \"sms\": false}'::jsonb");
+                        .HasDefaultValueSql("'[\"SignalR\"]'::jsonb");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -7607,6 +7652,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid?>("AuctionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("auction_id");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -7625,6 +7674,10 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("modified_at");
 
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_id");
+
                     b.Property<DateTime?>("ReceivedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("received_at");
@@ -7642,12 +7695,22 @@ namespace OIO.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_warehouse_items");
 
+                    b.HasIndex("AuctionId")
+                        .IsUnique()
+                        .HasDatabaseName("idx_unique_warehouse_items_auction_id")
+                        .HasFilter("auction_id IS NOT NULL");
+
                     b.HasIndex("InboundShipmentId")
                         .IsUnique()
                         .HasDatabaseName("idx_unique_warehouse_items_inbound_shipment_id");
 
                     b.HasIndex("ItemId")
                         .HasDatabaseName("idx_warehouse_items_item_id");
+
+                    b.HasIndex("OrderId")
+                        .IsUnique()
+                        .HasDatabaseName("idx_unique_warehouse_items_order_id")
+                        .HasFilter("order_id IS NOT NULL");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("idx_warehouse_items_status");
@@ -7808,6 +7871,93 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("idx_unique_warehouse_storage_locations_label");
 
                     b.ToTable("warehouse_storage_locations", (string)null);
+                });
+
+            modelBuilder.Entity("OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseToSellerShipments.WarehouseToSellerShipment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("delivered_at");
+
+                    b.Property<string>("DeliveryFailureReason")
+                        .HasColumnType("text")
+                        .HasColumnName("delivery_failure_reason");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
+
+                    b.Property<string>("ProviderCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("provider_code");
+
+                    b.Property<string>("RejectionReason")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("rejection_reason");
+
+                    b.Property<string>("SellerAddressSnapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("seller_address_snapshot");
+
+                    b.Property<DateTime?>("SellerConfirmedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("seller_confirmed_at");
+
+                    b.Property<Guid>("SellerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("seller_id");
+
+                    b.Property<DateTime?>("ShippedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("shipped_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TrackingNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("tracking_number");
+
+                    b.Property<Guid>("WarehouseInspectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("warehouse_inspection_id");
+
+                    b.Property<Guid>("WarehouseItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("warehouse_item_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_warehouse_to_seller_shipments");
+
+                    b.HasIndex("WarehouseInspectionId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_warehouse_to_seller_shipments_inspection_active")
+                        .HasFilter("status NOT IN ('closed','returned_to_warehouse')");
+
+                    b.HasIndex("WarehouseItemId")
+                        .HasDatabaseName("idx_warehouse_to_seller_shipments_warehouse_item");
+
+                    b.HasIndex("SellerId", "Status")
+                        .HasDatabaseName("idx_warehouse_to_seller_shipments_seller_status");
+
+                    b.ToTable("warehouse_to_seller_shipments", (string)null);
                 });
 
             modelBuilder.Entity("OIO.Infrastructure.Outbox.OutboxMessage", b =>

@@ -26,6 +26,7 @@ internal sealed class GetPublicSellerItemsQueryHandler(IDbContext dbContext)
         AuctionStatus.Active.Id,
         AuctionStatus.Ended.Id,
         AuctionStatus.Sold.Id,
+        AuctionStatus.Completed.Id,
         AuctionStatus.PaymentDefaulted.Id
     ];
 

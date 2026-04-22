@@ -45,7 +45,8 @@ internal sealed class GetCompletedAuctionByIdQueryHandler(
         if (auction is null)
             return Error.NotFound("Auction.NotFound", "Auction was not found.");
 
-        if (auction.Status != AuctionStatus.Sold)
+        // IsSuccessfullyClosed — pure C# post-read check, use helper directly.
+        if (!auction.Status.IsSuccessfullyClosed)
             return Error.Validation("auctionId", "Auction.NotCompleted", "Auction has not been completed.");
 
         var order = await dbContext.Set<Order>()

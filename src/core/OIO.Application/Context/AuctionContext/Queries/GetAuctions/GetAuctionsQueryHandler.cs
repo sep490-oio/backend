@@ -44,17 +44,9 @@ internal sealed class GetAuctionsQueryHandler
 
         // ===== FILTERS =====
 
-        // Status filter
-        if (!string.IsNullOrWhiteSpace(parameters.Status) && AuctionStatus.Is(parameters.Status))
-        {
-            var status = AuctionStatus.FromId(parameters.Status).Value;
-            query = query.Where(x => x.Status == status);
-        }
-        else
-        {
-            // Default: show only active auctions for public listing
-            query = query.Where(x => x.Status == AuctionStatus.Active || x.Status == AuctionStatus.Scheduled);
-        }
+        // Status filter — StatusGroup-first precedence. Logic lives in
+        // GetAuctionsStatusFilter so the precedence rules stay unit-testable without EF.
+        query = query.Where(GetAuctionsStatusFilter.Build(parameters.StatusGroup, parameters.Status));
 
         // Category filter
         if (parameters.CategoryId.HasValue)

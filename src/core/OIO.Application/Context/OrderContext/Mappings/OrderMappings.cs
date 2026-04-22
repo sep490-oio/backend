@@ -282,6 +282,21 @@ internal static class OrderMappings
             RejectedAt: orderReturn.RejectedAt,
             ShippedAt: orderReturn.ShippedAt,
             SellerReceivedAt: orderReturn.SellerReceivedAt,
-            BuyerDecisionDueAt: orderReturn.BuyerDecisionDueAt);
+            BuyerDecisionDueAt: orderReturn.BuyerDecisionDueAt,
+            QrToken: orderReturn.QrToken,
+            Evidence: orderReturn.Evidence?
+                .Select(e => new OrderReturnEvidenceDto(
+                    Id:            e.Id.Value,
+                    OrderReturnId: e.OrderReturnId.Value,
+                    Category:      e.Category,
+                    MediaUpload:   new OrderReturnEvidenceMediaDto(
+                        Id:           e.MediaUploadId.Value,
+                        SecureUrl:    e.SecureUrl,
+                        FileName:     e.FileName,
+                        ResourceType: e.ResourceType),
+                    CreatedAt:     e.CreatedAt,
+                    CreatedBy:     e.CreatedBy.Value))
+                .ToList()
+                ?? new List<OrderReturnEvidenceDto>());
     }
 }

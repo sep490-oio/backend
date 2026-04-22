@@ -30,6 +30,7 @@ using OIO.Infrastructure.Authorizations;
 using OIO.Infrastructure.Clock;
 using OIO.Infrastructure.Persistence;
 using OIO.Infrastructure.Persistence.Interceptors;
+using OIO.Infrastructure.Persistence.Repositories;
 using OIO.Infrastructure.Services;
 using OIO.Infrastructure.Settings;
 using OIO.Domain.AppDefinitions;
@@ -38,6 +39,7 @@ using OIO.Infrastructure.Mail.RazorEmails.Rendering;
 using OIO.Infrastructure.Media;
 using OIO.Infrastructure.Outbox;
 using OIO.Infrastructure.Scheduling;
+using OIO.Infrastructure.Scheduling.HostedServices;
 using OIO.Infrastructure.Scheduling.Jobs;
 using OIO.Infrastructure.Scheduling.JobSetup;
 using OIO.Infrastructure.Security;
@@ -169,6 +171,9 @@ public static class DependencyInjection
             services.AddScoped<IUnitOfWork>(serviceProvider =>
                 serviceProvider.GetRequiredService<ApplicationDbContext>());
 
+            // Repositories
+            services.AddScoped<IAuctionLockRepository, AuctionLockRepository>();
+
             return services;
         }
 
@@ -285,6 +290,7 @@ public static class DependencyInjection
             services.AddScoped<ISealedBidEncryptionService, SealedBidEncryptionService>();
             services.AddScoped<OIO.Application.Context.OrderContext.Services.ISellerDirectShipmentTokenService, SellerDirectShipmentTokenService>();
             services.AddScoped<OIO.Application.Context.WarehouseContext.Services.IOutboundShipmentQrTokenService, OutboundShipmentQrTokenService>();
+            services.AddScoped<OIO.Application.Abstractions.Security.IReturnShipmentQrTokenService, ReturnShipmentQrTokenService>();
 
             return services;
         }
@@ -342,6 +348,7 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
             services.AddHostedService<ExpireBuyNowReservationsJob>();
             services.AddHostedService<ScanActiveAuctionsForCollusionJob>();
             services.AddHostedService<BackfillScheduledAuctionStartsJob>();
+            services.AddHostedService<TermsNotificationOutboxProcessor>();
 
             return services;
         }
@@ -383,6 +390,13 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
             services.ConfigureOptions<AuctionAutoCompleteJobSetup>();
             services.ConfigureOptions<RecalculateSellerTrustScoresJobSetup>();
             services.ConfigureOptions<SyncGhnAddressJobSetup>();
+
+            // Return-flow job setups (Phase E).
+            services.ConfigureOptions<OrderReturnDeadlineWatcherJobSetup>();
+            services.ConfigureOptions<OrderReturnReminderJobSetup>();
+            services.ConfigureOptions<WarehouseReturnAutoConfirmJobSetup>();
+            services.ConfigureOptions<OrderReturnAutoConfirmJobSetup>();
+
             services.AddScoped<SellerTrustScoreCalculator>();
 
             // Notification Delivery Job

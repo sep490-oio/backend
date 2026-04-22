@@ -34,23 +34,32 @@ internal sealed class SubmitSealedBidCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
+    private readonly IEnsureTermsAcceptedService _ensureTermsAccepted;
 
     public SubmitSealedBidCommandHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
-        IClock clock)
+        IClock clock,
+        IEnsureTermsAcceptedService ensureTermsAccepted)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
+        _ensureTermsAccepted = ensureTermsAccepted;
     }
 
     public async Task<Result<SealedBidDto, Error>> Handle(
         SubmitSealedBidCommand request,
         CancellationToken cancellationToken)
     {
+        // Forced re-acceptance gate (plan §3.6.4 / B7).
+        var gateResult = await _ensureTermsAccepted.EnsureAsync(
+            _currentUser.UserId, ["bidder"], cancellationToken);
+        if (gateResult.IsFailure)
+            return gateResult.Error;
+
         var auctionId = AuctionId.From(request.AuctionId);
         var auction = await _dbContext.GetByIdAsync<Auction, AuctionId>(
             id: auctionId,

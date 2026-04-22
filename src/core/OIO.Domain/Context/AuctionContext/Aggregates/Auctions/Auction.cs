@@ -6,6 +6,7 @@ using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Events;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
+using OIO.Domain.Context.CatalogContext.Enums;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.SeedWork.Entities;
 using OIO.Domain.SeedWork.Errors;
@@ -190,7 +191,13 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
     public UnitResult<Error> MarkRejected(string reason, DateTime nowUtc)
     {
-        if (Status != AuctionStatus.Pending)
+        // Bug #1 fix: relax guard so admin can reject an auction at any pre-bidding stage.
+        // Previous code accepted only Pending — but SubmitConfiguration bypasses Pending and
+        // jumps to Approved/Scheduled directly, making MarkRejected unreachable.
+        // Active/Ended/Sold/Terminated/etc. cannot be soft-rejected (use Terminate instead).
+        if (Status != AuctionStatus.Pending &&
+            Status != AuctionStatus.Approved &&
+            Status != AuctionStatus.Scheduled)
             return AuctionErrors.Auction.InvalidState(Status.Id, "reject");
 
         RejectionCount++;
@@ -492,6 +499,10 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         if (runnerUp is null)
             return AuctionErrors.Auction.NoRunnerUp;
 
+        // Bug #9 fix: capture the previous winner BEFORE overwriting WinnerId so we can
+        // emit AuctionWinnerTransferredEvent for the order-cancellation handler.
+        var previousWinnerId = WinnerId;
+
         CancelWinnerBidsExcept(runnerUp);
 
         var newPrice = Pricing.WithNewBid(runnerUp.Amount.Amount, Pricing.StartingAmount);
@@ -509,8 +520,28 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         BidCount = _bids.Count(b => b.Status != Enums.BidStatus.Cancelled);
         ModifiedAt = nowUtc;
 
-        // Re-mark as Sold
+        // Bug #9 fix: validate the transition through the state-machine map instead of
+        // overwriting Status directly. PaymentDefaulted→Sold and Ended→Sold are allowed;
+        // Sold→Sold is not, but the upstream guard above already excludes that case if the
+        // map is well-formed. EnsureCanTransition gives us defense-in-depth.
+        var transitionResult = EnsureCanTransition(AuctionStatus.Sold);
+        if (transitionResult.IsFailure)
+            return transitionResult.Error;
+
         Status = AuctionStatus.Sold;
+
+        // Bug #9 fix: emit transfer event BEFORE AuctionSoldEvent so the order-cancellation
+        // handler can close the previous winner's PendingPayment order before the new one
+        // is created by AuctionSoldEventHandler. Without this, two orders would coexist:
+        // the defaulted winner's stale PendingPayment + the runner-up's new PendingPayment.
+        if (previousWinnerId is not null)
+        {
+            RaiseDomainEvent(new AuctionWinnerTransferredEvent(
+                AuctionId: $"{Id}",
+                PreviousWinnerId: $"{previousWinnerId}",
+                NewWinnerId: $"{WinnerId}",
+                OccurredAt: nowUtc));
+        }
 
         RaiseDomainEvent(new AuctionSoldEvent(
             AuctionId: $"{Id}",
@@ -553,22 +584,84 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         {
             return result.Error;
         }
-        
+
         Status = AuctionStatus.Failed;
         ModifiedAt = nowUtc;
 
         return result;
     }
 
-    public UnitResult<Error> CancelAuction(string reason, DateTime nowUtc)
+    /// <summary>
+    /// Transitions a Sold auction to Completed once delivery is confirmed and no dispute is open.
+    /// Cross-aggregate orchestration (dispute-freshness check, advisory lock, idempotency) is the
+    /// caller's responsibility — see <c>AuctionCompletionOnOrderCompletedHandler</c> and
+    /// <c>AuctionAutoCompleteJob</c>. The domain still re-validates every guard for defense in depth.
+    /// </summary>
+    /// <param name="nowUtc">Wall-clock time used for <see cref="ModifiedAt"/> and event <c>OccurredAt</c>.</param>
+    /// <param name="deliveredAt">When the underlying shipment was confirmed delivered.</param>
+    /// <param name="hasOpenDispute">
+    /// Caller-supplied snapshot of dispute state read in the same unit-of-work.
+    /// If true the transition is rejected so the job can retry after the dispute resolves.
+    /// </param>
+    public UnitResult<Error> MarkCompleted(DateTime nowUtc, DateTime deliveredAt, bool hasOpenDispute)
+    {
+        if (Item.Status != ItemStatus.Sold)
+            return Error.Validation(
+                "Item.Status",
+                "Auction.MarkCompleted.ItemNotSold",
+                "Cannot complete auction when the underlying item is not in the Sold state.");
+
+        if (WinnerId is null)
+            return Error.Validation(
+                "WinnerId",
+                "Auction.MarkCompleted.NoWinner",
+                "Cannot complete auction without a resolved winner.");
+
+        if (hasOpenDispute)
+            return Error.Conflict(
+                "Auction.MarkCompleted.DisputeOpen",
+                "Cannot complete auction while a dispute is open.");
+
+        var transitionResult = EnsureCanTransition(AuctionStatus.Completed);
+        if (transitionResult.IsFailure)
+            return transitionResult.Error;
+
+        Status = AuctionStatus.Completed;
+        ModifiedAt = nowUtc;
+
+        RaiseDomainEvent(new AuctionCompletedEvent(
+            AuctionId: $"{Id}",
+            WinnerId: $"{WinnerId}",
+            SellerId: $"{Item.SellerId}",
+            FinalPrice: Pricing.CurrentAmount,
+            Currency: Pricing.Currency.Id,
+            DeliveredAt: deliveredAt,
+            OccurredAt: nowUtc));
+
+        return UnitResult.Success<Error>();
+    }
+
+    public UnitResult<Error> CancelAuction(string reason, DateTime nowUtc, bool isAdminOverride = false)
     {
         if (!Status.CanTransitionTo(AuctionStatus.Cancelled))
             return AuctionErrors.Auction.InvalidState(Status.Id, "cancel");
 
+        // SECURITY: Block sellers from yanking a live auction with active bids.
+        // Active or Winning bids represent real bidder commitment; cancelling without
+        // an explicit admin override would betray bidder trust. Admins must use
+        // the AuctionEmergency / Terminate path (with audit trail) for hot auctions.
+        if (Status == AuctionStatus.Active && !isAdminOverride)
+        {
+            var activeBidCount = _bids.Count(b =>
+                b.Status == BidStatus.Active || b.Status == BidStatus.Winning);
+            if (activeBidCount > 0)
+                return AuctionErrors.Auction.CancelBlockedActiveBids(Id, activeBidCount);
+        }
+
         Status = AuctionStatus.Cancelled;
         ActualEndTime = nowUtc;
         ModifiedAt = nowUtc;
-        
+
         foreach (var bid in _bids.Where(b =>
                      b.Status == BidStatus.Active || b.Status == BidStatus.Winning))
         {
@@ -576,7 +669,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         }
 
         TerminalizeAllAutoBids(nowUtc);
-        
+
         RaiseDomainEvent(new AuctionCancelledEvent(
             Id.Value.ToString(),
             reason,
@@ -2012,6 +2105,19 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
         Status = AuctionStatus.PaymentDefaulted;
         ModifiedAt = nowUtc;
+
+        // Auto-forfeit the defaulting winner's held deposit. Idempotent: if the deposit is no
+        // longer Held (e.g. already Forfeited by a previous run, or never created), skip.
+        // Without this, deposits would hang in Held forever unless an operator manually
+        // invoked ForfeitAuctionDepositCommand.
+        var winnerDeposit = _deposits.FirstOrDefault(d =>
+            d.BidderId == WinnerId && d.Status == DepositStatus.Held);
+        if (winnerDeposit is not null)
+        {
+            var forfeitResult = winnerDeposit.Forfeit(nowUtc);
+            if (forfeitResult.IsFailure)
+                return forfeitResult.Error;
+        }
 
         RaiseDomainEvent(new AuctionPaymentDefaultedEvent(
             AuctionId: $"{Id}",

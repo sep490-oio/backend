@@ -29,3 +29,6 @@ public readonly partial struct ShippingProviderConfigId : IEntityId;
 
 [ValueObject<Guid>]
 public readonly partial struct WarehouseStorageLocationId : IEntityId;
+
+[ValueObject<Guid>]
+public readonly partial struct WarehouseToSellerShipmentEvidenceId : IEntityId;

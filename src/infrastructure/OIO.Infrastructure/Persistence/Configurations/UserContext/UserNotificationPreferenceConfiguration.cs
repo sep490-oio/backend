@@ -29,7 +29,7 @@ internal sealed class UserNotificationPreferenceConfiguration : IEntityTypeConfi
         builder.Property(p => p.Channels)
             .HasColumnName("channels")
             .HasColumnType("jsonb")
-            .HasDefaultValueSql("'{\"push\": true, \"email\": true, \"sms\": false}'::jsonb")
+            .HasDefaultValueSql("'[\"SignalR\"]'::jsonb")
             .IsRequired();
 
         builder.Property(p => p.QuietHours)

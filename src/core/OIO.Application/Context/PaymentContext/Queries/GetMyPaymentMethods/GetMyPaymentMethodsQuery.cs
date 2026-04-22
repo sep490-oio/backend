@@ -9,7 +9,8 @@ using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.PaymentContext.Queries.GetMyPaymentMethods;
 
-public sealed record GetMyPaymentMethodsQuery() : IQuery<IReadOnlyList<PaymentMethodDto>>;
+public sealed record GetMyPaymentMethodsQuery(PaymentMethodStatusFilter? Status = null)
+    : IQuery<IReadOnlyList<PaymentMethodDto>>;
 
 internal sealed class GetMyPaymentMethodsQueryHandler
     : IQueryHandler<GetMyPaymentMethodsQuery, IReadOnlyList<PaymentMethodDto>>
@@ -27,9 +28,18 @@ internal sealed class GetMyPaymentMethodsQueryHandler
         GetMyPaymentMethodsQuery request,
         CancellationToken cancellationToken)
     {
-        var items = await _dbContext.Set<PaymentMethod>()
+        var q = _dbContext.Set<PaymentMethod>()
             .AsNoTracking()
-            .Where(x => x.UserId == _currentUser.UserId)
+            .Where(x => x.UserId == _currentUser.UserId);
+
+        q = request.Status switch
+        {
+            PaymentMethodStatusFilter.Disabled => q.Where(x => x.IsActive == false),
+            PaymentMethodStatusFilter.All => q,
+            _ => q.Where(x => x.IsActive == true), // default + Active
+        };
+
+        var items = await q
             .OrderByDescending(x => x.IsDefault)
             .ThenByDescending(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
