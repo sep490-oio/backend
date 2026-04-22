@@ -1,7 +1,9 @@
 using CSharpFunctionalExtensions;
+using MediatR;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
+using OIO.Application.Context.ModerationContext.Events;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.ModerationContext.Aggregates.Disputes;
 using OIO.Domain.Context.ModerationContext.ValueObjects.Ids;
@@ -28,7 +30,8 @@ internal sealed class AddAdminDisputeMessageCommandHandler(
     IDbContext dbContext,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    IClock clock)
+    IClock clock,
+    IPublisher publisher)
     : ICommandHandler<AddAdminDisputeMessageCommand>
 {
     public async Task<UnitResult<Error>> Handle(
@@ -45,18 +48,32 @@ internal sealed class AddAdminDisputeMessageCommandHandler(
             return Error.NotFound("Dispute.NotFound", $"Dispute '{disputeId}' not found.");
 
         var isInternal = string.Equals(request.Visibility, "internal", StringComparison.OrdinalIgnoreCase);
+        var nowUtc = clock.UtcNow;
 
         var msg = DisputeMessage.Create(
             disputeId,
             currentUser.UserId,
             request.Content,
-            clock.UtcNow,
+            nowUtc,
             isInternal,
             request.Visibility.ToLowerInvariant());
 
         dbContext.Insert(msg);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // Publish the same realtime event the non-admin path uses so the existing
+        // DisputeRealtimeEventHandlers broadcasts via SignalR (MessageReceived to
+        // room group for external, admin-only group for internal).
+        await publisher.Publish(
+            new DisputeMessageSentEvent(
+                disputeId,
+                msg.Id,
+                currentUser.UserId,
+                isInternal,
+                nowUtc),
+            cancellationToken);
+
         return UnitResult.Success<Error>();
     }
 }

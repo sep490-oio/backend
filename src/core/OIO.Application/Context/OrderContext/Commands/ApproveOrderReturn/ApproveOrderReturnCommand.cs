@@ -2,8 +2,10 @@ using CSharpFunctionalExtensions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
+using OIO.Application.Abstractions.Security;
 using OIO.Application.Context.NotificationContext;
 using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
 using OIO.Application.Context.OrderContext.DTOs;
@@ -34,6 +36,8 @@ internal sealed class ApproveOrderReturnCommandHandler(
     IDbContext dbContext,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
+    IClock clock,
+    IReturnShipmentQrTokenService qrTokenService,
     ISender sender,
     ILogger<ApproveOrderReturnCommandHandler> logger)
     : ICommandHandler<ApproveOrderReturnCommand, OrderReturnDto>
@@ -55,7 +59,17 @@ internal sealed class ApproveOrderReturnCommandHandler(
         if (order.Return is null || order.Return.Id != OrderReturnId.From(request.ReturnId))
             return OrderErrors.Order.ReturnNotFound(order.Id);
 
-        var result = order.Return.Approve(request.Notes, DateTime.UtcNow);
+        // Mint the signed return-scoped QR token at APPROVAL time so the buyer
+        // can print the shipping label BEFORE booking a courier. Bound to the
+        // existing OrderReturnId (buyer-initiated returns already have one).
+        var now = clock.UtcNow;
+        var qrToken = qrTokenService.Issue(
+            kind:              "order_return",
+            shipmentOrReturnId: order.Return.Id.Value,
+            issuedAt:          now,
+            expiresAt:         now.AddDays(30));
+
+        var result = order.Return.Approve(request.Notes, now, qrToken);
         if (result.IsFailure)
             return result.Error;
 

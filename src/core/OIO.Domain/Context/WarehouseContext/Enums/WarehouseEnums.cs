@@ -66,16 +66,29 @@ public sealed class OutboundShipmentStatus : EnumValueObject<OutboundShipmentSta
 
 public sealed class WarehouseItemStatus : EnumValueObject<WarehouseItemStatus>
 {
-    public static readonly WarehouseItemStatus Pending    = new("pending");
-    public static readonly WarehouseItemStatus Received   = new("received");
-    public static readonly WarehouseItemStatus Inspected  = new("inspected");
-    public static readonly WarehouseItemStatus Stored     = new("stored");
-    public static readonly WarehouseItemStatus Reserved   = new("reserved");
-    public static readonly WarehouseItemStatus Dispatched = new("dispatched");
-    public static readonly WarehouseItemStatus Lost       = new("lost");
-    public static readonly WarehouseItemStatus Damaged    = new("damaged");
+    public static readonly WarehouseItemStatus Pending               = new("pending");
+    public static readonly WarehouseItemStatus Received              = new("received");
+    public static readonly WarehouseItemStatus Inspected             = new("inspected");
+    public static readonly WarehouseItemStatus Stored                = new("stored");
+    public static readonly WarehouseItemStatus Reserved              = new("reserved");
+    public static readonly WarehouseItemStatus Dispatched            = new("dispatched");
+    public static readonly WarehouseItemStatus Lost                  = new("lost");
+    public static readonly WarehouseItemStatus Damaged               = new("damaged");
+    public static readonly WarehouseItemStatus AwaitingSellerReturn  = new("awaiting_seller_return");
+    public static readonly WarehouseItemStatus AwaitingDisposition   = new("awaiting_disposition");
 
     private WarehouseItemStatus(string id) : base(id) { }
+}
+
+public sealed class WarehouseToSellerShipmentStatus : EnumValueObject<WarehouseToSellerShipmentStatus>
+{
+    public static readonly WarehouseToSellerShipmentStatus Pending               = new("pending");
+    public static readonly WarehouseToSellerShipmentStatus InTransit             = new("in_transit");
+    public static readonly WarehouseToSellerShipmentStatus Delivered             = new("delivered");
+    public static readonly WarehouseToSellerShipmentStatus ReturnedToWarehouse   = new("returned_to_warehouse");
+    public static readonly WarehouseToSellerShipmentStatus Closed                = new("closed");
+
+    private WarehouseToSellerShipmentStatus(string id) : base(id) { }
 }
 
 public sealed class WarehouseItemCondition : EnumValueObject<WarehouseItemCondition>

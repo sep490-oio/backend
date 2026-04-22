@@ -109,6 +109,65 @@ public static class WarehouseErrors
         public static readonly Error LocationOccupied = Error.Conflict(
             code: "WarehouseItem.LocationOccupied",
             description: "The specified storage location is already occupied.");
+
+        public static readonly Error CannotStartReturnToSeller = Error.Conflict(
+            code: "WarehouseItem.CannotStartReturnToSeller",
+            description: "Item must be received, inspected, or stored before it can be returned to the seller.");
+
+        public static readonly Error CannotMarkAwaitingDisposition = Error.Conflict(
+            code: "WarehouseItem.CannotMarkAwaitingDisposition",
+            description: "Item must be in 'awaiting_seller_return' before it can be moved to 'awaiting_disposition'.");
+    }
+
+    public static class WarehouseToSellerShipment
+    {
+        public static Error NotFound(string id) => Error.NotFound(
+            code: "WarehouseToSellerShipment.NotFound",
+            description: $"Warehouse-to-seller shipment '{id}' was not found.");
+
+        public static readonly Error InvalidState = Error.Conflict(
+            code: "WarehouseToSellerShipment.InvalidState",
+            description: "Shipment is not in a state that allows this transition.");
+
+        public static readonly Error WarehouseItemIdRequired = Error.Validation(
+            "WarehouseItemId",
+            "WarehouseToSellerShipment.WarehouseItemIdRequired",
+            "WarehouseItemId is required.");
+
+        public static readonly Error WarehouseInspectionIdRequired = Error.Validation(
+            "WarehouseInspectionId",
+            "WarehouseToSellerShipment.WarehouseInspectionIdRequired",
+            "WarehouseInspectionId is required.");
+
+        public static readonly Error SellerIdRequired = Error.Validation(
+            "SellerId",
+            "WarehouseToSellerShipment.SellerIdRequired",
+            "SellerId is required.");
+
+        public static readonly Error SellerAddressRequired = Error.Validation(
+            "SellerAddressSnapshot",
+            "WarehouseToSellerShipment.SellerAddressRequired",
+            "Seller address snapshot is required.");
+
+        public static readonly Error RejectionReasonRequired = Error.Validation(
+            "RejectionReason",
+            "WarehouseToSellerShipment.RejectionReasonRequired",
+            "Rejection reason is required.");
+
+        public static readonly Error ProviderCodeRequired = Error.Validation(
+            "ProviderCode",
+            "WarehouseToSellerShipment.ProviderCodeRequired",
+            "Provider code is required when marking as shipped.");
+
+        public static readonly Error TrackingNumberRequired = Error.Validation(
+            "TrackingNumber",
+            "WarehouseToSellerShipment.TrackingNumberRequired",
+            "Tracking number is required when marking as shipped.");
+
+        public static readonly Error DeliveryFailureReasonRequired = Error.Validation(
+            "DeliveryFailureReason",
+            "WarehouseToSellerShipment.DeliveryFailureReasonRequired",
+            "Delivery failure reason is required.");
     }
 
     public static class Inspection

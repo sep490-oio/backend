@@ -118,6 +118,9 @@ public static partial class ApiEndpoint
 
             // Repair utilities (one-off)
             public const string RepairStuckInAuctionItems = $"{Base}/repair/stuck-in-auction-items";
+
+            // Warehouse inspection-reject recovery (Phase D).
+            public const string RetryPendingInspectionReject = $"{Base}/warehouse-returns/retry/{{inspectionId:guid}}";
         }
 
         public static class Auth
@@ -282,6 +285,18 @@ public static partial class ApiEndpoint
 
             // Buyer-facing outbound shipment QR deep-link (external-carrier flow)
             public const string BuyerOutboundShipmentByToken = "api/buyer/outbound-shipments/by-token";
+
+            // Warehouse → Seller returns (Phase D).
+            public const string WarehouseStaffReturns                    = $"{Base}-staff/returns";
+            public const string WarehouseStaffReturnMarkShipped          = $"{Base}-staff/returns/{{id:guid}}/ship";
+            public const string WarehouseStaffReturnDeliveryFailure      = $"{Base}-staff/returns/{{id:guid}}/delivery-failure";
+            public const string SellerWarehouseReturns                   = "api/seller/warehouse-returns";
+            public const string SellerWarehouseReturnConfirmReceipt      = "api/seller/warehouse-returns/{id:guid}/confirm-receipt";
+
+            // Warehouse → Seller returns — evidence + QR scan (Phase C).
+            public const string WarehouseStaffReturnEvidence             = $"{Base}-staff/returns/{{id:guid}}/evidence";
+            public const string SellerWarehouseReturnEvidence            = "api/seller/warehouse-returns/{id:guid}/evidence";
+            public const string SellerWarehouseReturnScan                = "api/seller/warehouse-returns/{id:guid}/scan";
         }
 
         public static class VnPay
@@ -345,6 +360,13 @@ public static partial class ApiEndpoint
             public const string ApproveReturn = $"{Base}/{{orderId:guid}}/returns/{{returnId:guid}}/approve";
             public const string RejectReturn = $"{Base}/{{orderId:guid}}/returns/{{returnId:guid}}/reject";
             public const string ConfirmReturnReceived = $"{Base}/{{orderId:guid}}/returns/{{returnId:guid}}/confirm-received";
+
+            // Return flows — evidence + QR scan (Phase C).
+            public const string AddBuyerReturnEvidence = $"api/me/orders/{{orderId:guid}}/returns/{{returnId:guid}}/evidence";
+            public const string AddSellerReturnEvidence = $"api/seller/orders/{{orderId:guid}}/returns/{{returnId:guid}}/evidence";
+            public const string ScanReturn = $"api/seller/orders/{{orderId:guid}}/returns/{{returnId:guid}}/scan";
+            public const string RetryDeferredRefund = $"api/admin/orders/{{orderId:guid}}/returns/{{returnId:guid}}/retry-refund";
+
             public const string ConfirmReceipt = $"{Base}/{{orderId:guid}}/confirm-receipt";
             public const string UpdateShipping = $"{Base}/{{orderId:guid}}/shipping";
             public const string Confirm = $"{Base}/{{orderId:guid}}/confirm";

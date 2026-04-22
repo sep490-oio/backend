@@ -34,6 +34,7 @@ internal sealed class GetOrderByIdQueryHandler(
         var order = await dbContext.Set<Order>()
             .AsNoTracking()
             .Include(x => x.Return)
+                .ThenInclude(r => r!.Evidence)
             .Include(x => x.Escrows)
             .Include(x => x.OutboundShipments)
             .FirstOrDefaultAsync(x => x.Id == OrderId.From(request.OrderId), cancellationToken);

@@ -177,6 +177,9 @@ public static partial class ApiEndpoint
             // Completed Auctions
             public const string GetCompletedAuctions = nameof(GetCompletedAuctions);
             public const string GetCompletedAuctionById = nameof(GetCompletedAuctionById);
+
+            // Warehouse inspection reject recovery (Phase D)
+            public const string RetryPendingInspectionReject = nameof(RetryPendingInspectionReject);
         }
 
         public static class Auth
@@ -318,6 +321,18 @@ public static partial class ApiEndpoint
             public const string GetSellerWarehouseItemById  = nameof(GetSellerWarehouseItemById);
 
             public const string GetBuyerOutboundShipmentByToken = nameof(GetBuyerOutboundShipmentByToken);
+
+            // Warehouse → Seller returns (Phase D)
+            public const string MarkWarehouseReturnShipped          = nameof(MarkWarehouseReturnShipped);
+            public const string ConfirmWarehouseReturnReceipt       = nameof(ConfirmWarehouseReturnReceipt);
+            public const string RecordWarehouseReturnDeliveryFailure = nameof(RecordWarehouseReturnDeliveryFailure);
+            public const string GetMyWarehouseReturns               = nameof(GetMyWarehouseReturns);
+            public const string GetPendingStaffReturns              = nameof(GetPendingStaffReturns);
+
+            // Warehouse → Seller returns — evidence + QR scan (Phase C).
+            public const string AddWarehouseStaffReturnEvidence = nameof(AddWarehouseStaffReturnEvidence);
+            public const string AddSellerWarehouseReturnEvidence = nameof(AddSellerWarehouseReturnEvidence);
+            public const string ScanWarehouseReturn = nameof(ScanWarehouseReturn);
         }
 
         public static class VnPay
@@ -371,6 +386,13 @@ public static partial class ApiEndpoint
             public const string ApproveOrderReturn = nameof(ApproveOrderReturn);
             public const string RejectOrderReturn = nameof(RejectOrderReturn);
             public const string ConfirmOrderReturnReceived = nameof(ConfirmOrderReturnReceived);
+
+            // Return flows — evidence + QR scan (Phase C).
+            public const string AddBuyerOrderReturnEvidence = nameof(AddBuyerOrderReturnEvidence);
+            public const string AddSellerOrderReturnEvidence = nameof(AddSellerOrderReturnEvidence);
+            public const string ScanOrderReturn = nameof(ScanOrderReturn);
+            public const string RetryDeferredRefund = nameof(RetryDeferredRefund);
+
             public const string ConfirmOrderReceipt = nameof(ConfirmOrderReceipt);
             public const string UpdateOrderShipping = nameof(UpdateOrderShipping);
             public const string ConfirmSellerOrder = nameof(ConfirmSellerOrder);

@@ -52,10 +52,10 @@ internal sealed class SubmitVerificationCommandHandler
         SubmitVerificationCommand request,
         CancellationToken cancellationToken)
     {
-        // Forced re-acceptance gate (plan §3.6.4 / B7): verification submission requires both
-        // platform and seller terms to be current.
+        // Forced re-acceptance gate: verification submission requires platform terms only.
+        // Seller terms are enforced at seller profile creation, not at identity verification.
         var gateResult = await _ensureTermsAccepted.EnsureAsync(
-            _currentUser.UserId, ["platform", "seller"], cancellationToken);
+            _currentUser.UserId, ["platform"], cancellationToken);
         if (gateResult.IsFailure)
             return gateResult.Error;
 

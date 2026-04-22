@@ -297,6 +297,39 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
         return UnitResult.Success<e>();
     }
 
+    /// <summary>
+    /// Transition the item into the warehouse→seller return flow. Called when a
+    /// warehouse inspector rejects the item and the platform routes it back to
+    /// the seller. Allowed from {Received, Inspected, Stored}.
+    /// </summary>
+    public UnitResult<e> StartReturnToSeller(DateTime now)
+    {
+        if (Status != WarehouseItemStatus.Received
+            && Status != WarehouseItemStatus.Inspected
+            && Status != WarehouseItemStatus.Stored)
+            return WarehouseErrors.WarehouseItem.CannotStartReturnToSeller;
+
+        Status     = WarehouseItemStatus.AwaitingSellerReturn;
+        ModifiedAt = now;
+        return UnitResult.Success<e>();
+    }
+
+    /// <summary>
+    /// Transition an in-flight warehouse→seller return to the "awaiting disposition"
+    /// bucket after a delivery failure. The only legal predecessor is
+    /// <see cref="WarehouseItemStatus.AwaitingSellerReturn"/> — the shipment aggregate
+    /// is already flipped to <c>ReturnedToWarehouse</c> by the staff command.
+    /// </summary>
+    public UnitResult<e> MarkAwaitingDisposition(DateTime now)
+    {
+        if (Status != WarehouseItemStatus.AwaitingSellerReturn)
+            return WarehouseErrors.WarehouseItem.CannotMarkAwaitingDisposition;
+
+        Status     = WarehouseItemStatus.AwaitingDisposition;
+        ModifiedAt = now;
+        return UnitResult.Success<e>();
+    }
+
     /// <summary>Adjust item status manually (e.g., Damaged, Lost).</summary>
     public UnitResult<e> AdjustStatus(WarehouseItemStatus newStatus, DateTime now)
     {

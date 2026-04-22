@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
+using OIO.Domain.Context.OrderContext.Enums;
+using OIO.Infrastructure.Persistence.Converters;
 
 namespace OIO.Infrastructure.Persistence.Configurations.OrderContext;
 
@@ -73,10 +75,51 @@ internal sealed class OrderReturnConfiguration : IEntityTypeConfiguration<OrderR
         builder.Property(r => r.BuyerDecisionDueAt)
             .HasColumnName("buyer_decision_due_at");
 
+        // Who pays the return-shipping fee (set by dispute-resolution open-return flow).
+        // Optional — mapped as a scalar column via the EnumValueObject converter, so EF
+        // can distinguish NULL (no fee-payer chosen) from an empty flattened complex value.
+        builder.Property(r => r.ShippingFeePayer)
+            .HasColumnName("shipping_fee_payer")
+            .HasConversion(
+                p => p == null ? null : p.Id,
+                id => id == null ? null : ShippingFeePayer.FromId(id).Value)
+            .HasMaxLength(20);
+
+        // Deferred-refund intent + amount — populated by Order.OpenReturnViaDispute
+        // when dispute-resolve opens a pre-approved return. Refund fires later at
+        // seller-confirm via RefundDecisionPolicy.
+        builder.Property(r => r.DeferredRefundIntent)
+            .HasColumnName("deferred_refund_intent")
+            .HasConversion(
+                p => p == null ? null : p.Id,
+                id => id == null ? null : DeferredRefundIntent.FromId(id).Value)
+            .HasMaxLength(20);
+
+        builder.Property(r => r.DeferredRefundAmount)
+            .HasColumnName("deferred_refund_amount")
+            .HasColumnType("numeric(18,2)");
+
+        // Signed return-scoped QR token, issued at MarkReturnShipped time.
+        builder.Property(r => r.QrToken)
+            .HasColumnName("qr_token")
+            .HasMaxLength(512);
+
+        builder.Property(r => r.LastReminderSentAt)
+            .HasColumnName("last_reminder_sent_at");
+
+        // Evidence — 1-to-many to OrderReturnEvidence.
+        builder.HasMany(r => r.Evidence)
+            .WithOne()
+            .HasForeignKey(ev => ev.OrderReturnId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // Indexes
+        // Partial unique: at most one ACTIVE return per order. Terminal rows remain
+        // for audit, allowing a new return after the prior one resolves/cancels/rejects.
         builder.HasIndex(r => r.OrderId)
             .IsUnique()
-            .HasDatabaseName("uq_order_returns_order");
+            .HasDatabaseName("uq_order_returns_order")
+            .HasFilter("status NOT IN ('resolved','cancelled','rejected')");
 
         builder.HasIndex(r => r.BuyerId)
             .HasDatabaseName("idx_order_returns_buyer");

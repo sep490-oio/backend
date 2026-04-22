@@ -290,6 +290,7 @@ public static class DependencyInjection
             services.AddScoped<ISealedBidEncryptionService, SealedBidEncryptionService>();
             services.AddScoped<OIO.Application.Context.OrderContext.Services.ISellerDirectShipmentTokenService, SellerDirectShipmentTokenService>();
             services.AddScoped<OIO.Application.Context.WarehouseContext.Services.IOutboundShipmentQrTokenService, OutboundShipmentQrTokenService>();
+            services.AddScoped<OIO.Application.Abstractions.Security.IReturnShipmentQrTokenService, ReturnShipmentQrTokenService>();
 
             return services;
         }
@@ -389,6 +390,13 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
             services.ConfigureOptions<AuctionAutoCompleteJobSetup>();
             services.ConfigureOptions<RecalculateSellerTrustScoresJobSetup>();
             services.ConfigureOptions<SyncGhnAddressJobSetup>();
+
+            // Return-flow job setups (Phase E).
+            services.ConfigureOptions<OrderReturnDeadlineWatcherJobSetup>();
+            services.ConfigureOptions<OrderReturnReminderJobSetup>();
+            services.ConfigureOptions<WarehouseReturnAutoConfirmJobSetup>();
+            services.ConfigureOptions<OrderReturnAutoConfirmJobSetup>();
+
             services.AddScoped<SellerTrustScoreCalculator>();
 
             // Notification Delivery Job

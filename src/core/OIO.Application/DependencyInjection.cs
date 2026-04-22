@@ -11,6 +11,7 @@ using OIO.Application.Context.NotificationContext.Services;
 using OIO.Application.Context.OrderContext.Services;
 using OIO.Application.Context.PaymentContext.Services;
 using OIO.Application.Context.UserContext.Services;
+using OIO.Application.Context.WarehouseContext.Services;
 
 namespace OIO.Application;
 
@@ -54,6 +55,10 @@ public static class DependencyInjection
         services.AddScoped<DisputeAccessService>();
         services.AddScoped<IDisputeResolutionService, DisputeResolutionService>();
         services.AddScoped<IDisputeIntakeService, DisputeIntakeService>();
+
+        // Warehouse return-to-seller shipment factory — shared by the
+        // inspection-rejected event handler and the admin retry command.
+        services.AddScoped<IWarehouseReturnShipmentFactory, WarehouseReturnShipmentFactory>();
 
         // Forced re-acceptance (plan §3.6.4 / B6).
         services.AddSingleton<ICacheInvalidator, HybridCacheInvalidator>();

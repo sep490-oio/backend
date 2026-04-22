@@ -50,6 +50,9 @@ public sealed class ItemStatus : EnumValueObject<ItemStatus>
             // Caller must ensure auction is also terminated/cancelled to avoid split-brain.
             _ when this == InAuction && target == Removed => true,
             _ when this == Sold && target == Removed => true,
+            // Sold → Active: seller confirmed return receipt, item is back in stock
+            // and eligible for re-listing. Driven by ConfirmOrderReturnReceivedCommandHandler.
+            _ when this == Sold && target == Active => true,
             _ => false
         };
     }
