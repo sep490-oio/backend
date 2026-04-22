@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OIO.Infrastructure.Persistence;
@@ -13,9 +14,11 @@ using OIO.Infrastructure.Persistence;
 namespace OIO.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260421163255_config_payment_methods")]
+    partial class config_payment_methods
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -4315,17 +4318,11 @@ namespace OIO.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("idx_payment_methods_user_active");
 
                     b.HasIndex("UserId", "VnPayToken")
-                        .HasDatabaseName("idx_payment_methods_user_token")
-                        .HasFilter("vnpay_token IS NOT NULL");
-
-                    b.HasIndex("UserId", "BankCode", "MaskedCardNumber")
                         .IsUnique()
                         .HasDatabaseName("uq_payment_methods_user_vnpay_active")
-                        .HasFilter("is_active = true AND type = 'vnpay' AND masked_card_number IS NOT NULL");
+                        .HasFilter("is_active = true AND type = 'VnPay' AND vnpay_token IS NOT NULL");
 
                     b.ToTable("payment_methods", (string)null);
-
-                    b.HasAnnotation("CustomIndex:CompositeIndexes", "[{\"paths\":[\"UserId\",\"Type.Id\",\"Provider\",\"Card.LastFour\",\"Card.ExpiryMonth\",\"Card.ExpiryYear\"],\"unique\":true,\"filter\":\"is_active = true AND type IN (\\u0027credit_card\\u0027,\\u0027debit_card\\u0027)\",\"name\":\"uq_payment_methods_user_card_active\"},{\"paths\":[\"UserId\",\"Type.Id\",\"Provider\",\"Card.HolderName\"],\"unique\":true,\"filter\":\"is_active = true AND type = \\u0027e_wallet\\u0027\",\"name\":\"uq_payment_methods_user_e-wallet_active\"},{\"paths\":[\"UserId\",\"Type.Id\",\"Provider\",\"MaskedCardNumber\",\"Card.LastFour\"],\"unique\":true,\"filter\":\"is_active = true AND type = \\u0027bank_account\\u0027\",\"name\":\"uq_payment_methods_user_bank_active\"}]");
                 });
 
             modelBuilder.Entity("OIO.Domain.Context.PaymentContext.Aggregates.Transactions.Transaction", b =>

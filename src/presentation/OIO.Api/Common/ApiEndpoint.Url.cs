@@ -311,6 +311,8 @@ public static partial class ApiEndpoint
             public const string AddMethod = $"{Base}/methods";
             public const string GetMethods = $"{Base}/methods";
             public const string DeleteMethod = $"{Base}/methods/{{id:guid}}";
+            public const string HardDeleteMethod = $"{Base}/methods/{{id:guid}}/hard";
+            public const string ReactivateMethod = $"{Base}/methods/{{id:guid}}/reactivate";
             public const string CheckoutOrder = $"{Base}/checkout";
             public const string SetDefaultMethod = $"{Base}/methods/{{id:guid}}/default";
             public const string LinkCard = $"{Base}/methods/link-card";

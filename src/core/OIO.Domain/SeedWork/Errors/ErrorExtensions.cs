@@ -34,7 +34,13 @@ public static class ErrorExtensions
                 }
             };
 
-            if (error is not ViolationsError violationsError) 
+            // Surface structured error metadata (e.g. `conflictingMethodId` on duplicate payment
+            // method) under the JSON "metadata" property. Wire format:
+            //   { "code": "PaymentMethod.Duplicate", "description": "...", "metadata": { "conflictingMethodId": "<guid>", "existingIsActive": true } }
+            if (error.Metadata is { Count: > 0 })
+                problemDetails.Extensions["metadata"] = error.Metadata;
+
+            if (error is not ViolationsError violationsError)
                 return TypedResults.Problem(problemDetails);
         
             var errorsDict = violationsError.Violations.GroupBy(e => ((ICheckError)e).PropertyName)

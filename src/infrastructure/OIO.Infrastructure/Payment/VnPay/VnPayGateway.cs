@@ -378,7 +378,35 @@ public sealed class VnPayGateway : IPaymentGatewayService
                 "VNPay token remove completed for AppUserId={AppUserId} with HTTP {StatusCode}",
                 request.AppUserId, (int)response.StatusCode);
 
-            var jsonDoc = JsonDocument.Parse(responseBody);
+            // Sandbox/gateway may respond with an HTML error page (502/503). Guard the JSON parse
+            // so we return a Result.Failure instead of throwing — caller decides retry/severity.
+            var contentType = response.Content.Headers.ContentType?.MediaType;
+            var looksLikeJson = !string.IsNullOrEmpty(responseBody)
+                && (responseBody[0] == '{' || responseBody[0] == '[');
+            if (!response.IsSuccessStatusCode || (contentType is not null && !contentType.Contains("json")) || !looksLikeJson)
+            {
+                _logger.LogWarning(
+                    "VNPay token remove returned non-JSON response for AppUserId={AppUserId}: HTTP {StatusCode} ContentType={ContentType} BodyPreview={Preview}",
+                    request.AppUserId,
+                    (int)response.StatusCode,
+                    contentType ?? "<none>",
+                    responseBody.Length > 120 ? responseBody[..120] + "…" : responseBody);
+                return Error.Unavailable(
+                    "VnPay.TokenRemoveFailed",
+                    $"VNPay token remove returned non-JSON response (HTTP {(int)response.StatusCode}).");
+            }
+
+            JsonDocument jsonDoc;
+            try
+            {
+                jsonDoc = JsonDocument.Parse(responseBody);
+            }
+            catch (JsonException jex)
+            {
+                _logger.LogWarning(jex, "VNPay token remove returned unparseable JSON for AppUserId={AppUserId}", request.AppUserId);
+                return Error.Unavailable("VnPay.TokenRemoveFailed", "VNPay token remove returned unparseable JSON.");
+            }
+            using var _doc = jsonDoc;
             var root = jsonDoc.RootElement;
 
             var respCode = root.TryGetProperty("vnp_response_code", out var codeEl)
@@ -398,7 +426,7 @@ public sealed class VnPayGateway : IPaymentGatewayService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "VNPay token remove failed for AppUserId={AppUserId}", request.AppUserId);
+            _logger.LogWarning(ex, "VNPay token remove threw for AppUserId={AppUserId}", request.AppUserId);
             return Error.Unavailable("VnPay.TokenRemoveFailed", $"VNPay token remove request failed: {ex.Message}");
         }
     }

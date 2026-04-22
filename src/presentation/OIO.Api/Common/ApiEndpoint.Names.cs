@@ -341,6 +341,8 @@ public static partial class ApiEndpoint
             public const string AddPaymentMethod = nameof(AddPaymentMethod);
             public const string GetPaymentMethods = nameof(GetPaymentMethods);
             public const string DeletePaymentMethod = nameof(DeletePaymentMethod);
+            public const string HardDeletePaymentMethod = nameof(HardDeletePaymentMethod);
+            public const string ReactivatePaymentMethod = nameof(ReactivatePaymentMethod);
             public const string CheckoutOrder =  nameof(CheckoutOrder);
             public const string SetDefaultPaymentMethod = nameof(SetDefaultPaymentMethod);
             public const string LinkCardViaVnPay = nameof(LinkCardViaVnPay);

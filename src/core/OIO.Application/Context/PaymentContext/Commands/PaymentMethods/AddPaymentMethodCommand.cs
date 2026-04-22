@@ -59,6 +59,68 @@ internal sealed class AddPaymentMethodCommandHandler : ICommandHandler<AddPaymen
 
         var cardInfo = CardInfo.Create(request.LastFour, request.ExpiryMonth, request.ExpiryYear, request.HolderName);
 
+        // ── Per-type dedupe precheck (UX optimization; DB partial unique indexes are the correctness guarantee).
+        // Scope is ALL rows (active + inactive) so the FE can offer a "Reactivate existing" CTA when the
+        // collision is with a disabled row. Use direct field comparisons only — no computed properties in Where.
+        var userId = _currentUser.UserId;
+        var type = typeResult.Value;
+        var provider = request.Provider;
+        var lastFour = request.LastFour;
+        var expiryMonth = request.ExpiryMonth;
+        var expiryYear = request.ExpiryYear;
+        var holderName = request.HolderName;
+        var tokenReference = request.TokenReference;
+
+        PaymentMethod? existing = null;
+        if (type == PaymentMethodType.CreditCard || type == PaymentMethodType.DebitCard)
+        {
+            existing = await _dbContext.Set<PaymentMethod>()
+                .FirstOrDefaultAsync(
+                    x => x.UserId == userId
+                         && x.Type == type
+                         && x.Provider == provider
+                         && x.Card.LastFour == lastFour
+                         && x.Card.ExpiryMonth == expiryMonth
+                         && x.Card.ExpiryYear == expiryYear,
+                    cancellationToken);
+        }
+        else if (type == PaymentMethodType.BankAccount)
+        {
+            existing = await _dbContext.Set<PaymentMethod>()
+                .FirstOrDefaultAsync(
+                    x => x.UserId == userId
+                         && x.Type == type
+                         && x.Provider == provider
+                         && x.Card.LastFour == lastFour,
+                    cancellationToken);
+        }
+        else if (type == PaymentMethodType.EWallet)
+        {
+            existing = await _dbContext.Set<PaymentMethod>()
+                .FirstOrDefaultAsync(
+                    x => x.UserId == userId
+                         && x.Type == type
+                         && x.Provider == provider
+                         && x.Card.HolderName == holderName,
+                    cancellationToken);
+        }
+        // Note: manual Add does not dedupe VnPay. VnPay rows are created only
+        // by ProcessVnPayCallback.TryLinkOrCreatePaymentMethodFromTokenAsync,
+        // which dedupes on the stable (user, bank_code, masked_card) identity.
+        // vnp_token is NOT stable across re-links of the same physical card.
+
+        if (existing is not null)
+        {
+            return Error.Conflict(
+                "PaymentMethod.Duplicate",
+                "A payment method with matching details already exists.",
+                new Dictionary<string, object>
+                {
+                    ["conflictingMethodId"] = existing.Id.Value.ToString(),
+                    ["existingIsActive"] = existing.IsActive,
+                });
+        }
+
         // If this one is set as default, we might need to unset others, but let's handle that in a separate step or here.
         if (request.IsDefault)
         {

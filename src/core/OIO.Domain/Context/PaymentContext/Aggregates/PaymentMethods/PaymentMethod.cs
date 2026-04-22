@@ -1,8 +1,10 @@
+using CSharpFunctionalExtensions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.PaymentContext.ValueObjects;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
+using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Domain.Context.PaymentContext.Aggregates.PaymentMethods;
 
@@ -115,5 +117,20 @@ public sealed class PaymentMethod : AggregateRoot<PaymentMethodId>, ICreatedAtEn
     {
         IsActive = false;
         IsDefault = false;
+    }
+
+    /// <summary>
+    /// Re-enable a previously deactivated payment method. Does NOT auto-restore default status —
+    /// reactivation is an identity-slot claim only; default status must be set explicitly afterwards.
+    /// </summary>
+    /// <param name="nowUtc">Current UTC timestamp (audit hook — unused today, retained for parity with other lifecycle methods).</param>
+    public UnitResult<Error> Reactivate(DateTime nowUtc)
+    {
+        if (IsActive)
+            return Error.Conflict("PaymentMethod.InvalidState", "Payment method is already active");
+
+        IsActive = true;
+        _ = nowUtc; // no UpdatedAt field on the aggregate today; kept in signature for audit parity
+        return UnitResult.Success<Error>();
     }
 }
