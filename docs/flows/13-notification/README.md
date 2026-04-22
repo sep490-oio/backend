@@ -289,6 +289,6 @@ sequenceDiagram
 |---|---|---|
 | 1 | [01-event-to-notification.md](01-event-to-notification.md) | Event dispatch, routing, delivery creation |
 | 2 | [02-delivery-job.md](02-delivery-job.md) | Background job processing and retry |
-| 3 | [03-channels.md](03-channels.md) | Email, SignalR, InApp providers |
+| 3 | [03-channels.md](03-channels.md) | Email and SignalR providers |
 | 4 | [04-user-preferences.md](04-user-preferences.md) | Notification preference management |
 | 5 | [05-read-management.md](05-read-management.md) | Read status, unread count, listing |

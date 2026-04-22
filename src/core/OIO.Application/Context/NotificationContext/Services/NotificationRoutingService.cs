@@ -28,26 +28,26 @@ internal sealed class NotificationRoutingService : INotificationRoutingService
                     }
                     else
                     {
-                        enabledChannels.Add("Email");
+                        // Fallback when saved channels JSON is malformed — default to in-platform only.
                         enabledChannels.Add("SignalR");
                     }
                 }
                 else
                 {
-                    enabledChannels.Add("Email");
+                    // Fallback when Channels is empty/whitespace — default to in-platform only.
                     enabledChannels.Add("SignalR");
                 }
             }
-            catch 
+            catch
             {
-                enabledChannels.Add("Email");
+                // Fallback on any parse exception — default to in-platform only.
                 enabledChannels.Add("SignalR");
             }
         }
         else if (preference is null)
         {
-            // Opt-in by default
-            enabledChannels.Add("Email");
+            // New user with no preference row yet — default to in-platform only.
+            // Email is opt-in; users can enable it via /me/notifications/settings.
             enabledChannels.Add("SignalR");
         }
 
