@@ -53,7 +53,6 @@ internal sealed class GetAuctionByIdQueryHandler
             queryBuilder: query => query
                 .Include(a => a.Bids.OrderByDescending(b => b.CreatedAt))
                 .Include(a => a.AutoBids)
-                .Include(a => a.Watchers)
                 .Include(a => a.BuyNowReservations)
                 .Include(a => a.SealedBids)
                 .Include(a => a.PriceHistories.OrderByDescending(ph => ph.CreatedAt))
@@ -71,9 +70,15 @@ internal sealed class GetAuctionByIdQueryHandler
 
         ParticipantInfoDto? currentUserParticipant = null;
 
+        var isWatchedByCurrentUser = false;
+
         if (_currentUser.IsAuthenticated)
         {
             var userId = _currentUser.UserId;
+
+            isWatchedByCurrentUser = await _dbContext.Set<AuctionWatcher>()
+                .AsNoTracking()
+                .AnyAsync(w => w.AuctionId == auctionId && w.UserId == userId, cancellationToken);
 
             var participant = await _dbContext.Set<AuctionParticipant>()
                 .AsNoTracking()
@@ -243,7 +248,7 @@ internal sealed class GetAuctionByIdQueryHandler
             Auction: auction.ToDto(
                 nowUtc, 
                 _runtimeSettings.Auction.ExtensionThreshold,
-                _currentUser.IsAuthenticated && auction.Watchers.Any(w => w.UserId == _currentUser.UserId)),
+                isWatchedByCurrentUser),
             Item: auction.Item.ToDto(),
             RecentBids: recentBids
                 .Select(b => b.ToDto(bidderDisplayNames.TryGetValue(b.BidderId.Value, out var dn) ? dn : null))
