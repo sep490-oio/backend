@@ -20,17 +20,20 @@ internal sealed class AcceptTermsCommandHandler : ICommandHandler<AcceptTermsCom
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
+    private readonly Microsoft.Extensions.Caching.Hybrid.HybridCache _cache;
 
     public AcceptTermsCommandHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
-        IClock clock)
+        IClock clock,
+        Microsoft.Extensions.Caching.Hybrid.HybridCache cache)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
+        _cache = cache;
     }
 
     public async Task<Result<TermsAcceptanceDto, Error>> Handle(AcceptTermsCommand request, CancellationToken cancellationToken)
@@ -89,6 +92,8 @@ internal sealed class AcceptTermsCommandHandler : ICommandHandler<AcceptTermsCom
             .AsNoTracking()
             .Include(x => x.TermDocument)
             .FirstAsync(x => x.Id == acceptance.Id, cancellationToken);
+
+        await _cache.RemoveByTagAsync($"terms:gate:user:{_currentUser.UserId.Value:N}", cancellationToken);
 
         return acceptance.ToDto();
     }

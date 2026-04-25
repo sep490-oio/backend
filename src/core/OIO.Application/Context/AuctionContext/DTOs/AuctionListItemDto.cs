@@ -22,4 +22,5 @@ public sealed record AuctionListItemDto(
     bool? IsFeatured,
     Guid SellerId,
     string ItemStatus,
-    string AuctionType);
+    string AuctionType,
+    bool IsOnWatchList);

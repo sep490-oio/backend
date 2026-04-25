@@ -9,7 +9,9 @@ public class AuctionSyncHandler :
     INotificationHandler<AuctionApprovedEvent>,
     INotificationHandler<AuctionStartedEvent>,
     INotificationHandler<AuctionEndedEvent>,
-    INotificationHandler<BidPlacedEvent>
+    INotificationHandler<BidPlacedEvent>,
+    INotificationHandler<AuctionWatcherAddedEvent>,
+    INotificationHandler<AuctionWatcherRemovedEvent>
 {
     private readonly IElasticsearchSyncService _syncService;
 
@@ -39,6 +41,16 @@ public class AuctionSyncHandler :
     }
 
     public async Task Handle(BidPlacedEvent notification, CancellationToken cancellationToken)
+    {
+        await _syncService.SyncAuctionAsync(Guid.Parse(notification.AuctionId), cancellationToken);
+    }
+
+    public async Task Handle(AuctionWatcherAddedEvent notification, CancellationToken cancellationToken)
+    {
+        await _syncService.SyncAuctionAsync(Guid.Parse(notification.AuctionId), cancellationToken);
+    }
+
+    public async Task Handle(AuctionWatcherRemovedEvent notification, CancellationToken cancellationToken)
     {
         await _syncService.SyncAuctionAsync(Guid.Parse(notification.AuctionId), cancellationToken);
     }

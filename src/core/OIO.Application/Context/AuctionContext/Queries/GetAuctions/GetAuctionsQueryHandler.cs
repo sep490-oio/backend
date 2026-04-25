@@ -6,6 +6,7 @@ using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
+using OIO.Application.Context.UserContext.Services;
 using OIO.Application.Extensions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Enums;
@@ -21,15 +22,18 @@ internal sealed class GetAuctionsQueryHandler
     private readonly IDbContext _dbContext;
     private readonly IClock _clock;
     private readonly IRuntimeSettings _runtimeSettings;
+    private readonly ICurrentUser _currentUser;
 
     public GetAuctionsQueryHandler(
         IDbContext dbContext,
         IClock clock,
-        IRuntimeSettings runtimeSettings)
+        IRuntimeSettings runtimeSettings,
+        ICurrentUser currentUser)
     {
         _dbContext = dbContext;
         _clock = clock;
         _runtimeSettings = runtimeSettings;
+        _currentUser = currentUser;
     }
 
     public async Task<Result<PagedList<AuctionListItemDto>, Error>> Handle(
@@ -109,8 +113,20 @@ internal sealed class GetAuctionsQueryHandler
             .AsSplitQuery()
             .ToPagedListAsync(totalCount, parameters, cancellationToken);
 
+        var currentUserId = _currentUser.IsAuthenticated ? (OIO.Domain.Context.UserContext.ValueObjects.Ids.UserId?)_currentUser.UserId : null;
+        var watchedAuctionIds = new HashSet<AuctionId>();
+        if (currentUserId is not null)
+        {
+            var auctionIds = pagedAuctions.Items.Select(a => a.Id).ToList();
+            var watchedIds = await _dbContext.Set<AuctionWatcher>()
+                .Where(w => w.UserId == currentUserId.Value && auctionIds.Contains(w.AuctionId))
+                .Select(w => w.AuctionId)
+                .ToListAsync(cancellationToken);
+            watchedAuctionIds = watchedIds.ToHashSet();
+        }
+
         var auctions = pagedAuctions.Items
-            .Select(x => x.ToListItemDto(nowUtc, extensionThresholdMinutes))
+            .Select(x => x.ToListItemDto(nowUtc, extensionThresholdMinutes, watchedAuctionIds.Contains(x.Id)))
             .ToList();
 
         return auctions.ToPagedList(pagedAuctions.Metadata);

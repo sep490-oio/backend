@@ -7,7 +7,7 @@ namespace OIO.Application.Context.AuctionContext.Mappings;
 
 internal static class AuctionMappings
 {
-    public static AuctionListItemDto ToListItemDto(this Auction auction, DateTime nowUtc, TimeSpan extensionThresholdMinutes)
+    public static AuctionListItemDto ToListItemDto(this Auction auction, DateTime nowUtc, TimeSpan extensionThresholdMinutes, bool isOnWatchList = false)
     {
         var activeReservation = auction.GetActiveBuyNowReservation(nowUtc);
         var primaryImageUrl = auction.Item.Media
@@ -38,10 +38,11 @@ internal static class AuctionMappings
             IsFeatured: auction.IsFeatured,
             SellerId: auction.Item.SellerId.Value,
             ItemStatus: auction.Item.Status.Id,
-            AuctionType: auction.AuctionType?.Id ?? "Regular");
+            AuctionType: auction.AuctionType?.Id ?? "Regular",
+            IsOnWatchList: isOnWatchList);
     }
 
-    public static AuctionDto ToDto(this Auction auction, DateTime nowUtc, TimeSpan extensionThresholdMinutes)
+    public static AuctionDto ToDto(this Auction auction, DateTime nowUtc, TimeSpan extensionThresholdMinutes, bool isOnWatchList = false)
     {
         var activeReservation = auction.GetActiveBuyNowReservation(nowUtc);
 
@@ -83,6 +84,7 @@ internal static class AuctionMappings
             BuyNowReservedUntil: activeReservation?.ExpiresAt,
             RemainingTime: auction.Info?.RemainingTime(nowUtc) ?? TimeSpan.Zero,
             IsEndingSoon: auction.IsEndingSoon(nowUtc, extensionThresholdMinutes),
+            IsOnWatchList: isOnWatchList,
             CreatedAt: auction.CreatedAt);
     }
 

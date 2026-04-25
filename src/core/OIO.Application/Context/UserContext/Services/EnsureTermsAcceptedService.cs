@@ -49,7 +49,6 @@ internal sealed class EnsureTermsAcceptedService : IEnsureTermsAcceptedService
             .Distinct()
             .OrderBy(t => t, StringComparer.Ordinal)
             .ToList();
-        //Hot fix for demo, TODO: fix why terms seller not accept
         if (normalizedTypes.Count == 0)
             return UnitResult.Success<Error>();
 
@@ -75,7 +74,10 @@ internal sealed class EnsureTermsAcceptedService : IEnsureTermsAcceptedService
                     : $"{t}=none"));
 
         var cacheKey = $"terms:gate:{userId.Value:N}:{Sha(fingerprint)}";
-        var tags = normalizedTypes.Select(t => $"terms:{t}").ToArray();
+        var tags = normalizedTypes
+            .Select(t => $"terms:{t}")
+            .Append($"terms:gate:user:{userId.Value:N}")
+            .ToArray();
 
         // Cache layer: try L1+L2 HybridCache. On any exception, fall through to direct DB — fail-closed.
         try

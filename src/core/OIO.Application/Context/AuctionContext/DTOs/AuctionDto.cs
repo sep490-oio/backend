@@ -38,4 +38,5 @@ public sealed record AuctionDto(
     DateTime? BuyNowReservedUntil,
     TimeSpan RemainingTime,
     bool IsEndingSoon,
+    bool IsOnWatchList,
     DateTime CreatedAt);
