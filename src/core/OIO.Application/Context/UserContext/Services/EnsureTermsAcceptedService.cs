@@ -50,7 +50,7 @@ internal sealed class EnsureTermsAcceptedService : IEnsureTermsAcceptedService
             .OrderBy(t => t, StringComparer.Ordinal)
             .ToList();
         //Hot fix for demo, TODO: fix why terms seller not accept
-        //if (normalizedTypes.Count == 0)
+        if (normalizedTypes.Count == 0)
             return UnitResult.Success<Error>();
 
         // Fingerprint from the active docs for the requested types. This bounds cache lifetime
