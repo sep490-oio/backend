@@ -60,6 +60,7 @@ public class AuctionSearchDocument : BaseSearchDocument
     public bool IsFeatured { get; init; }
     public string Condition { get; init; } = string.Empty;
     public string ItemStatus { get; init; } = string.Empty;
+    public List<string> WatcherIds { get; init; } = [];
 }
 
 public class UserSearchDocument : BaseSearchDocument

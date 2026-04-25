@@ -1772,6 +1772,11 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         _watchers.Remove(watcher);
         WatchCount = Math.Max(0, WatchCount - 1);
         ModifiedAt = nowUtc;
+
+        RaiseDomainEvent(new AuctionWatcherRemovedEvent(
+            $"{Id}",
+            $"{userId}",
+            nowUtc));
     }
     
     public UnitResult<Error> UpdateWatcherPreferences(
@@ -2023,8 +2028,14 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             if (Info is null)
                 return AuctionErrors.Auction.TimingRequired;
 
-            if (!Info.HasQualification || !Info.IsQualificationOpen(nowUtc))
-                return AuctionErrors.Auction.BuyNowUnavailableForScheduledAuction;
+            if (!Info.HasQualification)
+                return AuctionErrors.Auction.QualificationWindowRequired;
+
+            if (Info.IsQualificationClosed(nowUtc))
+                return AuctionErrors.Auction.BuyNowQualificationClosed;
+
+            if (!Info.IsQualificationOpen(nowUtc))
+                return AuctionErrors.Auction.BuyNowQualificationNotOpenYet;
         }
         else if (Status != AuctionStatus.Active)
         {
@@ -2039,17 +2050,30 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         var participant = _participants
             .FirstOrDefault(p => p.UserId == buyerId && p.JoinStatus != ParticipantJoinStatus.Withdrawn);
 
-        if (participant is null)
+        // In Scheduled status (deposit/qualification stage), we allow anyone to Buy Now.
+        // We auto-create or qualify the participant as needed.
+        if (Status == AuctionStatus.Scheduled)
         {
-            _participants.Add(AuctionParticipant.Create(Id, buyerId, "buy_now", nowUtc));
-            ModifiedAt = nowUtc;
+            if (participant is null)
+            {
+                _participants.Add(AuctionParticipant.Create(Id, buyerId, "buy_now", nowUtc));
+                ModifiedAt = nowUtc;
+                return UnitResult.Success<Error>();
+            }
+
+            if (!participant.IsQualified)
+            {
+                participant.Qualify(nowUtc);
+                ModifiedAt = nowUtc;
+            }
+
             return UnitResult.Success<Error>();
         }
 
-        if (!participant.IsQualified)
+        // In Active status (bidding stage), we strictly require that the buyer is already a qualified participant.
+        if (participant is null || !participant.IsQualified)
         {
-            participant.Qualify(nowUtc);
-            ModifiedAt = nowUtc;
+            return AuctionErrors.Participant.NotQualified;
         }
 
         return UnitResult.Success<Error>();

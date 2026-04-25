@@ -2,11 +2,15 @@ using MediatR;
 using OIO.Application.Abstractions.Search;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Context.AuctionContext.DTOs;
+using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.Shared.Enums;
 
 namespace OIO.Application.Context.SearchContext.Queries.SearchAuctions;
 
-public sealed class SearchAuctionsQueryHandler(IElasticsearchService searchService) 
+public sealed class SearchAuctionsQueryHandler(
+    IElasticsearchService searchService,
+    ICurrentUser currentUser,
+    OIO.Application.Abstractions.Clock.IClock clock) 
     : IRequestHandler<SearchAuctionsQuery, PagedList<AuctionListItemDto>>
 {
     public async Task<PagedList<AuctionListItemDto>> Handle(
@@ -43,7 +47,9 @@ public sealed class SearchAuctionsQueryHandler(IElasticsearchService searchServi
             request.MaxPrice,
             cancellationToken);
 
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = clock.UtcNow;
+        var currentUserId = currentUser.IsAuthenticated ? currentUser.UserId.ToString() : null;
+
         var mappedResults = searchResult.Results.Select(doc =>
         {
             var symbol = Currency.GetSymbol(doc.Currency);
@@ -56,7 +62,7 @@ public sealed class SearchAuctionsQueryHandler(IElasticsearchService searchServi
                 StartingPrice: new MoneyDto(doc.StartingPrice, doc.Currency, symbol),
                 BuyNowPrice: doc.BuyNowPrice.HasValue ? new MoneyDto(doc.BuyNowPrice.Value, doc.Currency, symbol) : null,
                 IsBuyNowReserved: doc.IsBuyNowReserved,
-                BuyNowReservedUntil: null, // Not easily stored as a flag, usually false if not reserved
+                BuyNowReservedUntil: null, 
                 Currency: doc.Currency,
                 Status: doc.Status,
                 BidCount: doc.BidCount,
@@ -70,7 +76,8 @@ public sealed class SearchAuctionsQueryHandler(IElasticsearchService searchServi
                 IsFeatured: doc.IsFeatured,
                 SellerId: Guid.Parse(doc.SellerId),
                 ItemStatus: doc.ItemStatus,
-                AuctionType: doc.AuctionType
+                AuctionType: doc.AuctionType,
+                IsOnWatchList: currentUserId != null && doc.WatcherIds.Contains(currentUserId)
             );
         }).ToList();
 

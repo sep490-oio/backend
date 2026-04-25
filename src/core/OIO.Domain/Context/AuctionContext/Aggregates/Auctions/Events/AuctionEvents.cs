@@ -70,6 +70,12 @@ public sealed record AuctionWatcherAddedEvent(
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
 
+public sealed record AuctionWatcherRemovedEvent(
+    string AuctionId,
+    string UserId,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
+
 public sealed record AuctionFeatureToggledEvent(
     string AuctionId,
     bool IsFeatured,

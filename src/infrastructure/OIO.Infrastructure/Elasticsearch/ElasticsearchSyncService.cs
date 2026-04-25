@@ -145,6 +145,7 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
             .Include(a => a.Item)
                 .ThenInclude(i => i.Category)
             .Include(a => a.BuyNowReservations)
+            .Include(a => a.Watchers)
             .FirstOrDefaultAsync(a => a.Id == AuctionId.From(auctionId), cancellationToken);
 
         if (auction == null) return;
@@ -199,6 +200,7 @@ public class ElasticsearchSyncService : IElasticsearchSyncService
             IsFeatured = auction.IsFeatured,
             Condition = auction.Item.Condition.Id,
             ItemStatus = auction.Item.Status.Id,
+            WatcherIds = auction.Watchers.Select(w => w.UserId.ToString()).ToList(),
             SellerId = auction.Item.SellerId.ToString(),
             SellerName = sellerProfile?.StoreName ?? "Private Seller",
             CategoryName = auction.Item.Category?.Name ?? "Uncategorized",

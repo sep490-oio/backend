@@ -240,7 +240,10 @@ internal sealed class GetAuctionByIdQueryHandler
         }
 
         return new AuctionDetailDto(
-            Auction: auction.ToDto(nowUtc, _runtimeSettings.Auction.ExtensionThreshold),
+            Auction: auction.ToDto(
+                nowUtc, 
+                _runtimeSettings.Auction.ExtensionThreshold,
+                _currentUser.IsAuthenticated && auction.Watchers.Any(w => w.UserId == _currentUser.UserId)),
             Item: auction.Item.ToDto(),
             RecentBids: recentBids
                 .Select(b => b.ToDto(bidderDisplayNames.TryGetValue(b.BidderId.Value, out var dn) ? dn : null))

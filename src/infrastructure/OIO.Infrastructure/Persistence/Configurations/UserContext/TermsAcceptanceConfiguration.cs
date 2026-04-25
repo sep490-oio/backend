@@ -22,7 +22,6 @@ internal sealed class TermsAcceptanceConfiguration : IEntityTypeConfiguration<Te
 
         builder.Property(a => a.AcceptedAt)
             .HasColumnName("accepted_at")
-            .HasDefaultValueSql("CURRENT_TIMESTAMP")
             .IsRequired();
 
         builder.Property(a => a.IpAddress)
