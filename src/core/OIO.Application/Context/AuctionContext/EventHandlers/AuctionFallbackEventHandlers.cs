@@ -25,7 +25,6 @@ internal sealed class AuctionPaymentDefaultedEventHandler(
     public async Task Handle(AuctionPaymentDefaultedEvent notification, CancellationToken cancellationToken)
     {
         var auction = await dbContext.Set<Auction>()
-            .AsNoTracking()
             .Include(x => x.Item)
             .FirstOrDefaultAsync(
                 x => x.Id == AuctionId.From(Guid.Parse(notification.AuctionId)),
@@ -33,6 +32,9 @@ internal sealed class AuctionPaymentDefaultedEventHandler(
 
         if (auction is null)
             return;
+
+        // Reset item status so it can be offered to next runner-up or relisted.
+        auction.Item.ReturnToActive(notification.OccurredAt);
 
         await NotificationDispatch.DispatchAsync(
             sender,
