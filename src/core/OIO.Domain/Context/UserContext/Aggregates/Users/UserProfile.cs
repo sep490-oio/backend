@@ -1,5 +1,7 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
+using OIO.Domain.AppDefinitions;
 using OIO.Domain.Context.UserContext.Enums;
+using OIO.Domain.Context.UserContext.Errors;
 using OIO.Domain.Context.UserContext.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
@@ -36,6 +38,19 @@ public sealed class UserProfile : BaseEntity<UserId>, IAuditableEntity
         DateOnly? dateOfBirth = null,
         Gender? gender = null)
     {
+        if (dateOfBirth.HasValue)
+        {
+            if (dateOfBirth.Value > DateOnly.FromDateTime(now))
+            {
+                return UserErrors.User.DateOfBirthInFuture;
+            }
+
+            if (dateOfBirth.Value.Year < App.Constraint.DateOfBirth.MinYear)
+            {
+                return UserErrors.User.DateOfBirthTooOld(App.Constraint.DateOfBirth.MinYear);
+            }
+        }
+
         Name = name ?? Name;
         AvatarUrl = avatarUrl ?? AvatarUrl;
         DateOfBirth = dateOfBirth ??  DateOfBirth;

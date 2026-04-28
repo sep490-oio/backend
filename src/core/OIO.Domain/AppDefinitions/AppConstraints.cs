@@ -13,6 +13,11 @@ public static partial class App
             public const int PostalCodeMaxLenght = 10;
         }
 
+        public static class DateOfBirth
+        {
+            public const int MinYear = 1900;
+        }
+
         public static class AvatarUrl
         {
             public const int MinLength = 5;

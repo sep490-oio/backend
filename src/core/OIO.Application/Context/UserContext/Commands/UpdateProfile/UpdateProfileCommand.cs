@@ -1,4 +1,4 @@
-﻿using OIO.Application.Abstractions.Messaging;
+using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.DTOs;
 using OIO.Domain.AppDefinitions;
 using OIO.Domain.SeedWork.Checks.Extensions;
@@ -37,7 +37,10 @@ public sealed record UpdateProfileCommand(
             .Field(AvatarMediaUploadId)
             .WhenHasValue(x => x.NotEmptyGuid())
             .Field(DateOfBirth)
-            .WhenHasValue(x => x.NotDefault())
+            .WhenHasValue(x => x
+                .NotDefault()
+                .NotInFuture()
+                .After(new DateOnly(App.Constraint.DateOfBirth.MinYear, 1, 1)))
             .Field(Gender)
             .WhenHasValue(x => x
                 .NotWhiteSpace()
