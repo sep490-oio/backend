@@ -2134,6 +2134,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         // longer Held (e.g. already Forfeited by a previous run, or never created), skip.
         // Without this, deposits would hang in Held forever unless an operator manually
         // invoked ForfeitAuctionDepositCommand.
+        // Auto-forfeit the defaulting winner's held deposit.
         var winnerDeposit = _deposits.FirstOrDefault(d =>
             d.BidderId == WinnerId && d.Status == DepositStatus.Held);
         if (winnerDeposit is not null)
@@ -2141,6 +2142,34 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             var forfeitResult = winnerDeposit.Forfeit(nowUtc);
             if (forfeitResult.IsFailure)
                 return forfeitResult.Error;
+        }
+
+        // Auto-record the defaulted winner in the WinnerOffers collection if not already present.
+        // This ensures they are tracked and excluded from future runner-up offers.
+        var existingOffer = _winnerOffers.FirstOrDefault(o => o.UserId == WinnerId);
+        if (existingOffer is not null)
+        {
+            existingOffer.MarkAsDefaulted(nowUtc);
+        }
+        else
+        {
+            // If they weren't in WinnerOffers, they were likely the original winner.
+            // We create a record for them to ensure they are excluded from runner-up offers.
+            UserId winnerId = (UserId)WinnerId!;
+            var rankedBids = GetRankedBids();
+            var rankNo = rankedBids
+                .Select((bid, index) => new { bid.BidderId, Rank = index + 1 })
+                .FirstOrDefault(x => x.BidderId == winnerId)?.Rank ?? 1;
+
+            var defaultRecord = AuctionWinnerOffer.Create(
+                auctionId: Id,
+                userId: winnerId,
+                rankNo: rankNo,
+                offeredAt: nowUtc,
+                expiresAt: nowUtc); // Expired immediately as it's a record of default
+            
+            defaultRecord.MarkAsDefaulted(nowUtc);
+            _winnerOffers.Add(defaultRecord);
         }
 
         RaiseDomainEvent(new AuctionPaymentDefaultedEvent(
