@@ -52,7 +52,9 @@ internal sealed class AuctionSoldEventHandler
             queryBuilder: query => query
                 .AsNoTracking()
                 .Include(a => a.Watchers)
-                .Include(a => a.Item),
+                .Include(a => a.Bids)
+                .Include(a => a.Item)
+                .AsSplitQuery(),
             cancellationToken: cancellationToken);
 
         // Canonical item lifecycle: mark the sold item as sold in the same
