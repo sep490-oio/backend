@@ -17,6 +17,7 @@ namespace OIO.Application.Context.AuctionContext.EventHandlers;
 
 internal sealed class AuctionPaymentDefaultedEventHandler(
     IDbContext dbContext,
+    IUnitOfWork unitOfWork,
     ISender sender,
     AuctionStateSyncService auctionStateSyncService,
     ILogger<AuctionPaymentDefaultedEventHandler> logger)
@@ -35,6 +36,7 @@ internal sealed class AuctionPaymentDefaultedEventHandler(
 
         // Reset item status so it can be offered to next runner-up or relisted.
         auction.Item.ReturnToActive(notification.OccurredAt);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         await NotificationDispatch.DispatchAsync(
             sender,
