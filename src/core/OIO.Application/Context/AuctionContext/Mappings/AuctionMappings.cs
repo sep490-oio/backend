@@ -85,7 +85,28 @@ internal static class AuctionMappings
             RemainingTime: auction.Info?.RemainingTime(nowUtc) ?? TimeSpan.Zero,
             IsEndingSoon: auction.IsEndingSoon(nowUtc, extensionThresholdMinutes),
             IsOnWatchList: isOnWatchList,
+            CanOfferRunnerUp: CalculateCanOfferRunnerUp(auction, nowUtc),
             CreatedAt: auction.CreatedAt);
+    }
+
+    private static bool CalculateCanOfferRunnerUp(Auction auction, DateTime nowUtc)
+    {
+        if (auction.Status != AuctionStatus.PaymentDefaulted)
+            return false;
+
+        var activeOffer = auction.WinnerOffers.FirstOrDefault(o => o.IsActiveAt(nowUtc));
+        if (activeOffer is not null)
+            return false;
+
+        var rankedBids = auction.GetRankedBids();
+        var offeredUserIds = auction.WinnerOffers
+            .Where(x => x.OfferStatus != WinnerOfferStatus.Cancelled)
+            .Select(x => x.UserId)
+            .ToHashSet();
+
+        return rankedBids
+            .Where(bid => auction.WinnerId is null || bid.BidderId != auction.WinnerId)
+            .Any(bid => !offeredUserIds.Contains(bid.BidderId));
     }
 
     public static readonly SortMappingDefinition AuctionListItemDtoSortMapping =
