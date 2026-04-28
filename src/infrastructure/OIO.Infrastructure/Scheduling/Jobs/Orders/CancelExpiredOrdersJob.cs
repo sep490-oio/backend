@@ -103,6 +103,7 @@ public sealed class CancelExpiredOrdersJob : BackgroundService
             .Include(x => x.WinnerOffers)
             .Include(x => x.Bids)
             .Include(x => x.Deposits)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(x => x.Id == order.AuctionId, cancellationToken);
 
         if (auction is null)
