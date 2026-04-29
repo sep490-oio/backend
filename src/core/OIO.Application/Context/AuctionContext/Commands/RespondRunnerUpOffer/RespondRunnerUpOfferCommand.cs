@@ -38,6 +38,7 @@ internal sealed class RespondRunnerUpOfferCommandHandler(
             .Include(x => x.Item)
             .Include(x => x.Bids)
             .Include(x => x.WinnerOffers)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(x => x.Id == auctionId, cancellationToken);
 
         if (auction is null)

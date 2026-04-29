@@ -39,4 +39,5 @@ public sealed record AuctionDto(
     TimeSpan RemainingTime,
     bool IsEndingSoon,
     bool IsOnWatchList,
+    bool CanOfferRunnerUp,
     DateTime CreatedAt);

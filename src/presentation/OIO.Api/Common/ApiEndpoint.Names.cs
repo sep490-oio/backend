@@ -450,5 +450,10 @@ public static partial class ApiEndpoint
             public const string GetMyWithdrawals = nameof(GetMyWithdrawals);
             public const string CancelWithdrawal = nameof(CancelWithdrawal);
         }
+
+        public static class System
+        {
+            public const string GetSystemTime = nameof(GetSystemTime);
+        }
     }
 }

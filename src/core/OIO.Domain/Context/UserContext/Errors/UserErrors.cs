@@ -63,6 +63,16 @@ public static class UserErrors
             description: "User has been deleted."
         );
 
+        public static Error DateOfBirthInFuture => Error.Validation(
+            "DateOfBirth",
+            "User.DateOfBirthInFuture",
+            "Date of birth cannot be in the future.");
+
+        public static Error DateOfBirthTooOld(int minYear) => Error.Validation(
+            "DateOfBirth",
+            "User.DateOfBirthTooOld",
+            $"Date of birth must be after the year {minYear}.");
+
         public static readonly Func<UserId, DateTime?, string?, Error> Locked = (userId, lockoutEnd, reason) => Error.Forbidden(
             code: "User.Locked",
             description: string.Join(" ", $"User '{userId}' is locked out until {lockoutEnd:O}.", reason).TrimEnd()

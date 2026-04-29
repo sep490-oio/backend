@@ -100,10 +100,24 @@ public sealed class CancelExpiredOrdersJob : BackgroundService
     {
         var auction = await dbContext.Set<Auction>()
             .Include(x => x.Item)
+            .Include(x => x.WinnerOffers)
+            .Include(x => x.Bids)
+            .Include(x => x.Deposits)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(x => x.Id == order.AuctionId, cancellationToken);
 
         if (auction is null)
             return;
+
+        if (auction.WinnerId != order.BuyerId)
+        {
+            _logger.LogWarning(
+                "CancelExpiredOrdersJob: skip marking payment defaulted for auction {AuctionId} because order buyer {BuyerId} is not the current winner {WinnerId}.",
+                auction.Id.Value,
+                order.BuyerId.Value,
+                auction.WinnerId?.Value);
+            return;
+        }
 
         var paymentDefaultResult = auction.MarkPaymentDefaulted(nowUtc);
         if (paymentDefaultResult.IsFailure)

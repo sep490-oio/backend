@@ -76,6 +76,15 @@ public sealed class AuctionWinnerOffer : BaseEntity<AuctionWinnerOfferId>
         RespondedAt = nowUtc;
     }
 
+    public void MarkAsDefaulted(DateTime nowUtc)
+    {
+        if (OfferStatus != WinnerOfferStatus.Pending && OfferStatus != WinnerOfferStatus.Accepted)
+            return;
+
+        OfferStatus = WinnerOfferStatus.Defaulted;
+        RespondedAt = nowUtc;
+    }
+
     public void Cancel(DateTime nowUtc)
     {
         if (OfferStatus != WinnerOfferStatus.Pending)

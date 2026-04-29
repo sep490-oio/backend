@@ -506,5 +506,12 @@ public static partial class ApiEndpoint
             public const string MarkAsRead = $"{Base}/{{notificationId:guid}}/read";
             public const string MarkAllAsRead = $"{Base}/read-all";
         }
+
+        public static class System
+        {
+            private const string Base = "api/system";
+
+            public const string GetTime = $"{Base}/time";
+        }
     }
 }
