@@ -325,6 +325,7 @@ public static partial class ApiEndpoint
 
             public const string GetSellerWarehouseItems     = nameof(GetSellerWarehouseItems);
             public const string GetSellerWarehouseItemById  = nameof(GetSellerWarehouseItemById);
+            public const string RequestWarehouseReinspection = nameof(RequestWarehouseReinspection);
 
             public const string GetBuyerOutboundShipmentByToken = nameof(GetBuyerOutboundShipmentByToken);
 

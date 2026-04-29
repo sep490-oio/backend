@@ -12,7 +12,6 @@ using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Entities;
 using OIO.Domain.SeedWork.Errors;
 using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
-using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 
 namespace OIO.Domain.Context.CatalogContext.Aggregates.Items;
 
@@ -278,6 +277,48 @@ public sealed class Item : AggregateRoot<ItemId>, IAuditableEntity
         SubmittedAt = nowUtc;
         RejectionReason = null;
         RequiresPlatformInspection = verifyByPlatform;
+        ChangeStatus(targetStatus, nowUtc);
+
+        _moderationReviews.Add(ItemModerationReview.Create(
+            itemId: Id,
+            action: ModerationAction.Resubmitted,
+            reviewerId: SellerId,
+            oldStatus: oldStatus,
+            newStatus: targetStatus.Id,
+            nowUtc: nowUtc));
+
+        return UnitResult.Success<Error>();
+    }
+
+    /// <summary>
+    /// Seller-initiated re-inspection trigger for items currently rejected from
+    /// the platform-inspection (warehouse) flow. Distinct from <see cref="Resubmit"/>
+    /// in that it preserves <see cref="RequiresPlatformInspection"/> = true and
+    /// only allows transition for warehouse-bound items — the actual inspection
+    /// re-review happens on the warehouse aggregate.
+    /// </summary>
+    public UnitResult<Error> RequestWarehouseReinspection(DateTime nowUtc)
+    {
+        if (Status != ItemStatus.Rejected)
+            return Error.Conflict(
+                "Item.NotRejected",
+                "Only rejected items can be re-inspected at the warehouse.");
+
+        if (!RequiresPlatformInspection)
+            return Error.Conflict(
+                "Item.NotPlatformVerified",
+                "Re-inspection at the warehouse is only valid for platform-verified items.");
+
+        var targetStatus = ItemStatus.PendingVerify;
+        var ensure = EnsureCanTransition(targetStatus);
+
+        if (ensure.IsFailure)
+            return ensure.Error;
+
+        var oldStatus = Status.Id;
+        ResubmissionCount++;
+        SubmittedAt = nowUtc;
+        RejectionReason = null;
         ChangeStatus(targetStatus, nowUtc);
 
         _moderationReviews.Add(ItemModerationReview.Create(

@@ -122,6 +122,13 @@ internal sealed class WarehouseInspectionConfiguration : IEntityTypeConfiguratio
         builder.HasIndex(e => e.DecisionStatus)
             .HasDatabaseName("idx_warehouse_inspections_decision_status");
 
+        // Append-only audit trail of each decision change (approve, reject,
+        // seller-requested re-inspection, condition confirmation, ...).
+        builder.HasMany(e => e.DecisionLogs)
+            .WithOne()
+            .HasForeignKey(log => log.InspectionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.Ignore(e => e.DomainEvents);
     }
 }

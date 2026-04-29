@@ -48,7 +48,7 @@ internal sealed class WarehouseItemConfiguration : IEntityTypeConfiguration<Ware
 
         builder.Property(e => e.Status)
             .HasColumnName("status")
-            .HasMaxLength(20)
+            .HasMaxLength(30)
             .IsRequired()
             .HasConversion(x => x.Id, v => WarehouseItemStatus.FromId(v).GetValueOrThrow());
 

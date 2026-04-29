@@ -16,6 +16,9 @@ public readonly partial struct WarehouseItemMediaId : IEntityId;
 public readonly partial struct WarehouseInspectionId : IEntityId;
 
 [ValueObject<Guid>]
+public readonly partial struct WarehouseInspectionDecisionLogId : IEntityId;
+
+[ValueObject<Guid>]
 public readonly partial struct OutboundShipmentId : IEntityId;
 
 [ValueObject<Guid>]

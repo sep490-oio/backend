@@ -13,6 +13,8 @@ using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.CatalogContext.Enums;
 using OIO.Domain.Context.NotificationContext.Enums;
+using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
+using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
 using ItemId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId;
@@ -79,6 +81,37 @@ internal sealed class ResubmitItemCommandHandler : ICommandHandler<ResubmitItemC
 
         if (item.Status != ItemStatus.Rejected)
             return AuctionErrors.Item.InvalidState(item.Status.Id, "resubmit");
+
+        // Warehouse-bound items must NOT be funneled back into online review.
+        // Any of three signals classifies the item as warehouse-bound:
+        //   1. The canonical RequiresPlatformInspection flag (set on Submit/Resubmit).
+        //   2. A WarehouseInspection record (item physically reached warehouse).
+        //   3. A still-active (non-dispatched, non-closed) WarehouseItem row.
+        // Sellers in this branch must call POST /api/seller/warehouse/items/{id}/request-reinspection
+        // (item still at warehouse) or open a new inbound shipment after the return shipment closes.
+        var hasWarehouseInspection = await _dbContext.Set<WarehouseInspection>()
+            .AsNoTracking()
+            .AnyAsync(wi => wi.ItemId == request.ItemId, cancellationToken);
+
+        var hasActiveWarehouseItem = await _dbContext.Set<WarehouseItem>()
+            .AsNoTracking()
+            .AnyAsync(
+                wh => wh.ItemId == request.ItemId
+                      && wh.Status != WarehouseItemStatus.Dispatched
+                      && wh.Status != WarehouseItemStatus.AwaitingDisposition,
+                cancellationToken);
+
+        var isWarehouseBound = item.RequiresPlatformInspection
+                               || hasWarehouseInspection
+                               || hasActiveWarehouseItem;
+
+        if (isWarehouseBound)
+        {
+            return Error.Conflict(
+                "Item.WarehouseRejectedCannotOnlineResubmit",
+                "Item này đã thuộc flow kiểm định tại kho, không thể gửi sang review online. " +
+                "Vui lòng dùng request-reinspection nếu hàng còn ở kho hoặc tạo inbound mới sau khi nhận hàng trả về.");
+        }
 
         var result = item.Resubmit(request.VerifyByPlatform, nowUtc);
         if (result.IsFailure) return result.Error;

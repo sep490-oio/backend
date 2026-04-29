@@ -87,6 +87,7 @@ namespace OIO.Infrastructure.Persistence.Converters;
 [EfCoreConverter<ShipmentTrackingEventId>]
 [EfCoreConverter<ShippingProviderConfigId>]
 [EfCoreConverter<WarehouseInspectionId>]
+[EfCoreConverter<WarehouseInspectionDecisionLogId>]
 [EfCoreConverter<WarehouseItemId>]
 [EfCoreConverter<WarehouseItemMediaId>]
 [EfCoreConverter<WarehouseStorageLocationId>]

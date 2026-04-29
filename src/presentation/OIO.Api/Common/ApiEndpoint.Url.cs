@@ -290,6 +290,7 @@ public static partial class ApiEndpoint
 
             public const string SellerWarehouseItems     = "api/seller/warehouse/items";
             public const string SellerWarehouseItemById  = "api/seller/warehouse/items/{warehouseItemId:guid}";
+            public const string SellerWarehouseRequestReinspection = "api/seller/warehouse/items/{warehouseItemId:guid}/request-reinspection";
 
             // Buyer-facing outbound shipment QR deep-link (external-carrier flow)
             public const string BuyerOutboundShipmentByToken = "api/buyer/outbound-shipments/by-token";

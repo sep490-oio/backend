@@ -26,16 +26,17 @@ internal sealed class InboundShipmentArrivedEventHandler(
         if (!Guid.TryParse(notification.InboundShipmentId, out var shipmentIdValue))
             return;
 
+        var shipmentId = OIO.Domain.Context.WarehouseContext.ValueObjects.Ids.InboundShipmentId.From(shipmentIdValue);
         var shipment = await dbContext.Set<InboundShipment>()
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id.Value == shipmentIdValue, cancellationToken);
+            .FirstOrDefaultAsync(x => x.Id == shipmentId, cancellationToken);
 
         if (shipment is null)
             return;
 
         var item = await dbContext.Set<Item>()
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id.Value == shipment.ItemId, cancellationToken);
+            .FirstOrDefaultAsync(x => x.Id == shipment.ItemId, cancellationToken);
 
         if (item is null || item.Status != ItemStatus.PendingVerify)
             return;

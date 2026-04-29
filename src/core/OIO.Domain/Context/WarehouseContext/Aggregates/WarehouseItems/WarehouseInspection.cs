@@ -14,6 +14,8 @@ namespace OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 
 public sealed class WarehouseInspection : AggregateRoot<WarehouseInspectionId>
 {
+    private readonly List<WarehouseInspectionDecisionLog> _decisionLogs = new();
+
     private WarehouseInspection() { }
 
     private WarehouseInspection(
@@ -59,6 +61,13 @@ public sealed class WarehouseInspection : AggregateRoot<WarehouseInspectionId>
     public DateTime CreatedAt { get; private set; }
     public DateTime? ModifiedAt { get; private set; }
 
+    /// <summary>
+    /// Append-only audit trail of every decision (inspector review, seller-driven
+    /// reinspection request, condition-confirmation flow). Never mutated after
+    /// insertion — UI/admin can replay the full timeline.
+    /// </summary>
+    public IReadOnlyCollection<WarehouseInspectionDecisionLog> DecisionLogs => _decisionLogs.AsReadOnly();
+
     public static Result<WarehouseInspection, e> Create(
         WarehouseItemId warehouseItemId,
         InboundShipmentId inboundShipmentId,
@@ -96,6 +105,15 @@ public sealed class WarehouseInspection : AggregateRoot<WarehouseInspectionId>
         ReviewedBy = reviewerId;
         ReviewedAt = now;
         ModifiedAt = now;
+
+        _decisionLogs.Add(WarehouseInspectionDecisionLog.Create(
+            inspectionId: Id,
+            decisionType: "approved",
+            actorId: reviewerId,
+            actorRole: "inspector",
+            reason: null,
+            nowUtc: now));
+
         return UnitResult.Success<e>();
     }
 
@@ -109,6 +127,15 @@ public sealed class WarehouseInspection : AggregateRoot<WarehouseInspectionId>
         ReviewedBy = reviewerId;
         ReviewedAt = now;
         ModifiedAt = now;
+
+        _decisionLogs.Add(WarehouseInspectionDecisionLog.Create(
+            inspectionId: Id,
+            decisionType: "condition_confirmation_required",
+            actorId: reviewerId,
+            actorRole: "inspector",
+            reason: null,
+            nowUtc: now));
+
         return UnitResult.Success<e>();
     }
 
@@ -122,6 +149,14 @@ public sealed class WarehouseInspection : AggregateRoot<WarehouseInspectionId>
         ReviewedBy = reviewerId;
         ReviewedAt = now;
         ModifiedAt = now;
+
+        _decisionLogs.Add(WarehouseInspectionDecisionLog.Create(
+            inspectionId: Id,
+            decisionType: "rejected",
+            actorId: reviewerId,
+            actorRole: "inspector",
+            reason: reason,
+            nowUtc: now));
 
         RaiseDomainEvent(new WarehouseInspectionRejectedEvent(
             WarehouseInspectionId: Id.Value,
@@ -141,6 +176,44 @@ public sealed class WarehouseInspection : AggregateRoot<WarehouseInspectionId>
         DecisionStatus = WarehouseInspectionDecisionStatus.ConditionConfirmed;
         SellerConfirmedAt = now;
         ModifiedAt = now;
+
+        _decisionLogs.Add(WarehouseInspectionDecisionLog.Create(
+            inspectionId: Id,
+            decisionType: "condition_confirmed",
+            actorId: null,
+            actorRole: "seller",
+            reason: null,
+            nowUtc: now));
+
+        return UnitResult.Success<e>();
+    }
+
+    /// <summary>
+    /// Seller-initiated re-inspection request — only allowed once the inspection
+    /// is <see cref="WarehouseInspectionDecisionStatus.Rejected"/>. Resets
+    /// <see cref="DecisionStatus"/> back to PendingReview so a warehouse inspector
+    /// can review the item again. Append-only — does NOT clear prior fields like
+    /// <see cref="DecisionReason"/>, <see cref="ReviewedBy"/>, or <see cref="ReviewedAt"/>;
+    /// a fresh decision will overwrite them via the next Approve/Reject/Require call.
+    /// </summary>
+    public UnitResult<e> RequestReinspectionBySeller(UserId sellerId, string? reason, DateTime now)
+    {
+        if (DecisionStatus != WarehouseInspectionDecisionStatus.Rejected)
+            return e.Conflict(
+                "WarehouseInspection.NotRejected",
+                "Re-inspection can only be requested when the warehouse inspection is in 'rejected' state.");
+
+        DecisionStatus = WarehouseInspectionDecisionStatus.PendingReview;
+        ModifiedAt = now;
+
+        _decisionLogs.Add(WarehouseInspectionDecisionLog.Create(
+            inspectionId: Id,
+            decisionType: "seller_requested_reinspection",
+            actorId: sellerId,
+            actorRole: "seller",
+            reason: reason,
+            nowUtc: now));
+
         return UnitResult.Success<e>();
     }
 

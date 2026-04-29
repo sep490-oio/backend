@@ -269,6 +269,9 @@ public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
         configurationBuilder.Properties<WarehouseInspectionId>()
             .HaveConversion<EfCoreConverters.WarehouseInspectionIdEfCoreValueConverter>();
 
+        configurationBuilder.Properties<WarehouseInspectionDecisionLogId>()
+            .HaveConversion<EfCoreConverters.WarehouseInspectionDecisionLogIdEfCoreValueConverter>();
+
         configurationBuilder.Properties<WarehouseItemId>()
             .HaveConversion<EfCoreConverters.WarehouseItemIdEfCoreValueConverter>();
 
