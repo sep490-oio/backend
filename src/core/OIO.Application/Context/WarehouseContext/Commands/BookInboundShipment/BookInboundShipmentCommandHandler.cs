@@ -96,18 +96,19 @@ internal sealed class BookInboundShipmentCommandHandler
                 "BookInboundShipment.DuplicateItemId",
                 "The Items list contains duplicate ItemId values. Each item must appear only once.");
 
-        // Second: check DB — each ItemId must not already have an active inbound shipment
-        foreach (var item in request.Items)
-        {
-            var hasActive = await _dbContext.Set<InboundShipment>()
-                .AnyAsync(s => s.ItemId == item.ItemId &&
-                               s.Status != InboundShipmentStatus.Cancelled &&
-                               s.Status != InboundShipmentStatus.Failed,
-                          cancellationToken);
+        var rawItemIds = request.Items.Select(i => i.ItemId).ToList();
+        var requestItemIds = rawItemIds.Select(ItemId.From).ToList();
 
-            if (hasActive)
-                return WarehouseErrors.InboundShipment.AlreadyExists(item.ItemId.ToString());
-        }
+        // Second: check DB — each ItemId must not already have an active inbound shipment
+        var activeShipmentItemId = await _dbContext.Set<InboundShipment>()
+            .Where(s => rawItemIds.Contains(s.ItemId) &&
+                        s.Status.Id != InboundShipmentStatus.Cancelled.Id &&
+                        s.Status.Id != InboundShipmentStatus.Failed.Id)
+            .Select(s => s.ItemId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (activeShipmentItemId != Guid.Empty)
+            return WarehouseErrors.InboundShipment.AlreadyExists(activeShipmentItemId.ToString());
 
         // Third: verify each item is actually eligible for platform verification.
         //   - item must belong to the current seller
@@ -115,7 +116,6 @@ internal sealed class BookInboundShipmentCommandHandler
         //   - item.RequiresPlatformInspection must be true (canonical flag)
         // This stops manual/misrouted requests from booking inbound for items that
         // were never routed through the platform verification workflow.
-        var requestItemIds = request.Items.Select(i => ItemId.From(i.ItemId)).ToList();
         var eligibilityRows = await _dbContext.Set<Item>()
             .AsNoTracking()
             .Where(i => requestItemIds.Contains(i.Id) && i.SellerId == _currentUser.UserId)

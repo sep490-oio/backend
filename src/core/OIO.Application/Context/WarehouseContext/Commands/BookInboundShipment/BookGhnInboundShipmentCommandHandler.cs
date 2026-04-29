@@ -74,7 +74,8 @@ internal sealed class BookGhnInboundShipmentCommandHandler
 
         // Check DB for existing shipments and eligibility
         var isAdmin        = _currentUser.IsInRole(App.Roles.Catalogs.Admin);
-        var requestItemIds = request.Items.Select(i => ItemId.From(i.ItemId)).ToList();
+        var rawItemIds = request.Items.Select(i => i.ItemId).ToList();
+        var requestItemIds = rawItemIds.Select(ItemId.From).ToList();
         
         var query = _dbContext.Set<Item>()
             .AsNoTracking()
@@ -96,18 +97,19 @@ internal sealed class BookGhnInboundShipmentCommandHandler
 
         var eligibilityMap = eligibilityRows.ToDictionary(r => r.ItemId);
 
+        // 1. Check for existing active shipments (Single query for all items)
+        var activeShipmentItemId = await _dbContext.Set<InboundShipment>()
+            .Where(s => rawItemIds.Contains(s.ItemId) &&
+                        s.Status.Id != InboundShipmentStatus.Cancelled.Id &&
+                        s.Status.Id != InboundShipmentStatus.Failed.Id)
+            .Select(s => s.ItemId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (activeShipmentItemId != Guid.Empty)
+            return WarehouseErrors.InboundShipment.AlreadyExists(activeShipmentItemId.ToString());
+
         foreach (var item in request.Items)
         {
-            // 1. Check for existing active shipments
-            var hasActive = await _dbContext.Set<InboundShipment>()
-                .AnyAsync(s => s.ItemId == item.ItemId &&
-                               s.Status != InboundShipmentStatus.Cancelled &&
-                               s.Status != InboundShipmentStatus.Failed,
-                          cancellationToken);
-
-            if (hasActive)
-                return WarehouseErrors.InboundShipment.AlreadyExists(item.ItemId.ToString());
-
             // 2. Check eligibility
             if (!eligibilityMap.TryGetValue(item.ItemId, out var row))
             {
