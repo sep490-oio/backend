@@ -68,6 +68,16 @@ internal sealed class ItemShippingSelectionService(
         if (item.Status != ItemStatus.PendingVerify)
             return AuctionErrors.Item.InvalidState(item.Status.Id, "choose shipping");
 
+        // Check for existing active shipments
+        var hasActive = await dbContext.Set<InboundShipment>()
+            .AnyAsync(s => s.ItemId == item.Id.Value &&
+                           s.Status.Id != InboundShipmentStatus.Cancelled.Id &&
+                           s.Status.Id != InboundShipmentStatus.Failed.Id,
+                      cancellationToken);
+
+        if (hasActive)
+            return WarehouseErrors.InboundShipment.AlreadyExists(item.Id.Value.ToString());
+
         var dimensionsResult = PackageDimensions.Create(
             weightGrams: request.WeightGrams,
             lengthCm: request.LengthCm,
