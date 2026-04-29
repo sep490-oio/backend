@@ -65,6 +65,7 @@ public sealed class AuctionStatus : EnumValueObject<AuctionStatus>
             ("sold", "terminated") => true,
             ("completed", "terminated") => true,
             ("payment_defaulted", "terminated") => true,
+            ("payment_defaulted", "failed") => true,
             ("ended", "terminated") => true,
             _ => false
         };

@@ -2178,6 +2178,8 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             DefaultedWinnerId: $"{WinnerId}",
             OccurredAt: nowUtc));
 
+        FailIfNoRunnerUpsLeft(nowUtc);
+
         return UnitResult.Success<Error>();
     }
 
@@ -2295,6 +2297,11 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             Response: accept ? "accepted" : "declined",
             OccurredAt: nowUtc));
 
+        if (!accept)
+        {
+            FailIfNoRunnerUpsLeft(nowUtc);
+        }
+
         return offer;
     }
 
@@ -2311,7 +2318,10 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         }
 
         if (changed)
+        {
             ModifiedAt = nowUtc;
+            FailIfNoRunnerUpsLeft(nowUtc);
+        }
 
         return changed;
     }
@@ -2338,6 +2348,45 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         return relist;
     }
     
+    private void FailIfNoRunnerUpsLeft(DateTime nowUtc)
+    {
+        if (Status != AuctionStatus.PaymentDefaulted)
+            return;
+
+        // 1. Check if there are any active winner offers.
+        // If there is a pending offer that is not yet expired, we don't fail yet.
+        if (_winnerOffers.Any(o => o.IsActiveAt(nowUtc)))
+            return;
+
+        // 2. Check if there are any remaining bidders who haven't been offered yet.
+        var rankedBids = GetRankedBids();
+        var offeredUserIds = _winnerOffers
+            .Where(x => x.OfferStatus != WinnerOfferStatus.Cancelled)
+            .Select(x => x.UserId)
+            .ToHashSet();
+
+        var nextCandidate = rankedBids
+            .Where(bid => WinnerId is null || bid.BidderId != WinnerId)
+            .FirstOrDefault(bid => !offeredUserIds.Contains(bid.BidderId));
+
+        // 3. If no active offer and no more candidates left to offer, the auction fails.
+        if (nextCandidate is null)
+        {
+            var result = MarkAsFailed(nowUtc);
+            if (result.IsSuccess)
+            {
+                RaiseDomainEvent(new AuctionFailedEvent(
+                    AuctionId: $"{Id}",
+                    SellerId: $"{Item.SellerId}",
+                    Reason: "No more runner-ups available after payment default",
+                    FinalPrice: Pricing.CurrentAmount,
+                    Currency: Pricing.Currency.Id,
+                    TotalBids: BidCount,
+                    OccurredAt: nowUtc));
+            }
+        }
+    }
+
     private UnitResult<Error> EnsureNotSeller(UserId bidderId)
     {
         return bidderId == Item.SellerId ? 
