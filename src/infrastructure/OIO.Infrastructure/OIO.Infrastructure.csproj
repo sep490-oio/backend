@@ -10,6 +10,8 @@
       <PackageReference Include="CloudinaryDotNet" />
       <PackageReference Include="EFCore.ComplexIndexes.PostgreSQL" />
       <PackageReference Include="EFCore.NamingConventions" />
+      <PackageReference Include="HtmlSanitizer" />
+      <PackageReference Include="Google.GenAI" />
       <PackageReference Include="MailKit" />
       <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
       <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" />
@@ -19,6 +21,7 @@
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
+      <PackageReference Include="Microsoft.Extensions.AI" />
       <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
       <PackageReference Include="Npgsql.DependencyInjection" />
       <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />

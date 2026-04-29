@@ -90,6 +90,7 @@ jobs:
           VNPAY_HASH_SECRET=${{ secrets.VNPAY_HASH_SECRET }}
           Elasticsearch__Endpoint=${{ secrets.ELASTICSEARCH_ENDPOINT }}
           Elasticsearch__ApiKey=${{ secrets.ELASTICSEARCH_API_KEY }}
+          AI_PRODUCT_DESCRIPTION_API_KEY=${{ secrets.AI_PRODUCT_DESCRIPTION_API_KEY }}
           EOF
 
       - name: Upload compose files to VPS

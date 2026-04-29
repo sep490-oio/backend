@@ -168,6 +168,9 @@ public static partial class ApiEndpoint
             public const string AskQuestion = $"{Base}/{{itemId:guid}}/questions";
             public const string AnswerQuestion = $"{Base}/{{itemId:guid}}/questions/{{questionId:guid}}/answer";
             public const string GetQuestions = $"{Base}/{{itemId:guid}}/questions";
+
+            // AI suggestion (advisory; no item mutation)
+            public const string SuggestDescription = $"{Base}/suggest-description";
         }
 
         public static class Auctions

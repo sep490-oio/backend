@@ -2,11 +2,14 @@ using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Npgsql;
 using OIO.Application.Abstractions.Address;
 using OIO.Application.Abstractions.Auth;
@@ -19,8 +22,10 @@ using OIO.Application.Abstractions.Scheduling;
 using OIO.Application.Abstractions.Security;
 using OIO.Application.Abstractions.Shipping;
 using OIO.Application.Abstractions.Search;
+using OIO.Infrastructure.Ai;
 using OIO.Infrastructure.Elasticsearch;
 using OIO.Application.Context.AuctionContext.Services;
+using OIO.Application.Context.AuctionContext.Services.AiSuggestion;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.UserContext.Services;
 using OIO.Application.Abstractions.Ekyc;
@@ -116,7 +121,8 @@ public static class DependencyInjection
                 .AddShipping(configuration)
                 .AddEkyc(configuration)
                 .AddPayment(configuration)
-                .AddElasticsearch(configuration);
+                .AddElasticsearch(configuration)
+                .AddAiSuggestion(configuration);
 
             services.AddMediatR(cfg =>
             {
@@ -497,7 +503,58 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
 
             return services;
         }
-        
+
+        private IServiceCollection AddAiSuggestion(IConfiguration configuration)
+        {
+            services
+                .AddOptions<AiOptions>()
+                .Bind(configuration.GetSection(AiOptions.SectionName))
+                .Validate(
+                    options => !options.Enabled
+                        || (!string.IsNullOrWhiteSpace(options.ApiKey) && !string.IsNullOrWhiteSpace(options.Model)),
+                    "Ai:ProductDescription:ApiKey and Model are required when Enabled = true.")
+                .ValidateOnStart();
+
+            // HTML sanitizer is always registered — the handler depends on it whether
+            // the AI provider is enabled or not (the Null suggester short-circuits earlier).
+            services.AddSingleton<IAiHtmlSanitizer, AiHtmlSanitizer>();
+
+            var aiOptions = configuration
+                .GetSection(AiOptions.SectionName)
+                .Get<AiOptions>() ?? new AiOptions();
+
+            if (aiOptions.Enabled)
+            {
+                services.AddSingleton<IChatClient>(sp =>
+                {
+                    var opts = sp.GetRequiredService<IOptions<AiOptions>>().Value;
+                    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+
+                    var client = new global::Google.GenAI.Client(
+                        vertexAI: false,
+                        apiKey: opts.ApiKey,
+                        credential: null,
+                        project: null,
+                        location: null,
+                        httpOptions: null);
+
+                    return client
+                        .AsIChatClient(opts.Model)
+                        .AsBuilder()
+                        .UseOpenTelemetry(loggerFactory)
+                        .Build();
+                });
+
+                services.AddScoped<IItemDescriptionSuggestionService, ItemDescriptionSuggestionService>();
+            }
+            else
+            {
+                services.AddSingleton<IItemDescriptionSuggestionService, NullItemDescriptionSuggestionService>();
+            }
+
+            return services;
+        }
+
     }
     
     private static void DecorateRegisteredNotificationHandlers(IServiceCollection services)

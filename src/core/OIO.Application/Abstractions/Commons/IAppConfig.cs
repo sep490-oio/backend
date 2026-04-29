@@ -153,3 +153,20 @@ public sealed class UploadContextOption
     public string? Eager { get; set; }
     public int MaxUploadsPerEntity { get; set; }
 }
+
+public sealed class AiOptions
+{
+    public const string SectionName = "Ai:ProductDescription";
+
+    public bool Enabled { get; set; } = false;
+    public string Provider { get; set; } = "Google";
+    public string ApiKey { get; set; } = string.Empty;
+    public string Model { get; set; } = "gemini-2.5-flash";
+    public int TimeoutSeconds { get; set; } = 30;
+    public int MaxImages { get; set; } = 3;
+    public int MaxDescriptionChars { get; set; } = 5000;
+    public double Temperature { get; set; } = 0.4;
+    public double MinSuggestedConfidence { get; set; } = 0.4;
+    public double MinAlternativeConfidence { get; set; } = 0.2;
+    public int RateLimitPerMinutePerSeller { get; set; } = 5;
+}

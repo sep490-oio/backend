@@ -71,6 +71,7 @@ app.UseCors(CorsOptions.PolicyName);
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 app.MapEndpoints();
 
 app.MapHub<AuctionHub>("/hubs/auction");

@@ -1,14 +1,19 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using CSharpFunctionalExtensions.HttpResults;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using Npgsql;
 using OIO.Api.Extensions;
 using OIO.Api.Hubs;
 using OIO.Api.Middleware;
 using OIO.Api.Services;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Context.AuctionContext.Services;
 using OIO.Application.Context.ModerationContext.Services;
 using OIO.Application.Context.NotificationContext.Services;
@@ -97,6 +102,40 @@ public static class DependencyInjection
         services.AddScoped<ITermsHubBroadcaster, TermsHubBroadcaster>();
         services.AddSignalR()
             .AddHubOptions<AuctionHub>(options => options.AddFilter<AuctionBidIdempotencyHubFilter>());
+
+        services.AddRateLimiting();
+    }
+
+    private static void AddRateLimiting(this IServiceCollection services)
+    {
+        services.AddRateLimiter(options =>
+        {
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+            options.AddPolicy("AiSuggestPerSeller", httpContext =>
+            {
+                var partitionKey = httpContext.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                                   ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                                   ?? "anonymous";
+
+                var aiOpts = httpContext.RequestServices
+                    .GetRequiredService<IOptions<AiOptions>>().Value;
+
+                var permitLimit = aiOpts.RateLimitPerMinutePerSeller > 0
+                    ? aiOpts.RateLimitPerMinutePerSeller
+                    : 5;
+
+                return RateLimitPartition.GetSlidingWindowLimiter(partitionKey, _ =>
+                    new SlidingWindowRateLimiterOptions
+                    {
+                        PermitLimit = permitLimit,
+                        Window = TimeSpan.FromMinutes(1),
+                        SegmentsPerWindow = 6,
+                        QueueLimit = 0,
+                        AutoReplenishment = true
+                    });
+            });
+        });
     }
 
     private static void AddCorsPolicy(this IServiceCollection services, IConfiguration configuration)

@@ -44,7 +44,11 @@ public static class MediaErrors
     public static Error WrongContext(string type, string[] validContext) => Error.Conflict(
         "Media.WrongContext",
         $"Media upload is not valid for the context of {type}. Valid contexts are: {string.Join(", ", validContext)}.");
-    
+
+    public static Error WrongResourceType(string actual, string expected) => Error.Conflict(
+        "Media.WrongResourceType",
+        $"Media upload resource type '{actual}' is not allowed. Expected '{expected}'.");
+
     public static readonly Error NotContainUrl = Error.Conflict("Media.Invalid", "Media upload does not have a valid URL.");
     
     public static readonly  Error PublicIdMismatch = Error.Conflict(

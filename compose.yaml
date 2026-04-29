@@ -36,6 +36,7 @@ services:
       - VnPay__HashSecret=${VNPAY_HASH_SECRET}
       - Elasticsearch__Endpoint=${Elasticsearch__Endpoint}
       - Elasticsearch__ApiKey=${Elasticsearch__ApiKey}
+      - Ai__ProductDescription__ApiKey=${AI_PRODUCT_DESCRIPTION_API_KEY}
     volumes:
       - ./config/appsettings.Production.json:/app/appsettings.Production.json
     depends_on:

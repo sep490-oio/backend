@@ -217,6 +217,7 @@ public static partial class ApiEndpoint
             public const string AskItemQuestion = nameof(AskItemQuestion);
             public const string AnswerItemQuestion = nameof(AnswerItemQuestion);
             public const string GetItemQuestions = nameof(GetItemQuestions);
+            public const string SuggestItemDescription = nameof(SuggestItemDescription);
         }
 
         public static class Auctions
