@@ -29,6 +29,7 @@ public sealed class Order : AggregateRoot<OrderId>, IAuditableEntity
     // Pricing
     public OrderPricing Pricing { get; private set; }
     public string Currency { get; private set; }
+    public bool IsPlatformVerifiedItem { get; private set; }
 
     // Status + Payment
     public OrderStatus Status { get; private set; }
@@ -73,6 +74,7 @@ public sealed class Order : AggregateRoot<OrderId>, IAuditableEntity
         string currency,
         DateTime paymentDueAt,
         DateTime nowUtc,
+        bool isPlatformVerifiedItem = false,
         string? notes = null)
     {
         var orderNumberValue = $"ORD-{nowUtc:yyyyMMddHHmmss}-{Guid.NewGuid():N}"[..31];
@@ -93,6 +95,7 @@ public sealed class Order : AggregateRoot<OrderId>, IAuditableEntity
             BillingAddressId = billingAddressId,
             Pricing = pricing,
             Currency = currency,
+            IsPlatformVerifiedItem = isPlatformVerifiedItem,
             Status = OrderStatus.PendingPayment,
             PaymentDueAt = paymentDueAt,
             PaymentAttemptCount = 0,

@@ -5,7 +5,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.ModerationContext.DTOs;
 using OIO.Application.Context.ModerationContext.Services;
 using OIO.Application.Context.UserContext.Services;
-using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
+using OIO.Domain.Context.ModerationContext;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Checks.Extensions;
@@ -33,6 +33,7 @@ public sealed record CreateWarehouseItemDisputeCommand(
 internal sealed class CreateWarehouseItemDisputeCommandHandler(
     IDbContext dbContext,
     ICurrentUser currentUser,
+    IDisputeEligibilityService eligibilityService,
     IDisputeIntakeService intakeService)
     : ICommandHandler<CreateWarehouseItemDisputeCommand, DisputeIntakeDto>
 {
@@ -47,16 +48,18 @@ internal sealed class CreateWarehouseItemDisputeCommandHandler(
         if (warehouseItem is null)
             return Error.NotFound("WarehouseItem.NotFound", "Warehouse item was not found.");
 
-        // Validate caller is the seller via inbound shipment
-        var inboundShipment = await dbContext.Set<InboundShipment>()
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == warehouseItem.InboundShipmentId, cancellationToken);
-
-        if (inboundShipment is null)
-            return Error.NotFound("InboundShipment.NotFound", "Related inbound shipment was not found.");
-
         var userId = currentUser.UserId;
-        if (userId != inboundShipment.SellerId)
+
+        // Single source of truth: IDisputeEligibilityService resolves caller's role
+        // (seller — derived via inbound shipment ownership). Returns null for non-sellers
+        // — preserves the "WarehouseItem.NotOwner" error code for FE backward-compatibility.
+        var roleKey = await eligibilityService.ResolveRoleAsync(
+            userId.Value,
+            DisputeEligibilityRule.TargetWarehouseItem,
+            request.WarehouseItemId,
+            cancellationToken);
+
+        if (roleKey is null)
             return Error.Forbidden("WarehouseItem.NotOwner", "You are not the seller of this warehouse item.");
 
         var snapshot = DisputeContextSnapshotBuilder.ForWarehouseItem(warehouseItem);
@@ -64,7 +67,8 @@ internal sealed class CreateWarehouseItemDisputeCommandHandler(
         return await intakeService.CreateDisputeAsync(new CreateDisputeRequest(
             Domain: request.Domain,
             CaseType: request.CaseType,
-            PrimaryTargetType: "warehouse_item",
+            PrimaryTargetType: DisputeEligibilityRule.TargetWarehouseItem,
+            RoleKey: roleKey,
             OrderId: null,
             AuctionId: null,
             ShipmentId: null,

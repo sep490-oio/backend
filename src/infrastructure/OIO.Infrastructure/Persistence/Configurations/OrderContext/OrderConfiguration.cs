@@ -132,6 +132,11 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
             .HasMaxLength(3)
             .HasDefaultValue("VND");
 
+        builder.Property(o => o.IsPlatformVerifiedItem)
+            .HasColumnName("is_platform_verified_item")
+            .HasDefaultValue(false)
+            .IsRequired();
+
         builder.ComplexProperty(o => o.Status, statusBuilder =>
         {
             statusBuilder.Property(s => s.Id)

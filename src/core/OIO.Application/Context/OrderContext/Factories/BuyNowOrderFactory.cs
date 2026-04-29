@@ -80,6 +80,7 @@ public static class BuyNowOrderFactory
             // reservation expiry rather than nowUtc.
             paymentDueAt: reservation.ExpiresAt,
             nowUtc: nowUtc,
+            isPlatformVerifiedItem: auction.Item.RequiresPlatformInspection,
             notes: notes);
     }
 

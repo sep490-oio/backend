@@ -487,6 +487,7 @@ public static partial class ApiEndpoint
             public const string GetMessages = $"{Base}/{{disputeId:guid}}/messages";
             public const string SendMessage = $"{Base}/{{disputeId:guid}}/messages";
             public const string MarkRead = $"{Base}/{{disputeId:guid}}/read";
+            public const string Eligibility = $"{Base}/eligibility";
 
             // Intake endpoints
             public const string CreateOrderDispute = "api/orders/{orderId:guid}/disputes";

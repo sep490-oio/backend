@@ -58,6 +58,7 @@ internal sealed class DisputeIntakeService(
             title: request.Title.Length > 40 ? request.Title[..40] : request.Title,
             description: request.Description,
             nowUtc: nowUtc,
+            roleKey: request.RoleKey,
             domain: request.Domain,
             caseType: request.CaseType,
             primaryTargetType: request.PrimaryTargetType,

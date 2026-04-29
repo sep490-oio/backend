@@ -55,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<DisputeAccessService>();
         services.AddScoped<IDisputeResolutionService, DisputeResolutionService>();
         services.AddScoped<IDisputeIntakeService, DisputeIntakeService>();
+        services.AddScoped<IDisputeEligibilityService, DisputeEligibilityService>();
 
         // Warehouse return-to-seller shipment factory — shared by the
         // inspection-rejected event handler and the admin retry command.

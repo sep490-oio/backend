@@ -68,6 +68,7 @@ public sealed class Dispute : AggregateRoot<DisputeId>, IAuditableEntity
 
     private Dispute() { }
 
+    [Obsolete("Internal/system use only. For user-driven dispute intake, use IDisputeIntakeService.CreateDisputeAsync which routes through CreateCase to enforce DisputeEligibilityRule invariant.", error: false)]
     public static Result<Dispute, Error> Create(
         AuctionId auctionId,
         UserId complainantId,
@@ -92,6 +93,7 @@ public sealed class Dispute : AggregateRoot<DisputeId>, IAuditableEntity
             priority,
             orderId);
 
+    [Obsolete("Internal/system use only. For user-driven dispute intake, use IDisputeIntakeService.CreateDisputeAsync which routes through CreateCase to enforce DisputeEligibilityRule invariant.", error: false)]
     public static Result<Dispute, Error> CreateForVerification(
         IdentityVerificationId verificationId,
         UserId complainantId,
@@ -122,6 +124,7 @@ public sealed class Dispute : AggregateRoot<DisputeId>, IAuditableEntity
         string title,
         string description,
         DateTime nowUtc,
+        string roleKey,
         string domain,
         string caseType,
         string primaryTargetType,
@@ -135,6 +138,22 @@ public sealed class Dispute : AggregateRoot<DisputeId>, IAuditableEntity
         Guid? paymentId = null,
         string? contextSnapshotJson = null)
     {
+        // ── Eligibility invariant (defense-in-depth) ──
+        // Closes IDisputeIntakeService bypass + EscalateReportToDispute admin path.
+        // Pure enum membership check, no DB.
+        if (!DisputeEligibilityRule.IsAllowed(roleKey, primaryTargetType, domain, caseType))
+        {
+            var allowedDomains = DisputeEligibilityRule.AllowedDomainsFor(roleKey, primaryTargetType);
+            if (allowedDomains.Count == 0)
+                return Error.Validation("role", "Dispute.RoleNotAllowed",
+                    $"Role '{roleKey}' may not file disputes against '{primaryTargetType}'.");
+            if (!allowedDomains.Contains(domain, StringComparer.Ordinal))
+                return Error.Validation("domain", "Dispute.DomainMismatch",
+                    $"Domain '{domain}' not allowed for role '{roleKey}' on '{primaryTargetType}'.");
+            return Error.Validation("caseType", "Dispute.CaseTypeMismatch",
+                $"CaseType '{caseType}' not allowed under domain '{domain}' for role '{roleKey}'.");
+        }
+
         var (_, isFailure, disputeNumber, error) = DisputeNumber.Create($"DSP-{Guid.NewGuid():N}"[..16]);
         if (isFailure) return error;
 

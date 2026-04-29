@@ -95,6 +95,26 @@ public sealed class Transaction : AggregateRoot<TransactionId>, ICreatedAtEntity
         return UnitResult.Success<Error>();
     }
 
+    public UnitResult<Error> SetFee(decimal fee, Money netAmount)
+    {
+        if (Status != TransactionStatus.Pending)
+            return Error.Conflict("Transaction.InvalidStatus",
+                $"Cannot set fee. Current status: {Status}");
+
+        if (fee < 0)
+            return Error.Validation("Fee", "Transaction.InvalidFee", "Fee must be non-negative.");
+
+        Amount.EnsureSameCurrency(netAmount);
+
+        if (netAmount.Amount < 0 || netAmount.Amount + fee > Amount.Amount)
+            return Error.Validation("NetAmount", "Transaction.InvalidNetAmount",
+                "Net amount plus fee must be less than or equal to the gross amount.");
+
+        Fee = fee;
+        NetAmount = netAmount;
+        return UnitResult.Success<Error>();
+    }
+
     /// <summary>
     /// Thanh toán thành công — cập nhật gateway info và status.
     /// </summary>

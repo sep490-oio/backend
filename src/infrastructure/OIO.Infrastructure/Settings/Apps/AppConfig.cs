@@ -14,6 +14,7 @@ public sealed class AppConfig : IAppInfo, IRuntimeSettings
     private readonly IOptionsMonitor<MonitoringOptions> _monitoring;
     private readonly IOptionsMonitor<OpsOptions> _ops;
     private readonly IOptionsMonitor<OrderOptions> _order;
+    private readonly IOptionsMonitor<SettlementOptions> _settlement;
 
     public AppConfig(
         IOptionsMonitor<AppOptions> app,
@@ -24,7 +25,8 @@ public sealed class AppConfig : IAppInfo, IRuntimeSettings
         IOptionsMonitor<AuthOptions> auth,
         IOptionsMonitor<MonitoringOptions> monitoring,
         IOptionsMonitor<OpsOptions> ops,
-        IOptionsMonitor<OrderOptions> order)
+        IOptionsMonitor<OrderOptions> order,
+        IOptionsMonitor<SettlementOptions> settlement)
     {
         _app = app;
         _features = features;
@@ -35,6 +37,7 @@ public sealed class AppConfig : IAppInfo, IRuntimeSettings
         _monitoring = monitoring;
         _ops = ops;
         _order = order;
+        _settlement = settlement;
     }
 
     public string AppName => _app.CurrentValue.AppName;
@@ -52,4 +55,5 @@ public sealed class AppConfig : IAppInfo, IRuntimeSettings
     public MonitoringOptions Monitoring => _monitoring.CurrentValue;
     public OpsOptions Ops => _ops.CurrentValue;
     public OrderOptions Order => _order.CurrentValue;
+    public SettlementOptions Settlement => _settlement.CurrentValue;
 }

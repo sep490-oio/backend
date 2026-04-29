@@ -7,6 +7,7 @@ using OIO.Application.Context.ModerationContext.Services;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.ModerationContext;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
 
@@ -32,6 +33,7 @@ public sealed record CreateAuctionDisputeCommand(
 internal sealed class CreateAuctionDisputeCommandHandler(
     IDbContext dbContext,
     ICurrentUser currentUser,
+    IDisputeEligibilityService eligibilityService,
     IDisputeIntakeService intakeService)
     : ICommandHandler<CreateAuctionDisputeCommand, DisputeIntakeDto>
 {
@@ -50,22 +52,50 @@ internal sealed class CreateAuctionDisputeCommandHandler(
         var userId = currentUser.UserId;
         var sellerId = auction.Item.SellerId;
 
-        // Any authenticated user may file a dispute/report against an auction listing:
-        //   - Seller  → respondent = winner (bilateral payment/winner-behavior dispute)
-        //   - Winner  → respondent = seller (bilateral payment/delivery dispute)
-        //   - 3rd party (bidder, watcher, visitor) → respondent = seller
-        //     (moderation report: counterfeit listing, misleading info, fraud, etc.)
-        // Abuse mitigation: rely on rate-limiting + moderator triage, not gatekeeping.
-        var respondentUserId = userId == sellerId
-            ? auction.WinnerId?.Value
-            : sellerId.Value;
+        // Single source of truth: IDisputeEligibilityService resolves caller's role
+        // (seller / winner / losing_bidder / observer). Returns null when the auction
+        // does not exist. For auctions ResolveRoleAsync always classifies an existing
+        // entity into one of the four roles, so a null return here is equivalent to
+        // Auction.NotFound (kept as a safety net consistent with the prior 404 above).
+        // Observer-driven rejections surface via the Domain matrix invariant in
+        // Dispute.CreateCase (Dispute.RoleNotAllowed) with a consistent Validation type.
+        var roleKey = await eligibilityService.ResolveRoleAsync(
+            userId.Value,
+            DisputeEligibilityRule.TargetAuction,
+            request.AuctionId,
+            cancellationToken);
+
+        if (roleKey is null)
+            return Error.NotFound("Auction.NotFound", "Auction was not found.");
+
+        // Auction-only timing gate (status whitelist).
+        var timingOk = await eligibilityService.IsTimingAllowedAsync(
+            DisputeEligibilityRule.TargetAuction,
+            request.AuctionId,
+            cancellationToken);
+
+        if (!timingOk)
+            return Error.Forbidden("Dispute.StatusNotAllowed", "Auction not in disputable status.");
+
+        // Respondent derivation mirrors role intent:
+        //   - Seller    → respondent = winner (if any)
+        //   - Winner    → respondent = seller
+        //   - Losing bidder / observer → no specific respondent (settlement disputes
+        //     against the seller, but matrix limits losing_bidder to deposit/cancel
+        //     cases that target seller-initiated outcomes; pass seller for symmetry).
+        Guid? respondentUserId = roleKey switch
+        {
+            DisputeEligibilityRule.RoleSeller => auction.WinnerId?.Value,
+            _ => sellerId.Value,
+        };
 
         var snapshot = DisputeContextSnapshotBuilder.ForAuction(auction);
 
         return await intakeService.CreateDisputeAsync(new CreateDisputeRequest(
             Domain: request.Domain,
             CaseType: request.CaseType,
-            PrimaryTargetType: "auction",
+            PrimaryTargetType: DisputeEligibilityRule.TargetAuction,
+            RoleKey: roleKey,
             OrderId: null,
             AuctionId: request.AuctionId,
             ShipmentId: null,

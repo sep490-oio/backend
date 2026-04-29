@@ -8,6 +8,7 @@ public sealed record CreateDisputeRequest(
     string Domain,
     string CaseType,
     string PrimaryTargetType,
+    string RoleKey,
     Guid? OrderId,
     Guid? AuctionId,
     Guid? ShipmentId,

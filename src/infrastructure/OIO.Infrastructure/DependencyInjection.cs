@@ -84,6 +84,19 @@ public static class DependencyInjection
             services.Configure<MonitoringOptions>(configuration.GetSection(MonitoringOptions.SectionName));
             services.Configure<OpsOptions>(configuration.GetSection(OpsOptions.SectionName));
             services.Configure<OrderOptions>(configuration.GetSection(OrderOptions.SectionName));
+            services.AddOptions<SettlementOptions>()
+                .Bind(configuration.GetSection(SettlementOptions.SectionName))
+                .Validate(options => options.SellerCommissionRate >= 0m && options.SellerCommissionRate < 1m,
+                    "Settlement:SellerCommissionRate must be greater than or equal to 0 and less than 1.")
+                .Validate(options => options.OfflineInspectionFeeRate >= 0m && options.OfflineInspectionFeeRate < 1m,
+                    "Settlement:OfflineInspectionFeeRate must be greater than or equal to 0 and less than 1.")
+                .Validate(options => options.OfflineInspectionFeeCapsByCurrency.Count > 0,
+                    "Settlement:OfflineInspectionFeeCapsByCurrency must define at least one currency cap.")
+                .Validate(options => options.OfflineInspectionFeeCapsByCurrency.All(x => !string.IsNullOrWhiteSpace(x.Key) && x.Value >= 0m),
+                    "Settlement:OfflineInspectionFeeCapsByCurrency entries must have non-empty currencies and non-negative caps.")
+                .Validate(options => options.CurrencyDecimalPlaces.All(x => !string.IsNullOrWhiteSpace(x.Key) && x.Value is >= 0 and <= 4),
+                    "Settlement:CurrencyDecimalPlaces entries must have non-empty currencies and decimal places between 0 and 4.")
+                .ValidateOnStart();
             services.AddSingleton<AppConfig>();
             services.AddSingleton<IAppInfo>(serviceProvider => serviceProvider.GetRequiredService<AppConfig>());
             services.AddSingleton<IRuntimeSettings>(serviceProvider => serviceProvider.GetRequiredService<AppConfig>());

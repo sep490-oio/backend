@@ -63,9 +63,16 @@ internal sealed class ResolveCaseDisputeCommandHandler(
                 return Error.Validation("ActionSet.RefundAmount", "ResolveCaseDispute.EscrowPartialRefundRequiresAmount",
                     "RefundAmount must be greater than 0 when EscrowAction is 'partial_refund'.");
 
-            if (actionSet.EscrowAction == "release_to_seller" && actionSet.RefundAction == "full_refund")
+            if (actionSet.EscrowAction == "release_to_seller"
+                && actionSet.RefundAction is "full_refund" or "partial_refund")
                 return Error.Validation("ActionSet", "ResolveCaseDispute.ConflictingActions",
                     "Cannot release to seller and refund buyer simultaneously.");
+
+            var escrowRefundsBuyer = actionSet.EscrowAction is "refund_buyer" or "partial_refund";
+            var refundActionRefundsBuyer = actionSet.RefundAction is "full_refund" or "partial_refund";
+            if (escrowRefundsBuyer && refundActionRefundsBuyer)
+                return Error.Validation("ActionSet", "ResolveCaseDispute.ConflictingRefundActions",
+                    "Cannot request buyer refund through both EscrowAction and RefundAction.");
         }
 
         var dispute = await dbContext.GetByIdAsync<Dispute, DisputeId>(

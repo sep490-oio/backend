@@ -423,6 +423,7 @@ public static partial class ApiEndpoint
             public const string GetDisputeMessages = nameof(GetDisputeMessages);
             public const string SendDisputeMessage = nameof(SendDisputeMessage);
             public const string MarkDisputeRead = nameof(MarkDisputeRead);
+            public const string GetDisputeEligibility = nameof(GetDisputeEligibility);
 
             // Intake
             public const string CreateOrderDispute = nameof(CreateOrderDispute);

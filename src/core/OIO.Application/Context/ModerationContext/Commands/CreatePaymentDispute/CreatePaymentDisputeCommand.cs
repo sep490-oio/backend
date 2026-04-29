@@ -5,6 +5,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.ModerationContext.DTOs;
 using OIO.Application.Context.ModerationContext.Services;
 using OIO.Application.Context.UserContext.Services;
+using OIO.Domain.Context.ModerationContext;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Checks.Extensions;
@@ -32,6 +33,7 @@ public sealed record CreatePaymentDisputeCommand(
 internal sealed class CreatePaymentDisputeCommandHandler(
     IDbContext dbContext,
     ICurrentUser currentUser,
+    IDisputeEligibilityService eligibilityService,
     IDisputeIntakeService intakeService)
     : ICommandHandler<CreatePaymentDisputeCommand, DisputeIntakeDto>
 {
@@ -47,7 +49,17 @@ internal sealed class CreatePaymentDisputeCommandHandler(
             return Error.NotFound("Payment.NotFound", "Payment transaction was not found.");
 
         var userId = currentUser.UserId;
-        if (userId != transaction.UserId)
+
+        // Single source of truth: IDisputeEligibilityService resolves caller's role
+        // (owner only). Returns null for non-owners — preserves the "Payment.NotOwner"
+        // error code for FE backward-compatibility.
+        var roleKey = await eligibilityService.ResolveRoleAsync(
+            userId.Value,
+            DisputeEligibilityRule.TargetPayment,
+            request.PaymentId,
+            cancellationToken);
+
+        if (roleKey is null)
             return Error.Forbidden("Payment.NotOwner", "You do not own this payment transaction.");
 
         var snapshot = DisputeContextSnapshotBuilder.ForTransaction(transaction);
@@ -55,7 +67,8 @@ internal sealed class CreatePaymentDisputeCommandHandler(
         return await intakeService.CreateDisputeAsync(new CreateDisputeRequest(
             Domain: request.Domain,
             CaseType: request.CaseType,
-            PrimaryTargetType: "payment",
+            PrimaryTargetType: DisputeEligibilityRule.TargetPayment,
+            RoleKey: roleKey,
             OrderId: transaction.OrderId?.Value,
             AuctionId: transaction.AuctionId?.Value,
             ShipmentId: null,

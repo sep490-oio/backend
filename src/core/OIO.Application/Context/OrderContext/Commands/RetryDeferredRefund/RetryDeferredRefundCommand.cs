@@ -67,7 +67,7 @@ internal sealed class RetryDeferredRefundCommandHandler(
 
         var decision = RefundDecisionPolicy.DecideFor(order.Return);
 
-        UnitResult<Error> refundResult;
+        Result<RefundSettlementResult, Error> refundResult;
         switch (decision)
         {
             case RefundDecision.FireFull:

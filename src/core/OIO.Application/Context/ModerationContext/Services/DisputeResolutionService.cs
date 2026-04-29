@@ -113,10 +113,14 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
             && deferredIntent != DeferredRefundIntent.None;
 
         // 1. Escrow action (skip refund sub-cases when deferring)
-        await ApplyEscrowActionAsync(actionSet, order, dispute, skipRefund, ct);
+        var escrowActionResult = await ApplyEscrowActionAsync(actionSet, order, dispute, skipRefund, ct);
+        if (escrowActionResult.IsFailure)
+            return escrowActionResult.Error;
 
         // 2. Refund action (skip refund sub-cases when deferring)
-        await ApplyRefundActionAsync(actionSet, order, dispute, skipRefund, ct);
+        var refundActionResult = await ApplyRefundActionAsync(actionSet, order, dispute, skipRefund, ct);
+        if (refundActionResult.IsFailure)
+            return refundActionResult.Error;
 
         // 3. Shipment action — carries the computed deferredIntent + amount into
         //    Order.OpenReturnViaDispute when ShipmentAction == "open_return".
@@ -135,7 +139,7 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
         return UnitResult.Success<Error>();
     }
 
-    private async Task ApplyEscrowActionAsync(
+    private async Task<UnitResult<Error>> ApplyEscrowActionAsync(
         DisputeResolutionActionSet actionSet,
         Order? order,
         Dispute dispute,
@@ -143,14 +147,14 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(actionSet.EscrowAction) || actionSet.EscrowAction == "no_action")
-            return;
+            return UnitResult.Success<Error>();
 
         if (order is null)
         {
             _logger.LogWarning(
                 "Dispute {DisputeId}: escrow action '{Action}' skipped — no linked order",
                 dispute.Id, actionSet.EscrowAction);
-            return;
+            return UnitResult.Success<Error>();
         }
 
         try
@@ -161,6 +165,9 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
                 {
                     var result = await _escrowSettlementService.ReleaseToSellerAsync(
                         order, "Dispute resolution: release to seller", null, ct);
+                    if (result.IsFailure)
+                        return result.Error;
+
                     if (result.IsFailure)
                         _logger.LogWarning(
                             "Dispute {DisputeId}: escrow release_to_seller failed — {Error}",
@@ -177,12 +184,18 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
                             dispute.Id);
                         break;
                     }
+                    var shouldChargeInspectionFee = ShouldChargeBuyerWinInspectionFee(dispute, order);
                     var result = await _escrowSettlementService.RefundBuyerAsync(
                         order, null, "Dispute resolution: full refund to buyer", null, ct);
+                    if (result.IsFailure)
+                        return result.Error;
+
                     if (result.IsFailure)
                         _logger.LogWarning(
                             "Dispute {DisputeId}: escrow refund_buyer failed — {Error}",
                             dispute.Id, result.Error.Message);
+                    else if (shouldChargeInspectionFee)
+                        await ChargeBuyerWinInspectionFeeForResolvedCaseAsync(order, dispute, ct);
                     break;
                 }
 
@@ -205,6 +218,9 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
 
                     var result = await _escrowSettlementService.RefundBuyerAsync(
                         order, actionSet.RefundAmount, "Dispute resolution: partial refund to buyer", null, ct);
+                    if (result.IsFailure)
+                        return result.Error;
+
                     if (result.IsFailure)
                         _logger.LogWarning(
                             "Dispute {DisputeId}: escrow partial_refund failed — {Error}",
@@ -230,10 +246,15 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
             _logger.LogWarning(ex,
                 "Dispute {DisputeId}: escrow action '{Action}' threw an exception",
                 dispute.Id, actionSet.EscrowAction);
+            return Error.Unexpected(
+                "DisputeResolution.EscrowActionFailed",
+                $"Escrow action '{actionSet.EscrowAction}' failed unexpectedly.");
         }
+
+        return UnitResult.Success<Error>();
     }
 
-    private async Task ApplyRefundActionAsync(
+    private async Task<UnitResult<Error>> ApplyRefundActionAsync(
         DisputeResolutionActionSet actionSet,
         Order? order,
         Dispute dispute,
@@ -243,14 +264,14 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
         if (string.IsNullOrWhiteSpace(actionSet.RefundAction)
             || actionSet.RefundAction == "no_refund"
             || actionSet.RefundAction == "no_action")
-            return;
+            return UnitResult.Success<Error>();
 
         if (order is null)
         {
             _logger.LogWarning(
                 "Dispute {DisputeId}: refund action '{Action}' skipped — no linked order",
                 dispute.Id, actionSet.RefundAction);
-            return;
+            return UnitResult.Success<Error>();
         }
 
         if (skipRefund)
@@ -258,7 +279,7 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
             _logger.LogInformation(
                 "Dispute {DisputeId}: refund action '{Action}' DEFERRED — resolution also opens a return; refund fires at seller-confirm.",
                 dispute.Id, actionSet.RefundAction);
-            return;
+            return UnitResult.Success<Error>();
         }
 
         try
@@ -267,8 +288,14 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
             {
                 case "full_refund":
                 {
+                    var shouldChargeInspectionFee = ShouldChargeBuyerWinInspectionFee(dispute, order);
                     var result = await _escrowSettlementService.RefundBuyerAsync(
                         order, null, "Dispute resolution: full refund", null, ct);
+                    if (result.IsFailure)
+                        return result.Error;
+
+                    if (result.IsSuccess && shouldChargeInspectionFee)
+                        await ChargeBuyerWinInspectionFeeForResolvedCaseAsync(order, dispute, ct);
                     if (result.IsFailure)
                         _logger.LogWarning(
                             "Dispute {DisputeId}: refund full_refund failed — {Error}",
@@ -289,6 +316,9 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
                     var result = await _escrowSettlementService.RefundBuyerAsync(
                         order, actionSet.RefundAmount, "Dispute resolution: partial refund", null, ct);
                     if (result.IsFailure)
+                        return result.Error;
+
+                    if (result.IsFailure)
                         _logger.LogWarning(
                             "Dispute {DisputeId}: refund partial_refund failed — {Error}",
                             dispute.Id, result.Error.Message);
@@ -307,6 +337,83 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
             _logger.LogWarning(ex,
                 "Dispute {DisputeId}: refund action '{Action}' threw an exception",
                 dispute.Id, actionSet.RefundAction);
+            return Error.Unexpected(
+                "DisputeResolution.RefundActionFailed",
+                $"Refund action '{actionSet.RefundAction}' failed unexpectedly.");
+        }
+
+        return UnitResult.Success<Error>();
+    }
+
+    private static bool ShouldChargeBuyerWinInspectionFee(Dispute dispute, Order order)
+    {
+        var favorsBuyer = string.Equals(
+            dispute.ResolutionOutcome,
+            "favor_buyer",
+            StringComparison.OrdinalIgnoreCase);
+
+        var isPostDeliveryCase = order.Status == OrderStatus.Delivered
+                                 || order.Status == OrderStatus.Disputed
+                                 || order.Status == OrderStatus.Completed;
+
+        return favorsBuyer && isPostDeliveryCase && order.IsPlatformVerifiedItem;
+    }
+
+    private async Task ChargeBuyerWinInspectionFeeForResolvedCaseAsync(
+        Order order,
+        Dispute dispute,
+        CancellationToken ct)
+    {
+        var result = await _escrowSettlementService.ChargeVerifiedInspectionFeeForBuyerWinAsync(
+            order,
+            dispute.Id.Value,
+            dispute.ResolutionReason ?? "Buyer-win dispute resolution",
+            null,
+            ct);
+
+        if (result.IsFailure)
+        {
+            _logger.LogWarning(
+                "Dispute {DisputeId}: buyer-win inspection fee charge failed - {Error}",
+                dispute.Id,
+                result.Error.Message);
+        }
+        else if (result.Value.Pending)
+        {
+            _logger.LogWarning(
+                "Dispute {DisputeId}: buyer-win inspection fee charge is pending. Amount={Amount} Currency={Currency}",
+                dispute.Id,
+                result.Value.FeeAmount,
+                result.Value.Currency);
+        }
+    }
+
+    private async Task ChargeBuyerWinInspectionFeeAsync(
+        Order order,
+        Dispute dispute,
+        CancellationToken ct)
+    {
+        var result = await _escrowSettlementService.ChargeVerifiedInspectionFeeForBuyerWinAsync(
+            order,
+            dispute.Id.Value,
+            dispute.ResolutionReason ?? "Buyer-win dispute resolution",
+            null,
+            ct);
+
+        if (result.IsFailure)
+        {
+            _logger.LogWarning(
+                "Dispute {DisputeId}: buyer-win inspection fee charge failed â€” {Error}",
+                dispute.Id,
+                result.Error.Message);
+        }
+        else if (result.Value.Pending)
+        {
+            _logger.LogWarning(
+                "Dispute {DisputeId}: buyer-win inspection fee charge is pending. Amount={Amount} Currency={Currency}",
+                dispute.Id,
+                result.Value.FeeAmount,
+                result.Value.Currency);
         }
     }
 

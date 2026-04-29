@@ -20,6 +20,7 @@ public interface IRuntimeSettings
     MonitoringOptions Monitoring { get; }
     OpsOptions Ops { get; }
     OrderOptions Order { get; }
+    SettlementOptions Settlement { get; }
 }
 
 public sealed class AppOptions
@@ -112,6 +113,34 @@ public sealed class OrderOptions
     public int ReturnDecisionWindowDays { get; set; } = 7;
     public int PaymentDeadlineHours { get; set; } = 48;
     public int SellerShipSlaDays { get; set; } = 3;
+}
+
+public sealed class SettlementOptions
+{
+    public const string SectionName = "Settlement";
+
+    public decimal SellerCommissionRate { get; set; } = 0.10m;
+    public decimal OfflineInspectionFeeRate { get; set; } = 0.03m;
+    public Dictionary<string, decimal> OfflineInspectionFeeCapsByCurrency { get; set; } = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["VND"] = 625000m,
+        ["USD"] = 25m
+    };
+    public Dictionary<string, int> CurrencyDecimalPlaces { get; set; } = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["VND"] = 0,
+        ["USD"] = 2
+    };
+
+    public bool TryGetInspectionFeeCap(string currency, out decimal cap) =>
+        OfflineInspectionFeeCapsByCurrency.TryGetValue(currency, out cap)
+        || OfflineInspectionFeeCapsByCurrency.TryGetValue(currency.ToUpperInvariant(), out cap);
+
+    public int GetDecimalPlaces(string currency) =>
+        CurrencyDecimalPlaces.TryGetValue(currency, out var places)
+        || CurrencyDecimalPlaces.TryGetValue(currency.ToUpperInvariant(), out places)
+            ? places
+            : 2;
 }
 
 public sealed class UploadContextOption

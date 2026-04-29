@@ -55,6 +55,9 @@ internal sealed class ItemRejectedEventHandler
         if (!auction.VerifyByPlatform)
             return;
 
+        // System-driven rejection: bypasses user-facing eligibility matrix because the
+        // reviewer (admin) acts on behalf of the platform — no user role applies.
+#pragma warning disable CS0618 // Type or member is obsolete
         var createResult = Dispute.Create(
             auctionId: auctionId,
             complainantId: reviewerId,
@@ -64,6 +67,7 @@ internal sealed class ItemRejectedEventHandler
             description: $"Item was rejected during platform verification. Reason: {notification.Reason}",
             nowUtc: notification.OccurredAt,
             priority: DisputePriority.Medium);
+#pragma warning restore CS0618
 
         if (createResult.IsFailure)
         {

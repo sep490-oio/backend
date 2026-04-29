@@ -5,6 +5,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.ModerationContext.DTOs;
 using OIO.Application.Context.ModerationContext.Services;
 using OIO.Application.Context.UserContext.Services;
+using OIO.Domain.Context.ModerationContext;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments;
 using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
@@ -33,6 +34,7 @@ public sealed record CreateShipmentDisputeCommand(
 internal sealed class CreateShipmentDisputeCommandHandler(
     IDbContext dbContext,
     ICurrentUser currentUser,
+    IDisputeEligibilityService eligibilityService,
     IDisputeIntakeService intakeService)
     : ICommandHandler<CreateShipmentDisputeCommand, DisputeIntakeDto>
 {
@@ -47,7 +49,7 @@ internal sealed class CreateShipmentDisputeCommandHandler(
         if (shipment is null)
             return Error.NotFound("Shipment.NotFound", "Outbound shipment was not found.");
 
-        // Validate caller is the buyer of the related order
+        // Related order is needed for both respondent (seller) and snapshot.
         var order = await dbContext.Set<Order>()
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == shipment.OrderId, cancellationToken);
@@ -56,7 +58,17 @@ internal sealed class CreateShipmentDisputeCommandHandler(
             return Error.NotFound("Order.NotFound", "Related order was not found.");
 
         var userId = currentUser.UserId;
-        if (userId != order.BuyerId)
+
+        // Single source of truth: IDisputeEligibilityService resolves caller's role
+        // (buyer only — derived from the related order). Returns null for non-buyers
+        // — preserves the "Shipment.NotBuyer" error code for FE backward-compatibility.
+        var roleKey = await eligibilityService.ResolveRoleAsync(
+            userId.Value,
+            DisputeEligibilityRule.TargetShipment,
+            request.ShipmentId,
+            cancellationToken);
+
+        if (roleKey is null)
             return Error.Forbidden("Shipment.NotBuyer", "You are not the buyer for this shipment.");
 
         var snapshot = DisputeContextSnapshotBuilder.ForOutboundShipment(shipment);
@@ -64,7 +76,8 @@ internal sealed class CreateShipmentDisputeCommandHandler(
         return await intakeService.CreateDisputeAsync(new CreateDisputeRequest(
             Domain: request.Domain,
             CaseType: request.CaseType,
-            PrimaryTargetType: "shipment",
+            PrimaryTargetType: DisputeEligibilityRule.TargetShipment,
+            RoleKey: roleKey,
             OrderId: order.Id.Value,
             AuctionId: order.AuctionId.Value,
             ShipmentId: request.ShipmentId,

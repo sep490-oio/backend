@@ -133,6 +133,9 @@ internal sealed class CreateVerificationCorrectionDisputeCommandHandler(
         if (uploads.IsFailure)
             return uploads.Error;
 
+        // KYC correction route: a verification-only target outside the auction/order
+        // eligibility matrix. Routed through the dedicated factory by design.
+#pragma warning disable CS0618 // Type or member is obsolete
         var createResult = Dispute.CreateForVerification(
             verificationId,
             complainantId: currentUser.UserId,
@@ -142,6 +145,7 @@ internal sealed class CreateVerificationCorrectionDisputeCommandHandler(
             description: request.Reason.Trim(),
             nowUtc: nowUtc,
             priority: DisputePriority.Medium);
+#pragma warning restore CS0618
 
         if (createResult.IsFailure)
             return createResult.Error;

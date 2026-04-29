@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Context.AuctionContext.EventHandlers;
+using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.ValueObjects;
@@ -63,6 +64,19 @@ internal sealed class WinnerOrderProvisioner : IWinnerOrderProvisioner
 
         if (existingOrder is not null)
             return existingOrder;
+
+        var auction = await _dbContext.Set<Auction>()
+            .AsNoTracking()
+            .Include(x => x.Item)
+            .FirstOrDefaultAsync(x => x.Id == auctionIdVo, ct);
+
+        if (auction is null)
+        {
+            _logger.LogWarning(
+                "WinnerOrderProvisioner: missing auction {AuctionId} while creating winner order.",
+                auctionId);
+            return Error.NotFound("WinnerOrderProvisioner.AuctionNotFound", "Auction not found.");
+        }
 
         var moneyResult = Money.Create(finalPrice, currency);
         if (moneyResult.IsFailure)
@@ -128,6 +142,7 @@ internal sealed class WinnerOrderProvisioner : IWinnerOrderProvisioner
             currency: currency,
             paymentDueAt: occurredAt.AddHours(PaymentDeadlineHours),
             nowUtc: occurredAt,
+            isPlatformVerifiedItem: auction.Item.RequiresPlatformInspection,
             notes: shippingAddress is null
                 ? "Winner had no default address when order was generated."
                 : null);

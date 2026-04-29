@@ -106,24 +106,30 @@ internal sealed class ConfirmOrderReturnReceivedCommandHandler(
         // D6: dispatch refund via RefundDecisionPolicy — single decision site.
         var decision = RefundDecisionPolicy.DecideFor(order.Return);
 
-        UnitResult<Error>? refundResult = decision switch
-        {
-            RefundDecision.FireFull =>
-                await settlementService.RefundBuyerAsync(
-                    order, null, "Deferred refund at return-received (full)", currentUser.UserId, cancellationToken),
-            RefundDecision.FirePartial partial =>
-                await settlementService.RefundBuyerAsync(
-                    order, partial.Amount, "Deferred refund at return-received (partial)", currentUser.UserId, cancellationToken),
-            RefundDecision.Skip => null, // No refund to fire
-            _ => null
-        };
+        Result<RefundSettlementResult, Error> refundResult = default;
+        var refundFired = false;
 
-        if (refundResult is { IsFailure: true })
+        switch (decision)
+        {
+            case RefundDecision.FireFull:
+                refundResult = await settlementService.RefundBuyerAsync(
+                    order, null, "Deferred refund at return-received (full)", currentUser.UserId, cancellationToken);
+                refundFired = true;
+                break;
+
+            case RefundDecision.FirePartial partial:
+                refundResult = await settlementService.RefundBuyerAsync(
+                    order, partial.Amount, "Deferred refund at return-received (partial)", currentUser.UserId, cancellationToken);
+                refundFired = true;
+                break;
+        }
+
+        if (refundFired && refundResult.IsFailure)
         {
             // D1 compensating path — V1 scope. Resolve() already committed, so we do
             // NOT propagate the error to the caller; instead log + raise event +
             // create admin ticket so the stuck refund surfaces for manual retry.
-            await EmitDeferredRefundFailedAsync(order, decision, refundResult.Value.Error, cancellationToken);
+            await EmitDeferredRefundFailedAsync(order, decision, refundResult.Error, cancellationToken);
         }
 
         // Save the refund transactions (or admin-ticket side effects) now.
