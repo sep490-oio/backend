@@ -1202,7 +1202,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
                 return resultUpdateExiting.Error;
             }
 
-            var engageExistingResult = EngageAutoBidAgainstCurrentWinner(existing, bidderId, nowUtc);
+            var engageExistingResult = EngageAutoBidNow(existing, bidderId, nowUtc);
             if (engageExistingResult.IsFailure)
                 return engageExistingResult.Error;
 
@@ -1230,7 +1230,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             maxAmount.Amount,
             nowUtc));
 
-        var engageNewResult = EngageAutoBidAgainstCurrentWinner(autoBid, bidderId, nowUtc);
+        var engageNewResult = EngageAutoBidNow(autoBid, bidderId, nowUtc);
         if (engageNewResult.IsFailure)
             return engageNewResult.Error;
 
@@ -1300,7 +1300,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             return resumeResult.Error;
         }
 
-        var engageResult = EngageAutoBidAgainstCurrentWinner(autoBid, bidderId, nowUtc);
+        var engageResult = EngageAutoBidNow(autoBid, bidderId, nowUtc);
 
         return engageResult.IsFailure ? engageResult.Error : UnitResult.Success<Error>();
     }
@@ -2409,6 +2409,66 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         {
             ab.MarkAsOutbid(nowUtc);
         }
+    }
+
+    /// <summary>
+    /// Engage an auto-bid immediately on configure/update/resume.
+    /// Branches:
+    ///   - User is current winner ? skip self-bid (only max/increment update on the AutoBid)
+    ///   - No bids yet (BidCount == 0 or no winner) ? place opening proxy bid at GetMinimumBidAmount()
+    ///   - Otherwise ? engage proxy resolution against current winner (existing behavior)
+    /// Tie-break rule (same max ? earlier bidder wins) is preserved by EngageAutoBidAgainstCurrentWinner
+    /// for branches that route through it, and naturally for the opening branch (only one bidder).
+    /// </summary>
+    private UnitResult<Error> EngageAutoBidNow(
+        AutoBid autoBid,
+        UserId bidderId,
+        DateTime nowUtc,
+        TimeSpan extensionThresholdMinutes = default,
+        int maxExtensions = 0,
+        TimeSpan maxDuration = default)
+    {
+        // Branch A: user is current winner — only update max/increment on the AutoBid, no self-bid
+        var currentWinning = GetCurrentWinningBid();
+        if (currentWinning is not null && currentWinning.BidderId == bidderId)
+            return UnitResult.Success<Error>();
+
+        // Branch B: no bids yet — place an opening proxy bid at the minimum amount
+        if (BidCount == 0 || currentWinning is null)
+        {
+            var minimumRequired = GetMinimumBidAmount();
+            if (!autoBid.CanBid(minimumRequired))
+                return UnitResult.Success<Error>();
+
+            // Cap opening bid at buy-now ceiling if configured ceiling exceeds it
+            var openingAmount = minimumRequired.Amount;
+            if (Pricing.HasBuyNowPrice && openingAmount > Pricing.BuyNowAmount!.Value)
+                openingAmount = Pricing.BuyNowAmount.Value;
+
+            var openingPrice = Money.Of(openingAmount, Pricing.Currency);
+            var openingResult = PlaceAutoBidInternal(
+                autoBid, openingPrice, nowUtc,
+                raiseOutbidEvent: false,
+                extensionThresholdMinutes: extensionThresholdMinutes,
+                maxExtensions: maxExtensions,
+                maxDuration: maxDuration);
+
+            if (openingResult.IsFailure)
+                return openingResult.Error;
+
+            // Other auto-bids may now want to counter the opening bid — run proxy resolution
+            return ResolveProxyBids(
+                excludeBidderId: bidderId,
+                nowUtc: nowUtc.AddTicks(1),
+                extensionThresholdMinutes: extensionThresholdMinutes,
+                maxExtensions: maxExtensions,
+                maxDuration: maxDuration);
+        }
+
+        // Branch C: there is a current winner who is not this bidder — engage proxy
+        return EngageAutoBidAgainstCurrentWinner(
+            autoBid, bidderId, nowUtc,
+            extensionThresholdMinutes, maxExtensions, maxDuration);
     }
 
     private UnitResult<Error> EngageAutoBidAgainstCurrentWinner(

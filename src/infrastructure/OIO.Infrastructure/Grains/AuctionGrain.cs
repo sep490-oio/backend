@@ -448,6 +448,10 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
             var previousMaxAmount = existingAutoBid?.Budget.MaxAmount ?? 0m;
             var holdDelta = maxAmountDomain.Amount - previousMaxAmount;
 
+            // Snapshot bid state before — auto-bid engagement may place opening / counter bids
+            var bidIdsBefore = auction.Bids.Select(b => b.Id).ToHashSet();
+            var previousWinnerIdRaw = auction.GetCurrentWinningBid()?.BidderId.Value;
+
             // Perform domain operation first (no DB side-effects yet)
             (_, isFailure, var autoBid, error) = auction.ConfigureAutoBid(
                 bidderUserId,
@@ -465,6 +469,24 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
             autoBid.SetHeldAmount(maxAmountDomain.Amount);
 
             var rtAuctionId = auction.Id.Value;
+
+            // Detect bids placed by the engagement (opening bid and/or counter-bids from other auto-bids)
+            var newBids = auction.Bids
+                .Where(b => !bidIdsBefore.Contains(b.Id))
+                .OrderBy(b => b.CreatedAt)
+                .Select(b => new BidPublishSnapshot(
+                    BidId: b.Id.Value,
+                    BidderId: b.BidderId.Value,
+                    Amount: b.Amount.Amount,
+                    IsAutoBid: b.IsAutoBid,
+                    CreatedAt: b.CreatedAt))
+                .ToList();
+            var currentPriceAfter = auction.Pricing.CurrentAmount;
+            var minNextBidAfter = auction.GetMinimumBidAmount().Amount;
+            var totalBidsAfter = auction.BidCount;
+            var winnerAfter = auction.GetCurrentWinningBid();
+            var winnerBidIdAfter = winnerAfter?.Id.Value;
+            var winnerBidderIdAfter = winnerAfter?.BidderId.Value;
 
             if (holdDelta != 0m)
             {
@@ -512,9 +534,91 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 await SaveAsync(auction, cancellationToken);
             }
 
-            await PublishRealtimeAsync(rtAuctionId, (pub, _) => pub.PublishStateChangedAsync(rtAuctionId, ct: cancellationToken));
-            await PublishAutoBidStateAsync(rtAuctionId, bidderId, cancellationToken);
-            await PublishPositionAsync(rtAuctionId, bidderId, cancellationToken);
+            if (newBids.Count > 0)
+            {
+                // Publish a BidPlaced for each newly created bid (opening + any cascading counters)
+                await PublishRealtimeAsync(rtAuctionId, async (publisher, dbContext) =>
+                {
+                    for (var i = 0; i < newBids.Count; i++)
+                    {
+                        var nb = newBids[i];
+                        var isLast = i == newBids.Count - 1;
+                        var displayName = await ResolveBidderDisplayNameAsync(dbContext, nb.BidderId, cancellationToken);
+                        var ts = new DateTimeOffset(DateTime.SpecifyKind(nb.CreatedAt, DateTimeKind.Utc));
+
+                        // For non-final bids in the cascade, currentPrice is the bid's own amount; the final bid
+                        // carries the resolved auction state (matches the PlaceBidAsync convention).
+                        var pubCurrentPrice = isLast ? currentPriceAfter : nb.Amount;
+                        var pubMinNextBid = isLast ? minNextBidAfter : nb.Amount;
+                        var pubTotalBids = isLast ? totalBidsAfter : (totalBidsAfter - (newBids.Count - 1 - i));
+
+                        await publisher.PublishBidPlacedAsync(
+                            rtAuctionId,
+                            new BidNotification(
+                                AuctionId: rtAuctionId,
+                                BidId: nb.BidId,
+                                BidderId: nb.BidderId,
+                                BidderDisplayName: displayName,
+                                Amount: nb.Amount,
+                                CurrentPrice: pubCurrentPrice,
+                                MinimumNextBid: pubMinNextBid,
+                                TotalBids: pubTotalBids,
+                                IsAutoBid: nb.IsAutoBid,
+                                Timestamp: ts),
+                            new AuctionStateSyncOptions(
+                                LastBid: new AuctionStateLastBidInfo(
+                                    BidId: nb.BidId,
+                                    BidderId: nb.BidderId,
+                                    BidderDisplayName: displayName,
+                                    Amount: nb.Amount,
+                                    IsAutoBid: nb.IsAutoBid,
+                                    Timestamp: ts),
+                                NewPriceHistoryPoint: new AuctionStatePriceHistoryPoint(
+                                    Price: pubCurrentPrice,
+                                    Type: "bid",
+                                    BidId: nb.BidId,
+                                    BidderDisplayName: displayName,
+                                    RecordedAt: ts)),
+                            cancellationToken);
+                    }
+
+                    // Outbid notification for the previous winner (if any) — once, against the final winner
+                    if (previousWinnerIdRaw is not null
+                        && winnerBidderIdAfter is not null
+                        && previousWinnerIdRaw.Value != winnerBidderIdAfter.Value)
+                    {
+                        var winnerName = await ResolveBidderDisplayNameAsync(dbContext, winnerBidderIdAfter.Value, cancellationToken);
+                        await publisher.PublishOutbidAsync(
+                            previousWinnerIdRaw.Value,
+                            new OutbidNotification(
+                                AuctionId: rtAuctionId,
+                                NewHighAmount: currentPriceAfter,
+                                MinimumNextBid: minNextBidAfter,
+                                NewHighBidderDisplayName: winnerName),
+                            cancellationToken);
+                    }
+                });
+
+                // Auto-bid state for every affected bidder (covers configurer + outbid bidders in cascade)
+                await PublishAllAutoBidStatesAsync(rtAuctionId, cancellationToken);
+
+                // Position changes for: configurer, previous winner (if not configurer), final winner (if different)
+                await PublishPositionAsync(rtAuctionId, bidderId, cancellationToken);
+                if (previousWinnerIdRaw is not null && previousWinnerIdRaw.Value != bidderId)
+                    await PublishPositionAsync(rtAuctionId, previousWinnerIdRaw.Value, cancellationToken);
+                if (winnerBidderIdAfter is not null
+                    && winnerBidderIdAfter.Value != bidderId
+                    && (previousWinnerIdRaw is null || winnerBidderIdAfter.Value != previousWinnerIdRaw.Value))
+                {
+                    await PublishPositionAsync(rtAuctionId, winnerBidderIdAfter.Value, cancellationToken);
+                }
+            }
+            else
+            {
+                await PublishRealtimeAsync(rtAuctionId, (pub, _) => pub.PublishStateChangedAsync(rtAuctionId, ct: cancellationToken));
+                await PublishAutoBidStateAsync(rtAuctionId, bidderId, cancellationToken);
+                await PublishPositionAsync(rtAuctionId, bidderId, cancellationToken);
+            }
 
             var result = AutoBidGrain.From(autoBid);
             result = result with { PreviousMaxAmount = previousMaxAmount };
@@ -577,6 +681,10 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
             if (isFailure)
                 return error;
 
+            // Snapshot bid state before — Resume engages auto-bid which may place new bids
+            var bidIdsBefore = auction.Bids.Select(b => b.Id).ToHashSet();
+            var previousWinnerIdRaw = auction.GetCurrentWinningBid()?.BidderId.Value;
+
             var result = auction.ResumeAutoBid(UserId.From(bidderId), nowUtc);
             if (result.IsFailure)
             {
@@ -585,10 +693,106 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
             }
 
             var rtAuctionId = auction.Id.Value;
+
+            // Detect bids placed by the engagement
+            var newBids = auction.Bids
+                .Where(b => !bidIdsBefore.Contains(b.Id))
+                .OrderBy(b => b.CreatedAt)
+                .Select(b => new BidPublishSnapshot(
+                    BidId: b.Id.Value,
+                    BidderId: b.BidderId.Value,
+                    Amount: b.Amount.Amount,
+                    IsAutoBid: b.IsAutoBid,
+                    CreatedAt: b.CreatedAt))
+                .ToList();
+            var currentPriceAfter = auction.Pricing.CurrentAmount;
+            var minNextBidAfter = auction.GetMinimumBidAmount().Amount;
+            var totalBidsAfter = auction.BidCount;
+            var winnerAfter = auction.GetCurrentWinningBid();
+            var winnerBidderIdAfter = winnerAfter?.BidderId.Value;
+
             await SaveAsync(auction, cancellationToken);
-            await PublishRealtimeAsync(rtAuctionId, (pub, _) => pub.PublishStateChangedAsync(rtAuctionId, ct: cancellationToken));
-            await PublishAutoBidStateAsync(rtAuctionId, bidderId, cancellationToken);
-            await PublishPositionAsync(rtAuctionId, bidderId, cancellationToken);
+
+            if (newBids.Count > 0)
+            {
+                await PublishRealtimeAsync(rtAuctionId, async (publisher, dbContext) =>
+                {
+                    for (var i = 0; i < newBids.Count; i++)
+                    {
+                        var nb = newBids[i];
+                        var isLast = i == newBids.Count - 1;
+                        var displayName = await ResolveBidderDisplayNameAsync(dbContext, nb.BidderId, cancellationToken);
+                        var ts = new DateTimeOffset(DateTime.SpecifyKind(nb.CreatedAt, DateTimeKind.Utc));
+
+                        var pubCurrentPrice = isLast ? currentPriceAfter : nb.Amount;
+                        var pubMinNextBid = isLast ? minNextBidAfter : nb.Amount;
+                        var pubTotalBids = isLast ? totalBidsAfter : (totalBidsAfter - (newBids.Count - 1 - i));
+
+                        await publisher.PublishBidPlacedAsync(
+                            rtAuctionId,
+                            new BidNotification(
+                                AuctionId: rtAuctionId,
+                                BidId: nb.BidId,
+                                BidderId: nb.BidderId,
+                                BidderDisplayName: displayName,
+                                Amount: nb.Amount,
+                                CurrentPrice: pubCurrentPrice,
+                                MinimumNextBid: pubMinNextBid,
+                                TotalBids: pubTotalBids,
+                                IsAutoBid: nb.IsAutoBid,
+                                Timestamp: ts),
+                            new AuctionStateSyncOptions(
+                                LastBid: new AuctionStateLastBidInfo(
+                                    BidId: nb.BidId,
+                                    BidderId: nb.BidderId,
+                                    BidderDisplayName: displayName,
+                                    Amount: nb.Amount,
+                                    IsAutoBid: nb.IsAutoBid,
+                                    Timestamp: ts),
+                                NewPriceHistoryPoint: new AuctionStatePriceHistoryPoint(
+                                    Price: pubCurrentPrice,
+                                    Type: "bid",
+                                    BidId: nb.BidId,
+                                    BidderDisplayName: displayName,
+                                    RecordedAt: ts)),
+                            cancellationToken);
+                    }
+
+                    if (previousWinnerIdRaw is not null
+                        && winnerBidderIdAfter is not null
+                        && previousWinnerIdRaw.Value != winnerBidderIdAfter.Value)
+                    {
+                        var winnerName = await ResolveBidderDisplayNameAsync(dbContext, winnerBidderIdAfter.Value, cancellationToken);
+                        await publisher.PublishOutbidAsync(
+                            previousWinnerIdRaw.Value,
+                            new OutbidNotification(
+                                AuctionId: rtAuctionId,
+                                NewHighAmount: currentPriceAfter,
+                                MinimumNextBid: minNextBidAfter,
+                                NewHighBidderDisplayName: winnerName),
+                            cancellationToken);
+                    }
+                });
+
+                await PublishAllAutoBidStatesAsync(rtAuctionId, cancellationToken);
+
+                await PublishPositionAsync(rtAuctionId, bidderId, cancellationToken);
+                if (previousWinnerIdRaw is not null && previousWinnerIdRaw.Value != bidderId)
+                    await PublishPositionAsync(rtAuctionId, previousWinnerIdRaw.Value, cancellationToken);
+                if (winnerBidderIdAfter is not null
+                    && winnerBidderIdAfter.Value != bidderId
+                    && (previousWinnerIdRaw is null || winnerBidderIdAfter.Value != previousWinnerIdRaw.Value))
+                {
+                    await PublishPositionAsync(rtAuctionId, winnerBidderIdAfter.Value, cancellationToken);
+                }
+            }
+            else
+            {
+                await PublishRealtimeAsync(rtAuctionId, (pub, _) => pub.PublishStateChangedAsync(rtAuctionId, ct: cancellationToken));
+                await PublishAutoBidStateAsync(rtAuctionId, bidderId, cancellationToken);
+                await PublishPositionAsync(rtAuctionId, bidderId, cancellationToken);
+            }
+
             return UnitResult.Success<Error>();
         }
         catch (Exception ex)
@@ -972,5 +1176,16 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
         _loadScope?.Dispose();
         _loadScope = null;
     }
+
+    /// <summary>
+    /// Snapshot of a newly created bid captured before SaveAsync, so realtime publishing
+    /// can run after the load scope is disposed.
+    /// </summary>
+    private readonly record struct BidPublishSnapshot(
+        Guid BidId,
+        Guid BidderId,
+        decimal Amount,
+        bool IsAutoBid,
+        DateTime CreatedAt);
 }
 
