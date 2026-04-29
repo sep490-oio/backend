@@ -22,7 +22,7 @@ public sealed class ScanOverdueSelfShipOrdersJob : BackgroundService
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<ScanOverdueSelfShipOrdersJob> _logger;
-    private readonly TimeSpan _interval = TimeSpan.FromMinutes(5); // Run every 5 minutes
+    private readonly TimeSpan _interval = TimeSpan.FromMinutes(1); // Run every 1 minute
 
     public ScanOverdueSelfShipOrdersJob(
         IServiceScopeFactory scopeFactory,

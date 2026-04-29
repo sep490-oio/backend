@@ -13,7 +13,7 @@ public sealed class ScanActiveAuctionsForCollusionJob : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<ScanActiveAuctionsForCollusionJob> _logger;
-    private readonly TimeSpan _interval = TimeSpan.FromMinutes(5);
+    private readonly TimeSpan _interval = TimeSpan.FromMinutes(1);
 
     public ScanActiveAuctionsForCollusionJob(
         IServiceScopeFactory scopeFactory,
