@@ -268,6 +268,12 @@ public static partial class ApiEndpoint
             public const string GetSellerWalletOverview = nameof(GetSellerWalletOverview);
         }
 
+        public static class SellerFinance
+        {
+            public const string GetSellerFinanceOverview = nameof(GetSellerFinanceOverview);
+            public const string GetSellerEscrowLedger = nameof(GetSellerEscrowLedger);
+        }
+
         public static class Reviews
         {
             public const string CreateSellerReview = nameof(CreateSellerReview);

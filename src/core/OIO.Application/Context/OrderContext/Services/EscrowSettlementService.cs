@@ -359,12 +359,25 @@ public sealed class EscrowSettlementService
     private Result<SettlementBreakdown, Error> CalculateSellerSettlement(
         decimal grossAmount,
         string currency,
+        bool includeInspectionFee) =>
+        CalculateSellerSettlement(_runtimeSettings.Settlement, grossAmount, currency, includeInspectionFee);
+
+    /// <summary>
+    /// Pure fee calculator. Mirrors the logic invoked by the
+    /// <c>EscrowSettlementService</c> when releasing escrows so read-side
+    /// queries (e.g. seller finance overview / ledger) can preview the same
+    /// breakdown without re-implementing fee math. Reads rates and caps from
+    /// the supplied <see cref="SettlementOptions"/> — never hard-coded.
+    /// </summary>
+    public static Result<SettlementBreakdown, Error> CalculateSellerSettlement(
+        SettlementOptions options,
+        decimal grossAmount,
+        string currency,
         bool includeInspectionFee)
     {
         if (grossAmount <= 0m)
             return Error.Validation("Amount", "Settlement.InvalidGrossAmount", "Settlement gross amount must be positive.");
 
-        var options = _runtimeSettings.Settlement;
         if (!options.TryGetInspectionFeeCap(currency, out var inspectionFeeCap))
         {
             return Error.Validation(

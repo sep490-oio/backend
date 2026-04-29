@@ -19,6 +19,7 @@ public static partial class ApiEndpoint
         public const string Verifications = nameof(Verifications);
         public const string SellerProfiles = nameof(SellerProfiles);
         public const string Sellers = nameof(Sellers);
+        public const string SellerFinance = nameof(SellerFinance);
         public const string Payments = nameof(Payments);
         public const string Orders = nameof(Orders);
         public const string Reports = nameof(Reports);

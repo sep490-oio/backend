@@ -232,6 +232,14 @@ public static partial class ApiEndpoint
             public const string GetWalletOverview = $"{SellerBase}/wallet/overview";
         }
 
+        public static class SellerFinance
+        {
+            private const string Base = "api/seller/finance";
+
+            public const string Overview = $"{Base}/overview";
+            public const string EscrowLedger = $"{Base}/escrow-ledger";
+        }
+
         public static class Reviews
         {
             private const string Base = "api/reviews";
