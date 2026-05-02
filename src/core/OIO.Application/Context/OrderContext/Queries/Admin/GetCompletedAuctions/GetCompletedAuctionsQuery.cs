@@ -95,7 +95,13 @@ internal sealed class GetCompletedAuctionsQueryHandler(
             .Include(o => o.OutboundShipments)
             .Where(o => auctionIds.Contains(o.AuctionId))
             .ToListAsync(cancellationToken);
-        var ordersByAuction = orders.ToDictionary(o => o.AuctionId);
+        var ordersByAuction = orders
+            .GroupBy(o => o.AuctionId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderBy(o => o.Status == OrderStatus.Cancelled ? 1 : 0)
+                      .ThenByDescending(o => o.CreatedAt)
+                      .First());
 
         // Load display names for winners + sellers in one hop.
         var userIds = orders
