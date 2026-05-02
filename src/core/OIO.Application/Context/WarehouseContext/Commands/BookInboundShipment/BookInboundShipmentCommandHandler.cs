@@ -102,8 +102,8 @@ internal sealed class BookInboundShipmentCommandHandler
         // Second: check DB — each ItemId must not already have an active inbound shipment
         var activeShipmentItemId = await _dbContext.Set<InboundShipment>()
             .Where(s => rawItemIds.Contains(s.ItemId) &&
-                        s.Status.Id != InboundShipmentStatus.Cancelled.Id &&
-                        s.Status.Id != InboundShipmentStatus.Failed.Id)
+                        s.Status != InboundShipmentStatus.Cancelled &&
+                        s.Status != InboundShipmentStatus.Failed)
             .Select(s => s.ItemId)
             .FirstOrDefaultAsync(cancellationToken);
 
