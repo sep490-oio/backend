@@ -52,7 +52,7 @@ internal sealed class GetCompletedAuctionsQueryHandler(
             .AsNoTracking()
             .Include(a => a.Item)
                 .ThenInclude(i => i.Media)
-            .Where(a => a.Status == AuctionStatus.Sold || a.Status == AuctionStatus.Completed);
+            .Where(a => a.Status == AuctionStatus.Completed);
 
         if (!string.IsNullOrWhiteSpace(parameters.Search))
         {
