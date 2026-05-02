@@ -38,6 +38,9 @@ internal sealed class GhnCreateOrderRequest
     [JsonPropertyName("from_address")]       public string? FromAddress      { get; init; }
     [JsonPropertyName("from_ward_name")]     public string? FromWardName     { get; init; }
     [JsonPropertyName("from_district_name")] public string? FromDistrictName { get; init; }
+    [JsonPropertyName("from_ward_code")]     public string? FromWardCode     { get; init; }
+    [JsonPropertyName("from_district_id")]   public int?    FromDistrictId   { get; init; }
+
     // Package — GHN uses grams for weight, cm for dimensions
     [JsonPropertyName("weight")] public required int  Weight { get; init; }  // grams
     [JsonPropertyName("length")] public          int? Length { get; init; }  // cm

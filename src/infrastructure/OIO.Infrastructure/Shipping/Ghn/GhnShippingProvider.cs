@@ -63,10 +63,23 @@ internal sealed class GhnShippingProvider : IShippingProvider
         var creds = credsResult.Value;
 
         // Parse recipient GHN address IDs from CarrierAddressData JSON
-        var addrResult = ParseCarrierAddressData(request.RecipientCarrierAddressDataJson, "RecipientCarrierAddressDataJson");
-        if (addrResult.IsFailure) return addrResult.Error;
+        var toAddrResult = ParseCarrierAddressData(request.RecipientCarrierAddressDataJson, "RecipientCarrierAddressDataJson");
+        if (toAddrResult.IsFailure) return toAddrResult.Error;
 
-        var (toDistrictId, toWardCode) = addrResult.Value;
+        var (toDistrictId, toWardCode) = toAddrResult.Value;
+
+        // Parse sender GHN address IDs if available
+        int? fromDistrictId = null;
+        string? fromWardCode = null;
+        if (!string.IsNullOrWhiteSpace(request.SenderCarrierAddressDataJson))
+        {
+            var fromAddrResult = ParseCarrierAddressData(request.SenderCarrierAddressDataJson, "SenderCarrierAddressDataJson");
+            if (fromAddrResult.IsSuccess)
+            {
+                fromDistrictId = fromAddrResult.Value.districtId;
+                fromWardCode = fromAddrResult.Value.wardCode;
+            }
+        }
 
         var ghnRequest = new GhnCreateOrderRequest
         {
@@ -81,11 +94,15 @@ internal sealed class GhnShippingProvider : IShippingProvider
             ToAddress    = request.RecipientAddress,
             ToWardCode   = toWardCode,
             ToDistrictId = toDistrictId,
+
             FromName         = request.SenderName,
             FromPhone        = request.SenderPhone,
             FromAddress      = request.SenderAddress,
             FromWardName     = request.SenderWard,
             FromDistrictName = request.SenderDistrict,
+            FromWardCode     = fromWardCode,
+            FromDistrictId   = fromDistrictId,
+
             Weight = request.WeightGrams,  // GHN uses grams — no conversion
             Length = request.LengthCm,
             Width  = request.WidthCm,
