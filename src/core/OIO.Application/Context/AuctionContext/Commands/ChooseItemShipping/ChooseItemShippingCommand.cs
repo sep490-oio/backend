@@ -9,6 +9,7 @@ using OIO.Application.Context.WarehouseContext.Mappings;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.SeedWork.Checks.Extensions;
+using OIO.Domain.Context.WarehouseContext.Errors;
 using OIO.Domain.SeedWork.Errors;
 using ItemId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId;
 
@@ -37,10 +38,29 @@ public sealed record ChooseItemShippingCommand(
     {
         var check = ChooseItemShippingCommand.Check()
             .WithOwnerName("ChooseItemShipping")
-            .Field(ItemId).NotEmptyGuid()
-            .ToViolationsError();
+            .Field(ItemId).NotEmptyGuid();
 
-        check.Add(new ItemShippingSelectionRequest(
+        // Conditional validation:
+        // 1. If no external tracking is provided, ProviderCode must be present.
+        if (string.IsNullOrWhiteSpace(ExternalTrackingNumber))
+        {
+            if (string.IsNullOrWhiteSpace(ProviderCode))
+            {
+                check.State.Fail(WarehouseErrors.ShippingProvider.CodeRequired);
+            }
+        }
+        else
+        {
+            // 2. If external tracking is provided, ExternalCarrierName must also be present.
+            if (string.IsNullOrWhiteSpace(ExternalCarrierName))
+            {
+                check.State.Fail(WarehouseErrors.InboundShipment.ExternalCarrierNameRequired);
+            }
+        }
+
+        var result = check.ToViolationsError();
+
+        result.Add(new ItemShippingSelectionRequest(
             SenderName,
             SenderPhone,
             SenderAddress,
@@ -58,7 +78,7 @@ public sealed record ChooseItemShippingCommand(
             ExternalCarrierName,
             Notes).Validate());
 
-        return check;
+        return result;
     }
 }
 

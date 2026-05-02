@@ -110,6 +110,8 @@ internal sealed class GhnShippingProvider : IShippingProvider
         };
 
         using var http = BuildClient(config, creds);
+        if (http.BaseAddress is null)
+            return Error.Unexpected("Ghn.BuildClient.Error", "Failed to build GHN client with valid base address.");
 
         try
         {
@@ -128,7 +130,16 @@ internal sealed class GhnShippingProvider : IShippingProvider
                     description: $"GHN returned HTTP {(int)response.StatusCode}: {body}");
             }
 
-            var result = JsonSerializer.Deserialize<GhnCreateOrderResponse>(body, _jsonOptions);
+            GhnCreateOrderResponse? result;
+            try
+            {
+                result = JsonSerializer.Deserialize<GhnCreateOrderResponse>(body, _jsonOptions);
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "GHN CreateOrder JSON parse error. Body: {Body}", body);
+                return Error.Unexpected("Ghn.CreateOrder.ParseError", "Failed to parse GHN response.");
+            }
 
             if (result is null || result.Code != 200 || result.Data is null)
             {
@@ -570,9 +581,25 @@ internal sealed class GhnShippingProvider : IShippingProvider
     private HttpClient BuildClient(ShippingProviderConfig config, GhnCredentials creds)
     {
         var http = _httpClientFactory.CreateClient("GhnClient");
-        http.BaseAddress = new Uri(config.ApiBaseUrl);
+        if (string.IsNullOrWhiteSpace(config.ApiBaseUrl))
+        {
+            _logger.LogError("GHN ApiBaseUrl is not configured for config {Id}", config.Id);
+            return http;
+        }
+
+        try
+        {
+            http.BaseAddress = new Uri(config.ApiBaseUrl);
+        }
+        catch (UriFormatException ex)
+        {
+            _logger.LogError(ex, "GHN invalid ApiBaseUrl: {Url}", config.ApiBaseUrl);
+        }
+
         http.DefaultRequestHeaders.Clear();
-        http.DefaultRequestHeaders.Add("Token",  creds.Token);
+        if (!string.IsNullOrWhiteSpace(creds.Token))
+            http.DefaultRequestHeaders.Add("Token",  creds.Token);
+        
         http.DefaultRequestHeaders.Add("ShopId", creds.ShopId.ToString());
         return http;
     }

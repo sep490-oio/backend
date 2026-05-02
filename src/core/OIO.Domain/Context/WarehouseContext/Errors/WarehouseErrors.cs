@@ -247,6 +247,11 @@ public static class WarehouseErrors
         public static readonly Error ProviderInactive = Error.Conflict(
             code: "ShippingProvider.Inactive",
             description: "The specified shipping provider is currently inactive.");
+
+        public static readonly Error CodeRequired = Error.Validation(
+            "ProviderCode",
+            "ShippingProvider.CodeRequired",
+            "Provider code is required when no external carrier is specified.");
     }
 
     public static class StorageLocation
