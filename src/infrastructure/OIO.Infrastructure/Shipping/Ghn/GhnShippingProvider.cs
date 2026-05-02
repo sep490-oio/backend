@@ -142,6 +142,16 @@ internal sealed class GhnShippingProvider : IShippingProvider
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("GHN CreateOrder HTTP {StatusCode}: {Body}", response.StatusCode, body);
+                
+                // Map GHN 4xx errors to our Validation error (400) to avoid generic 500s
+                if ((int)response.StatusCode >= 400 && (int)response.StatusCode < 500)
+                {
+                    return Error.Validation(
+                        propertyName: "ShippingProvider",
+                        code: "Ghn.CreateOrder.Rejected",
+                        description: $"GHN rejected the request: {body}");
+                }
+
                 return Error.Unexpected(
                     code: "Ghn.CreateOrder.HttpError",
                     description: $"GHN returned HTTP {(int)response.StatusCode}: {body}");
@@ -478,6 +488,13 @@ internal sealed class GhnShippingProvider : IShippingProvider
 
     private static Result<GhnCredentials, Error> ParseCredentials(ShippingProviderConfig config)
     {
+        if (config.Credentials is null || string.IsNullOrWhiteSpace(config.Credentials.RawJson))
+        {
+            return Error.Unexpected(
+                code: "Ghn.Credentials.Missing",
+                description: "GHN credentials are not configured in the provider settings.");
+        }
+
         try
         {
             var creds = JsonSerializer.Deserialize<GhnCredentials>(
@@ -487,7 +504,7 @@ internal sealed class GhnShippingProvider : IShippingProvider
             if (creds is null || string.IsNullOrWhiteSpace(creds.Token) || creds.ShopId == 0)
                 return Error.Unexpected(
                     code: "Ghn.Credentials.Invalid",
-                    description: "GHN credentials are missing token or shop_id.");
+                    description: "GHN credentials JSON is missing token or shop_id.");
 
             return creds;
         }
@@ -701,6 +718,16 @@ internal sealed class GhnShippingProvider : IShippingProvider
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("GHN CreateOrder specialized HTTP {StatusCode}: {Body}", response.StatusCode, body);
+                
+                // Map GHN 4xx errors to our Validation error (400)
+                if ((int)response.StatusCode >= 400 && (int)response.StatusCode < 500)
+                {
+                    return Error.Validation(
+                        propertyName: "ShippingProvider",
+                        code: "Ghn.CreateOrder.SpecializedRejected",
+                        description: $"GHN rejected the specialized request: {body}");
+                }
+
                 return Error.Unexpected(
                     code: "Ghn.CreateOrder.HttpError",
                     description: $"GHN returned HTTP {(int)response.StatusCode}: {body}");
@@ -711,9 +738,12 @@ internal sealed class GhnShippingProvider : IShippingProvider
             if (result is null || result.Code != 200 || result.Data is null)
             {
                 _logger.LogWarning("GHN CreateOrder specialized failed: code={Code} msg={Message}", result?.Code, result?.Message);
-                return Error.Unexpected(
+                
+                // Map GHN API errors (even with 200 OK) to Validation error (400)
+                return Error.Validation(
+                    propertyName: "ShippingProvider",
                     code: "Ghn.CreateOrder.ApiError",
-                    description: $"GHN error {result?.Code}: {result?.Message}");
+                    description: $"GHN API error {result?.Code}: {result?.Message}");
             }
 
             DateTime? estimatedDelivery = null;
