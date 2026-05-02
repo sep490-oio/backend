@@ -104,6 +104,8 @@ internal sealed class ItemShippingSelectionService(
                 senderProvince: request.SenderProvince,
                 dimensions: dimensionsResult.Value,
                 now: nowUtc,
+                shipmentMode: InboundShipmentMode.ExternalCarrier,
+                externalCarrierName: request.ExternalCarrierName,
                 insuranceValue: request.InsuranceValue,
                 notes: request.Notes);
 
@@ -112,7 +114,7 @@ internal sealed class ItemShippingSelectionService(
 
             var externalShipment = externalShipmentResult.Value;
 
-            var bookedResult = externalShipment.RecordBooked(request.ExternalTrackingNumber!, nowUtc);
+            var bookedResult = externalShipment.SetExternalTrackingNumber(request.ExternalTrackingNumber!, nowUtc);
             if (bookedResult.IsFailure)
                 return bookedResult.Error;
 
@@ -200,6 +202,7 @@ internal sealed class ItemShippingSelectionService(
             senderProvince: request.SenderProvince,
             dimensions: dimensionsResult.Value,
             now: nowUtc,
+            shipmentMode: InboundShipmentMode.PlatformManaged,
             senderCarrierAddressData: request.SenderCarrierAddressDataJson is not null
                 ? CarrierAddressData.From(request.SenderCarrierAddressDataJson)
                 : null,
