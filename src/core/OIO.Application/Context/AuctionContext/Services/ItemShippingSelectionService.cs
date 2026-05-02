@@ -71,8 +71,8 @@ internal sealed class ItemShippingSelectionService(
         // Check for existing active shipments
         var hasActive = await dbContext.Set<InboundShipment>()
             .AnyAsync(s => s.ItemId == item.Id.Value &&
-                           s.Status.Id != InboundShipmentStatus.Cancelled.Id &&
-                           s.Status.Id != InboundShipmentStatus.Failed.Id,
+                           s.Status != InboundShipmentStatus.Cancelled &&
+                           s.Status != InboundShipmentStatus.Failed,
                       cancellationToken);
 
         if (hasActive)

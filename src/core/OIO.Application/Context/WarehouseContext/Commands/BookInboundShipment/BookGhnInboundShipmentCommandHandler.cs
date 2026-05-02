@@ -100,8 +100,8 @@ internal sealed class BookGhnInboundShipmentCommandHandler
         // 1. Check for existing active shipments (Single query for all items)
         var activeShipmentItemId = await _dbContext.Set<InboundShipment>()
             .Where(s => rawItemIds.Contains(s.ItemId) &&
-                        s.Status.Id != InboundShipmentStatus.Cancelled.Id &&
-                        s.Status.Id != InboundShipmentStatus.Failed.Id)
+                        s.Status != InboundShipmentStatus.Cancelled &&
+                        s.Status != InboundShipmentStatus.Failed)
             .Select(s => s.ItemId)
             .FirstOrDefaultAsync(cancellationToken);
 
