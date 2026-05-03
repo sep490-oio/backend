@@ -1,3 +1,4 @@
+using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.Shared.ValueObjects.Ids;
 using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
@@ -39,4 +40,17 @@ public sealed class OutboundShipmentEvidence : BaseEntity<OutboundShipmentEviden
     public string? FileName { get; private set; }
     public string ResourceType { get; private set; } = null!;
     public DateTime CreatedAt { get; private set; }
+
+    /// <summary>
+    /// Refreshes the cached <see cref="SecureUrl"/> / <see cref="FileName"/>
+    /// snapshot after media relocation. Aggregate-only entry-point.
+    /// </summary>
+    internal void UpdateSnapshot(MediaInfo info)
+    {
+        if (!string.IsNullOrWhiteSpace(info.SecureUrl))
+            SecureUrl = info.SecureUrl;
+
+        if (!string.IsNullOrWhiteSpace(info.FileName))
+            FileName = info.FileName;
+    }
 }

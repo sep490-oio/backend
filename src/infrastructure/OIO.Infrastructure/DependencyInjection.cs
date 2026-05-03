@@ -407,6 +407,12 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
             services.ConfigureOptions<PendingUploadRelocationJobSetup>();
             services.ConfigureOptions<AuctionJobSetup>();
             services.ConfigureOptions<AuctionAutoCompleteJobSetup>();
+            // Canonical post-delivery auto-complete job. Picks up Delivered orders
+            // whose buyer decision window has elapsed and routes them through
+            // IOrderReceiptService.ConfirmAsync — which releases escrow, completes
+            // the order, and lets AuctionCompletionOnOrderCompletedHandler advance
+            // the auction Sold -> Completed.
+            services.ConfigureOptions<OrderAutoCompleteJobSetup>();
             services.ConfigureOptions<RecalculateSellerTrustScoresJobSetup>();
             services.ConfigureOptions<SyncGhnAddressJobSetup>();
 

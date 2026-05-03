@@ -73,66 +73,70 @@ internal sealed class AuctionCompletionOnOrderCompletedHandler
 
         var auctionId = order.AuctionId;
 
-        // Step 2: Open a transaction + acquire the advisory lock BEFORE the auction read.
+        // Step 2-6: All transactional work runs inside ExecuteInTransactionAsync so the
+        // Npgsql retrying execution strategy can replay the unit on transient failures.
         // pg_advisory_xact_lock requires an ambient transaction (AcquireAuctionLockAsync asserts this).
-        await using var transaction = await _unitOfWork.BeginTransactionAsync(cancellationToken);
-
-        await _auctionLockRepo.AcquireAuctionLockAsync(auctionId, cancellationToken);
-
-        // Step 3: Load the auction tracked — we mutate Status on success.
-        var auction = await _dbContext.Set<Auction>()
-            .Include(a => a.Item)
-            .FirstOrDefaultAsync(a => a.Id == auctionId, cancellationToken);
-
-        if (auction is null)
+        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            _logger.LogWarning(
-                "AuctionCompletionOnOrderCompleted: auction {AuctionId} for order {OrderId} not found; skipping.",
-                auctionId.Value, notification.OrderId);
-            return;
-        }
+            await _auctionLockRepo.AcquireAuctionLockAsync(auctionId, ct);
 
-        // Step 4: Query dispute state inside the same UoW. Shared with AuctionAutoCompleteJob
-        // via DisputeStateQueries so new dispute statuses stay in sync across both authorities.
-        var hasOpenDispute = await DisputeStateQueries.HasOpenDisputeForAuctionAsync(
-            _dbContext, auctionId, cancellationToken);
+            // Step 3: Load the auction tracked — we mutate Status on success.
+            var auction = await _dbContext.Set<Auction>()
+                .Include(a => a.Item)
+                .FirstOrDefaultAsync(a => a.Id == auctionId, ct);
 
-        // Step 5: Domain guards re-validate every invariant for defence in depth.
-        var result = auction.MarkCompleted(_clock.UtcNow, notification.CompletedAt, hasOpenDispute);
-
-        if (result.IsFailure)
-        {
-            if (result.Error.Code == "Auction.MarkCompleted.DisputeOpen")
+            if (auction is null)
             {
-                // Structured log doubles as the dispute-skip metric until an IMetrics abstraction lands.
-                // Dashboard/alerts can aggregate on the event name. See B1 follow-up.
-                _logger.LogInformation(
-                    "metric=auction_completion_skipped_due_to_dispute_total source=event_handler AuctionId={AuctionId} OrderId={OrderId}: " +
-                    "dispute open, leaving auction Sold so the auto-complete job can retry after resolution.",
-                    auctionId.Value, orderId.Value);
+                _logger.LogWarning(
+                    "AuctionCompletionOnOrderCompleted: auction {AuctionId} for order {OrderId} not found; skipping.",
+                    auctionId.Value, notification.OrderId);
                 return;
             }
 
-            // NoWinner / ItemNotSold / transition-invalid are genuine data anomalies — the job
-            // will re-hit the same guard, so this is effectively silent data loss without an alert.
-            // Emit at Error level with a structured event name so observability can alert on it.
-            _logger.LogError(
-                "metric=auction_completion_anomaly_total source=event_handler AuctionId={AuctionId} OrderId={OrderId} " +
-                "status={Status} itemStatus={ItemStatus} code={ErrorCode}: {ErrorMessage}. " +
-                "Returning without Completed to avoid retrying a domain-invariant violation; investigate promptly.",
-                auctionId.Value, orderId.Value, auction.Status.Id, auction.Item.Status.Id,
-                result.Error.Code, result.Error.Message);
-            return;
-        }
+            // Step 4: Query dispute state inside the same UoW. Shared with AuctionAutoCompleteJob
+            // via DisputeStateQueries so new dispute statuses stay in sync across both authorities.
+            var hasOpenDispute = await DisputeStateQueries.HasOpenDisputeForAuctionAsync(
+                _dbContext, auctionId, ct);
 
-        // Step 6: Commit. Advisory lock releases here.
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+            // Step 5: Domain guards re-validate every invariant for defence in depth.
+            var result = auction.MarkCompleted(_clock.UtcNow, notification.CompletedAt, hasOpenDispute);
 
-        // Structured log doubles as the completions metric until an IMetrics abstraction lands.
-        _logger.LogInformation(
-            "metric=auction_completions_total source=event_handler AuctionId={AuctionId} OrderId={OrderId} DeliveredAt={DeliveredAt}: " +
-            "auction transitioned Sold -> Completed.",
-            auctionId.Value, orderId.Value, notification.CompletedAt);
+            if (result.IsFailure)
+            {
+                if (result.Error.Code == "Auction.MarkCompleted.DisputeOpen")
+                {
+                    // Structured log doubles as the dispute-skip metric until an IMetrics abstraction lands.
+                    // Dashboard/alerts can aggregate on the event name. See B1 follow-up.
+                    _logger.LogInformation(
+                        "metric=auction_completion_skipped_due_to_dispute_total source=event_handler AuctionId={AuctionId} OrderId={OrderId}: " +
+                        "dispute open, leaving auction Sold so the auto-complete job can retry after resolution.",
+                        auctionId.Value, orderId.Value);
+                    _dbContext.DetachAll();
+                    return;
+                }
+
+                // NoWinner / ItemNotSold / transition-invalid are genuine data anomalies — the job
+                // will re-hit the same guard, so this is effectively silent data loss without an alert.
+                // Emit at Error level with a structured event name so observability can alert on it.
+                _logger.LogError(
+                    "metric=auction_completion_anomaly_total source=event_handler AuctionId={AuctionId} OrderId={OrderId} " +
+                    "status={Status} itemStatus={ItemStatus} code={ErrorCode}: {ErrorMessage}. " +
+                    "Returning without Completed to avoid retrying a domain-invariant violation; investigate promptly.",
+                    auctionId.Value, orderId.Value, auction.Status.Id, auction.Item.Status.Id,
+                    result.Error.Code, result.Error.Message);
+                _dbContext.DetachAll();
+                return;
+            }
+
+            // Step 6: Persist. Transaction commit + advisory-lock release happens when the
+            // ExecuteInTransactionAsync delegate returns successfully.
+            await _unitOfWork.SaveChangesAsync(ct);
+
+            // Structured log doubles as the completions metric until an IMetrics abstraction lands.
+            _logger.LogInformation(
+                "metric=auction_completions_total source=event_handler AuctionId={AuctionId} OrderId={OrderId} DeliveredAt={DeliveredAt}: " +
+                "auction transitioned Sold -> Completed.",
+                auctionId.Value, orderId.Value, notification.CompletedAt);
+        }, cancellationToken);
     }
 }

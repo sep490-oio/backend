@@ -93,6 +93,22 @@ public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
         return Database.BeginTransactionAsync(cancellationToken);
     }
 
+    public Task ExecuteInTransactionAsync(
+        Func<CancellationToken, Task> action,
+        CancellationToken cancellationToken = default)
+    {
+        // The Npgsql retrying execution strategy refuses user-initiated
+        // BeginTransactionAsync unless wrapped here so it can replay the whole
+        // transactional unit on transient failures.
+        var strategy = Database.CreateExecutionStrategy();
+        return strategy.ExecuteAsync(async ct =>
+        {
+            await using var transaction = await Database.BeginTransactionAsync(ct);
+            await action(ct);
+            await transaction.CommitAsync(ct);
+        }, cancellationToken);
+    }
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         configurationBuilder.Properties<AuctionDepositId>()

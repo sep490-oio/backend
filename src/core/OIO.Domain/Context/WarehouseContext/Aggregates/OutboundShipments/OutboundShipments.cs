@@ -2,6 +2,9 @@ using CSharpFunctionalExtensions;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.Entities;
+using OIO.Domain.Context.Shared.Errors;
+using OIO.Domain.Context.Shared.ValueObjects;
+using OIO.Domain.Context.Shared.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.Events;
 using OIO.Domain.Context.WarehouseContext.Enums;
@@ -148,6 +151,26 @@ public sealed class OutboundShipment : AggregateRoot<OutboundShipmentId>
         _evidence.Add(evidence);
         ModifiedAt = now;
         return evidence;
+    }
+
+    /// <summary>
+    /// Refreshes the snapshot URL/metadata of the <see cref="OutboundShipmentEvidence"/>
+    /// matching <paramref name="mediaUploadId"/>. Called by the media relocation
+    /// pipeline after Cloudinary rename so the cached evidence URL no longer
+    /// points to the <c>/pending/</c> folder.
+    /// </summary>
+    public UnitResult<e> RefreshEvidenceSnapshot(
+        MediaUploadId mediaUploadId,
+        MediaInfo info,
+        DateTime nowUtc)
+    {
+        var evidence = _evidence.FirstOrDefault(e => e.MediaUploadId == mediaUploadId);
+        if (evidence is null)
+            return MediaErrors.ShipmentEvidenceNotFound;
+
+        evidence.UpdateSnapshot(info);
+        ModifiedAt = nowUtc;
+        return UnitResult.Success<e>();
     }
 
     // QR token lifecycle — only populated for ExternalCarrier shipments. Version

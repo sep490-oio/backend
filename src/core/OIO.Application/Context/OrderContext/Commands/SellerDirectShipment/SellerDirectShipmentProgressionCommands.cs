@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
+using OIO.Application.Context.MediaContext.Services;
 using OIO.Application.Context.OrderContext.Commands.SellerOrderProgression;
 using OIO.Application.Context.OrderContext.DTOs;
 using OIO.Application.Context.OrderContext.Mappings;
@@ -15,8 +16,9 @@ using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.Enums;
 using OIO.Domain.Context.OrderContext.Errors;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
-using OIO.Domain.Context.Shared.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.Entities;
+using OIO.Domain.Context.Shared.Errors;
+using OIO.Domain.Context.Shared.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 using ShipmentAggregate = OIO.Domain.Context.OrderContext.Aggregates.SellerDirectShipments.SellerDirectShipment;
 
@@ -203,9 +205,12 @@ internal sealed class SetSellerDirectShipmentDispatchDetailsCommandHandler(
     IDbContext dbContext,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    IClock clock)
+    IClock clock,
+    IMediaRelocationService mediaRelocationService)
     : ICommandHandler<SetSellerDirectShipmentDispatchDetailsCommand, SellerDirectShipmentDto>
 {
+    private const string PackagePhotoContext = "shipment_package_photo";
+
     public async Task<Result<SellerDirectShipmentDto, Error>> Handle(
         SetSellerDirectShipmentDispatchDetailsCommand request,
         CancellationToken cancellationToken)
@@ -234,18 +239,27 @@ internal sealed class SetSellerDirectShipmentDispatchDetailsCommandHandler(
             var uploads = await dbContext.Set<MediaUpload>()
                 .Where(m => ids.Contains(m.Id))
                 .ToListAsync(cancellationToken);
-            var byId = uploads.ToDictionary(u => u.Id.Value);
 
-            foreach (var id in newPhotoIds)
+            var validation = ShipmentMediaValidation.ValidateShipmentEvidenceUploads(
+                uploads,
+                ids,
+                currentUser.UserId.Value,
+                PackagePhotoContext);
+            if (validation.IsFailure) return validation.Error;
+
+            foreach (var upload in uploads)
             {
-                if (!byId.TryGetValue(id, out var upload))
-                    return Error.NotFound("Media.NotFound", $"Media upload {id} not found.");
                 shipment.AddEvidence(
                     SellerDirectShipmentEvidenceKind.SellerPackagePhoto,
                     upload.Id,
                     upload.Info.SecureUrl ?? string.Empty,
                     currentUser.UserId.Value,
                     now);
+
+                var linkResult = upload.LinkToEntity(shipment.Id, now);
+                if (linkResult.IsFailure) return linkResult.Error;
+
+                await mediaRelocationService.RelocateLinkedUploadAsync(upload, cancellationToken);
             }
         }
 
@@ -273,9 +287,12 @@ internal sealed class AddSellerDirectShipmentHandoverProofsCommandHandler(
     IDbContext dbContext,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    IClock clock)
+    IClock clock,
+    IMediaRelocationService mediaRelocationService)
     : ICommandHandler<AddSellerDirectShipmentHandoverProofsCommand, SellerDirectShipmentDto>
 {
+    private const string HandoverProofContext = "shipment_handover_proof";
+
     private static readonly HashSet<SellerDirectShipmentStatus> AllowedStatuses = new()
     {
         SellerDirectShipmentStatus.CarrierBooked,
@@ -316,18 +333,27 @@ internal sealed class AddSellerDirectShipmentHandoverProofsCommandHandler(
         var uploads = await dbContext.Set<MediaUpload>()
             .Where(m => ids.Contains(m.Id))
             .ToListAsync(cancellationToken);
-        var byId = uploads.ToDictionary(u => u.Id.Value);
 
-        foreach (var id in request.HandoverProofMediaUploadIds.Distinct())
+        var validation = ShipmentMediaValidation.ValidateShipmentEvidenceUploads(
+            uploads,
+            ids,
+            currentUser.UserId.Value,
+            HandoverProofContext);
+        if (validation.IsFailure) return validation.Error;
+
+        foreach (var upload in uploads)
         {
-            if (!byId.TryGetValue(id, out var upload))
-                return Error.NotFound("Media.NotFound", $"Media upload {id} not found.");
             shipment.AddEvidence(
                 SellerDirectShipmentEvidenceKind.SellerHandoverProof,
                 upload.Id,
                 upload.Info.SecureUrl ?? string.Empty,
                 currentUser.UserId.Value,
                 now);
+
+            var linkResult = upload.LinkToEntity(shipment.Id, now);
+            if (linkResult.IsFailure) return linkResult.Error;
+
+            await mediaRelocationService.RelocateLinkedUploadAsync(upload, cancellationToken);
         }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -347,9 +373,12 @@ internal sealed class SubmitProofOfDeliveryCommandHandler(
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
     IOrderDeliveryService orderDeliveryService,
-    IClock clock)
+    IClock clock,
+    IMediaRelocationService mediaRelocationService)
     : ICommandHandler<SubmitProofOfDeliveryCommand, SellerDirectShipmentDto>
 {
+    private const string DeliveryPhotoContext = "shipment_delivery_photo";
+
     private static readonly HashSet<string> AllowedConditions = new(StringComparer.OrdinalIgnoreCase)
     {
         "sealed_intact",
@@ -411,17 +440,26 @@ internal sealed class SubmitProofOfDeliveryCommandHandler(
             .Where(m => ids.Contains(m.Id))
             .ToListAsync(cancellationToken);
 
-        var byId = uploads.ToDictionary(u => u.Id.Value);
-        foreach (var id in request.DeliveryPhotoMediaUploadIds.Distinct())
+        var validation = ShipmentMediaValidation.ValidateShipmentEvidenceUploads(
+            uploads,
+            ids,
+            currentUser.UserId.Value,
+            DeliveryPhotoContext);
+        if (validation.IsFailure) return validation.Error;
+
+        foreach (var upload in uploads)
         {
-            if (!byId.TryGetValue(id, out var upload))
-                return Error.NotFound("Media.NotFound", $"Media upload {id} not found.");
             shipment.AddEvidence(
                 SellerDirectShipmentEvidenceKind.BuyerDeliveryPhoto,
                 upload.Id,
                 upload.Info.SecureUrl ?? string.Empty,
                 currentUser.UserId.Value,
                 now);
+
+            var linkResult = upload.LinkToEntity(shipment.Id, now);
+            if (linkResult.IsFailure) return linkResult.Error;
+
+            await mediaRelocationService.RelocateLinkedUploadAsync(upload, cancellationToken);
         }
 
         if (!string.Equals(request.PackageCondition, "sealed_intact", StringComparison.OrdinalIgnoreCase))
@@ -560,5 +598,44 @@ internal sealed class BuyerAcknowledgeDirectShipmentReceivedCommandHandler(
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return shipment.ToDto();
+    }
+}
+
+/// <summary>
+/// Shared validation for shipment evidence media uploads. Ensures every upload
+/// is loaded, owned by the current user, confirmed, not yet linked elsewhere,
+/// and tagged with the expected upload context. Lifted into its own helper so
+/// the dispatch / handover / delivery handlers stay symmetric.
+/// </summary>
+internal static class ShipmentMediaValidation
+{
+    public static UnitResult<Error> ValidateShipmentEvidenceUploads(
+        IReadOnlyCollection<MediaUpload> uploads,
+        IReadOnlyCollection<MediaUploadId> requestedIds,
+        Guid currentUserId,
+        string expectedContext)
+    {
+        if (uploads.Count != requestedIds.Count)
+        {
+            var missing = requestedIds
+                .Where(id => uploads.All(u => u.Id != id))
+                .Select(id => id.Value.ToString());
+            return MediaErrors.NotFounds(string.Join(", ", missing));
+        }
+
+        var notOwned = uploads.Where(u => u.UserId.Value != currentUserId).ToList();
+        if (notOwned.Count > 0)
+            return MediaErrors.NotOwnedByUser(string.Join(", ", notOwned.Select(u => u.Id.Value)));
+
+        if (uploads.Any(u => !u.IsConfirmed))
+            return MediaErrors.NotConfirm;
+
+        if (uploads.Any(u => u.IsLinked))
+            return MediaErrors.AlreadyLinked;
+
+        if (uploads.Any(u => !string.Equals(u.Context, expectedContext, StringComparison.OrdinalIgnoreCase)))
+            return MediaErrors.WrongContext(expectedContext, new[] { expectedContext });
+
+        return UnitResult.Success<Error>();
     }
 }

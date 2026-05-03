@@ -54,6 +54,13 @@ public static class MediaErrors
     public static readonly  Error PublicIdMismatch = Error.Conflict(
         "Media.PublicIdMismatch",
         "The provided public ID does not match the expected value.");
-    
-    
+
+    public static readonly Error ShipmentEvidenceNotFound = Error.NotFound(
+        "Media.ShipmentEvidenceNotFound",
+        "Shipment evidence for the given media upload id was not found.");
+
+    public static Error UnsupportedShipmentEntityType(string? idType) => Error.Validation(
+        "idType",
+        "Media.UnsupportedShipmentEntityType",
+        $"Shipment relocation does not support entity id type '{idType ?? "<null>"}'.");
 }

@@ -9,12 +9,15 @@ using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
 using OIO.Domain.Context.ModerationContext.Aggregates.Disputes;
 using OIO.Domain.Context.ModerationContext.ValueObjects.Ids;
+using OIO.Domain.Context.OrderContext.Aggregates.SellerDirectShipments;
+using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.Entities;
 using OIO.Domain.Context.Shared.Errors;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
@@ -244,6 +247,36 @@ internal sealed class MediaRelocationService : IMediaRelocationService
             return inspection.RefreshEvidenceSnapshot(oldPublicId, storageRef, info, nowUtc);
         }
 
+        if (_contextRegistry.IsShipmentContext(upload.Context))
+        {
+            // Shipment evidence stores a snapshot URL keyed by MediaUploadId
+            // (not publicId). Dispatch to the right aggregate based on the
+            // IdType captured at LinkToEntity time.
+            if (string.Equals(upload.IdType, nameof(OutboundShipmentId), StringComparison.Ordinal))
+            {
+                var outbound = await FindOutboundShipmentAsync(upload.EntityId, cancellationToken);
+                if (outbound is null)
+                    return Error.NotFound(
+                        "Media.OutboundShipmentNotFound",
+                        $"Outbound shipment '{upload.EntityId}' was not found during media relocation.");
+
+                return outbound.RefreshEvidenceSnapshot(upload.Id, info, nowUtc);
+            }
+
+            if (string.Equals(upload.IdType, nameof(SellerDirectShipmentId), StringComparison.Ordinal))
+            {
+                var direct = await FindSellerDirectShipmentAsync(upload.EntityId, cancellationToken);
+                if (direct is null)
+                    return Error.NotFound(
+                        "Media.SellerDirectShipmentNotFound",
+                        $"Seller direct shipment '{upload.EntityId}' was not found during media relocation.");
+
+                return direct.RefreshEvidenceSnapshot(upload.Id, info, nowUtc);
+            }
+
+            return MediaErrors.UnsupportedShipmentEntityType(upload.IdType);
+        }
+
         if (_contextRegistry.IsDisputeContext(upload.Context))
         {
             var attachment = await FindDisputeMessageAttachmentAsync(upload.EntityId, cancellationToken);
@@ -359,6 +392,32 @@ internal sealed class MediaRelocationService : IMediaRelocationService
         return await _dbContext.GetByIdAsync<WarehouseInspection, WarehouseInspectionId>(
             inspectionId,
             cancellationToken: cancellationToken);
+    }
+
+    private async Task<OutboundShipment?> FindOutboundShipmentAsync(string entityId, CancellationToken cancellationToken)
+    {
+        var shipmentId = OutboundShipmentId.Parse(entityId);
+        var local = _dbContext.Set<OutboundShipment>().Local.FirstOrDefault(x => x.Id == shipmentId);
+        if (local is not null)
+            return local;
+
+        return await _dbContext.GetByIdAsync<OutboundShipment, OutboundShipmentId>(
+            shipmentId,
+            query => query.Include(x => x.Evidence),
+            cancellationToken);
+    }
+
+    private async Task<SellerDirectShipment?> FindSellerDirectShipmentAsync(string entityId, CancellationToken cancellationToken)
+    {
+        var shipmentId = SellerDirectShipmentId.Parse(entityId);
+        var local = _dbContext.Set<SellerDirectShipment>().Local.FirstOrDefault(x => x.Id == shipmentId);
+        if (local is not null)
+            return local;
+
+        return await _dbContext.GetByIdAsync<SellerDirectShipment, SellerDirectShipmentId>(
+            shipmentId,
+            query => query.Include(x => x.Evidence),
+            cancellationToken);
     }
 
     private async Task<DisputeMessageAttachment?> FindDisputeMessageAttachmentAsync(string entityId, CancellationToken cancellationToken)

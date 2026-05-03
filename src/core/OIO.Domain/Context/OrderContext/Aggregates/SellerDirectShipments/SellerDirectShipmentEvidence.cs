@@ -65,4 +65,14 @@ public sealed class SellerDirectShipmentEvidence : BaseEntity<SellerDirectShipme
             createdByUserId,
             nowUtc);
     }
+
+    /// <summary>
+    /// Refreshes the cached <see cref="MediaUrl"/> snapshot after media
+    /// relocation. Aggregate-only entry-point.
+    /// </summary>
+    internal void UpdateMediaUrl(string mediaUrl)
+    {
+        if (!string.IsNullOrWhiteSpace(mediaUrl))
+            MediaUrl = mediaUrl;
+    }
 }

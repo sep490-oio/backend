@@ -2,6 +2,8 @@ using CSharpFunctionalExtensions;
 using OIO.Domain.Context.OrderContext.Enums;
 using OIO.Domain.Context.OrderContext.Errors;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
+using OIO.Domain.Context.Shared.Errors;
+using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.Shared.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
 using OIO.Domain.SeedWork.Errors;
@@ -317,6 +319,28 @@ public sealed class SellerDirectShipment : AggregateRoot<SellerDirectShipmentId>
             mediaUrl,
             userId,
             nowUtc));
+        ModifiedAt = nowUtc;
+        return UnitResult.Success<Error>();
+    }
+
+    /// <summary>
+    /// Refreshes the cached <see cref="SellerDirectShipmentEvidence.MediaUrl"/>
+    /// snapshot for the evidence matching <paramref name="mediaUploadId"/>.
+    /// Called by the media relocation pipeline after Cloudinary rename so the
+    /// snapshot URL no longer points to the <c>/pending/</c> folder.
+    /// </summary>
+    public UnitResult<Error> RefreshEvidenceSnapshot(
+        MediaUploadId mediaUploadId,
+        MediaInfo info,
+        DateTime nowUtc)
+    {
+        var evidence = _evidence.FirstOrDefault(e => e.MediaUploadId == mediaUploadId);
+        if (evidence is null)
+            return MediaErrors.ShipmentEvidenceNotFound;
+
+        if (!string.IsNullOrWhiteSpace(info.SecureUrl))
+            evidence.UpdateMediaUrl(info.SecureUrl);
+
         ModifiedAt = nowUtc;
         return UnitResult.Success<Error>();
     }

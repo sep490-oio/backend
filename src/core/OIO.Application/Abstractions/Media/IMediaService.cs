@@ -146,7 +146,10 @@ public sealed class UploadContextRegistry
 
     public bool IsWarehouseInspectionContext(string contextName) =>
         contextName.StartsWith("warehouse_inspection_", StringComparison.OrdinalIgnoreCase);
-    
+
+    public bool IsShipmentContext(string contextName) =>
+        contextName.StartsWith("shipment_", StringComparison.OrdinalIgnoreCase);
+
     // ==================== Resource Type Limits ====================
 
     public int GetMaxUploadsForContext(string contextName)
