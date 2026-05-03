@@ -2,6 +2,7 @@
     
     <PropertyGroup>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+        <UserSecretsId>f123111c-8bfd-414d-8d96-fa7a6b85ac17</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>
