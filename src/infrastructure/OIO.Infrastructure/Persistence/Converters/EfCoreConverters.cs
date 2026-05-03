@@ -1,3 +1,4 @@
+using OIO.Domain.Context.AssistantContext.ValueObjects.Ids;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
 using OIO.Domain.Context.ModerationContext.ValueObjects.Ids;
@@ -11,6 +12,10 @@ using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
 using Vogen;
 
 namespace OIO.Infrastructure.Persistence.Converters;
+
+//AssistantContext
+[EfCoreConverter<AssistantConversationId>]
+[EfCoreConverter<AssistantMessageId>]
 
 //AuctionContext
 [EfCoreConverter<AuctionDepositId>]

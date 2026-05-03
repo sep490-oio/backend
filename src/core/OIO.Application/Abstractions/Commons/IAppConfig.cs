@@ -170,3 +170,22 @@ public sealed class AiOptions
     public double MinAlternativeConfidence { get; set; } = 0.2;
     public int RateLimitPerMinutePerSeller { get; set; } = 5;
 }
+
+public sealed class AssistantOptions
+{
+    public const string SectionName = "Ai:Assistant";
+
+    public bool Enabled { get; set; } = false;
+    public string Provider { get; set; } = "Google";
+    public string ApiKey { get; set; } = string.Empty;
+    public string Model { get; set; } = "gemini-2.5-flash";
+    public int TimeoutSeconds { get; set; } = 30;
+    public double Temperature { get; set; } = 0.2;
+    public int MaxContextTokens { get; set; } = 8000;
+    public int MaxResponseTokens { get; set; } = 1000;
+    public int RateLimitPerMinutePerUser { get; set; } = 20;
+    public bool Streaming { get; set; } = false;
+    public int RecentHistoryCount { get; set; } = 6;
+    public int KnowledgeTopN { get; set; } = 3;
+    public string? KnowledgeFilePath { get; set; }
+}

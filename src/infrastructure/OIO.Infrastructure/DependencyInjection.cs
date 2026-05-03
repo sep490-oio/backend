@@ -23,7 +23,9 @@ using OIO.Application.Abstractions.Security;
 using OIO.Application.Abstractions.Shipping;
 using OIO.Application.Abstractions.Search;
 using OIO.Infrastructure.Ai;
+using OIO.Infrastructure.Assistant;
 using OIO.Infrastructure.Elasticsearch;
+using OIO.Application.Context.AssistantContext.Services;
 using OIO.Application.Context.AuctionContext.Services;
 using OIO.Application.Context.AuctionContext.Services.AiSuggestion;
 using OIO.Application.Context.UserContext.Services;
@@ -122,7 +124,8 @@ public static class DependencyInjection
                 .AddEkyc(configuration)
                 .AddPayment(configuration)
                 .AddElasticsearch(configuration)
-                .AddAiSuggestion(configuration);
+                .AddAiSuggestion(configuration)
+                .AddAssistant(configuration);
 
             services.AddMediatR(cfg =>
             {
@@ -500,6 +503,31 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
 
             // Jobs
             services.ConfigureOptions<ElasticsearchReconciliationJobSetup>();
+
+            return services;
+        }
+
+        private IServiceCollection AddAssistant(IConfiguration configuration)
+        {
+            services
+                .AddOptions<AssistantOptions>()
+                .Bind(configuration.GetSection(AssistantOptions.SectionName))
+                .Validate(
+                    options => !options.Enabled
+                        || (!string.IsNullOrWhiteSpace(options.ApiKey) && !string.IsNullOrWhiteSpace(options.Model)),
+                    "Ai:Assistant:ApiKey and Model are required when Enabled = true.")
+                .ValidateOnStart();
+
+            // Always-on services so the assistant module can serve the "disabled" path
+            // (returns a maintenance message) without throwing.
+            services.AddSingleton<IAssistantChatClient, AssistantChatClient>();
+            services.AddSingleton<IAssistantKnowledgeRetriever>(sp =>
+                new KnowledgeBaseRetriever(
+                    sp.GetRequiredService<ILoggerFactory>().CreateLogger<KnowledgeBaseRetriever>(),
+                    sp.GetRequiredService<IOptions<AssistantOptions>>().Value.KnowledgeFilePath));
+            services.AddSingleton<IAssistantSafetyService, AssistantSafetyService>();
+            services.AddScoped<IAssistantToolExecutor, AssistantToolExecutor>();
+            services.AddScoped<IAssistantChatService, AssistantChatService>();
 
             return services;
         }

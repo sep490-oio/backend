@@ -1,0 +1,98 @@
+[
+  {
+    "id": "platform-overview",
+    "title": "OIO Auction Platform Overview",
+    "tags": ["platform", "overview", "introduction", "oio"],
+    "summary": "OIO là sàn đấu giá trực tuyến cho hàng cao cấp, có quy trình kiểm định kho, escrow, và xử lý tranh chấp.",
+    "content": "OIO là sàn đấu giá trực tuyến giữa người bán và người mua. Sàn vận hành bằng escrow: tiền thanh toán được giữ đến khi giao hàng được xác nhận. Items đắt giá có thể đi qua kho kiểm định trước khi đến tay người mua.",
+    "sourceUrl": "/help/about"
+  },
+  {
+    "id": "auction-rules-bidding",
+    "title": "Quy tắc đặt giá (Bidding)",
+    "tags": ["auction", "bidding", "bid", "đấu giá", "đặt giá", "increment"],
+    "summary": "Mỗi bid phải lớn hơn giá hiện tại cộng bid increment tối thiểu. Bid không thể rút sau khi gửi.",
+    "content": "Người tham gia đặt giá phải đặt mức cao hơn giá hiện tại theo bid increment quy định. Bid hợp lệ khi gửi trong khung thời gian phiên. Bid không thể rút sau khi gửi. Khi phiên còn ít hơn ngưỡng (ExtensionThreshold), bid mới sẽ kéo dài phiên (anti-snipe). Tối đa kéo dài MaxExtensionsPerAuction lần.",
+    "sourceUrl": "/help/auction-bidding"
+  },
+  {
+    "id": "auction-auto-bid",
+    "title": "Auto-bid (Đấu giá tự động)",
+    "tags": ["auto-bid", "autobid", "tự động", "max bid", "proxy"],
+    "summary": "Auto-bid cho phép đặt mức tối đa, hệ thống tự đặt bid hộ bạn theo increment khi có người vượt.",
+    "content": "Auto-bid (proxy bidding) cho phép bạn đặt mức trần (max amount). Hệ thống sẽ tự đặt bid tối thiểu để bạn dẫn đầu, miễn là chưa vượt mức trần. Khi bị vượt mức trần, bạn nhận thông báo và có thể tăng trần. Auto-bid có thể tạm dừng/huỷ.",
+    "sourceUrl": "/help/auto-bid"
+  },
+  {
+    "id": "auction-sealed-bid",
+    "title": "Sealed bid (Bid kín)",
+    "tags": ["sealed", "sealed-bid", "bid kín", "phong bì"],
+    "summary": "Sealed bid cho phép gửi giá kín; chỉ tiết lộ khi phiên kết thúc và admin reveal.",
+    "content": "Sealed bid là dạng bid kín: người dùng gửi mức giá được mã hoá; chỉ tiết lộ sau khi phiên kết thúc và admin thực hiện reveal. Người thắng là bid kín cao nhất hợp lệ. Dùng cho phiên đặc biệt do người bán hoặc admin cấu hình.",
+    "sourceUrl": "/help/sealed-bid"
+  },
+  {
+    "id": "payment-escrow",
+    "title": "Thanh toán & Escrow",
+    "tags": ["payment", "thanh toán", "escrow", "ký quỹ"],
+    "summary": "Tiền của người mua được giữ trong escrow đến khi giao nhận thành công thì mới giải ngân cho người bán.",
+    "content": "Khi đơn hàng được tạo, người mua thanh toán qua VnPay hoặc ví. Tiền vào escrow của sàn. Sau khi người mua xác nhận đã nhận hàng (hoặc auto-confirm hết hạn), sàn giải ngân cho người bán sau khi trừ phí hoa hồng. Phí kiểm định kho (nếu có) được trừ trước.",
+    "sourceUrl": "/help/payment-escrow"
+  },
+  {
+    "id": "fee-policy",
+    "title": "Chính sách phí",
+    "tags": ["fee", "phí", "commission", "hoa hồng"],
+    "summary": "Sàn thu phí hoa hồng người bán theo SellerCommissionRate, và phí kiểm định kho khi áp dụng.",
+    "content": "Phí hoa hồng người bán được tính theo tỷ lệ phần trăm trên giá bán (SellerCommissionRate). Items đi qua kho kiểm định chịu thêm phí OfflineInspectionFee theo tỷ lệ với mức cap theo loại tiền (VND/USD). Người mua không trả phí giao dịch thêm ngoài giá thắng và phí ship.",
+    "sourceUrl": "/help/fees"
+  },
+  {
+    "id": "shipment-flow",
+    "title": "Quy trình giao hàng (Shipment)",
+    "tags": ["shipment", "shipping", "giao hàng", "vận chuyển", "ghn"],
+    "summary": "Đơn hàng có thể qua kho sàn (warehouse) hoặc giao trực tiếp từ người bán (self-ship).",
+    "content": "Có hai luồng giao hàng: (1) Warehouse outbound — kho sàn gửi hàng cho người mua sau khi nhận hàng từ người bán và kiểm định; (2) Seller direct ship — người bán giao trực tiếp với chứng từ giao nhận. Mỗi giai đoạn có trạng thái Pending, PickedUp, OnDelivering, Delivered, Failed.",
+    "sourceUrl": "/help/shipping"
+  },
+  {
+    "id": "warehouse-intake",
+    "title": "Nhập kho và kiểm định",
+    "tags": ["warehouse", "kho", "intake", "inbound", "inspection", "kiểm định"],
+    "summary": "Người bán gửi hàng vào kho, kho kiểm tra theo mô tả, có thể chấp nhận hoặc từ chối.",
+    "content": "Người bán in QR và gửi hàng đến kho. Kho nhận, kiểm tra so với mô tả + ảnh. Kết quả: Approved (hàng vào kho, đợi outbound), Rejected (trả về người bán). Người bán có thể yêu cầu kiểm định lại trong khung thời gian quy định.",
+    "sourceUrl": "/help/warehouse"
+  },
+  {
+    "id": "dispute-flow",
+    "title": "Quy trình tranh chấp (Dispute)",
+    "tags": ["dispute", "tranh chấp", "khiếu nại", "complaint"],
+    "summary": "Người mua/người bán có thể mở dispute liên quan đơn hàng, phiên đấu giá, thanh toán hoặc kiện hàng.",
+    "content": "Dispute có thể mở từ Order, Auction, Payment, Warehouse Item, hoặc Shipment. Sau khi mở, các bên gửi tin nhắn + bằng chứng. Admin review và quyết định: Resolved (giải quyết theo phía A/B), Rejected, hoặc tiếp tục Investigating. Người dùng nhận thông báo từng bước.",
+    "sourceUrl": "/help/disputes"
+  },
+  {
+    "id": "refund-policy",
+    "title": "Chính sách hoàn tiền (Refund)",
+    "tags": ["refund", "hoàn tiền", "return", "trả hàng"],
+    "summary": "Hoàn tiền chỉ thực hiện qua quy trình tranh chấp hoặc trả hàng được duyệt; không tự thao tác qua chat.",
+    "content": "Người mua có thể trả hàng trong ReturnDecisionWindowDays sau khi giao. Khi return được duyệt và kho/người bán xác nhận đã nhận lại hàng, sàn thực hiện refund về phương thức thanh toán gốc hoặc ví của người mua. Không có refund 'tự phục vụ'; mọi yêu cầu phải đi qua dispute/return.",
+    "sourceUrl": "/help/refunds"
+  },
+  {
+    "id": "seller-verification",
+    "title": "Xác minh người bán (Seller verification)",
+    "tags": ["seller", "verification", "kyc", "xác minh", "ekyc"],
+    "summary": "Người bán phải hoàn tất KYC (eKYC + tài liệu) trước khi đăng items giá trị cao.",
+    "content": "Quy trình xác minh người bán: (1) Hoàn tất eKYC qua VNPT; (2) Tải lên tài liệu chứng minh nhân thân + giấy tờ doanh nghiệp nếu là tổ chức; (3) Admin duyệt. Trạng thái: Pending, Approved, Rejected, RequiresAdditionalDocs. Một số tính năng (đăng giá cao, withdraw từ ví) chỉ mở sau khi Approved.",
+    "sourceUrl": "/help/seller-verification"
+  },
+  {
+    "id": "platform-terms",
+    "title": "Điều khoản nền tảng (Platform Terms)",
+    "tags": ["terms", "điều khoản", "policy", "platform terms"],
+    "summary": "Người dùng cần chấp nhận Platform Terms hiện hành trước khi thực hiện hành động bị giới hạn.",
+    "content": "Sàn phát hành Platform Terms định kỳ. Khi có version mới, người dùng được hỏi chấp nhận trước khi thực hiện các hành động bị giới hạn (đặt giá, thanh toán, mở dispute). Người dùng có thể xem lịch sử Terms đã chấp nhận trong /me/terms.",
+    "sourceUrl": "/terms"
+  }
+]

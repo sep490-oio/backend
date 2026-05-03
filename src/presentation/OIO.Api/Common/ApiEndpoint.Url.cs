@@ -525,5 +525,15 @@ public static partial class ApiEndpoint
 
             public const string GetTime = $"{Base}/time";
         }
+
+        public static class Assistant
+        {
+            private const string Base = "api/assistant";
+
+            public const string CreateConversation = $"{Base}/conversations";
+            public const string ListConversations = $"{Base}/conversations";
+            public const string GetMessages = $"{Base}/conversations/{{conversationId:guid}}/messages";
+            public const string SendMessage = $"{Base}/conversations/{{conversationId:guid}}/messages";
+        }
     }
 }

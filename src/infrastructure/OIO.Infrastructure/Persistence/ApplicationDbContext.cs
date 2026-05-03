@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Data;
+using OIO.Domain.Context.AssistantContext.ValueObjects.Ids;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
@@ -95,6 +96,12 @@ public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
+        configurationBuilder.Properties<AssistantConversationId>()
+            .HaveConversion<EfCoreConverters.AssistantConversationIdEfCoreValueConverter>();
+
+        configurationBuilder.Properties<AssistantMessageId>()
+            .HaveConversion<EfCoreConverters.AssistantMessageIdEfCoreValueConverter>();
+
         configurationBuilder.Properties<AuctionDepositId>()
             .HaveConversion<EfCoreConverters.AuctionDepositIdEfCoreValueConverter>();
 

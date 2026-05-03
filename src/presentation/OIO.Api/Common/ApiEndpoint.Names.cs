@@ -463,5 +463,13 @@ public static partial class ApiEndpoint
         {
             public const string GetSystemTime = nameof(GetSystemTime);
         }
+
+        public static class Assistant
+        {
+            public const string CreateConversation = nameof(CreateConversation);
+            public const string ListConversations = nameof(ListConversations);
+            public const string GetMessages = nameof(GetMessages);
+            public const string SendMessage = nameof(SendMessage);
+        }
     }
 }

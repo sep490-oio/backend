@@ -28,5 +28,6 @@ public static partial class ApiEndpoint
         public const string Reviews = nameof(Reviews);
         public const string Address = nameof(Address);
         public const string System = nameof(System);
+        public const string Assistant = nameof(Assistant);
     }
 }
