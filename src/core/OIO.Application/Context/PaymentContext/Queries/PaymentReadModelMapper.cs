@@ -127,19 +127,151 @@ internal static class PaymentReadModelMapper
     public static WalletTransactionDto ToDto(this WalletTransaction walletTransaction, string currency)
     {
         var (referenceType, referenceId) = ResolveReference(walletTransaction);
+        var sourceStatus = walletTransaction.Transaction?.Status.Id;
+        var eventType = ResolveEventType(walletTransaction, referenceType);
+        var reasonCode = ResolveReasonCode(walletTransaction, eventType);
+        var ledgerStatus = ResolveLedgerStatus(walletTransaction, sourceStatus);
 
         return new WalletTransactionDto(
             Id: walletTransaction.Id.Value,
             Type: walletTransaction.Type.Id,
             Amount: walletTransaction.Amount,
-            Status: walletTransaction.Transaction?.Status.Id,
+            // Legacy field — kept for backward-compat with older clients. New
+            // clients should read <see cref="WalletTransactionDto.SourceStatus"/>
+            // (same value) or <see cref="WalletTransactionDto.LedgerStatus"/>
+            // (ledger-side state, never null).
+            Status: sourceStatus,
             Currency: currency,
             BalanceBefore: walletTransaction.BalanceBefore,
             BalanceAfter: walletTransaction.BalanceAfter,
             Description: walletTransaction.Description,
             ReferenceType: referenceType,
             ReferenceId: referenceId,
-            CreatedAt: walletTransaction.CreatedAt);
+            CreatedAt: walletTransaction.CreatedAt,
+            LedgerStatus: ledgerStatus,
+            SourceStatus: sourceStatus,
+            EventType: eventType,
+            ReasonCode: reasonCode,
+            ReferenceNumber: walletTransaction.Transaction?.TransactionNumber.Value,
+            ReferenceTitle: null);
+    }
+
+    /// <summary>
+    /// Map a wallet ledger row to one of the canonical FE business event types.
+    /// Order matters: prefer the most specific signal (real Order/Auction FK)
+    /// before falling back to <see cref="WalletTransaction.Type"/> + reference
+    /// hints. Description sniffing is the last resort and only runs when
+    /// nothing structured is available (legacy data).
+    /// </summary>
+    private static string ResolveEventType(WalletTransaction wt, string? referenceType)
+    {
+        var typeId = wt.Type.Id;
+
+        // Withdrawal flow — easiest to detect via description marker the
+        // wallet aggregate writes (no FK on the wallet ledger today).
+        if (wt.Description?.Contains("Withdrawal", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            // Hold = funds reserved when withdrawal is requested.
+            // Debit = funds actually leaving the platform on approval.
+            return typeId == "hold" ? "withdrawal_hold" : "withdrawal_release";
+        }
+
+        // Auction deposit lifecycle: Hold → deposit reservation, Release → refund
+        // back into the available balance after the auction settles for a
+        // non-winner / cancelled / no-reserve case. Debit on an auction ref =
+        // deposit being consumed by an order payment (rare here — usually
+        // Order FK is set instead).
+        if (referenceType == "deposit")
+        {
+            return typeId switch
+            {
+                "hold" => "auction_deposit_hold",
+                "release" => "auction_deposit_refund",
+                "credit" => "auction_deposit_refund",
+                _ => "auction_deposit_hold",
+            };
+        }
+
+        // Order-linked: Debit = checkout payment, Credit = refund (return /
+        // cancellation / dispute resolution favoring buyer).
+        if (referenceType == "order")
+        {
+            return typeId switch
+            {
+                "credit" => "order_refund",
+                "debit" => "order_payment",
+                _ => "order_payment",
+            };
+        }
+
+        // Top-up: explicit marker in transaction description, OR a Credit row
+        // with no reference (gateway → wallet).
+        var topUpMarker =
+            wt.Transaction?.Description?.Contains("[WalletTopUp]", StringComparison.OrdinalIgnoreCase) == true ||
+            wt.Description?.Contains("wallet top-up", StringComparison.OrdinalIgnoreCase) == true;
+        if (topUpMarker || (typeId == "credit" && referenceType is null))
+            return "wallet_top_up";
+
+        // Seller payout — escrow released to seller's wallet.
+        if (referenceType == "escrow" && typeId == "credit")
+            return "seller_payout";
+
+        // Platform fee deduction.
+        if (wt.Description?.Contains("Fee", StringComparison.OrdinalIgnoreCase) == true && typeId == "debit")
+            return "fee";
+
+        // Generic fallback so the FE always has a key (no null event type).
+        return typeId switch
+        {
+            "credit" => "wallet_top_up",
+            "debit" => "order_payment",
+            "hold" => "auction_deposit_hold",
+            "release" => "auction_deposit_refund",
+            _ => "wallet_top_up",
+        };
+    }
+
+    /// <summary>
+    /// Stable i18n key the FE renders. Today this mirrors <paramref name="eventType"/>
+    /// 1:1, but the field is split out so we can introduce finer-grained reasons
+    /// (e.g. <c>auction_sold_non_winner_refund</c> vs <c>reserve_not_met_refund</c>)
+    /// without breaking the event-type taxonomy. Legacy rows that we couldn't
+    /// classify confidently are tagged <c>legacy_unknown</c>.
+    /// </summary>
+    private static string ResolveReasonCode(WalletTransaction wt, string eventType)
+    {
+        // No structured signal AND no transaction FK = legacy / pre-revamp row.
+        // Tag it so dashboards can flag the cohort for backfill.
+        if (wt.Transaction is null
+            && wt.Description is null
+            && string.IsNullOrEmpty(eventType))
+        {
+            return "legacy_unknown";
+        }
+        return eventType;
+    }
+
+    /// <summary>
+    /// Wallet ledger entries are append-only and immediately durable, so any
+    /// row that exists is conceptually <c>posted</c>. We only override that
+    /// when the originating payment transaction is in a non-final state
+    /// (pending) or terminal-failure state (failed / reversed) so the UI can
+    /// surface the upstream condition.
+    /// </summary>
+    private static string ResolveLedgerStatus(WalletTransaction wt, string? sourceStatus)
+    {
+        if (string.IsNullOrEmpty(sourceStatus))
+            return "posted";
+
+        // Map common payment-transaction statuses to ledger-side semantics.
+        return sourceStatus.ToLowerInvariant() switch
+        {
+            "completed" or "succeeded" or "released" => "posted",
+            "pending" or "processing" or "initiated" => "pending",
+            "failed" or "rejected" or "expired" => "failed",
+            "reversed" or "refunded" or "cancelled" => "reversed",
+            _ => "posted",
+        };
     }
 
     private static (string? ReferenceType, Guid? ReferenceId) ResolveReference(WalletTransaction walletTransaction)
