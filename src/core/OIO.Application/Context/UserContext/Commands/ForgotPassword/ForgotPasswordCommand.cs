@@ -55,9 +55,6 @@ internal sealed class ForgotPasswordCommandHandler
         if (user is null)
             return UnitResult.Success<Error>();
 
-        if (user.EmailConfirmedAt is not null)
-            return Result.Success<Error>();
-
         var nowUtc = _clock.UtcNow;
 
         var result = user.RequestPasswordReset(nowUtc);

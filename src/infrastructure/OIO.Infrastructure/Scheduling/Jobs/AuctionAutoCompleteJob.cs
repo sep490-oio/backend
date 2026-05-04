@@ -118,8 +118,8 @@ public sealed class AuctionAutoCompleteJob : IJob
                         return;
                     }
 
-                    // Mark item as sold, auction stays in sold state.
-                    // MarkSold is idempotent at the call site (we check Status != Sold above).
+                    // Mark item as sold before completing the auction. MarkSold is idempotent
+                    // when the AuctionSoldEventHandler already advanced the item to Sold.
                     // If MarkSold fails (e.g. item is in non-Sold non-InAuction state), log and skip.
                     var markResult = auction.Item.MarkSold(now);
                     if (markResult.IsFailure)

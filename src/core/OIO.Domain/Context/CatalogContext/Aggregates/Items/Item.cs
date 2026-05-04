@@ -390,6 +390,9 @@ public sealed class Item : AggregateRoot<ItemId>, IAuditableEntity
     
     public UnitResult<Error> MarkSold(DateTime nowUtc)
     {
+        if (Status == ItemStatus.Sold)
+            return UnitResult.Success<Error>();
+
         var result = EnsureCanTransition(ItemStatus.Sold);
         
         if (result.IsFailure)
