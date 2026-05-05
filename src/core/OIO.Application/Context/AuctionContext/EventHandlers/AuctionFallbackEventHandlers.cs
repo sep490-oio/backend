@@ -9,6 +9,7 @@ using OIO.Application.Context.NotificationContext;
 using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Events;
+using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.NotificationContext.Enums;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
@@ -87,7 +88,7 @@ internal sealed class AuctionPaymentDefaultedDepositForfeitEventHandler(
             .FirstOrDefaultAsync(
                 x => x.AuctionId == auctionId &&
                      x.BidderId == winnerId &&
-                     x.IsHeld,
+                     x.Status == DepositStatus.Held,
                 cancellationToken);
 
         if (deposit is null)
