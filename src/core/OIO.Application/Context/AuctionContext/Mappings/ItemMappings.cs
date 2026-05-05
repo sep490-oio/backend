@@ -1,4 +1,4 @@
-﻿using OIO.Application.Abstractions.Sorting;
+using OIO.Application.Abstractions.Sorting;
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 
@@ -6,7 +6,7 @@ namespace OIO.Application.Context.AuctionContext.Mappings;
 
 public static class ItemMappings {
 
-    public static ItemDto ToDto(this Item item)
+    public static ItemDto ToDto(this Item item, bool hasInboundShipment = false)
     {
         return new ItemDto(
             Id: item.Id.Value,
@@ -18,7 +18,8 @@ public static class ItemMappings {
             Status: item.Status.Id,
             Quantity: item.Quantity,
             Images: item.Media.Select(i => i.ToDto()).ToList(),
-            CreatedAt: item.CreatedAt);
+            CreatedAt: item.CreatedAt,
+            HasInboundShipment: hasInboundShipment);
     }
     
     public static readonly SortMappingDefinition ItemDtoSortMapping = SortMappingBuilder<ItemDto, Item>

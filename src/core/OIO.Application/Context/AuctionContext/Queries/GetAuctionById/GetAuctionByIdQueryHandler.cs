@@ -16,6 +16,8 @@ using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.Enums;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
+using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.AuctionContext.Queries.GetAuctionById;
@@ -249,7 +251,11 @@ internal sealed class GetAuctionByIdQueryHandler
                 nowUtc, 
                 _runtimeSettings.Auction.ExtensionThreshold,
                 isWatchedByCurrentUser),
-            Item: auction.Item.ToDto(),
+            Item: auction.Item.ToDto(await _dbContext.Set<InboundShipment>()
+                .AnyAsync(s => s.ItemId == auction.ItemId.Value &&
+                               s.Status != InboundShipmentStatus.Cancelled &&
+                               s.Status != InboundShipmentStatus.Failed,
+                    cancellationToken)),
             RecentBids: recentBids
                 .Select(b => b.ToDto(bidderDisplayNames.TryGetValue(b.BidderId.Value, out var dn) ? dn : null))
                 .ToList(),
