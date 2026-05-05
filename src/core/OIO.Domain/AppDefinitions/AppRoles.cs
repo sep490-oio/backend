@@ -214,6 +214,7 @@ public static partial class App
                     Permissions.Catalogs.Warehouse.Store,
                     Permissions.Catalogs.Warehouse.CalculateShippingFee,
                     Permissions.Catalogs.Warehouse.CalculateLeadTime,
+                    Permissions.Catalogs.Warehouse.Inspect,
                 ],
 
                 [Inspector] =
