@@ -26,7 +26,7 @@ internal sealed class SignalRNotificationProvider : INotificationProvider
     public string ChannelType => "SignalR";
 
     public async Task<Result> SendAsync(
-        OIO.Domain.Context.NotificationContext.Aggregates.Notification notification,
+        Notification notification,
         NotificationDelivery delivery,
         CancellationToken ct = default)
     {
@@ -46,7 +46,7 @@ internal sealed class SignalRNotificationProvider : INotificationProvider
             var groupName = NotificationHub.UserGroupName(notification.UserId.Value);
             await _hubContext.Clients.Group(groupName).ReceiveNotification(dto);
 
-            var unreadCount = await _dbContext.Set<OIO.Domain.Context.NotificationContext.Aggregates.Notification>()
+            var unreadCount = await _dbContext.Set<Notification>()
                 .AsNoTracking()
                 .CountAsync(
                     n => n.UserId == notification.UserId && n.Status == NotificationStatus.Unread,

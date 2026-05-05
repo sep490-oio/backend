@@ -7,6 +7,7 @@ using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
 using OIO.Domain.AppDefinitions;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.CatalogContext.Enums;
+using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
 using OIO.Domain.Context.NotificationContext.Enums;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.Enums;
@@ -34,9 +35,10 @@ internal sealed class InboundShipmentArrivedEventHandler(
         if (shipment is null)
             return;
 
+        var itemId = ItemId.From(shipment.ItemId);
         var item = await dbContext.Set<Item>()
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == shipment.ItemId, cancellationToken);
+            .FirstOrDefaultAsync(x => x.Id == itemId, cancellationToken);
 
         if (item is null || item.Status != ItemStatus.PendingVerify)
             return;
