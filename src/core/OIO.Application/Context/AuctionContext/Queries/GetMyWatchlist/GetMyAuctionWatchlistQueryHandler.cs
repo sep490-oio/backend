@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
@@ -45,7 +45,10 @@ internal sealed class GetMyAuctionWatchlistQueryHandler
         if (!string.IsNullOrWhiteSpace(parameters.AuctionStatus))
         {
             var status = AuctionStatus.FromId(parameters.AuctionStatus);
-            query = query.Where(x => x.Auction.Status == status);
+            if (status.HasValue)
+            {
+                query = query.Where(x => x.Auction.Status == status.Value);
+            }
         }
 
         // TODO: implement sorting for Get My Watch list Query 

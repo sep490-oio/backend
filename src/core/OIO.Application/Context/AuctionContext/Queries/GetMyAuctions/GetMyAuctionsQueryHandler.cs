@@ -46,10 +46,13 @@ internal sealed class GetMyAuctionsQueryHandler
             .Where(a => a.Item.SellerId == _currentUser.UserId);
 
         // Status filter
-        if (!string.IsNullOrWhiteSpace(parameters.Status) && AuctionStatus.Is(parameters.Status))
+        if (!string.IsNullOrWhiteSpace(parameters.Status))
         {
             var status = AuctionStatus.FromId(parameters.Status);
-            query = query.Where(x => x.Status == status);
+            if (status.HasValue)
+            {
+                query = query.Where(x => x.Status == status.Value);
+            }
         }
 
         query = query.ApplySort(parameters, AuctionMappings.AuctionListItemDtoSortMapping);
