@@ -260,6 +260,37 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
         return UnitResult.Success<e>();
     }
 
+    /// <summary>
+    /// Reverts the reservation of an item when a shipment is cancelled BEFORE pickup.
+    /// Keeps the storage location and resets status to Stored.
+    /// </summary>
+    public UnitResult<e> UndoReserve(DateTime now)
+    {
+        if (Status != WarehouseItemStatus.Reserved)
+            return UnitResult.Success<e>();
+
+        Status     = WarehouseItemStatus.Stored;
+        ModifiedAt = now;
+
+        return UnitResult.Success<e>();
+    }
+
+    /// <summary>
+    /// Marks the item as returned to the warehouse after a failed delivery.
+    /// Status is reset to Received to force a re-storage flow.
+    /// StorageLocationId is already null from the previous MarkDispatched call.
+    /// </summary>
+    public UnitResult<e> MarkReturned(DateTime now)
+    {
+        if (Status != WarehouseItemStatus.Dispatched)
+            return WarehouseErrors.WarehouseItem.NotDispatched;
+
+        Status     = WarehouseItemStatus.Received;
+        ModifiedAt = now;
+
+        return UnitResult.Success<e>();
+    }
+
     /// <summary>Mark item as dispatched — called when outbound shipment is picked up by carrier.</summary>
     public UnitResult<e> MarkDispatched(OutboundShipmentId outboundShipmentId, DateTime now)
     {
