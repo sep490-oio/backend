@@ -117,6 +117,10 @@ public static class WarehouseErrors
         public static readonly Error CannotMarkAwaitingDisposition = Error.Conflict(
             code: "WarehouseItem.CannotMarkAwaitingDisposition",
             description: "Item must be in 'awaiting_seller_return' before it can be moved to 'awaiting_disposition'.");
+
+        public static readonly Error NotDispatched = Error.Conflict(
+            code: "WarehouseItem.NotDispatched",
+            description: "Item must be dispatched before this operation is allowed.");
     }
 
     public static class WarehouseToSellerShipment
