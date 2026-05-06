@@ -11,4 +11,4 @@ public sealed record ItemDto(
     int Quantity,
     IReadOnlyList<ItemMediaDto> Images,
     DateTime CreatedAt,
-    bool RequiresPlatformInspection = false);
+    bool HasInboundShipment = false);

@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
@@ -10,6 +10,8 @@ using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.CatalogContext.Enums;
+using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
+using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.SeedWork.Errors;
 using ItemId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId;
 
@@ -54,6 +56,12 @@ internal sealed class GetItemByIdQueryHandler
         if (!isOwner && !isAdmin && !isPublicItem)
             return AuctionErrors.Item.NotFound(itemId);
 
-        return item.ToDto();
+        var hasInbound = await _dbContext.Set<InboundShipment>()
+            .AnyAsync(s => s.ItemId == itemId.Value &&
+                           s.Status != InboundShipmentStatus.Cancelled &&
+                           s.Status != InboundShipmentStatus.Failed,
+                cancellationToken);
+
+        return item.ToDto(hasInbound);
     }
 }

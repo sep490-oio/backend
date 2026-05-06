@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
@@ -56,19 +56,17 @@ internal sealed class GetMyItemsQueryHandler
         // hasActiveInbound = item has an InboundShipment whose status is neither
         // Cancelled nor Failed. The inbound-book picker passes hasActiveInbound=false
         // so a re-attempt is allowed once a previous shipment is cancelled/failed.
-        // EF cannot translate a nested subquery that crosses InboundShipment.ItemId
-        // (raw Guid) vs Item.Id.Value (value-object id), so materialize the guid set
-        // first and map to ItemId to match the VO column on the Item side.
+        var activeInboundItemGuids = await _dbContext.Set<InboundShipment>()
+            .Where(s => s.SellerId == _currentUser.UserId &&
+                        s.Status != InboundShipmentStatus.Cancelled &&
+                        s.Status != InboundShipmentStatus.Failed)
+            .Select(s => s.ItemId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
         if (parameters.HasActiveInbound.HasValue)
         {
             var wantsActive = parameters.HasActiveInbound.Value;
-            var activeInboundItemGuids = await _dbContext.Set<InboundShipment>()
-                .Where(s => s.Status != InboundShipmentStatus.Cancelled
-                         && s.Status != InboundShipmentStatus.Failed)
-                .Select(s => s.ItemId)
-                .Distinct()
-                .ToListAsync(cancellationToken);
-
             var activeInboundItemIds = activeInboundItemGuids
                 .Select(g => OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId.From(g))
                 .ToList();
@@ -82,37 +80,14 @@ internal sealed class GetMyItemsQueryHandler
 
         var totalCount = await query.CountAsync(cancellationToken);
 
-
-        var items = await query
-            .Select(item => new ItemDto(
-                Id: item.Id.Value,
-                SellerId: item.SellerId.Value,
-                CategoryId: item.CategoryId.HasValue ? item.CategoryId.Value.Value : null,
-                Title: item.Title.Value,
-                Description: item.Description,
-                Condition: item.Condition.Id,
-                Status: item.Status.Id,
-                Quantity: item.Quantity,
-                Images: item.Media
-                    .Select(media =>
-                        new ItemMediaDto(
-                            Id: media.Id.Value,
-                            Url: media.Info.SecureUrl,
-                            PublicId: media.StorageRef.PublicId,
-                            ResourceType: media.ResourceType,
-                            IsPrimary: media.IsPrimary,
-                            SortOrder: media.SortOrder,
-                            FileName: media.Info.FileName,
-                            Bytes: media.Info.Bytes,
-                            Format: media.Info.Format,
-                            Width: media.Info.Width,
-                            Height: media.Info.Height,
-                            DurationSeconds: media.Info.DurationSeconds))
-                    .ToList(),
-                CreatedAt: item.CreatedAt,
-                RequiresPlatformInspection: item.RequiresPlatformInspection))
+        var pagedItems = await query
+            .Include(item => item.Media)
             .ToPagedListAsync(totalCount, parameters, cancellationToken);
 
-        return items;
+        var itemDtos = pagedItems.Items
+            .Select(item => item.ToDto(activeInboundItemGuids.Contains(item.Id.Value)))
+            .ToList();
+
+        return new PagedList<ItemDto>(itemDtos, pagedItems.Metadata);
     }
 }
