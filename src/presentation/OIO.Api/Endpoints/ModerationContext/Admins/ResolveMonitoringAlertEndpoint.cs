@@ -11,7 +11,9 @@ public sealed class ResolveMonitoringAlertEndpoint : IEndpoint
 {
     public sealed record Request(
         [Required] bool Ignored,
-        string? Notes = null);
+        string? Notes = null,
+        string? ResolutionOutcome = null,
+        string? ResolutionReason = null);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
@@ -22,7 +24,12 @@ public sealed class ResolveMonitoringAlertEndpoint : IEndpoint
                 CancellationToken ct) =>
             {
                 var result = await sender.Send(
-                    new ResolveMonitoringAlertCommand(alertId, request.Ignored, request.Notes),
+                    new ResolveMonitoringAlertCommand(
+                        alertId,
+                        request.Ignored,
+                        request.Notes,
+                        request.ResolutionOutcome,
+                        request.ResolutionReason),
                     ct);
 
                 return result.ToOkHttpResult();

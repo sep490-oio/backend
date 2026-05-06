@@ -16,7 +16,8 @@ namespace OIO.Application.Context.ModerationContext.Commands.AcknowledgeMonitori
 
 public sealed record AcknowledgeMonitoringAlertCommand(
     Guid AlertId,
-    string? Notes) : ICommand<MonitoringAlertDto>, IHasValidate
+    string? Notes,
+    bool AssignToMe = false) : ICommand<MonitoringAlertDto>, IHasValidate
 {
     public ViolationsError Validate() =>
         AcknowledgeMonitoringAlertCommand.Check()
@@ -42,8 +43,25 @@ internal sealed class AcknowledgeMonitoringAlertCommandHandler(
         if (alert is null)
             return Error.NotFound("MonitoringAlert.NotFound", "Monitoring alert was not found.");
 
-        var oldState = new { status = alert.Status.Id, notes = alert.Notes };
-        alert.Acknowledge(currentUser.UserId.Value, request.Notes, clock.UtcNow);
+        var oldState = new
+        {
+            status = alert.Status.Id,
+            notes = alert.Notes,
+            assignedTo = alert.AssignedTo,
+            assignedAt = alert.AssignedAt
+        };
+
+        if (request.AssignToMe)
+        {
+            var assignResult = alert.Assign(currentUser.UserId.Value, clock.UtcNow);
+            if (assignResult.IsFailure)
+                return assignResult.Error;
+        }
+
+        var acknowledgeResult = alert.Acknowledge(currentUser.UserId.Value, request.Notes, clock.UtcNow);
+        if (acknowledgeResult.IsFailure)
+            return acknowledgeResult.Error;
+
         auditService.Log(
             action: "monitoring_alert_acknowledged",
             entityType: "MonitoringAlert",
@@ -52,7 +70,9 @@ internal sealed class AcknowledgeMonitoringAlertCommandHandler(
             newData: new
             {
                 status = alert.Status.Id,
-                notes = alert.Notes
+                notes = alert.Notes,
+                assignedTo = alert.AssignedTo,
+                assignedAt = alert.AssignedAt
             });
 
         await unitOfWork.SaveChangesAsync(cancellationToken);

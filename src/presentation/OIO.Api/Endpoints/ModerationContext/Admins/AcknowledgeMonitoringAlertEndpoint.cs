@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Context.ModerationContext.Commands.AcknowledgeMonitoringAlert;
@@ -9,7 +8,7 @@ namespace OIO.Api.Endpoints.ModerationContext.Admins;
 
 public sealed class AcknowledgeMonitoringAlertEndpoint : IEndpoint
 {
-    public sealed record Request([Required] string? Notes);
+    public sealed record Request(string? Notes, bool AssignToMe = false);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
@@ -20,7 +19,7 @@ public sealed class AcknowledgeMonitoringAlertEndpoint : IEndpoint
                 CancellationToken ct) =>
             {
                 var result = await sender.Send(
-                    new AcknowledgeMonitoringAlertCommand(alertId, request.Notes),
+                    new AcknowledgeMonitoringAlertCommand(alertId, request.Notes, request.AssignToMe),
                     ct);
 
                 return result.ToOkHttpResult();

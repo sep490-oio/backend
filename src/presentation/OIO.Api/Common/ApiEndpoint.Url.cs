@@ -108,6 +108,8 @@ public static partial class ApiEndpoint
             public const string GetMonitoringAlerts = $"{Base}/monitoring-alerts";
             public const string AcknowledgeMonitoringAlert = $"{Base}/monitoring-alerts/{{alertId:guid}}/acknowledge";
             public const string ResolveMonitoringAlert = $"{Base}/monitoring-alerts/{{alertId:guid}}/resolve";
+            public const string AssignMonitoringAlert = $"{Base}/monitoring-alerts/{{alertId:guid}}/assign";
+            public const string UnassignMonitoringAlert = $"{Base}/monitoring-alerts/{{alertId:guid}}/assign";
             public const string FlagUser = $"{Base}/users/{{userId:guid}}/risk-flags";
             public const string FlagAuction = $"{Base}/auctions/{{auctionId:guid}}/alerts";
             public const string CancelInvalidBid = $"{Base}/auctions/{{auctionId:guid}}/bids/{{bidId:guid}}/cancel";

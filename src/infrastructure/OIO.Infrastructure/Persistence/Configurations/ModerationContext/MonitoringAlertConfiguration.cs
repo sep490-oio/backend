@@ -56,6 +56,27 @@ internal sealed class MonitoringAlertConfiguration : IEntityTypeConfiguration<Mo
         builder.Property(a => a.ResolvedAt)
             .HasColumnName("resolved_at");
 
+        builder.Property(a => a.AssignedTo)
+            .HasColumnName("assigned_to");
+
+        builder.Property(a => a.AssignedAt)
+            .HasColumnName("assigned_at");
+
+        builder.Property(a => a.SlaDueAt)
+            .HasColumnName("sla_due_at");
+
+        builder.Property(a => a.ResolutionOutcome)
+            .HasColumnName("resolution_outcome")
+            .HasMaxLength(50);
+
+        builder.Property(a => a.ResolutionReason)
+            .HasColumnName("resolution_reason");
+
+        builder.Property(a => a.Fingerprint)
+            .HasColumnName("fingerprint")
+            .HasMaxLength(128)
+            .IsRequired();
+
         builder.ComplexProperty(a => a.Status, statusBuilder =>
         {
             statusBuilder.Property(s => s.Id)
@@ -77,5 +98,13 @@ internal sealed class MonitoringAlertConfiguration : IEntityTypeConfiguration<Mo
 
         builder.HasIndex(a => new { a.EntityType, a.EntityId, a.AlertType, a.CreatedAt })
             .HasDatabaseName("idx_monitoring_alerts_entity_type_created_at");
+
+        builder.HasIndex(a => a.AssignedTo)
+            .HasDatabaseName("idx_monitoring_alerts_assigned_to");
+
+        builder.HasIndex(a => a.Fingerprint)
+            .IsUnique()
+            .HasFilter("status IN ('open', 'acknowledged')")
+            .HasDatabaseName("ux_monitoring_alerts_active_fingerprint");
     }
 }

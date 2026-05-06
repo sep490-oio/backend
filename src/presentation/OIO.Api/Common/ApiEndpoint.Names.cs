@@ -170,6 +170,8 @@ public static partial class ApiEndpoint
             public const string GetMonitoringAlerts = nameof(GetMonitoringAlerts);
             public const string AcknowledgeMonitoringAlert = nameof(AcknowledgeMonitoringAlert);
             public const string ResolveMonitoringAlert = nameof(ResolveMonitoringAlert);
+            public const string AssignMonitoringAlert = nameof(AssignMonitoringAlert);
+            public const string UnassignMonitoringAlert = nameof(UnassignMonitoringAlert);
             public const string FlagUser = nameof(FlagUser);
             public const string FlagAuction = nameof(FlagAuction);
             public const string CancelInvalidBid = nameof(CancelInvalidBid);

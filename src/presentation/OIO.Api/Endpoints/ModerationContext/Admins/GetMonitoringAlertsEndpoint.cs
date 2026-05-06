@@ -1,5 +1,6 @@
 using MediatR;
 using OIO.Api.Common;
+using OIO.Application.Abstractions.Commons;
 using OIO.Application.Context.ModerationContext.DTOs;
 using OIO.Application.Context.ModerationContext.Queries.GetMonitoringAlerts;
 using OIO.Domain.AppDefinitions;
@@ -25,6 +26,6 @@ public sealed class GetMonitoringAlertsEndpoint : IEndpoint
             .RequireAuthorization(App.Permissions.Catalogs.Admin.ReadItems)
             .WithName(ApiEndpoint.Names.Admins.GetMonitoringAlerts)
             .WithTags(ApiEndpoint.Tags.Admins)
-            .Produces<IReadOnlyList<MonitoringAlertDto>>(StatusCodes.Status200OK);
+            .Produces<PagedList<MonitoringAlertDto>>(StatusCodes.Status200OK);
     }
 }

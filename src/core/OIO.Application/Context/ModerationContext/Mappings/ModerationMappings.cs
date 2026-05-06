@@ -6,6 +6,7 @@ using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Application.Context.ModerationContext.Services;
 
 namespace OIO.Application.Context.ModerationContext.Mappings;
 
@@ -33,20 +34,7 @@ internal static class ModerationMappings
 
     public static MonitoringAlertDto ToDto(this MonitoringAlert alert)
     {
-        return new MonitoringAlertDto(
-            Id: alert.Id.Value,
-            EntityType: alert.EntityType,
-            EntityId: alert.EntityId,
-            AlertType: alert.AlertType,
-            Severity: alert.Severity.Id,
-            Payload: alert.Payload,
-            Status: alert.Status.Id,
-            Notes: alert.Notes,
-            AcknowledgedBy: alert.AcknowledgedBy,
-            AcknowledgedAt: alert.AcknowledgedAt,
-            ResolvedBy: alert.ResolvedBy,
-            ResolvedAt: alert.ResolvedAt,
-            CreatedAt: alert.CreatedAt);
+        return MonitoringAlertPresenter.ToDto(alert);
     }
 
     public static UserRiskFlagDto ToDto(this UserRiskFlag flag)
