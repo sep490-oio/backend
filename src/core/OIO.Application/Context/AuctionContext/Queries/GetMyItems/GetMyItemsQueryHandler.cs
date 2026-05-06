@@ -80,37 +80,14 @@ internal sealed class GetMyItemsQueryHandler
 
         var totalCount = await query.CountAsync(cancellationToken);
 
-
-        var items = await query
-            .Select(item => new ItemDto(
-                Id: item.Id.Value,
-                SellerId: item.SellerId.Value,
-                CategoryId: item.CategoryId.HasValue ? item.CategoryId.Value.Value : null,
-                Title: item.Title.Value,
-                Description: item.Description,
-                Condition: item.Condition.Id,
-                Status: item.Status.Id,
-                Quantity: item.Quantity,
-                Images: item.Media
-                    .Select(media =>
-                        new ItemMediaDto(
-                            Id: media.Id.Value,
-                            Url: media.Info.SecureUrl,
-                            PublicId: media.StorageRef.PublicId,
-                            ResourceType: media.ResourceType,
-                            IsPrimary: media.IsPrimary,
-                            SortOrder: media.SortOrder,
-                            FileName: media.Info.FileName,
-                            Bytes: media.Info.Bytes,
-                            Format: media.Info.Format,
-                            Width: media.Info.Width,
-                            Height: media.Info.Height,
-                            DurationSeconds: media.Info.DurationSeconds))
-                    .ToList(),
-                CreatedAt: item.CreatedAt,
-                HasInboundShipment: activeInboundItemGuids.Contains(item.Id.Value)))
+        var pagedItems = await query
+            .Include(item => item.Media)
             .ToPagedListAsync(totalCount, parameters, cancellationToken);
 
-        return items;
+        var itemDtos = pagedItems.Items
+            .Select(item => item.ToDto(activeInboundItemGuids.Contains(item.Id.Value)))
+            .ToList();
+
+        return new PagedList<ItemDto>(itemDtos, pagedItems.Metadata);
     }
 }
