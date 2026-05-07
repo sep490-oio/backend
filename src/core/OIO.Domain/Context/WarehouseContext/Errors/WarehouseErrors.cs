@@ -153,6 +153,11 @@ public static class WarehouseErrors
             "WarehouseToSellerShipment.SellerAddressRequired",
             "Seller address snapshot is required.");
 
+        public static readonly Error ReturnAddressMissing = Error.Validation(
+            "ReturnAddress",
+            "WarehouseToSellerShipment.ReturnAddressMissing",
+            "Cannot resolve return address from inbound shipment or seller default address.");
+
         public static readonly Error RejectionReasonRequired = Error.Validation(
             "RejectionReason",
             "WarehouseToSellerShipment.RejectionReasonRequired",

@@ -6,9 +6,9 @@ using OIO.Domain.AppDefinitions;
 namespace OIO.Api.Endpoints.WarehouseContext.WarehouseReturns;
 
 /// <summary>
-/// POST /api/admin/warehouse-returns/retry/{inspectionId} — admin recovers a
-/// rejected inspection that previously failed to produce a shipment (most
-/// commonly because the seller had no default address at the time).
+/// POST /api/admin/warehouse-returns/retry/{inspectionId} - admin recovers a
+/// rejected inspection that previously failed to produce a return shipment,
+/// commonly because no return address could be resolved at the time.
 /// </summary>
 public sealed class RetryPendingInspectionRejectEndpoint : IEndpoint
 {

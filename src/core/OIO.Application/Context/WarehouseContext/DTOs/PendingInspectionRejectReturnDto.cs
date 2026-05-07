@@ -17,4 +17,6 @@ public sealed record PendingInspectionRejectReturnDto(
     DateTime CreatedAt,
     string DecisionStatus,
     string? WarehouseItemStatus,
-    bool SellerHasDefaultAddress);
+    bool SellerHasDefaultAddress,
+    bool HasInboundSenderAddress,
+    bool CanResolveReturnAddress);

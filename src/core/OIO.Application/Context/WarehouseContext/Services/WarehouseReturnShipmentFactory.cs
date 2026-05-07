@@ -8,9 +8,11 @@ using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseToSellerShipments;
 using OIO.Domain.Context.WarehouseContext.Enums;
+using OIO.Domain.Context.WarehouseContext.Errors;
 using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
@@ -21,7 +23,7 @@ namespace OIO.Application.Context.WarehouseContext.Services;
 /// inspection. Used by both the domain-event handler (normal flow) and the
 /// admin <c>RetryPendingInspectionRejectCommand</c> (recovery flow).
 ///
-/// Missing-address handling follows plan H3:
+/// Missing return-address handling follows plan H3:
 ///   - Normal flow (via event handler): the handler catches the thrown
 ///     <see cref="InvalidOperationException"/> and lets the outbox retry.
 ///   - Recovery flow (via retry command): the command maps the thrown exception
@@ -45,7 +47,7 @@ internal enum EnsureShipmentOutcome
     CreatedViaDbDedup,
     WarehouseItemNotFound,
     SellerNotResolved,
-    SellerAddressMissing,
+    ReturnAddressMissing,
     CreateFailed,
     TransitionFailed,
 }
@@ -129,56 +131,35 @@ internal sealed class WarehouseReturnShipmentFactory(
 
         var sellerId = UserId.From(sellerGuid.Value);
 
-        // 4) Load the seller's default UserAddress.
-        var address = await dbContext.Set<UserAddress>()
-            .AsNoTracking()
-            .Where(a => a.UserId == sellerId && a.IsDefault)
-            .OrderByDescending(a => a.CreatedAt)
-            .FirstOrDefaultAsync(cancellationToken);
+        // 4) Resolve the return address. The original inbound sender address is
+        //    the authoritative destination for this physical lot; seller default
+        //    address is only a legacy fallback.
+        var addressSnapshot = await ResolveReturnAddressSnapshotAsync(
+            warehouseItem,
+            sellerId,
+            nowUtc,
+            cancellationToken);
 
-        if (address is null)
+        if (addressSnapshot is null)
         {
             var nonDefaultCount = await dbContext.Set<UserAddress>()
                 .AsNoTracking()
                 .CountAsync(a => a.UserId == sellerId && !a.IsDefault, cancellationToken);
 
             logger.LogError(
-                "Stuck inspection-reject: Seller {SellerId} has no default UserAddress " +
-                "(has {NonDefaultCount} non-default). Inspection {InspectionId}, WarehouseItem {WarehouseItemId}.",
+                "Stuck inspection-reject: cannot resolve return address from inbound shipment {InboundShipmentId} " +
+                "or seller default UserAddress. Seller {SellerId} has {NonDefaultCount} non-default addresses. " +
+                "Inspection {InspectionId}, WarehouseItem {WarehouseItemId}.",
+                warehouseItem.InboundShipmentId.Value,
                 sellerId.Value,
                 nonDefaultCount,
                 inspectionId.Value,
                 warehouseItemId.Value);
 
             return new EnsureShipmentResult(
-                EnsureShipmentOutcome.SellerAddressMissing,
-                Error: Error.Validation(
-                    "SellerAddress",
-                    "WarehouseToSellerShipment.SellerAddressMissing",
-                    $"Seller {sellerId.Value} has no default UserAddress. Admin must add a default address and retry."));
+                EnsureShipmentOutcome.ReturnAddressMissing,
+                Error: WarehouseErrors.WarehouseToSellerShipment.ReturnAddressMissing);
         }
-
-        // 5) Snapshot the address as JSON.
-        var snapshot = JsonSerializer.Serialize(new
-        {
-            userAddressId = address.Id.Value,
-            recipient = new
-            {
-                name  = address.Recipient.RecipientName,
-                phone = address.Recipient.Phone.Value,
-            },
-            address = new
-            {
-                street     = address.Address.Street,
-                ward       = address.Address.Ward,
-                district   = address.Address.District,
-                city       = address.Address.City,
-                postalCode = address.Address.PostalCode,
-            },
-            type      = address.Type.Id,
-            isDefault = address.IsDefault,
-            snapshottedAt = nowUtc,
-        });
 
         // 6) Flip the WarehouseItem into the return-to-seller flow.
         var transitionResult = warehouseItem.StartReturnToSeller(nowUtc);
@@ -199,7 +180,7 @@ internal sealed class WarehouseReturnShipmentFactory(
             warehouseItemId:       warehouseItemId,
             warehouseInspectionId: inspectionId,
             sellerId:              sellerId,
-            sellerAddressSnapshot: snapshot,
+            sellerAddressSnapshot: addressSnapshot,
             rejectionReason:       rejectionReason,
             nowUtc:                nowUtc);
 
@@ -257,5 +238,96 @@ internal sealed class WarehouseReturnShipmentFactory(
             inspectionId.Value);
 
         return new EnsureShipmentResult(EnsureShipmentOutcome.Created, shipment);
+    }
+
+    private async Task<string?> ResolveReturnAddressSnapshotAsync(
+        WarehouseItem warehouseItem,
+        UserId sellerId,
+        DateTime nowUtc,
+        CancellationToken cancellationToken)
+    {
+        var inboundShipment = await dbContext.Set<InboundShipment>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == warehouseItem.InboundShipmentId, cancellationToken);
+
+        if (inboundShipment is not null && HasUsableSenderAddress(inboundShipment))
+        {
+            return JsonSerializer.Serialize(new
+            {
+                source = "inbound_sender",
+                inboundShipmentId = inboundShipment.Id.Value,
+                recipient = new
+                {
+                    name  = inboundShipment.SenderName,
+                    phone = inboundShipment.SenderPhone,
+                },
+                address = new
+                {
+                    street   = inboundShipment.SenderAddress,
+                    ward     = inboundShipment.SenderWard,
+                    district = inboundShipment.SenderDistrict,
+                    city     = inboundShipment.SenderProvince,
+                },
+                carrierAddressData = ParseCarrierAddressData(inboundShipment.SenderCarrierAddressData?.RawJson),
+                snapshottedAt = nowUtc,
+            });
+        }
+
+        var address = await dbContext.Set<UserAddress>()
+            .AsNoTracking()
+            .Where(a => a.UserId == sellerId && a.IsDefault)
+            .OrderByDescending(a => a.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (address is null)
+            return null;
+
+        return JsonSerializer.Serialize(new
+        {
+            source = "user_default_address",
+            userAddressId = address.Id.Value,
+            recipient = new
+            {
+                name  = address.Recipient.RecipientName,
+                phone = address.Recipient.Phone.Value,
+            },
+            address = new
+            {
+                street     = address.Address.Street,
+                ward       = address.Address.Ward,
+                district   = address.Address.District,
+                city       = address.Address.City,
+                postalCode = address.Address.PostalCode,
+            },
+            type      = address.Type.Id,
+            isDefault = address.IsDefault,
+            snapshottedAt = nowUtc,
+        });
+    }
+
+    private static bool HasUsableSenderAddress(InboundShipment shipment)
+    {
+        return !string.IsNullOrWhiteSpace(shipment.SenderName)
+            && !string.IsNullOrWhiteSpace(shipment.SenderPhone)
+            && !string.IsNullOrWhiteSpace(shipment.SenderAddress)
+            && !string.IsNullOrWhiteSpace(shipment.SenderWard)
+            && !string.IsNullOrWhiteSpace(shipment.SenderDistrict)
+            && !string.IsNullOrWhiteSpace(shipment.SenderProvince);
+    }
+
+    private static object? ParseCarrierAddressData(string? rawJson)
+    {
+        if (string.IsNullOrWhiteSpace(rawJson))
+            return null;
+
+        try
+        {
+            using var document = JsonDocument.Parse(rawJson);
+            return document.RootElement.Clone();
+        }
+        catch (JsonException)
+        {
+            return rawJson;
+        }
     }
 }

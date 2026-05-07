@@ -8,6 +8,7 @@ using OIO.Application.Extensions;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
+using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseToSellerShipments;
 using OIO.Domain.Context.WarehouseContext.Enums;
@@ -73,6 +74,18 @@ internal sealed class GetPendingInspectionRejectReturnsQueryHandler(IDbContext d
                 .ToListAsync(cancellationToken);
         var sellerDefaultAddressSet = sellerIdsWithDefaultAddress.ToHashSet();
 
+        var inboundShipmentIds = warehouseItems.Select(w => w.InboundShipmentId).Distinct().ToList();
+        var inboundShipments = inboundShipmentIds.Count == 0
+            ? new List<InboundShipment>()
+            : await dbContext.Set<InboundShipment>()
+                .AsNoTracking()
+                .Where(s => inboundShipmentIds.Contains(s.Id))
+                .ToListAsync(cancellationToken);
+        var inboundSenderAddressSet = inboundShipments
+            .Where(HasUsableSenderAddress)
+            .Select(s => s.Id)
+            .ToHashSet();
+
         var rows = inspections.Select(inspection =>
         {
             warehouseItemsById.TryGetValue(inspection.WarehouseItemId, out var warehouseItem);
@@ -84,6 +97,9 @@ internal sealed class GetPendingInspectionRejectReturnsQueryHandler(IDbContext d
             var primaryMedia = item?.Media.FirstOrDefault(m => m.IsPrimary)
                 ?? item?.Media.FirstOrDefault();
             var sellerId = item?.SellerId.Value;
+            var sellerHasDefaultAddress = sellerId.HasValue && sellerDefaultAddressSet.Contains(sellerId.Value);
+            var hasInboundSenderAddress = warehouseItem is not null
+                && inboundSenderAddressSet.Contains(warehouseItem.InboundShipmentId);
 
             return new PendingInspectionRejectReturnDto(
                 InspectionId: inspection.Id.Value,
@@ -98,9 +114,21 @@ internal sealed class GetPendingInspectionRejectReturnsQueryHandler(IDbContext d
                 CreatedAt: inspection.CreatedAt,
                 DecisionStatus: inspection.DecisionStatus.Id,
                 WarehouseItemStatus: warehouseItem?.Status.Id,
-                SellerHasDefaultAddress: sellerId.HasValue && sellerDefaultAddressSet.Contains(sellerId.Value));
+                SellerHasDefaultAddress: sellerHasDefaultAddress,
+                HasInboundSenderAddress: hasInboundSenderAddress,
+                CanResolveReturnAddress: hasInboundSenderAddress || sellerHasDefaultAddress);
         }).ToList();
 
         return rows.ToPagedList(totalCount, parameters);
+    }
+
+    private static bool HasUsableSenderAddress(InboundShipment shipment)
+    {
+        return !string.IsNullOrWhiteSpace(shipment.SenderName)
+            && !string.IsNullOrWhiteSpace(shipment.SenderPhone)
+            && !string.IsNullOrWhiteSpace(shipment.SenderAddress)
+            && !string.IsNullOrWhiteSpace(shipment.SenderWard)
+            && !string.IsNullOrWhiteSpace(shipment.SenderDistrict)
+            && !string.IsNullOrWhiteSpace(shipment.SenderProvince);
     }
 }

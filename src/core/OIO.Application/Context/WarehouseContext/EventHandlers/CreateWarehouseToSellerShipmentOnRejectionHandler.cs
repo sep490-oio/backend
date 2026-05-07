@@ -10,8 +10,8 @@ namespace OIO.Application.Context.WarehouseContext.EventHandlers;
 /// <summary>
 /// Handles <see cref="WarehouseInspectionRejectedEvent"/> by delegating to
 /// <see cref="IWarehouseReturnShipmentFactory"/>. Keeps Tier-1 hard-fail
-/// semantics (plan H3): address-missing / resolution failures surface as thrown
-/// exceptions so the outbox retries up to MaxAttempts, then dead-letters.
+/// semantics (plan H3): return-address-missing / resolution failures surface as
+/// thrown exceptions so the outbox retries up to MaxAttempts, then dead-letters.
 /// Admin recovers via the <c>RetryPendingInspectionRejectCommand</c> endpoint.
 /// </summary>
 internal sealed class CreateWarehouseToSellerShipmentOnRejectionHandler(
@@ -48,7 +48,7 @@ internal sealed class CreateWarehouseToSellerShipmentOnRejectionHandler(
                     notification.WarehouseInspectionId);
                 return;
 
-            case EnsureShipmentOutcome.SellerAddressMissing:
+            case EnsureShipmentOutcome.ReturnAddressMissing:
             case EnsureShipmentOutcome.SellerNotResolved:
                 // Tier-1 hard-fail (plan H3). Throw so the outbox retries until
                 // dead-letter. Admin intervenes via RetryPendingInspectionReject.

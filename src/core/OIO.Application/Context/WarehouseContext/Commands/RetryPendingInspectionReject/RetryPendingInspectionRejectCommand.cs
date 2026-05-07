@@ -16,11 +16,11 @@ namespace OIO.Application.Context.WarehouseContext.Commands.RetryPendingInspecti
 
 /// <summary>
 /// Admin-triggered recovery for <see cref="WarehouseInspection"/> rows whose
-/// <c>WarehouseInspectionRejectedEvent</c> failed at the handler stage — most
-/// commonly because the seller had no default <c>UserAddress</c> at the time.
-/// After the admin fixes the underlying issue, this command calls the same
-/// shared factory the event handler uses to produce the
-/// <c>WarehouseToSellerShipment</c>.
+/// <c>WarehouseInspectionRejectedEvent</c> failed at the handler stage, commonly
+/// because the return address could not be resolved from the original inbound
+/// sender address or a legacy seller default address. After the admin fixes the
+/// underlying issue, this command calls the same shared factory the event
+/// handler uses to produce the <c>WarehouseToSellerShipment</c>.
 /// </summary>
 public sealed record RetryPendingInspectionRejectCommand(Guid InspectionId)
     : ICommand, IHasValidate
@@ -78,7 +78,7 @@ internal sealed class RetryPendingInspectionRejectCommandHandler(
 
             case EnsureShipmentOutcome.AlreadyExists:
                 logger.LogInformation(
-                    "RetryPendingInspectionReject: shipment already exists for inspection {InspectionId} — no-op.",
+                    "RetryPendingInspectionReject: shipment already exists for inspection {InspectionId} - no-op.",
                     request.InspectionId);
                 return UnitResult.Success<Error>();
 
