@@ -130,7 +130,7 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
             name: personName);
         
         user.Wallet = Wallet.Create(user.Id, currency, now);
-
+        user.Wallet.Activate(now);
         user.RaiseDomainEvent(new UserCreatedEvent(
             user.Id.ToString(),
             user.UserName, 
