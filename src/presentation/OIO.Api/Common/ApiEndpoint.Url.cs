@@ -122,6 +122,7 @@ public static partial class ApiEndpoint
             public const string RepairStuckInAuctionItems = $"{Base}/repair/stuck-in-auction-items";
 
             // Warehouse inspection-reject recovery (Phase D).
+            public const string PendingInspectionRejectReturns = $"{Base}/warehouse-returns/pending-inspection-rejects";
             public const string RetryPendingInspectionReject = $"{Base}/warehouse-returns/retry/{{inspectionId:guid}}";
         }
 

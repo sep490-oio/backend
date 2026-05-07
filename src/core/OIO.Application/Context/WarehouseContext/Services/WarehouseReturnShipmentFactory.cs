@@ -34,7 +34,8 @@ internal interface IWarehouseReturnShipmentFactory
         WarehouseItemId warehouseItemId,
         string rejectionReason,
         DateTime nowUtc,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        bool persistImmediately = true);
 }
 
 internal enum EnsureShipmentOutcome
@@ -65,7 +66,8 @@ internal sealed class WarehouseReturnShipmentFactory(
         WarehouseItemId warehouseItemId,
         string rejectionReason,
         DateTime nowUtc,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool persistImmediately = true)
     {
         // 1) Idempotency query-first-check.
         var existingId = await dbContext.Set<WarehouseToSellerShipment>()
@@ -220,6 +222,17 @@ internal sealed class WarehouseReturnShipmentFactory(
 
         dbContext.Insert(shipment);
         dbContext.Update(warehouseItem);
+
+        if (!persistImmediately)
+        {
+            logger.LogInformation(
+                "WarehouseToSellerShipment staged for inspection {InspectionId} (shipment {ShipmentId}, warehouseItem {WarehouseItemId}).",
+                inspectionId.Value,
+                shipment.Id.Value,
+                warehouseItemId.Value);
+
+            return new EnsureShipmentResult(EnsureShipmentOutcome.Created, shipment);
+        }
 
         // 9) DB-level idempotency safety net (H2). Only SqlState 23505 is
         //    swallowed — every other DbUpdateException propagates.

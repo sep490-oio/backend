@@ -11,6 +11,7 @@ using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Application.Context.WarehouseContext.Mappings;
+using OIO.Application.Context.WarehouseContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.CatalogContext.Enums;
@@ -49,6 +50,7 @@ internal sealed class ReviewWarehouseInspectionCommandHandler(
     ICurrentUser currentUser,
     IClock clock,
     ContinueVerifiedAuctionService continuationService,
+    IWarehouseReturnShipmentFactory returnShipmentFactory,
     ISender sender,
     ILogger<ReviewWarehouseInspectionCommandHandler> logger)
     : ICommandHandler<ReviewWarehouseInspectionCommand, WarehouseInspectionDto>
@@ -98,6 +100,29 @@ internal sealed class ReviewWarehouseInspectionCommandHandler(
             var rejectItemResult = item.RejectFromPlatformInspection(reviewerId, request.Reason.Trim(), now);
             if (rejectItemResult.IsFailure)
                 return rejectItemResult.Error;
+
+            var returnShipmentResult = await returnShipmentFactory.EnsureShipmentExistsAsync(
+                inspectionId:    inspection.Id,
+                warehouseItemId: inspection.WarehouseItemId,
+                rejectionReason: request.Reason.Trim(),
+                nowUtc:          now,
+                cancellationToken: cancellationToken,
+                persistImmediately: false);
+
+            if (!IsReturnShipmentReady(returnShipmentResult.Outcome))
+            {
+                logger.LogWarning(
+                    "ReviewWarehouseInspection reject could not create return shipment. Inspection {InspectionId}, WarehouseItem {WarehouseItemId}, Outcome {Outcome}, Error {Error}.",
+                    inspection.Id.Value,
+                    inspection.WarehouseItemId.Value,
+                    returnShipmentResult.Outcome,
+                    returnShipmentResult.Error?.Message);
+
+                return returnShipmentResult.Error
+                    ?? Error.Conflict(
+                        "WarehouseInspection.ReturnShipmentNotCreated",
+                        $"Could not create warehouse return shipment for rejected inspection '{inspection.Id.Value}'.");
+            }
         }
         else
         {
@@ -241,4 +266,9 @@ internal sealed class ReviewWarehouseInspectionCommandHandler(
 
         return inspection.ToDto();
     }
+
+    private static bool IsReturnShipmentReady(EnsureShipmentOutcome outcome) =>
+        outcome is EnsureShipmentOutcome.Created
+            or EnsureShipmentOutcome.AlreadyExists
+            or EnsureShipmentOutcome.CreatedViaDbDedup;
 }

@@ -181,6 +181,7 @@ public static partial class ApiEndpoint
             public const string GetCompletedAuctionById = nameof(GetCompletedAuctionById);
 
             // Warehouse inspection reject recovery (Phase D)
+            public const string GetPendingInspectionRejectReturns = nameof(GetPendingInspectionRejectReturns);
             public const string RetryPendingInspectionReject = nameof(RetryPendingInspectionReject);
         }
 
