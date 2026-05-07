@@ -14,7 +14,7 @@ using OIO.Infrastructure.Persistence;
 namespace OIO.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260506175439_MonitoringAlertWorkflowEnrichment")]
+    [Migration("20260507074048_MonitoringAlertWorkflowEnrichment")]
     partial class MonitoringAlertWorkflowEnrichment
     {
         /// <inheritdoc />

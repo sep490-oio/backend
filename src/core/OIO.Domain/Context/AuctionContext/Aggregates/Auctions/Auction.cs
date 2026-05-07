@@ -1137,6 +1137,10 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         if (incrementAmount is not null && incrementAmount.Currency != Pricing.Currency)
             return Money.Errors.CurrencyMismatch(Pricing.Currency.Id, incrementAmount.Currency.Id);
 
+        var minimumAutoBidIncrement = Money.Of(Pricing.BidIncrementAmount, Pricing.Currency);
+        if (incrementAmount is not null && incrementAmount < minimumAutoBidIncrement)
+            return AuctionErrors.AutoBid.IncrementBelowAuctionIncrement(incrementAmount, minimumAutoBidIncrement);
+
         var validationResult = AutoBid.Check(isInvariant: true)
             .Field(maxAmount, x => x.Budget.MaxAmount)
             .GreaterThanOrEqual(GetMinimumBidAmount())
@@ -1316,7 +1320,6 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         int maxExtensions,
         TimeSpan maxDuration)
     {
-        var bidIncrement = Pricing.BidIncrementAmount;
         var currentPrice = Pricing.CurrentAmount;
         var currency = Pricing.Currency;
 
@@ -1367,6 +1370,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
         // 6. Resolve the visible price
         //    = min(winner ceiling, runner-up ceiling + increment)
+        var bidIncrement = GetEffectiveAutoBidIncrement(winner);
         var resolvedAmount = Math.Min(winnerCeiling, runnerUpCeiling + bidIncrement);
 
         // Ensure resolved amount is at least the minimum required bid
@@ -2554,7 +2558,8 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         if (autoBidCeiling > currentWinnerCeiling)
         {
             // New auto-bid wins — resolved price = min(new ceiling, winner ceiling + increment)
-            var resolvedAmount = Math.Min(autoBidCeiling, currentWinnerCeiling + Pricing.BidIncrementAmount);
+            var bidIncrement = GetEffectiveAutoBidIncrement(autoBid);
+            var resolvedAmount = Math.Min(autoBidCeiling, currentWinnerCeiling + bidIncrement);
             if (resolvedAmount < minimumRequired.Amount)
                 resolvedAmount = minimumRequired.Amount;
             if (resolvedAmount > autoBidCeiling)
@@ -2587,7 +2592,8 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             // Resolved price = min(winner ceiling, new auto-bid ceiling + increment)
             if (winnerAutoBid is not null)
             {
-                var resolvedAmount = Math.Min(currentWinnerCeiling, autoBidCeiling + Pricing.BidIncrementAmount);
+                var bidIncrement = GetEffectiveAutoBidIncrement(winnerAutoBid);
+                var resolvedAmount = Math.Min(currentWinnerCeiling, autoBidCeiling + bidIncrement);
                 if (resolvedAmount < minimumRequired.Amount)
                     resolvedAmount = minimumRequired.Amount;
                 if (resolvedAmount > currentWinnerCeiling)
@@ -2610,6 +2616,14 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         }
 
         return UnitResult.Success<Error>();
+    }
+
+    private decimal GetEffectiveAutoBidIncrement(AutoBid autoBid)
+    {
+        var configuredIncrement = autoBid.Budget.IncrementAmount;
+        return configuredIncrement.HasValue
+            ? Math.Max(configuredIncrement.Value, Pricing.BidIncrementAmount)
+            : Pricing.BidIncrementAmount;
     }
 
     private bool IsBidEligibleParticipant(AuctionParticipant participant, DateTime nowUtc)

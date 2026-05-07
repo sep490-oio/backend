@@ -239,6 +239,10 @@ public static readonly Error NoRunnerUp =
             Error.Validation("MaxAmount", "AutoBid.InvalidMaxAmount", 
                 $"Max amount ({maxAmount}) must be greater than current price ({auctionCurrentPrice}).");
 
+        public static Error IncrementBelowAuctionIncrement(Money incrementAmount, Money auctionIncrement) =>
+            Error.Validation("IncrementAmount", "AutoBid.InvalidIncrement",
+                $"Auto-bid increment ({incrementAmount}) must be greater than or equal to auction bid increment ({auctionIncrement}).");
+
         public static readonly Error InvalidCurrentAmount = 
             Error.Validation("CurrentAmount", "AutoBid.InvalidCurrentAmount", 
                 "Current amount must not exceed maximum amount.");

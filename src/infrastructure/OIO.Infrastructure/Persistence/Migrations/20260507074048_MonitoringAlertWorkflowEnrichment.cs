@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -10,6 +11,57 @@ namespace OIO.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AddColumn<DateTime>(
+                name: "assigned_at",
+                table: "monitoring_alerts",
+                type: "timestamp with time zone",
+                nullable: true);
+
+            migrationBuilder.AddColumn<Guid>(
+                name: "assigned_to",
+                table: "monitoring_alerts",
+                type: "uuid",
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "fingerprint",
+                table: "monitoring_alerts",
+                type: "character varying(128)",
+                maxLength: 128,
+                nullable: false,
+                defaultValue: "");
+
+            migrationBuilder.AddColumn<string>(
+                name: "resolution_outcome",
+                table: "monitoring_alerts",
+                type: "character varying(50)",
+                maxLength: 50,
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "resolution_reason",
+                table: "monitoring_alerts",
+                type: "text",
+                nullable: true);
+
+            migrationBuilder.AddColumn<DateTime>(
+                name: "sla_due_at",
+                table: "monitoring_alerts",
+                type: "timestamp with time zone",
+                nullable: true);
+
+            migrationBuilder.CreateIndex(
+                name: "idx_monitoring_alerts_assigned_to",
+                table: "monitoring_alerts",
+                column: "assigned_to");
+
+            migrationBuilder.CreateIndex(
+                name: "ux_monitoring_alerts_active_fingerprint",
+                table: "monitoring_alerts",
+                column: "fingerprint",
+                unique: true,
+                filter: "status IN ('open', 'acknowledged')");
+
             migrationBuilder.DropIndex(
                 name: "idx_auctions_priority",
                 table: "auctions");
@@ -230,6 +282,38 @@ namespace OIO.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropIndex(
+                name: "idx_monitoring_alerts_assigned_to",
+                table: "monitoring_alerts");
+
+            migrationBuilder.DropIndex(
+                name: "ux_monitoring_alerts_active_fingerprint",
+                table: "monitoring_alerts");
+
+            migrationBuilder.DropColumn(
+                name: "assigned_at",
+                table: "monitoring_alerts");
+
+            migrationBuilder.DropColumn(
+                name: "assigned_to",
+                table: "monitoring_alerts");
+
+            migrationBuilder.DropColumn(
+                name: "fingerprint",
+                table: "monitoring_alerts");
+
+            migrationBuilder.DropColumn(
+                name: "resolution_outcome",
+                table: "monitoring_alerts");
+
+            migrationBuilder.DropColumn(
+                name: "resolution_reason",
+                table: "monitoring_alerts");
+
+            migrationBuilder.DropColumn(
+                name: "sla_due_at",
+                table: "monitoring_alerts");
+
             migrationBuilder.DropIndex(
                 name: "idx_auctions_priority",
                 table: "auctions");
