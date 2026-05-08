@@ -52,7 +52,8 @@ internal sealed class VerifySellerProfileCommandHandler
         var user = await _dbContext.GetByIdAsync<User, UserId>(
             id: sellerId,
             queryBuilder: query => query
-                .Include(u => u.SellerProfile),
+                .Include(u => u.SellerProfile)
+                .Include(u => u.Roles),
             cancellationToken: cancellationToken
         );
 

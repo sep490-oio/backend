@@ -984,6 +984,11 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             Reason: "expired",
             OccurredAt: nowUtc));
 
+        // Compensate auction timing for the period it was locked by this reservation
+        var compensationResult = ApplyBuyNowCompensation(reservation.Value, nowUtc);
+        if (compensationResult.IsFailure)
+            return compensationResult.Error;
+
         return UnitResult.Success<Error>();
     }
 
@@ -1011,6 +1016,11 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             BuyerId: $"{reservation.Value.BuyerId}",
             Reason: reason,
             OccurredAt: nowUtc));
+
+        // Compensate auction timing for the period it was locked by this reservation
+        var compensationResult = ApplyBuyNowCompensation(reservation.Value, nowUtc);
+        if (compensationResult.IsFailure)
+            return compensationResult.Error;
 
         return UnitResult.Success<Error>();
     }
@@ -2088,6 +2098,71 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         return GetActiveBuyNowReservation(nowUtc) is null
             ? UnitResult.Success<Error>()
             : AuctionErrors.Auction.BuyNowReservationActive;
+    }
+
+    /// <summary>
+    /// Extends auction timing to compensate for the period a buy-now reservation locked the auction.
+    /// <para>
+    /// <b>Deposit phase (Scheduled):</b> Pushes qualification end, start time, and end time forward.
+    /// </para>
+    /// <para>
+    /// <b>Active phase (Active):</b> Pushes only the end time forward.
+    /// </para>
+    /// Compensation is capped at 24 hours total to prevent abuse.
+    /// </summary>
+    private UnitResult<Error> ApplyBuyNowCompensation(
+        AuctionBuyNowReservation reservation,
+        DateTime nowUtc)
+    {
+        if (Info is null)
+            return UnitResult.Success<Error>();
+
+        var compensationDuration = nowUtc - reservation.CreatedAt;
+        if (compensationDuration <= TimeSpan.Zero)
+            return UnitResult.Success<Error>();
+
+        // Cap individual compensation at 24 hours to prevent abuse
+        var maxCompensation = TimeSpan.FromHours(24);
+        if (compensationDuration > maxCompensation)
+            compensationDuration = maxCompensation;
+
+        var oldEndTime = Info.EndTime;
+
+        if (Status == AuctionStatus.Scheduled && Info.HasQualification)
+        {
+            // Deposit phase: extend qualification window end, start time, and end time
+            var extendResult = Info.ExtendAllByCompensation(compensationDuration);
+            if (extendResult.IsFailure)
+                return extendResult.Error;
+            Info = extendResult.Value;
+        }
+        else if (Status == AuctionStatus.Active)
+        {
+            // Active phase: extend only end time
+            var extendResult = Info.ExtendByCompensation(compensationDuration);
+            if (extendResult.IsFailure)
+                return extendResult.Error;
+            Info = extendResult.Value;
+        }
+        else
+        {
+            // No compensation needed for other statuses
+            return UnitResult.Success<Error>();
+        }
+
+        ModifiedAt = nowUtc;
+
+        RaiseDomainEvent(new AuctionBuyNowCompensationExtendedEvent(
+            AuctionId: $"{Id}",
+            ReservationId: $"{reservation.Id}",
+            BuyerId: $"{reservation.BuyerId}",
+            CompensationDuration: compensationDuration,
+            PreviousEndTime: oldEndTime,
+            NewEndTime: Info.EndTime,
+            AuctionPhase: Status == AuctionStatus.Scheduled ? "deposit" : "active",
+            OccurredAt: nowUtc));
+
+        return UnitResult.Success<Error>();
     }
 
     public UnitResult<Error> Terminate(string reason, DateTime nowUtc)

@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
@@ -118,6 +118,51 @@ public sealed class AuctionInfo : ValueObject
             autoExtend: AutoExtend,
             extensionMinutes: ExtensionMinutes,
             extensionCount:  ExtensionCount + 1 );
+    }
+
+    /// <summary>
+    /// Extends auction end time to compensate for a failed/expired buy-now reservation.
+    /// During the reservation window, other participants were blocked from acting.
+    /// Unlike <see cref="Extend"/>, this does not count toward <see cref="ExtensionCount"/>
+    /// because it is compensatory, not a bid-triggered extension.
+    /// </summary>
+    public Result<AuctionInfo, Error> ExtendByCompensation(TimeSpan compensation)
+    {
+        if (compensation <= TimeSpan.Zero)
+            return this;
+
+        var newEndTime = EndTime.Add(compensation);
+
+        return new AuctionInfo(
+            startTime: StartTime,
+            endTime: newEndTime,
+            qualification: Qualification,
+            autoExtend: AutoExtend,
+            extensionMinutes: ExtensionMinutes,
+            extensionCount: ExtensionCount);
+    }
+
+    /// <summary>
+    /// Extends all auction timing (qualification window end, start time, end time) to
+    /// compensate for a failed/expired buy-now reservation during the deposit phase.
+    /// Maintains relative durations between phases.
+    /// </summary>
+    public Result<AuctionInfo, Error> ExtendAllByCompensation(TimeSpan compensation)
+    {
+        if (compensation <= TimeSpan.Zero)
+            return this;
+
+        var newQualification = Qualification?.ExtendBy(compensation);
+        var newStartTime = StartTime.Add(compensation);
+        var newEndTime = EndTime.Add(compensation);
+
+        return new AuctionInfo(
+            startTime: newStartTime,
+            endTime: newEndTime,
+            qualification: newQualification,
+            autoExtend: AutoExtend,
+            extensionMinutes: ExtensionMinutes,
+            extensionCount: ExtensionCount);
     }
 
     protected override IEnumerable<object> GetEqualityComponents()

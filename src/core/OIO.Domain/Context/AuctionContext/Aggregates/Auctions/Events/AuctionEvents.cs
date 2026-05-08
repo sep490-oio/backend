@@ -107,6 +107,17 @@ public sealed record AuctionBuyNowReservationReleasedEvent(
     string Reason,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);
+
+public sealed record AuctionBuyNowCompensationExtendedEvent(
+    string AuctionId,
+    string ReservationId,
+    string BuyerId,
+    TimeSpan CompensationDuration,
+    DateTime PreviousEndTime,
+    DateTime NewEndTime,
+    string AuctionPhase,
+    DateTime OccurredAt)
+    : DomainEvent(OccurredAt);
     
 public sealed record AuctionAutoBidConfiguredEvent(
     string AuctionId,

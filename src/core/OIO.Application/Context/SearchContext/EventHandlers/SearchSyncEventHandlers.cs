@@ -23,6 +23,7 @@ public sealed class SearchSyncEventHandlers(IElasticsearchSyncService syncServic
     INotificationHandler<AuctionFeatureToggledEvent>,
     INotificationHandler<AuctionBuyNowReservedEvent>,
     INotificationHandler<AuctionBuyNowReservationReleasedEvent>,
+    INotificationHandler<AuctionBuyNowCompensationExtendedEvent>,
     INotificationHandler<BuyNowExecutedEvent>,
     INotificationHandler<AuctionRelistedEvent>,
     INotificationHandler<ItemCreatedEvent>,
@@ -75,6 +76,9 @@ public sealed class SearchSyncEventHandlers(IElasticsearchSyncService syncServic
         syncService.SyncAuctionAsync(Guid.Parse(notification.AuctionId), ct);
 
     public Task Handle(AuctionBuyNowReservationReleasedEvent notification, CancellationToken ct) =>
+        syncService.SyncAuctionAsync(Guid.Parse(notification.AuctionId), ct);
+
+    public Task Handle(AuctionBuyNowCompensationExtendedEvent notification, CancellationToken ct) =>
         syncService.SyncAuctionAsync(Guid.Parse(notification.AuctionId), ct);
 
     public Task Handle(BuyNowExecutedEvent notification, CancellationToken ct) =>
