@@ -43,6 +43,7 @@ internal sealed class ConfirmWarehouseReturnReceiptCommandHandler(
     {
         var shipmentId = WarehouseToSellerShipmentId.From(request.ShipmentId);
         var shipment = await dbContext.Set<WarehouseToSellerShipment>()
+            .Include(s => s.Evidence)
             .FirstOrDefaultAsync(s => s.Id == shipmentId, cancellationToken);
 
         if (shipment is null)

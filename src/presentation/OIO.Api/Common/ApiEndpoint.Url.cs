@@ -306,6 +306,7 @@ public static partial class ApiEndpoint
             public const string WarehouseStaffReturns                    = $"{Base}-staff/returns";
             public const string WarehouseStaffReturnMarkShipped          = $"{Base}-staff/returns/{{id:guid}}/ship";
             public const string WarehouseStaffReturnDeliveryFailure      = $"{Base}-staff/returns/{{id:guid}}/delivery-failure";
+            public const string WarehouseStaffReturnMarkDelivered       = $"{Base}-staff/returns/{{id:guid}}/mark-delivered";
             public const string SellerWarehouseReturns                   = "api/seller/warehouse-returns";
             public const string SellerWarehouseReturnConfirmReceipt      = "api/seller/warehouse-returns/{id:guid}/confirm-receipt";
 

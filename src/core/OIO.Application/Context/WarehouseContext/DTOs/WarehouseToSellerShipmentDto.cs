@@ -23,7 +23,9 @@ public sealed record WarehouseToSellerShipmentDto(
     DateTime? ModifiedAt,
     WarehouseToSellerShipmentItemSummaryDto? Item,
     string?  SellerDisplayName = null,
-    string?  QrToken = null);
+    string?  QrToken = null,
+    bool     HasReceiptEvidence = false,
+    IReadOnlyList<WarehouseToSellerShipmentEvidenceDto>? Evidence = null);
 
 public sealed record WarehouseToSellerShipmentItemSummaryDto(
     Guid     WarehouseItemId,
@@ -31,3 +33,4 @@ public sealed record WarehouseToSellerShipmentItemSummaryDto(
     string?  ItemTitle,
     string?  PrimaryImageUrl,
     string   WarehouseItemStatus);
+

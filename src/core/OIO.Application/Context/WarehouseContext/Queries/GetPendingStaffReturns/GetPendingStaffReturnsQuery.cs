@@ -39,8 +39,9 @@ internal sealed class GetPendingStaffReturnsQueryHandler(
     {
         var parameters = request.Parameters;
 
-        var query = dbContext.Set<WarehouseToSellerShipment>()
-            .AsNoTracking();
+        IQueryable<WarehouseToSellerShipment> query = dbContext.Set<WarehouseToSellerShipment>()
+            .AsNoTracking()
+            .Include(s => s.Evidence);
 
         var rawStatus = string.IsNullOrWhiteSpace(request.Status)
             ? "pending"

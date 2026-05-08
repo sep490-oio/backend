@@ -28,7 +28,18 @@ internal static class WarehouseToSellerShipmentMappings
             ModifiedAt:            shipment.ModifiedAt,
             Item:                  itemSummary,
             SellerDisplayName:     sellerDisplayName,
-            QrToken:               shipment.QrToken);
+            QrToken:               shipment.QrToken,
+            HasReceiptEvidence:    shipment.HasReceiptEvidence,
+            Evidence:              shipment.Evidence.Select(e => new WarehouseToSellerShipmentEvidenceDto(
+                Id:            e.Id.Value,
+                ShipmentId:    e.ShipmentId.Value,
+                Category:      e.Category,
+                MediaUploadId: e.MediaUploadId.Value,
+                SecureUrl:     e.SecureUrl,
+                FileName:      e.FileName,
+                ResourceType:  e.ResourceType,
+                CreatedAt:     e.CreatedAt,
+                CreatedBy:     e.CreatedBy.Value)).ToList());
 
     public static WarehouseToSellerShipmentItemSummaryDto ToSummary(
         this WarehouseItem warehouseItem,

@@ -338,6 +338,7 @@ public static partial class ApiEndpoint
             public const string MarkWarehouseReturnShipped          = nameof(MarkWarehouseReturnShipped);
             public const string ConfirmWarehouseReturnReceipt       = nameof(ConfirmWarehouseReturnReceipt);
             public const string RecordWarehouseReturnDeliveryFailure = nameof(RecordWarehouseReturnDeliveryFailure);
+            public const string MarkWarehouseReturnDelivered = nameof(MarkWarehouseReturnDelivered);
             public const string GetMyWarehouseReturns               = nameof(GetMyWarehouseReturns);
             public const string GetPendingStaffReturns              = nameof(GetPendingStaffReturns);
 

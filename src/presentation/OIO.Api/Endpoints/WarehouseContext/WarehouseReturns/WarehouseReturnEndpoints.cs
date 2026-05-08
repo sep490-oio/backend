@@ -3,6 +3,7 @@ using MediatR;
 using OIO.Api.Common;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Context.WarehouseContext.Commands.ConfirmWarehouseReturnReceipt;
+using OIO.Application.Context.WarehouseContext.Commands.MarkWarehouseReturnDelivered;
 using OIO.Application.Context.WarehouseContext.Commands.MarkWarehouseReturnShipped;
 using OIO.Application.Context.WarehouseContext.Commands.RecordWarehouseReturnDeliveryFailure;
 using OIO.Application.Context.WarehouseContext.DTOs;
@@ -74,6 +75,32 @@ public sealed class RecordWarehouseReturnDeliveryFailureEndpoint : IEndpoint
             .WithTags(ApiEndpoint.Tags.Warehouse)
             .Produces(StatusCodes.Status204NoContent)
             .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+    }
+}
+
+/// <summary>
+/// POST /api/warehouse-staff/returns/{id}/mark-delivered — staff marks manual delivery.
+/// </summary>
+public sealed class MarkWarehouseReturnDeliveredEndpoint : IEndpoint
+{
+    public void MapEndpoint(IEndpointRouteBuilder app)
+    {
+        app.MapPost(ApiEndpoint.Url.Warehouse.WarehouseStaffReturnMarkDelivered, async (
+                Guid id,
+                ISender sender,
+                CancellationToken ct) =>
+            {
+                var result = await sender.Send(
+                    new MarkWarehouseReturnDeliveredCommand(id),
+                    ct);
+                return result.ToNoContentHttpResult();
+            })
+            .RequireAuthorization(App.Permissions.Catalogs.Warehouse.BookOutbound)
+            .WithName(ApiEndpoint.Names.Warehouse.MarkWarehouseReturnDelivered)
+            .WithTags(ApiEndpoint.Tags.Warehouse)
+            .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
     }

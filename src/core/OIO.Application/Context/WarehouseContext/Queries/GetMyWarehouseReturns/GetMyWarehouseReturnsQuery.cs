@@ -43,6 +43,7 @@ internal sealed class GetMyWarehouseReturnsQueryHandler(
 
         var query = dbContext.Set<WarehouseToSellerShipment>()
             .AsNoTracking()
+            .Include(s => s.Evidence)
             .Where(s => s.SellerId == sellerId);
 
         if (!string.IsNullOrWhiteSpace(request.Status)
