@@ -95,11 +95,50 @@ public sealed class AuctionPollingFallbackJob : IJob
             }
         }
 
-        if (overdueStarts.Count > 0 || overdueEnds.Count > 0)
+        // ── Phase 3 (safety net for CloseQualificationJob): auto-cancel when deposit phase ended with < 2 deposits ──
+        // CloseQualificationJob fires precisely at Qualification.EndTime.
+        // This scan catches any auctions that the per-auction timer missed.
+        var noDepositCandidates = await dbContext.Set<Auction>()
+            .Include(a => a.Deposits)
+            .Include(a => a.Participants)
+            .Include(a => a.Item)
+            .Where(a => a.Status == AuctionStatus.Scheduled
+                        && a.Info != null && a.Info.Qualification!.EndTime <= now)
+            .ToListAsync(context.CancellationToken);
+
+        var cancelledNoDeposit = 0;
+        foreach (var auction in noDepositCandidates)
+        {
+            // Match CloseQualificationJob logic: need >= 2 bid-eligible participants.
+            if (auction.HasBidEligibleParticipants(now))
+                continue;
+
+            var heldCount = auction.Deposits.Count(d => d.IsHeld);
+
+            _logger.LogWarning(
+                "🛡️ Fallback: auto-cancelling auction {Id} — deposit phase ended with {Count} held deposit(s) (< 2 required).",
+                auction.Id, heldCount);
+
+            try
+            {
+                await SystemCancelAuctionAsync(
+                    dbContext, scope, auction.Id.Value,
+                    CloseQualificationJob.AutoCancelReason,
+                    now, context.CancellationToken);
+                cancelledNoDeposit++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "🛡️ Fallback: auto-cancel (insufficient deposits) failed for auction {Id}.", auction.Id);
+            }
+        }
+
+        if (overdueStarts.Count > 0 || overdueEnds.Count > 0 || cancelledNoDeposit > 0)
         {
             _logger.LogWarning(
-                "🛡️ Fallback processed: {Starts} starts, {Ends} ends.",
-                overdueStarts.Count, overdueEnds.Count);
+                "🛡️ Fallback processed: {Starts} starts, {Ends} ends, {NoDeposit} no-deposit cancellations.",
+                overdueStarts.Count, overdueEnds.Count, cancelledNoDeposit);
         }
     }
 

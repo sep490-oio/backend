@@ -100,4 +100,16 @@ public sealed class SellerProfile : BaseEntity<UserId>, IAuditableEntity
 
         return UnitResult.Success<Error>();
     }
+
+    /// <summary>
+    /// Records a completed sale, incrementing <see cref="TotalSalesCount"/>
+    /// and accumulating <paramref name="saleAmount"/> into <see cref="TotalSalesAmount"/>.
+    /// Call this when an order reaches the Completed status (buyer accepted, escrow released).
+    /// </summary>
+    public void RecordSale(decimal saleAmount, DateTime nowUtc)
+    {
+        TotalSalesCount++;
+        TotalSalesAmount += saleAmount;
+        ModifiedAt = nowUtc;
+    }
 }

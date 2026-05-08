@@ -1,4 +1,4 @@
-﻿using OIO.Application.Abstractions.Sorting;
+using OIO.Application.Abstractions.Sorting;
 using OIO.Application.Context.UserContext.DTOs;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 
@@ -20,7 +20,8 @@ internal static class UserMappings
             TwoFactorProvider: user.TwoFactorProvider.Id,
             Status: user.Status.Id,
             CreatedAt: user.CreatedAt,
-            Profile: user.Profile?.ToDto());
+            Profile: user.Profile?.ToDto(),
+            Roles: user.Roles.Select(r => r.RoleName).ToList());
     }
 
     public static readonly SortMappingDefinition UserListItemDtoSortMapping = SortMappingBuilder<UserListItemDto, User>

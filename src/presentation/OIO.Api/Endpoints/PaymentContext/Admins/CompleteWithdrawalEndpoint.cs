@@ -5,17 +5,25 @@ using OIO.Domain.AppDefinitions;
 
 namespace OIO.Api.Endpoints.PaymentContext.Admins;
 
+public sealed record CompleteWithdrawalRequest(
+    string TransferProofUrl,
+    string? TransferNote);
+
 public sealed class CompleteWithdrawalEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost(ApiEndpoint.Url.AdminPayments.CompleteWithdrawal, async (
                 Guid withdrawalId,
+                CompleteWithdrawalRequest request,
                 ISender sender,
                 CancellationToken ct) =>
             {
                 var result = await sender.Send(
-                    new CompleteWithdrawalCommand(withdrawalId), ct);
+                    new CompleteWithdrawalCommand(
+                        withdrawalId,
+                        request.TransferProofUrl,
+                        request.TransferNote), ct);
                 return result.ToNoContentHttpResult();
             })
             .RequireAuthorization(App.Permissions.Catalogs.Admin.ManagePayments)

@@ -129,7 +129,10 @@ internal sealed class RejectWithdrawalCommandHandler
 
 // ─── Complete Withdrawal ────────────────────────────────────────────
 
-public sealed record CompleteWithdrawalCommand(Guid WithdrawalRequestId) : ICommand;
+public sealed record CompleteWithdrawalCommand(
+    Guid WithdrawalRequestId,
+    string TransferProofUrl,
+    string? TransferNote) : ICommand;
 
 internal sealed class CompleteWithdrawalCommandHandler
     : ICommandHandler<CompleteWithdrawalCommand>
@@ -172,8 +175,11 @@ internal sealed class CompleteWithdrawalCommandHandler
                 return processingResult.Error;
         }
 
-        // Mark as completed
-        var completeResult = withdrawal.MarkAsCompleted(now);
+        // Mark as completed with transfer proof
+        var completeResult = withdrawal.MarkAsCompleted(
+            request.TransferProofUrl,
+            request.TransferNote,
+            now);
         if (completeResult.IsFailure)
             return completeResult.Error;
 

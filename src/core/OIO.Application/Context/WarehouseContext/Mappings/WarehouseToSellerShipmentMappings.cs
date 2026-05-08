@@ -8,7 +8,8 @@ internal static class WarehouseToSellerShipmentMappings
 {
     public static WarehouseToSellerShipmentDto ToDto(
         this WarehouseToSellerShipment shipment,
-        WarehouseToSellerShipmentItemSummaryDto? itemSummary = null) =>
+        WarehouseToSellerShipmentItemSummaryDto? itemSummary = null,
+        string? sellerDisplayName = null) =>
         new(
             Id:                    shipment.Id.Value,
             WarehouseItemId:       shipment.WarehouseItemId.Value,
@@ -25,7 +26,9 @@ internal static class WarehouseToSellerShipmentMappings
             Status:                shipment.Status.Id,
             CreatedAt:             shipment.CreatedAt,
             ModifiedAt:            shipment.ModifiedAt,
-            Item:                  itemSummary);
+            Item:                  itemSummary,
+            SellerDisplayName:     sellerDisplayName,
+            QrToken:               shipment.QrToken);
 
     public static WarehouseToSellerShipmentItemSummaryDto ToSummary(
         this WarehouseItem warehouseItem,

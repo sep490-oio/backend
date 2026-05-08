@@ -4,7 +4,6 @@ using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.PaymentContext.DTOs;
-using OIO.Application.Context.PaymentContext.Queries.GetMyWithdrawals;
 using OIO.Application.Extensions;
 using OIO.Domain.Context.PaymentContext.Aggregates.Withdrawals;
 using OIO.Domain.Context.PaymentContext.Enums;
@@ -20,10 +19,10 @@ public record AdminWithdrawalFilterParameters : PagedParameters
 }
 
 public sealed record GetAdminWithdrawalsQuery(
-    AdminWithdrawalFilterParameters Parameters) : IQuery<PagedList<WithdrawalRequestDto>>;
+    AdminWithdrawalFilterParameters Parameters) : IQuery<PagedList<AdminWithdrawalRequestDetailDto>>;
 
 internal sealed class GetAdminWithdrawalsQueryHandler
-    : IQueryHandler<GetAdminWithdrawalsQuery, PagedList<WithdrawalRequestDto>>
+    : IQueryHandler<GetAdminWithdrawalsQuery, PagedList<AdminWithdrawalRequestDetailDto>>
 {
     private readonly IDbContext _dbContext;
 
@@ -32,7 +31,7 @@ internal sealed class GetAdminWithdrawalsQueryHandler
         _dbContext = dbContext;
     }
 
-    public async Task<Result<PagedList<WithdrawalRequestDto>, Error>> Handle(
+    public async Task<Result<PagedList<AdminWithdrawalRequestDetailDto>, Error>> Handle(
         GetAdminWithdrawalsQuery request,
         CancellationToken cancellationToken)
     {
@@ -57,9 +56,10 @@ internal sealed class GetAdminWithdrawalsQueryHandler
 
         var count = await query.CountAsync(cancellationToken);
         var items = await query
-            .Select(x => x.ToDto())
+            .Select(x => x.ToAdminDetailDto())
             .ToPagedListAsync(count, parameters, cancellationToken);
 
         return items;
     }
 }
+

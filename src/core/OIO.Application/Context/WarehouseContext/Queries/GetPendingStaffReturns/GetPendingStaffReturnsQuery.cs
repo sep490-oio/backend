@@ -11,6 +11,7 @@ using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseToSellerShipments;
 using OIO.Domain.Context.WarehouseContext.Enums;
+using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.SeedWork.Errors;
 using ItemId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId;
 
@@ -89,6 +90,15 @@ internal sealed class GetPendingStaffReturnsQueryHandler(
                 .ToListAsync(cancellationToken);
         var itemsByIdValue = items.ToDictionary(i => i.Id.Value);
 
+        // Resolve seller display names for the staff UI
+        var sellerIds = shipments.Select(s => s.SellerId).Distinct().ToList();
+        var sellers = await dbContext.Set<User>()
+            .AsNoTracking()
+            .Include(u => u.SellerProfile)
+            .Where(u => sellerIds.Contains(u.Id))
+            .ToListAsync(cancellationToken);
+        var sellersById = sellers.ToDictionary(u => u.Id);
+
         var dtos = shipments.Select(s =>
         {
             WarehouseToSellerShipmentItemSummaryDto? summary = null;
@@ -98,7 +108,21 @@ internal sealed class GetPendingStaffReturnsQueryHandler(
                 var primary = item?.Media.FirstOrDefault(m => m.IsPrimary) ?? item?.Media.FirstOrDefault();
                 summary = wi.ToSummary(item?.Title.Value, primary?.Info.SecureUrl);
             }
-            return s.ToDto(summary);
+
+            string? sellerDisplayName = null;
+            if (sellersById.TryGetValue(s.SellerId, out var seller))
+            {
+                if (seller.SellerProfile is not null && !string.IsNullOrWhiteSpace(seller.SellerProfile.StoreName))
+                    sellerDisplayName = seller.SellerProfile.StoreName;
+                else if (seller.Profile?.Name is not null)
+                    sellerDisplayName = !string.IsNullOrWhiteSpace(seller.Profile.Name.DisplayName)
+                        ? seller.Profile.Name.DisplayName
+                        : seller.Profile.Name.FullName;
+                else
+                    sellerDisplayName = seller.UserName?.Value;
+            }
+
+            return s.ToDto(summary, sellerDisplayName);
         }).ToList();
 
         return dtos.ToPagedList(totalCount, parameters);

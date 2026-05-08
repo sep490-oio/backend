@@ -47,6 +47,8 @@ internal static class PaymentReadModelMapper
             AccountNumberMasked: MaskAccountNumber(withdrawal.BankAccount.AccountNumber),
             AccountHolder: withdrawal.BankAccount.AccountHolder,
             RejectionReason: withdrawal.RejectionReason,
+            TransferProofUrl: withdrawal.TransferProofUrl,
+            TransferNote: withdrawal.TransferNote,
             CreatedAt: withdrawal.CreatedAt,
             ProcessedAt: withdrawal.ProcessedAt);
 
@@ -63,6 +65,8 @@ internal static class PaymentReadModelMapper
             AccountNumber: withdrawal.BankAccount.AccountNumber,
             AccountHolder: withdrawal.BankAccount.AccountHolder,
             RejectionReason: withdrawal.RejectionReason,
+            TransferProofUrl: withdrawal.TransferProofUrl,
+            TransferNote: withdrawal.TransferNote,
             ProcessedBy: withdrawal.ProcessedBy?.Value,
             CreatedAt: withdrawal.CreatedAt,
             ProcessedAt: withdrawal.ProcessedAt);

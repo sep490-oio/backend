@@ -67,6 +67,14 @@ internal sealed class WithdrawalRequestConfiguration : IEntityTypeConfiguration<
         builder.Property(w => w.RejectionReason)
             .HasColumnName("rejection_reason");
 
+        builder.Property(w => w.TransferProofUrl)
+            .HasColumnName("transfer_proof_url")
+            .HasMaxLength(500);
+
+        builder.Property(w => w.TransferNote)
+            .HasColumnName("transfer_note")
+            .HasMaxLength(500);
+
         builder.Property(w => w.CreatedAt)
             .HasColumnName("created_at")
             .HasDefaultValueSql("CURRENT_TIMESTAMP")

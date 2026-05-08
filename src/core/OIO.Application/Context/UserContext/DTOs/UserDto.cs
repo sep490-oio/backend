@@ -1,4 +1,4 @@
-﻿namespace OIO.Application.Context.UserContext.DTOs;
+namespace OIO.Application.Context.UserContext.DTOs;
 
 public sealed record UserDto(
     Guid Id,
@@ -12,5 +12,6 @@ public sealed record UserDto(
     string TwoFactorProvider,
     string Status,
     DateTime CreatedAt,
-    UserProfileDto? Profile);
+    UserProfileDto? Profile,
+    IEnumerable<string>? Roles = null);
  

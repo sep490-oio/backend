@@ -161,6 +161,14 @@ internal sealed class UpdateAuctionCommandHandler
         if (auction.Status == OIO.Domain.Context.AuctionContext.Enums.AuctionStatus.Scheduled && auction.Info is not null)
         {
             await _scheduler.ScheduleStartAsync(auction.Id.Value, auction.Info.StartTime, cancellationToken);
+
+            if (auction.Info.Qualification is not null)
+            {
+                await _scheduler.ScheduleQualificationCloseAsync(
+                    auction.Id.Value,
+                    auction.Info.Qualification.EndTime,
+                    cancellationToken);
+            }
         }
 
         return auction.ToDto(

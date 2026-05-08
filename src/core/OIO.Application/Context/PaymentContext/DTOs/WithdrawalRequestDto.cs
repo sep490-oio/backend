@@ -10,5 +10,7 @@ public sealed record WithdrawalRequestDto(
     string? AccountNumberMasked,
     string? AccountHolder,
     string? RejectionReason,
+    string? TransferProofUrl,
+    string? TransferNote,
     DateTime CreatedAt,
     DateTime? ProcessedAt);

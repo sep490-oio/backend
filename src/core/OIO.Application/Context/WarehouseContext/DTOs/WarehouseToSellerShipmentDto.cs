@@ -21,7 +21,9 @@ public sealed record WarehouseToSellerShipmentDto(
     string   Status,
     DateTime CreatedAt,
     DateTime? ModifiedAt,
-    WarehouseToSellerShipmentItemSummaryDto? Item);
+    WarehouseToSellerShipmentItemSummaryDto? Item,
+    string?  SellerDisplayName = null,
+    string?  QrToken = null);
 
 public sealed record WarehouseToSellerShipmentItemSummaryDto(
     Guid     WarehouseItemId,

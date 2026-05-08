@@ -59,6 +59,16 @@ public sealed class BackfillScheduledAuctionStartsJob : IHostedService
                         auction.Id.Value,
                         auction.Info!.StartTime,
                         cancellationToken);
+
+                    // Also (re)schedule the qualification close check if window hasn't ended yet.
+                    if (auction.Info.Qualification is not null &&
+                        !auction.Info.Qualification.HasClosed(nowUtc))
+                    {
+                        await scheduler.ScheduleQualificationCloseAsync(
+                            auction.Id.Value,
+                            auction.Info.Qualification.EndTime,
+                            cancellationToken);
+                    }
                 }
                 catch (Exception ex)
                 {

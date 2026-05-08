@@ -19,6 +19,8 @@ public sealed class WithdrawalRequest : AggregateRoot<WithdrawalRequestId>, ICre
     public UserId? ProcessedBy { get; private set; }
     public DateTime? ProcessedAt { get; private set; }
     public string? RejectionReason { get; private set; }
+    public string? TransferProofUrl { get; private set; }
+    public string? TransferNote { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
     private WithdrawalRequest() { }
@@ -105,15 +107,26 @@ public sealed class WithdrawalRequest : AggregateRoot<WithdrawalRequestId>, ICre
     }
 
     /// <summary>
-    /// Gateway chuyển khoản thành công. Tiền sẽ bị DebitPending ở nơi gọi (Wallet.DebitPending).
+    /// Admin xác nhận đã chuyển khoản. Tiền sẽ bị DebitPending ở nơi gọi (Wallet.DebitPending).
+    /// Yêu cầu ảnh chứng minh chuyển khoản (transfer proof).
     /// </summary>
-    public CSharpFunctionalExtensions.UnitResult<SeedWork.Errors.Error> MarkAsCompleted(DateTime nowUtc)
+    public CSharpFunctionalExtensions.UnitResult<SeedWork.Errors.Error> MarkAsCompleted(
+        string transferProofUrl,
+        string? transferNote,
+        DateTime nowUtc)
     {
         if (Status != WithdrawalStatus.Processing && Status != WithdrawalStatus.Approved)
             return SeedWork.Errors.Error.Conflict("Withdrawal.InvalidStatus",
                 $"Cannot complete. Current status: {Status.Id}");
 
+        if (string.IsNullOrWhiteSpace(transferProofUrl))
+            return SeedWork.Errors.Error.Validation("transferProofUrl",
+                "Withdrawal.TransferProofRequired",
+                "Transfer proof screenshot is required to complete a withdrawal.");
+
         Status = WithdrawalStatus.Completed;
+        TransferProofUrl = transferProofUrl.Trim();
+        TransferNote = transferNote?.Trim();
         ProcessedAt = nowUtc;
 
         RaiseDomainEvent(new WithdrawalCompletedDomainEvent(

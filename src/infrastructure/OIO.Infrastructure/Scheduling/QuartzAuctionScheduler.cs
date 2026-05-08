@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -97,6 +97,39 @@ internal sealed class QuartzAuctionScheduler : IAuctionScheduler
             auctionId, fireAt);
     }
 
+    public async Task ScheduleQualificationCloseAsync(
+        Guid auctionId, DateTime qualificationEndTime, CancellationToken ct = default)
+    {
+        var scheduler = await _schedulerFactory.GetScheduler(ct);
+
+        var job = JobBuilder.Create<CloseQualificationJob>()
+            .WithIdentity(CloseQualificationJob.BuildJobKey(auctionId))
+            .UsingJobData("AuctionId", auctionId.ToString())
+            .StoreDurably(false)
+            .Build();
+
+        var fireAt = qualificationEndTime <= _clock.UtcNow
+            ? _clock.UtcNow.AddSeconds(1)
+            : qualificationEndTime;
+
+        var trigger = TriggerBuilder.Create()
+            .WithIdentity(CloseQualificationJob.BuildTriggerKey(auctionId))
+            .StartAt(fireAt)
+            .WithSimpleSchedule(x => x.WithMisfireHandlingInstructionFireNow())
+            .Build();
+
+        if (await scheduler.CheckExists(job.Key, ct))
+        {
+            await scheduler.DeleteJob(job.Key, ct);
+        }
+
+        await scheduler.ScheduleJob(job, trigger, ct);
+
+        _logger.LogInformation(
+            "⏰ Scheduled QUALIFICATION CLOSE for auction {AuctionId} at {FireAt}.",
+            auctionId, fireAt);
+    }
+
     public async Task RescheduleEndAsync(
         Guid auctionId, DateTime newEndTime, CancellationToken ct = default)
     {
@@ -128,13 +161,15 @@ internal sealed class QuartzAuctionScheduler : IAuctionScheduler
     {
         var scheduler = await _schedulerFactory.GetScheduler(ct);
 
+        var qualCloseDeleted = await scheduler.DeleteJob(
+            CloseQualificationJob.BuildJobKey(auctionId), ct);
         var startDeleted = await scheduler.DeleteJob(
             ActivateAuctionJob.BuildJobKey(auctionId), ct);
         var endDeleted = await scheduler.DeleteJob(
             EndAuctionJob.BuildJobKey(auctionId), ct);
 
         _logger.LogInformation(
-            "❌ Cancelled timers for auction {AuctionId}. Start={Start}, End={End}.",
-            auctionId, startDeleted, endDeleted);
+            "❌ Cancelled timers for auction {AuctionId}. QualClose={QualClose}, Start={Start}, End={End}.",
+            auctionId, qualCloseDeleted, startDeleted, endDeleted);
     }
 }

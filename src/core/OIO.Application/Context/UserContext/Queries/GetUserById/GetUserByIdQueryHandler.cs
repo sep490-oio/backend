@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
@@ -29,7 +29,9 @@ internal sealed class GetUserByIdQueryHandler
         
         var user = await _dbContext.GetByIdAsync<User, UserId>(
             userId,
-            queryBuilder: query => query.Include(x => x.Profile),
+            queryBuilder: query => query
+                .Include(x => x.Profile)
+                .Include(x => x.Roles),
             cancellationToken: cancellationToken);
         
         if (user is null)

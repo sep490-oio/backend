@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 using OIO.Application.Abstractions.Caching;
 using OIO.Application.Context.UserContext.Services;
@@ -70,7 +70,8 @@ internal sealed class SessionRevocationStore : ISessionRevocationStore
         UserId userId,
         CancellationToken cancellationToken = default)
     {
-        await _cache.RemoveByTagAsync([$"revoked:{userId}:all-device"], cancellationToken);
+        var key = ForUser(userId.Value);
+        await _cache.RemoveAsync(key, cancellationToken);
     }
     
     

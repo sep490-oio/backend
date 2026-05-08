@@ -154,6 +154,14 @@ internal sealed class SetAuctionTimingCommandHandler
                     auction.Id.Value,
                     auction.Info!.StartTime,
                     cancellationToken);
+
+                if (auction.Info.Qualification is not null)
+                {
+                    await _scheduler.ScheduleQualificationCloseAsync(
+                        auction.Id.Value,
+                        auction.Info.Qualification.EndTime,
+                        cancellationToken);
+                }
             }
         }
 

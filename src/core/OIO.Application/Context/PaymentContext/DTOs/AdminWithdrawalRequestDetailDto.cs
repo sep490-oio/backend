@@ -12,6 +12,8 @@ public sealed record AdminWithdrawalRequestDetailDto(
     string? AccountNumber,
     string? AccountHolder,
     string? RejectionReason,
+    string? TransferProofUrl,
+    string? TransferNote,
     Guid? ProcessedBy,
     DateTime CreatedAt,
     DateTime? ProcessedAt);
