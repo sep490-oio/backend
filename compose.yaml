@@ -9,12 +9,34 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+    command: >
+      postgres
+      -c shared_buffers=64MB
+      -c effective_cache_size=128MB
+      -c work_mem=2MB
+      -c maintenance_work_mem=32MB
+      -c max_connections=30
+      -c wal_buffers=4MB
+      -c checkpoint_completion_target=0.9
+      -c random_page_cost=1.1
+      -c max_wal_size=256MB
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
 
   oio.api:
     image: "ghcr.io/sep490-oio/backend/oio-api:${APP_VERSION:-latest}"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - DOTNET_USE_POLLING_FILE_WATCHER=true
+      # ── GC tuning for low-memory container (2 GiB VPS) ──
+      - DOTNET_GCHeapHardLimit=0x19000000
+      - DOTNET_gcServer=0
+      - DOTNET_GCConserveMemory=9
+      - DOTNET_GCHighMemPercent=0x50
       - ConnectionStrings__Database=Host=database;Port=5432;Username=postgres;Password=${DATABASE_PASSWORD};Database=oio-mcbc;Include Error Detail=true;
       - ConnectionStrings__Cache=redis:6379
       - Jwt__SecretKey=${JWT_SECRET_KEY}
@@ -42,10 +64,20 @@ services:
     depends_on:
       - database
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+        reservations:
+          memory: 384M
         
   frontend:
     image: ghcr.io/sep490-oio/frontend:latest
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 64M
 
   caddy:
     image: caddy:alpine
@@ -61,11 +93,20 @@ services:
       - oio.api
 #      - seq
       - frontend
+    deploy:
+      resources:
+        limits:
+          memory: 64M
 
   redis:
     image: redis:latest
     container_name: Redis
     restart: unless-stopped
+    command: redis-server --maxmemory 32mb --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits:
+          memory: 64M
   
 #  seq:
 #    image: datalust/seq:latest

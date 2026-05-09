@@ -919,6 +919,119 @@ public sealed class EscrowSettlementService
             currency);
     }
 
+    // ── Pending-fee auto-collection ─────────────────────────────────────
+
+    /// <summary>
+    /// Attempts to collect all outstanding <see cref="TransactionType.Fee"/>
+    /// transactions in <see cref="TransactionStatus.Pending"/> status for the
+    /// given seller. Called automatically when the seller's wallet is credited
+    /// so that deferred dispute-related charges are recovered as soon as funds
+    /// become available.
+    /// </summary>
+    /// <returns>Number of fees fully collected.</returns>
+    public async Task<int> CollectPendingFeesAsync(
+        UserId sellerId,
+        string currency,
+        CancellationToken cancellationToken)
+    {
+        var pendingFees = await _dbContext.Set<Transaction>()
+            .Where(t => t.UserId == sellerId
+                        && t.Type == TransactionType.Fee
+                        && t.Status == TransactionStatus.Pending
+                        && t.Currency == currency)
+            .OrderBy(t => t.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        if (pendingFees.Count == 0)
+            return 0;
+
+        var sellerWallet = await GetActiveWalletAsync(sellerId, currency, cancellationToken);
+        if (sellerWallet is null || sellerWallet.WalletFunds.BalanceAmount <= 0m)
+        {
+            _logger.LogDebug(
+                "CollectPendingFees: seller {SellerId} has no wallet or zero balance — skipping {Count} pending fee(s)",
+                sellerId, pendingFees.Count);
+            return 0;
+        }
+
+        var platformWalletResult = await GetPlatformWalletAsync(currency, cancellationToken);
+        if (platformWalletResult.IsFailure)
+        {
+            _logger.LogWarning(
+                "CollectPendingFees: platform wallet not found for currency {Currency} — {Error}",
+                currency, platformWalletResult.Error.Message);
+            return 0;
+        }
+
+        var platformWallet = platformWalletResult.Value;
+        var collected = 0;
+
+        foreach (var feeTx in pendingFees)
+        {
+            var feeAmount = feeTx.Amount.Amount;
+
+            // Stop if insufficient balance for this fee.
+            if (sellerWallet.WalletFunds.BalanceAmount < feeAmount)
+            {
+                _logger.LogInformation(
+                    "CollectPendingFees: seller {SellerId} balance {Balance} insufficient for fee {TxNumber} ({Amount}) — stopping collection",
+                    sellerId, sellerWallet.WalletFunds.BalanceAmount,
+                    feeTx.TransactionNumber.Value, feeAmount);
+                break;
+            }
+
+            // Debit seller wallet.
+            var debitResult = await EnsureWalletDebitAsync(
+                sellerWallet, feeAmount, feeTx.Id,
+                feeTx.Description ?? "Pending fee collection",
+                cancellationToken);
+            if (debitResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "CollectPendingFees: debit failed for tx {TxNumber} — {Error}",
+                    feeTx.TransactionNumber.Value, debitResult.Error.Message);
+                break;
+            }
+
+            // Mark transaction as completed.
+            var completeResult = feeTx.MarkAsCompleted(GatewayInfo.Empty, _clock.UtcNow);
+            if (completeResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "CollectPendingFees: MarkAsCompleted failed for tx {TxNumber} — {Error}",
+                    feeTx.TransactionNumber.Value, completeResult.Error.Message);
+                continue;
+            }
+
+            // Credit platform wallet.
+            var creditResult = await CreditPlatformWalletAsync(
+                platformWallet, feeAmount, feeTx.Id,
+                feeTx.Description ?? "Pending fee collection",
+                cancellationToken);
+            if (creditResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "CollectPendingFees: platform credit failed for tx {TxNumber} — {Error}",
+                    feeTx.TransactionNumber.Value, creditResult.Error.Message);
+                continue;
+            }
+
+            collected++;
+            _logger.LogInformation(
+                "CollectPendingFees: collected {Amount} {Currency} from seller {SellerId} for tx {TxNumber}",
+                feeAmount, currency, sellerId, feeTx.TransactionNumber.Value);
+        }
+
+        if (collected > 0)
+        {
+            _logger.LogInformation(
+                "CollectPendingFees: collected {Collected}/{Total} pending fees for seller {SellerId}",
+                collected, pendingFees.Count, sellerId);
+        }
+
+        return collected;
+    }
+
     private async Task<Transaction?> FindTransactionAsync(
         string transactionNumber,
         CancellationToken cancellationToken)
