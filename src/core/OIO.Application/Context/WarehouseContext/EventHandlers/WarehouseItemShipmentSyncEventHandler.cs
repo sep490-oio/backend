@@ -5,6 +5,7 @@ using OIO.Application.Abstractions.Data;
 using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments;
 using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments.Events;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
+using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseStorage;
 using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
 
 namespace OIO.Application.Context.WarehouseContext.EventHandlers;
@@ -42,12 +43,21 @@ internal sealed class WarehouseItemShipmentSyncEventHandler(
             return;
         }
 
+        var oldLocationId = warehouseItem.StorageLocationId;
+
         var result = warehouseItem.MarkDispatched(shipmentId, notification.OccurredOn);
         if (result.IsFailure)
         {
             logger.LogError("Failed to mark WarehouseItem {WarehouseItemId} as dispatched: {Error}", 
                 warehouseItem.Id, result.Error.Message);
             return;
+        }
+
+        if (oldLocationId is not null)
+        {
+            var location = await dbContext.Set<WarehouseStorageLocation>()
+                .FirstOrDefaultAsync(l => l.Id == oldLocationId, cancellationToken);
+            location?.MarkVacant();
         }
 
         dbContext.Update(warehouseItem);
