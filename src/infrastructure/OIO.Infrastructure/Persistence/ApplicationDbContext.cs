@@ -3,7 +3,6 @@ using AppAny.Quartz.EntityFrameworkCore.Migrations.PostgreSQL;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Data;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
@@ -23,12 +22,9 @@ namespace OIO.Infrastructure.Persistence;
 
 public sealed class ApplicationDbContext : DbContext, IDbContext, IUnitOfWork
 {
-    private ILogger<ApplicationDbContext> _logger;
-
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, ILogger<ApplicationDbContext> logger)
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
     {
-        _logger = logger;
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

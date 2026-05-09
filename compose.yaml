@@ -5,7 +5,7 @@ services:
       POSTGRES_USER: "postgres"
       POSTGRES_PASSWORD: "${DATABASE_PASSWORD}"
     ports:
-      - "5432:5432" 
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -37,6 +37,8 @@ services:
       - DOTNET_gcServer=0
       - DOTNET_GCConserveMemory=9
       - DOTNET_GCHighMemPercent=0x50
+      - DOTNET_GCRetainVM=0
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
       - ConnectionStrings__Database=Host=database;Port=5432;Username=postgres;Password=${DATABASE_PASSWORD};Database=oio-mcbc;Include Error Detail=true;
       - ConnectionStrings__Cache=redis:6379
       - Jwt__SecretKey=${JWT_SECRET_KEY}
@@ -70,7 +72,7 @@ services:
           memory: 768M
         reservations:
           memory: 384M
-        
+
   frontend:
     image: ghcr.io/sep490-oio/frontend:latest
     restart: unless-stopped
@@ -91,7 +93,7 @@ services:
       - caddy_config:/config
     depends_on:
       - oio.api
-#      - seq
+      - seq
       - frontend
     deploy:
       resources:
@@ -107,13 +109,18 @@ services:
       resources:
         limits:
           memory: 64M
-  
-#  seq:
-#    image: datalust/seq:latest
-#    container_name: Seq
-#    environment:
-#      - ACCEPT_EULA=Y
-#      - SEQ_FIRSTRUN_ADMINPASSWORD=${SEQ_ADMIN_PASSWORD}
+
+  seq:
+    image: datalust/seq:latest
+    container_name: Seq
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_ADMINPASSWORD=${SEQ_ADMIN_PASSWORD}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 200M
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
@@ -121,10 +128,17 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms256m -Xmx384m"
+      - bootstrap.memory_lock=false
     ports:
       - "9200:9200"
     labels:
       - "com.docker.compose.project=oio"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 600M
 
 volumes:
   postgres_data:

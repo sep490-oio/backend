@@ -98,7 +98,13 @@ public sealed class AuctionPollingFallbackJob : IJob
         // ── Phase 3 (safety net for CloseQualificationJob): auto-cancel when deposit phase ended with < 2 deposits ──
         // CloseQualificationJob fires precisely at Qualification.EndTime.
         // This scan catches any auctions that the per-auction timer missed.
+        // AsNoTracking: this scan only READS each auction to decide whether to cancel —
+        // the actual mutation happens inside SystemCancelAuctionAsync, which re-fetches
+        // the auction via dbContext.GetByIdAsync (tracked). Avoids holding the full
+        // Auction + Deposits + Participants + BuyNowReservations + Item graph in the
+        // change tracker every 60s on memory-constrained deploys.
         var noDepositCandidates = await dbContext.Set<Auction>()
+            .AsNoTracking()
             .Include(a => a.Deposits)
             .Include(a => a.Participants)
             .Include(a => a.BuyNowReservations)

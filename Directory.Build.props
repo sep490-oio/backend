@@ -5,5 +5,9 @@
 		<Nullable>enable</Nullable>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <NoWarn>$(NoWarn);1591</NoWarn>
+        <!-- Memory tuning for 2GB VPS deploy (see docs/BE_OOM_FIXES_FOR_TAN.md) -->
+        <ServerGarbageCollection>false</ServerGarbageCollection>
+        <RetainVMGarbageCollection>false</RetainVMGarbageCollection>
+        <InvariantGlobalization>true</InvariantGlobalization>
 	</PropertyGroup>
 </Project>
