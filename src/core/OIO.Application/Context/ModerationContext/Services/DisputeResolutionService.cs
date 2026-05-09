@@ -163,6 +163,9 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
             {
                 case "release_to_seller":
                 {
+                    // Cancel any active return so buyer cannot ship item back
+                    await CancelActiveReturnIfExistsAsync(order, dispute, _clock.UtcNow);
+
                     var result = await _escrowSettlementService.ReleaseToSellerAsync(
                         order, "Dispute resolution: release to seller", null, ct);
                     if (result.IsFailure)
@@ -196,6 +199,7 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
                     }
                     if (shouldChargeInspectionFee)
                         await ChargeBuyerWinInspectionFeeForResolvedCaseAsync(order, dispute, ct);
+                    await ChargeSellerCommissionOnBuyerRefundAsync(order, dispute, ct);
                     break;
                 }
 
@@ -300,6 +304,7 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
                     }
                     if (shouldChargeInspectionFee)
                         await ChargeBuyerWinInspectionFeeForResolvedCaseAsync(order, dispute, ct);
+                    await ChargeSellerCommissionOnBuyerRefundAsync(order, dispute, ct);
                     break;
                 }
 
@@ -414,6 +419,86 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
                 dispute.Id,
                 result.Value.FeeAmount,
                 result.Value.Currency);
+        }
+    }
+
+    private async Task ChargeSellerCommissionOnBuyerRefundAsync(
+        Order order,
+        Dispute dispute,
+        CancellationToken ct)
+    {
+        var result = await _escrowSettlementService.ChargeSellerCommissionOnBuyerRefundAsync(
+            order,
+            dispute.Id.Value,
+            dispute.ResolutionReason ?? "Buyer-win dispute resolution",
+            ct);
+
+        if (result.IsFailure)
+        {
+            _logger.LogWarning(
+                "Dispute {DisputeId}: seller platform commission charge failed - {Error}",
+                dispute.Id,
+                result.Error.Message);
+        }
+        else if (result.Value.Pending)
+        {
+            _logger.LogWarning(
+                "Dispute {DisputeId}: seller platform commission charge is pending. Amount={Amount} Currency={Currency}",
+                dispute.Id,
+                result.Value.FeeAmount,
+                result.Value.Currency);
+        }
+        else if (result.Value.Collected)
+        {
+            _logger.LogInformation(
+                "Dispute {DisputeId}: seller platform commission charged successfully. Amount={Amount} Currency={Currency}",
+                dispute.Id,
+                result.Value.FeeAmount,
+                result.Value.Currency);
+        }
+    }
+
+    private async Task CancelActiveReturnIfExistsAsync(
+        Order order,
+        Dispute dispute,
+        DateTime nowUtc)
+    {
+        if (order.Return is null)
+        {
+            // Reload with return included
+            var orderWithReturn = await _dbContext.Set<Order>()
+                .Include(o => o.Return)
+                .FirstOrDefaultAsync(o => o.Id == order.Id);
+
+            if (orderWithReturn?.Return is null)
+                return;
+
+            order = orderWithReturn;
+        }
+
+        var orderReturn = order.Return!;
+        if (orderReturn.Status == OrderReturnStatus.Cancelled ||
+            orderReturn.Status == OrderReturnStatus.Resolved ||
+            orderReturn.Status == OrderReturnStatus.Rejected)
+        {
+            return; // Already terminal
+        }
+
+        var cancelResult = orderReturn.Cancel(
+            "Cancelled by dispute resolution: seller wins - buyer must keep the item",
+            nowUtc);
+
+        if (cancelResult.IsFailure)
+        {
+            _logger.LogWarning(
+                "Dispute {DisputeId}: failed to cancel active return {ReturnId} - {Error}",
+                dispute.Id, orderReturn.Id, cancelResult.Error.Message);
+        }
+        else
+        {
+            _logger.LogInformation(
+                "Dispute {DisputeId}: cancelled active return {ReturnId} (seller wins - buyer keeps item)",
+                dispute.Id, orderReturn.Id);
         }
     }
 
@@ -619,11 +704,23 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
                         break;
                     }
 
+                    // CancelAuction only works for pre-winner states (draft→active).
+                    // For post-winner states (sold/completed/payment_defaulted),
+                    // the state machine requires Terminate instead of Cancel.
                     var result = auction.CancelAuction("Cancelled via dispute resolution", now);
                     if (result.IsFailure)
-                        _logger.LogWarning(
-                            "Dispute {DisputeId}: auction cancel failed — {Error}",
+                    {
+                        _logger.LogInformation(
+                            "Dispute {DisputeId}: CancelAuction failed ({Error}), falling back to Terminate",
                             dispute.Id, result.Error.Message);
+
+                        var terminateResult = auction.Terminate(
+                            "Terminated via dispute resolution", now);
+                        if (terminateResult.IsFailure)
+                            _logger.LogWarning(
+                                "Dispute {DisputeId}: auction terminate also failed — {Error}",
+                                dispute.Id, terminateResult.Error.Message);
+                    }
                     break;
                 }
 

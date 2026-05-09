@@ -432,7 +432,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
         foreach (var bid in _bids.Where(b =>
                      b.Id != winningBid.Id &&
-                     (b.Status == BidStatus.Active || b.Status == BidStatus.Winning || b.Status == BidStatus.Outbid)))
+                     (b.Status == BidStatus.Active || b.Status == BidStatus.Winning)))
         {
             bid.Cancel();
         }
@@ -1657,6 +1657,25 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             return _sealedBids.AsReadOnly();
         }
 
+        // Buy-now logic: if a buy-now price is set and any sealed bid meets or
+        // exceeds it, the *earliest* such bid wins immediately (first-come-first-served).
+        // When no buy-now price is set (or no bid meets it), fall back to the standard
+        // highest-bid-wins resolution that the OrderByDescending above already provides.
+        if (Pricing.HasBuyNowPrice)
+        {
+            var buyNowWinner = materializedBids
+                .Where(x => x.Amount.Amount >= Pricing.BuyNowAmount!.Value)
+                .OrderBy(x => x.SealedBid.CreatedAt)
+                .FirstOrDefault();
+
+            if (buyNowWinner is not null)
+            {
+                // Move the buy-now winner to position 0 so the loop below picks it as winner.
+                materializedBids.Remove(buyNowWinner);
+                materializedBids.Insert(0, buyNowWinner);
+            }
+        }
+
         Bid? winningBid = null;
 
         foreach (var materializedBid in materializedBids)
@@ -1684,7 +1703,14 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         }
 
         var winningBidValue = winningBid!;
-        var pricingResult = Pricing.WithNewBid(winningBidValue.Amount.Amount, Pricing.StartingAmount);
+
+        // For buy-now winners, cap the final price at BuyNowAmount.
+        var finalAmount = Pricing.HasBuyNowPrice &&
+                          winningBidValue.Amount.Amount >= Pricing.BuyNowAmount!.Value
+            ? Pricing.BuyNowAmount.Value
+            : winningBidValue.Amount.Amount;
+
+        var pricingResult = Pricing.WithNewBid(finalAmount, Pricing.StartingAmount);
 
         if (pricingResult.IsFailure)
         {
@@ -1893,7 +1919,8 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
                 bidIncrement: Pricing.BidIncrementAmount,
                 currency: Pricing.Currency,
                 reservePrice: Pricing.ReserveAmount,
-                buyNowPrice: Pricing.BuyNowAmount);
+                buyNowPrice: Pricing.BuyNowAmount,
+                isSealed: AuctionType == Enums.AuctionType.Sealed);
 
             if (pricingResult.IsFailure)
                 return pricingResult.Error;
@@ -2268,8 +2295,51 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             return Error.Validation("Status", "Auction.SameStatus",
                 "Cannot override to the same status.");
 
+        var oldStatus = Status;
         Status = newStatus;
         ModifiedAt = nowUtc;
+
+        // Raise the appropriate domain event for the target status
+        var adminReason = $"[ADMIN OVERRIDE {oldStatus.Id} -> {newStatus.Id}] {reason}";
+
+        if (newStatus == AuctionStatus.Cancelled)
+        {
+            RaiseDomainEvent(new Events.AuctionCancelledEvent(
+                AuctionId: $"{Id}", Reason: adminReason, OccurredAt: nowUtc));
+        }
+        else if (newStatus == AuctionStatus.Terminated)
+        {
+            RaiseDomainEvent(new Events.AuctionTerminatedEvent(
+                AuctionId: $"{Id}", SellerId: $"{Item.SellerId}",
+                Reason: adminReason, OccurredAt: nowUtc));
+        }
+        else if (newStatus == AuctionStatus.Failed)
+        {
+            RaiseDomainEvent(new Events.AuctionFailedEvent(
+                AuctionId: $"{Id}", SellerId: $"{Item.SellerId}",
+                Reason: adminReason, FinalPrice: Pricing.CurrentAmount,
+                Currency: Pricing.Currency.Id, TotalBids: BidCount, OccurredAt: nowUtc));
+        }
+        else if (newStatus == AuctionStatus.Sold)
+        {
+            RaiseDomainEvent(new Events.AuctionSoldEvent(
+                AuctionId: $"{Id}", WinnerId: $"{WinnerId}",
+                SellerId: $"{Item.SellerId}", FinalPrice: Pricing.CurrentAmount,
+                Currency: Pricing.Currency.Id, TotalBids: BidCount, OccurredAt: nowUtc));
+        }
+        else if (newStatus == AuctionStatus.Ended)
+        {
+            RaiseDomainEvent(new Events.AuctionEndedEvent(
+                AuctionId: $"{Id}", WinnerId: WinnerId?.ToString(),
+                FinalPrice: Pricing.CurrentAmount, TotalBids: BidCount,
+                ReserveMet: Pricing.ReserveMet,
+                OccurredAt: nowUtc));
+        }
+        else if (newStatus == AuctionStatus.Active)
+        {
+            RaiseDomainEvent(new Events.AuctionStartedEvent(
+                AuctionId: $"{Id}", OccurredAt: nowUtc));
+        }
 
         return UnitResult.Success<Error>();
     }

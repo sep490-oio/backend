@@ -201,6 +201,15 @@ internal sealed class ProcessVnPayCallbackCommandHandler
                 return failReservationResult.Error;
         }
 
+        // BUG FIX: Release hybrid wallet hold when VNPay payment for an order fails.
+        // CheckoutOrderCommand.HandleHybridWalletVnPayPaymentAsync holds a wallet portion
+        // with a [HybridHold] marker. If VNPay is cancelled/fails, this hold was never
+        // released — trapping the user's balance. Detect and unhold it here.
+        if (purpose == PaymentPurpose.OrderPayment && transaction.OrderId.HasValue)
+        {
+            await ReleaseHybridHoldIfPresentAsync(transaction, now, cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogWarning(
@@ -999,5 +1008,66 @@ internal sealed class ProcessVnPayCallbackCommandHandler
             transaction.UserId, transaction.Amount.Amount);
 
         return UnitResult.Success<Error>();
+    }
+
+    /// <summary>
+    /// Detects and releases a <c>[HybridHold]</c> wallet hold that was created by
+    /// <see cref="CheckoutOrder.CheckoutOrderCommand"/> for a hybrid wallet+VNPay payment.
+    /// Called when the VNPay portion of the payment fails/is cancelled, so the held wallet
+    /// balance is returned to the user's available balance.
+    /// </summary>
+    private async Task ReleaseHybridHoldIfPresentAsync(
+        Transaction transaction,
+        DateTime now,
+        CancellationToken ct)
+    {
+        if (transaction.OrderId is null)
+            return;
+
+        var orderId = transaction.OrderId.Value;
+        var order = await _dbContext.Set<Order>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == orderId, ct);
+
+        if (order is null)
+            return;
+
+        var wallet = await _dbContext.Set<Wallet>()
+            .Include(w => w.WalletTransactions)
+            .FirstOrDefaultAsync(w => w.UserId == order.BuyerId, ct);
+
+        if (wallet is null)
+            return;
+
+        var orderIdString = order.Id.Value.ToString();
+        var hybridHoldTx = wallet.WalletTransactions
+            .Where(wt => wt.Description != null &&
+                         wt.Description.Contains("[HybridHold]") &&
+                         wt.Description.Contains(orderIdString))
+            .OrderByDescending(wt => wt.CreatedAt)
+            .FirstOrDefault();
+
+        if (hybridHoldTx is null)
+            return;
+
+        var holdAmount = hybridHoldTx.Amount;
+        var unholdResult = wallet.Unhold(
+            holdAmount,
+            transaction.Id,
+            $"[HybridHold] Released after failed VNPay payment for order {orderIdString}",
+            now);
+
+        if (unholdResult.IsFailure)
+        {
+            _logger.LogWarning(
+                "Failed to release hybrid hold for order {OrderId}: {Error}",
+                orderIdString, unholdResult.Error.Message);
+        }
+        else
+        {
+            _logger.LogInformation(
+                "Hybrid wallet hold released for order {OrderId}, Amount={Amount}",
+                orderIdString, holdAmount);
+        }
     }
 }

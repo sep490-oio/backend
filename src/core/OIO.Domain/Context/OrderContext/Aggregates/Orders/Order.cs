@@ -259,7 +259,7 @@ public sealed class Order : AggregateRoot<OrderId>, IAuditableEntity
 
     public UnitResult<Error> Complete(DateTime nowUtc)
     {
-        if (Status != OrderStatus.Delivered && Status != OrderStatus.Processing && Status != OrderStatus.Paid)
+        if (Status != OrderStatus.Delivered && Status != OrderStatus.Processing && Status != OrderStatus.Paid && Status != OrderStatus.Disputed)
             return Errors.OrderErrors.Order.InvalidState(Status.Id, "complete");
 
         Status = OrderStatus.Completed;

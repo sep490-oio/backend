@@ -52,8 +52,35 @@ public sealed class AuctionPricing : ValueObject
         decimal bidIncrement,
         Currency currency,
         decimal? reservePrice = null,
-        decimal? buyNowPrice = null)
+        decimal? buyNowPrice = null,
+        bool isSealed = false)
     {
+        if (isSealed)
+        {
+            // Sealed auctions: startingPrice & bidIncrement are irrelevant (each bidder
+            // submits exactly one hidden bid), so we accept 0 for both.
+            // Only buyNowPrice needs validation if present.
+            var sealedCheck = AuctionPricing.Check(isInvariant: true)
+                .Field(startingPrice, x => x.StartingAmount)
+                .GreaterThanOrEqual(0m)
+                .Field(bidIncrement, x => x.BidIncrementAmount)
+                .GreaterThanOrEqual(0m)
+                .Field(buyNowPrice, x => x.BuyNowAmount)
+                .WhenHasValue(x => x.Positive())
+                .ToUnitResult();
+
+            if (sealedCheck.IsFailure)
+                return sealedCheck.Error;
+
+            return new AuctionPricing(
+                startingPrice: startingPrice,
+                reservePrice: reservePrice,
+                buyNowPrice: buyNowPrice,
+                currentPrice: startingPrice,
+                bidIncrement: bidIncrement,
+                currency: currency);
+        }
+
         var check = AuctionPricing.Check(isInvariant: true)
             .Field(startingPrice, x => x.StartingAmount)
             .Positive()

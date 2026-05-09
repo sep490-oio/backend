@@ -237,6 +237,105 @@ public sealed class EscrowSettlementService
         return new RefundSettlementResult(refundAmount, remainingAmount, sellerSettlement);
     }
 
+    /// <summary>
+    /// Charges the seller's wallet the platform commission fee after a buyer-win
+    /// dispute resolution that triggers a full refund. The buyer receives the entire
+    /// escrow amount; this method separately debits the seller's wallet for the
+    /// platform's cut. If the seller's wallet has insufficient funds, the charge
+    /// is recorded as pending.
+    /// </summary>
+    public async Task<Result<SellerFeeChargeResult, Error>> ChargeSellerCommissionOnBuyerRefundAsync(
+        Order order,
+        Guid disputeId,
+        string reason,
+        CancellationToken cancellationToken)
+    {
+        var currency = order.Currency;
+        var grossAmount = order.Pricing.TotalAmount.Amount;
+
+        var settlementResult = CalculateSellerSettlement(
+            grossAmount,
+            currency,
+            includeInspectionFee: false);
+        if (settlementResult.IsFailure)
+            return settlementResult.Error;
+
+        var commissionAmount = settlementResult.Value.PlatformCommission;
+        if (commissionAmount <= 0m)
+            return new SellerFeeChargeResult(0m, Collected: false, Pending: false, currency);
+
+        var platformWalletResult = await GetPlatformWalletAsync(currency, cancellationToken);
+        if (platformWalletResult.IsFailure)
+            return platformWalletResult.Error;
+
+        var sellerWallet = await GetActiveWalletAsync(order.SellerId, currency, cancellationToken);
+
+        var txNumber = $"FEE-COMM-DSP-{disputeId:N}";
+        var existingTx = await FindTransactionAsync(txNumber, cancellationToken);
+        if (existingTx is not null && existingTx.Status == TransactionStatus.Completed)
+            return new SellerFeeChargeResult(commissionAmount, Collected: true, Pending: false, currency);
+
+        var description = $"Platform commission charged to seller for buyer-win dispute on order {order.OrderNumber.Value}. Reason: {reason}";
+
+        if (sellerWallet is null || sellerWallet.WalletFunds.BalanceAmount < commissionAmount)
+        {
+            // Insufficient funds - record pending transaction for later collection
+            if (existingTx is null)
+            {
+                var pendingTxResult = await CreateTransactionAsync(
+                    transactionNumber: txNumber,
+                    userId: order.SellerId,
+                    type: TransactionType.Fee,
+                    grossAmount: commissionAmount,
+                    currency: currency,
+                    description: description,
+                    order: order,
+                    fee: 0m,
+                    netAmount: commissionAmount,
+                    cancellationToken: cancellationToken);
+                if (pendingTxResult.IsFailure)
+                    return pendingTxResult.Error;
+            }
+
+            return new SellerFeeChargeResult(commissionAmount, Collected: false, Pending: true, currency);
+        }
+
+        // Debit seller, credit platform
+        var feeTxResult = await CreateCompletedTransactionAsync(
+            transactionNumber: txNumber,
+            userId: order.SellerId,
+            type: TransactionType.Fee,
+            grossAmount: commissionAmount,
+            currency: currency,
+            description: description,
+            order: order,
+            fee: 0m,
+            netAmount: commissionAmount,
+            cancellationToken: cancellationToken);
+        if (feeTxResult.IsFailure)
+            return feeTxResult.Error;
+
+        var debitResult = await EnsureWalletDebitAsync(
+            sellerWallet,
+            commissionAmount,
+            feeTxResult.Value.Id,
+            description,
+            cancellationToken);
+        if (debitResult.IsFailure)
+            return debitResult.Error;
+
+        var creditResult = await CreditPlatformWalletAsync(
+            platformWalletResult.Value,
+            commissionAmount,
+            feeTxResult.Value.Id,
+            $"Platform commission from seller for buyer-win dispute on order {order.OrderNumber.Value}",
+            cancellationToken);
+        if (creditResult.IsFailure)
+            return creditResult.Error;
+
+        return new SellerFeeChargeResult(commissionAmount, Collected: true, Pending: false, currency);
+    }
+
     public async Task<Result<SellerFeeChargeResult, Error>> ChargeVerifiedInspectionFeeForBuyerWinAsync(
         Order order,
         Guid disputeId,
@@ -676,6 +775,118 @@ public sealed class EscrowSettlementService
 
         _dbContext.Insert(transaction.Value);
         return transaction.Value;
+    }
+
+    /// <summary>
+    /// Charges the flat inspection fee (fee cap) to the seller when an inspector
+    /// rejects their item during the warehouse verification flow. Because there is
+    /// no order at this point, the transaction is created without an OrderId.
+    /// If the seller has insufficient wallet balance the charge is recorded as
+    /// pending for later collection.
+    /// </summary>
+    public async Task<Result<SellerFeeChargeResult, Error>> ChargeInspectionFeeOnRejectionAsync(
+        UserId sellerId,
+        Guid inspectionId,
+        string currency,
+        string itemTitle,
+        CancellationToken cancellationToken)
+    {
+        var options = _runtimeSettings.Settlement;
+        if (!options.TryGetInspectionFeeCap(currency, out var feeAmount))
+        {
+            return Error.Validation(
+                "Settlement.OfflineInspectionFeeCapsByCurrency",
+                "Settlement.MissingInspectionFeeCap",
+                $"Missing offline inspection fee cap for currency '{currency}'.");
+        }
+
+        if (feeAmount <= 0m)
+            return new SellerFeeChargeResult(0m, Collected: false, Pending: false, currency);
+
+        var transactionNumber = $"FEE-INSP-REJ-{inspectionId:N}";
+        var description = $"Inspection fee for rejected item \"{itemTitle}\" (inspection {inspectionId}).";
+
+        // Idempotency check — if this fee was already charged, skip.
+        var existingTx = await FindTransactionAsync(transactionNumber, cancellationToken);
+        if (existingTx is not null && existingTx.Status == TransactionStatus.Completed)
+            return new SellerFeeChargeResult(feeAmount, Collected: true, Pending: false, currency);
+
+        var platformWalletResult = await GetPlatformWalletAsync(currency, cancellationToken);
+        if (platformWalletResult.IsFailure)
+            return platformWalletResult.Error;
+
+        var sellerWallet = await GetActiveWalletAsync(sellerId, currency, cancellationToken);
+
+        // Create the fee transaction (no order link).
+        Transaction feeTx;
+        if (existingTx is not null)
+        {
+            feeTx = existingTx;
+        }
+        else
+        {
+            var txNumber = TransactionNumber.Create(transactionNumber);
+            if (txNumber.IsFailure)
+                return txNumber.Error;
+
+            var grossMoney = Money.Create(feeAmount, currency);
+            if (grossMoney.IsFailure)
+                return grossMoney.Error;
+
+            var netMoney = Money.Create(feeAmount, currency);
+            if (netMoney.IsFailure)
+                return netMoney.Error;
+
+            var txResult = Transaction.Create(
+                sellerId,
+                txNumber.Value,
+                TransactionType.Fee,
+                grossMoney.Value,
+                currency,
+                description,
+                _clock.UtcNow);
+            if (txResult.IsFailure)
+                return txResult.Error;
+
+            var feeResult = txResult.Value.SetFee(0m, netMoney.Value);
+            if (feeResult.IsFailure)
+                return feeResult.Error;
+
+            feeTx = txResult.Value;
+            _dbContext.Insert(feeTx);
+        }
+
+        // Debit seller wallet.
+        if (sellerWallet is null)
+            return new SellerFeeChargeResult(feeAmount, Collected: false, Pending: true, currency);
+
+        var debitResult = await EnsureWalletDebitAsync(
+            sellerWallet,
+            feeAmount,
+            feeTx.Id,
+            description,
+            cancellationToken);
+        if (debitResult.IsFailure)
+            return new SellerFeeChargeResult(feeAmount, Collected: false, Pending: true, currency);
+
+        if (feeTx.Status != TransactionStatus.Completed)
+        {
+            var completeResult = feeTx.MarkAsCompleted(GatewayInfo.Empty, _clock.UtcNow);
+            if (completeResult.IsFailure)
+                return completeResult.Error;
+        }
+
+        // Credit platform wallet.
+        var platformCreditResult = await CreditPlatformWalletAsync(
+            platformWalletResult.Value,
+            feeAmount,
+            feeTx.Id,
+            description,
+            cancellationToken);
+        if (platformCreditResult.IsFailure)
+            return platformCreditResult.Error;
+
+        return new SellerFeeChargeResult(feeAmount, Collected: true, Pending: false, currency);
     }
 
     private async Task<Transaction?> FindTransactionAsync(

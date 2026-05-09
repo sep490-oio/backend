@@ -289,7 +289,13 @@ internal static class PaymentReadModelMapper
         if (walletTransaction.Description?.Contains("Auction deposit", StringComparison.OrdinalIgnoreCase) == true ||
             walletTransaction.Transaction?.Description?.Contains("[AuctionDeposit]", StringComparison.OrdinalIgnoreCase) == true)
         {
-            return ("deposit", ParseAuctionId(walletTransaction.Transaction?.Description) ?? walletTransaction.TransactionId?.Value);
+            // Try structured marker first (Transaction.Description), then fall
+            // back to the WalletTransaction.Description which uses the format
+            // "Auction deposit from wallet for auction {guid}".
+            var auctionId = ParseAuctionId(walletTransaction.Transaction?.Description)
+                            ?? ParseAuctionIdFromSuffix(walletTransaction.Description)
+                            ?? walletTransaction.TransactionId?.Value;
+            return ("deposit", auctionId);
         }
 
         if (walletTransaction.Description?.Contains("Withdrawal", StringComparison.OrdinalIgnoreCase) == true)
@@ -321,6 +327,35 @@ internal static class PaymentReadModelMapper
 
         var raw = description[(index + marker.Length)..].Trim();
         return Guid.TryParse(raw, out var parsed) ? parsed : null;
+    }
+
+    /// <summary>
+    /// Fallback parser for wallet-deposit descriptions that embed the auction
+    /// GUID at the end of the string (e.g. "Auction deposit from wallet for
+    /// auction 01970ce3-..."). Tries to parse the last whitespace-delimited
+    /// token as a GUID.
+    /// </summary>
+    private static Guid? ParseAuctionIdFromSuffix(string? description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+            return null;
+
+        // The description format: "... for auction {guid}"
+        const string marker = "for auction ";
+        var index = description.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (index >= 0)
+        {
+            var raw = description[(index + marker.Length)..].Trim();
+            if (Guid.TryParse(raw, out var parsed))
+                return parsed;
+        }
+
+        // Last-resort: try the last token
+        var lastSpace = description.LastIndexOf(' ');
+        if (lastSpace >= 0 && Guid.TryParse(description[(lastSpace + 1)..].Trim(), out var fallback))
+            return fallback;
+
+        return null;
     }
 
     public static string? MaskAccountNumber(string? accountNumber)

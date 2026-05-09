@@ -81,7 +81,8 @@ internal sealed class AuctionDraftCreationService(IDbContext dbContext)
             bidIncrement: request.BidIncrement,
             currency: currency.Value,
             reservePrice: request.ReservePrice,
-            buyNowPrice: request.BuyNowPrice);
+            buyNowPrice: request.BuyNowPrice,
+            isSealed: string.Equals(request.AuctionType, AuctionType.Sealed.Id, StringComparison.Ordinal));
 
         if (pricingResult.IsFailure)
             return pricingResult.Error;

@@ -8,6 +8,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.AuctionContext.Services;
 using OIO.Application.Context.NotificationContext;
 using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
+using OIO.Application.Context.OrderContext.Services;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Application.Context.WarehouseContext.Mappings;
@@ -51,6 +52,7 @@ internal sealed class ReviewWarehouseInspectionCommandHandler(
     IClock clock,
     ContinueVerifiedAuctionService continuationService,
     IWarehouseReturnShipmentFactory returnShipmentFactory,
+    EscrowSettlementService escrowSettlementService,
     ISender sender,
     ILogger<ReviewWarehouseInspectionCommandHandler> logger)
     : ICommandHandler<ReviewWarehouseInspectionCommand, WarehouseInspectionDto>
@@ -122,6 +124,46 @@ internal sealed class ReviewWarehouseInspectionCommandHandler(
                     ?? Error.Conflict(
                         "WarehouseInspection.ReturnShipmentNotCreated",
                         $"Could not create warehouse return shipment for rejected inspection '{inspection.Id.Value}'.");
+            }
+
+            // ── Charge the flat inspection fee to the seller ──────────────
+            var latestAuction = item.Auctions
+                .OrderByDescending(a => a.CreatedAt)
+                .FirstOrDefault();
+            var feeCurrency = latestAuction?.Pricing?.Currency?.Id ?? "VND";
+
+            var feeChargeResult = await escrowSettlementService.ChargeInspectionFeeOnRejectionAsync(
+                sellerId: item.SellerId,
+                inspectionId: inspection.Id.Value,
+                currency: feeCurrency,
+                itemTitle: item.Title.Value,
+                cancellationToken: cancellationToken);
+
+            if (feeChargeResult.IsFailure)
+            {
+                logger.LogWarning(
+                    "Failed to charge inspection fee for rejected item {ItemId}, inspection {InspectionId}. Error: {Error}",
+                    item.Id.Value,
+                    inspection.Id.Value,
+                    feeChargeResult.Error.Message);
+            }
+            else if (feeChargeResult.Value.Pending)
+            {
+                logger.LogWarning(
+                    "Inspection fee for rejected item {ItemId} recorded as PENDING (seller {SellerId} has insufficient balance). Amount: {Amount} {Currency}",
+                    item.Id.Value,
+                    item.SellerId.Value,
+                    feeChargeResult.Value.FeeAmount,
+                    feeChargeResult.Value.Currency);
+            }
+            else if (feeChargeResult.Value.Collected)
+            {
+                logger.LogInformation(
+                    "Inspection fee of {Amount} {Currency} charged to seller {SellerId} for rejected item {ItemId}.",
+                    feeChargeResult.Value.FeeAmount,
+                    feeChargeResult.Value.Currency,
+                    item.SellerId.Value,
+                    item.Id.Value);
             }
         }
         else

@@ -50,6 +50,7 @@ public sealed record CreateAuctionCommand(
     {
         var check = CreateAuctionCommand.Check()
             .WithOwnerName("CreateAuction")
+            .Field(AuctionType)
             .Field(Title)
             .NotWhiteSpace()
             .MaxLength(App.Constraint.Item.TitleMaxLength)

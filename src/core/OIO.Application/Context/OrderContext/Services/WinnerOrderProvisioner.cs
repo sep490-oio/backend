@@ -6,6 +6,7 @@ using OIO.Application.Context.AuctionContext.EventHandlers;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
+using OIO.Domain.Context.OrderContext.Enums;
 using OIO.Domain.Context.OrderContext.ValueObjects;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
@@ -57,9 +58,17 @@ internal sealed class WinnerOrderProvisioner : IWinnerOrderProvisioner
         var winnerIdVo = UserId.From(winnerId);
         var sellerIdVo = UserId.From(sellerId);
 
+        // BUG FIX: Exclude terminal-status orders (Cancelled, Refunded) from the
+        // idempotency check. A user may have a Cancelled order from a prior Buy Now
+        // that was abandoned. If the same user later wins the auction via bidding,
+        // the provisioner must create a fresh PendingPayment order rather than
+        // returning the stale Cancelled order (which cannot be paid).
         var existingOrder = await _dbContext.Set<Order>()
             .FirstOrDefaultAsync(
-                order => order.AuctionId == auctionIdVo && order.BuyerId == winnerIdVo,
+                order => order.AuctionId == auctionIdVo
+                      && order.BuyerId == winnerIdVo
+                      && order.Status != OrderStatus.Cancelled
+                      && order.Status != OrderStatus.Refunded,
                 ct);
 
         if (existingOrder is not null)

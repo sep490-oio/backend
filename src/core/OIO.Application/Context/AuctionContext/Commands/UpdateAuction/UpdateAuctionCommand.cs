@@ -127,7 +127,8 @@ internal sealed class UpdateAuctionCommandHandler
             bidIncrement: request.BidIncrement ?? auction.Pricing.BidIncrementAmount,
             currency: currency.Value,
             reservePrice: request.ReservePrice ?? auction.Pricing.ReserveAmount,
-            buyNowPrice: request.BuyNowPrice ?? auction.Pricing.BuyNowAmount);
+            buyNowPrice: request.BuyNowPrice ?? auction.Pricing.BuyNowAmount,
+            isSealed: auctionType.Value == OIO.Domain.Context.AuctionContext.Enums.AuctionType.Sealed);
 
         if (pricingResult.IsFailure)
             return pricingResult.Error;

@@ -107,7 +107,8 @@ internal sealed class AdminRelistAuctionCommandHandler(
             bidIncrement: request.BidIncrement ?? auction.Pricing.BidIncrementAmount,
             currency: currency.Value,
             reservePrice: request.ReservePrice ?? auction.Pricing.ReserveAmount,
-            buyNowPrice: request.BuyNowPrice ?? auction.Pricing.BuyNowAmount);
+            buyNowPrice: request.BuyNowPrice ?? auction.Pricing.BuyNowAmount,
+            isSealed: auction.AuctionType == AuctionType.Sealed);
 
         if (pricing.IsFailure)
             return pricing.Error;
