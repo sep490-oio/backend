@@ -415,6 +415,7 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
             services.ConfigureOptions<OrderAutoCompleteJobSetup>();
             services.ConfigureOptions<RecalculateSellerTrustScoresJobSetup>();
             services.ConfigureOptions<SyncGhnAddressJobSetup>();
+            services.ConfigureOptions<StorageLocationCleanupJobSetup>();
 
             // Return-flow job setups (Phase E).
             services.ConfigureOptions<OrderReturnDeadlineWatcherJobSetup>();
