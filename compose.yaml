@@ -59,7 +59,7 @@ services:
       - caddy_config:/config
     depends_on:
       - oio.api
-      - seq
+#      - seq
       - frontend
 
   redis:
