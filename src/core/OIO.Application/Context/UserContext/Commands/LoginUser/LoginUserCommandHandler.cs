@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
@@ -59,11 +59,10 @@ internal sealed class LoginUserCommandHandler
         
         var user = await _dbContext.Set<User>()
             .Where(x => x.Email.Normalized == account || x.UserName.Normalized == account)
-            .Include(x => x.Sessions)
+            .Include(x => x.Sessions.Where(s => s.IsActive))
             .ThenInclude(x => x.Tokens)
             .Include(x => x.Roles)
             .ThenInclude(x => x.Role)
-            .Include(x => x.LoginHistories)
             .FirstOrDefaultAsync(cancellationToken);
         
         if (user is null)

@@ -75,7 +75,7 @@ internal sealed class VerifyTotpLoginCommandHandler
 
         var user = await _dbContext.Set<User>()
             .Where(x => x.Id == _currentUser.UserId)
-            .Include(x => x.Sessions)
+            .Include(x => x.Sessions.Where(s => s.IsActive))
             .ThenInclude(x => x.Tokens)
             .Include(x => x.Roles)
             .ThenInclude(x => x.Role)

@@ -60,8 +60,8 @@ public static class WarehouseFlowFakeDataSeeder
                 return;
             }
 
-            var seller = await EnsureUserAsync(dbContext, passwordHasher, faker, nowUtc, "warehouse.seller@oio.com", "WH-Seller", [App.Roles.Catalogs.User, App.Roles.Catalogs.Seller], logger);
-            var buyer = await EnsureUserAsync(dbContext, passwordHasher, faker, nowUtc, "warehouse.buyer@oio.com", "WH-Buyer", [App.Roles.Catalogs.User, App.Roles.Catalogs.Bidder], logger);
+            var seller = await EnsureUserAsync(dbContext, passwordHasher, faker, nowUtc, "warehouse.staff@oio.com", "WH-staff", [App.Roles.Catalogs.User, App.Roles.Catalogs.WarehouseStaff], logger);
+            var buyer = await EnsureUserAsync(dbContext, passwordHasher, faker, nowUtc, "warehouse.inspector@oio.com", "WH-Inspector", [App.Roles.Catalogs.User, App.Roles.Catalogs.Inspector], logger);
             var category = await EnsureCategoryAsync(dbContext, nowUtc, logger);
 
             logger.LogInformation("Seeding Warehouse Fake Data (Isolated Environment)...");

@@ -79,7 +79,7 @@ public static class CoreFlowFakeDataSeeder
             new FakeUserSeed(
                 Key: "seller",
                 UserName: "coreflow-seller",
-                Email: "coreflow.seller@example.com",
+                Email: "coreflow.seller@oio.com",
                 PhoneNumber: "0910000001",
                 Roles: [App.Roles.Catalogs.User, App.Roles.Catalogs.Seller],
                 AddDefaultAddress: true),
@@ -93,7 +93,7 @@ public static class CoreFlowFakeDataSeeder
             new FakeUserSeed(
                 Key: "bidder-1",
                 UserName: "coreflow-bidder-1",
-                Email: "coreflow.bidder1@example.com",
+                Email: "coreflow.bidder1@oio.com",
                 PhoneNumber: "0910000002",
                 Roles: [App.Roles.Catalogs.User, App.Roles.Catalogs.Bidder],
                 AddDefaultAddress: true),
@@ -107,7 +107,7 @@ public static class CoreFlowFakeDataSeeder
             new FakeUserSeed(
                 Key: "bidder-2",
                 UserName: "coreflow-bidder-2",
-                Email: "coreflow.bidder2@example.com",
+                Email: "coreflow.bidder2@oio.com",
                 PhoneNumber: "0910000003",
                 Roles: [App.Roles.Catalogs.User, App.Roles.Catalogs.Bidder],
                 AddDefaultAddress: true),
