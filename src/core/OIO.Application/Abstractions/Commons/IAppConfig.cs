@@ -131,10 +131,26 @@ public sealed class SettlementOptions
         ["VND"] = 0,
         ["USD"] = 2
     };
+    
+    /// <summary>
+    /// Flat fee charged to the seller when an inspector rejects an item
+    /// during the warehouse verification flow (pre-auction, no order exists).
+    /// Separate from <see cref="OfflineInspectionFeeCapsByCurrency"/> which
+    /// caps the percentage-based fee on completed auction settlements.
+    /// </summary>
+    public Dictionary<string, decimal> InspectionRejectionFeesByCurrency { get; set; } = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["VND"] = 300_000m,
+        ["USD"] = 12m
+    };
 
     public bool TryGetInspectionFeeCap(string currency, out decimal cap) =>
         OfflineInspectionFeeCapsByCurrency.TryGetValue(currency, out cap)
         || OfflineInspectionFeeCapsByCurrency.TryGetValue(currency.ToUpperInvariant(), out cap);
+
+    public bool TryGetInspectionRejectionFee(string currency, out decimal fee) =>
+        InspectionRejectionFeesByCurrency.TryGetValue(currency, out fee)
+        || InspectionRejectionFeesByCurrency.TryGetValue(currency.ToUpperInvariant(), out fee);
 
     public int GetDecimalPlaces(string currency) =>
         CurrencyDecimalPlaces.TryGetValue(currency, out var places)

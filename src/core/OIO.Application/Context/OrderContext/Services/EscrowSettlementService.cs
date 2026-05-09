@@ -792,12 +792,12 @@ public sealed class EscrowSettlementService
         CancellationToken cancellationToken)
     {
         var options = _runtimeSettings.Settlement;
-        if (!options.TryGetInspectionFeeCap(currency, out var feeAmount))
+        if (!options.TryGetInspectionRejectionFee(currency, out var feeAmount))
         {
             return Error.Validation(
-                "Settlement.OfflineInspectionFeeCapsByCurrency",
-                "Settlement.MissingInspectionFeeCap",
-                $"Missing offline inspection fee cap for currency '{currency}'.");
+                "Settlement.InspectionRejectionFeesByCurrency",
+                "Settlement.MissingInspectionRejectionFee",
+                $"Missing inspection rejection fee for currency '{currency}'.");
         }
 
         if (feeAmount <= 0m)
