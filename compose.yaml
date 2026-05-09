@@ -67,12 +67,12 @@ services:
     container_name: Redis
     restart: unless-stopped
   
-  seq:
-    image: datalust/seq:latest
-    container_name: Seq
-    environment:
-      - ACCEPT_EULA=Y
-      - SEQ_FIRSTRUN_ADMINPASSWORD=${SEQ_ADMIN_PASSWORD}
+#  seq:
+#    image: datalust/seq:latest
+#    container_name: Seq
+#    environment:
+#      - ACCEPT_EULA=Y
+#      - SEQ_FIRSTRUN_ADMINPASSWORD=${SEQ_ADMIN_PASSWORD}
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0

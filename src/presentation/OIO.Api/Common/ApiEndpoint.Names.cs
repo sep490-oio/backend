@@ -482,6 +482,7 @@ public static partial class ApiEndpoint
             public const string CreateWithdrawal = nameof(CreateWithdrawal);
             public const string GetMyWithdrawals = nameof(GetMyWithdrawals);
             public const string CancelWithdrawal = nameof(CancelWithdrawal);
+            public const string GetMyActiveDeposits = nameof(GetMyActiveDeposits);
         }
 
         public static class System

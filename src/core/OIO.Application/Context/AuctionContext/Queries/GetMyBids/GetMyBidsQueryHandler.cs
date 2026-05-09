@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
@@ -119,7 +119,16 @@ internal sealed class GetMyBidsQueryHandler
                 .Select(o => new { o.Id, o.AuctionId, o.Status })
                 .ToListAsync(cancellationToken);
 
-            var orderByAuctionId = orders.ToDictionary(o => o.AuctionId, o => o);
+            // A buyer may have multiple orders per auction (e.g. buy-now + bid-won,
+            // or cancelled then re-created). Pick the most relevant: prefer non-cancelled,
+            // then most recent.
+            var orderByAuctionId = orders
+                .GroupBy(o => o.AuctionId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.OrderByDescending(o => o.Status.Id != "cancelled")
+                          .ThenByDescending(o => o.Id)
+                          .First());
 
             var enrichedItems = myBids.Items
                 .Select(b =>

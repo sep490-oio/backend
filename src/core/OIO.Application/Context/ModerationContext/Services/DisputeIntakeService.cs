@@ -1,8 +1,10 @@
 using CSharpFunctionalExtensions;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Context.ModerationContext.DTOs;
+using OIO.Application.Context.ModerationContext.Events;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.ModerationContext.Aggregates.Disputes;
 using OIO.Domain.Context.ModerationContext.Enums;
@@ -15,7 +17,8 @@ namespace OIO.Application.Context.ModerationContext.Services;
 internal sealed class DisputeIntakeService(
     IDbContext dbContext,
     IUnitOfWork unitOfWork,
-    IClock clock) : IDisputeIntakeService
+    IClock clock,
+    IPublisher publisher) : IDisputeIntakeService
 {
     public async Task<Result<DisputeIntakeDto, Error>> CreateDisputeAsync(
         CreateDisputeRequest request,
@@ -75,6 +78,10 @@ internal sealed class DisputeIntakeService(
         var dispute = disputeResult.Value;
         dbContext.Insert(dispute);
         await unitOfWork.SaveChangesAsync(ct);
+
+        await publisher.Publish(
+            new DisputeChangedEvent(dispute.Id, clock.UtcNow),
+            ct);
 
         return new DisputeIntakeDto(
             Id: dispute.Id.Value,

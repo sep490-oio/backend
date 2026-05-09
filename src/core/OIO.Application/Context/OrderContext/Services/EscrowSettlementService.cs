@@ -1,5 +1,6 @@
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
@@ -44,15 +45,18 @@ public sealed class EscrowSettlementService
     private readonly IDbContext _dbContext;
     private readonly IClock _clock;
     private readonly IRuntimeSettings _runtimeSettings;
+    private readonly ILogger<EscrowSettlementService> _logger;
 
     public EscrowSettlementService(
         IDbContext dbContext,
         IClock clock,
-        IRuntimeSettings runtimeSettings)
+        IRuntimeSettings runtimeSettings,
+        ILogger<EscrowSettlementService> logger)
     {
         _dbContext = dbContext;
         _clock = clock;
         _runtimeSettings = runtimeSettings;
+        _logger = logger;
     }
 
     public async Task<Result<SettlementBreakdown, Error>> ReleaseToSellerAsync(
@@ -169,6 +173,22 @@ public sealed class EscrowSettlementService
         var refundAmount = partialAmount ?? totalHeldAmount;
         if (refundAmount <= 0 || refundAmount > totalHeldAmount)
             return Error.Validation("Amount", "Refund.InvalidAmount", "Refund amount is out of range.");
+
+        // Diagnostic: flag when escrow total diverges from the canonical order
+        // total. This surfaces the mismatch that the user reported (refund
+        // amount appearing to include a duplicate deposit) so we can trace
+        // the root cause from production logs.
+        var canonicalOrderTotal = order.Pricing.TotalAmount.Amount;
+        if (totalHeldAmount != canonicalOrderTotal)
+        {
+            _logger.LogWarning(
+                "RefundBuyerAsync: escrow total ({TotalHeldAmount}) differs from order TotalAmount ({OrderTotal}) " +
+                "for Order {OrderId}. Escrow count={EscrowCount}. Individual amounts: [{Amounts}]. " +
+                "Refunding {RefundAmount}.",
+                totalHeldAmount, canonicalOrderTotal, order.Id.Value, escrows.Count,
+                string.Join(", ", escrows.Select(e => $"{e.Id.Value}={e.Amount.Amount}")),
+                refundAmount);
+        }
 
         var platformWalletResult = await GetPlatformWalletAsync(currency, cancellationToken);
         if (platformWalletResult.IsFailure)
@@ -856,19 +876,25 @@ public sealed class EscrowSettlementService
             _dbContext.Insert(feeTx);
         }
 
-        // Debit seller wallet.
-        if (sellerWallet is null)
-            return new SellerFeeChargeResult(feeAmount, Collected: false, Pending: true, currency);
+        // ── Attempt seller debit ────────────────────────────────────────
+        // The inspection rejection fee is non-negotiable: the platform must
+        // be credited regardless of the seller's current wallet balance.
+        // If the seller can pay, debit their wallet first; if they cannot,
+        // skip the debit (the seller owes a debt) but still complete the
+        // transaction and credit the platform so both ledgers stay in sync.
+        var sellerDebited = false;
+        if (sellerWallet is not null)
+        {
+            var debitResult = await EnsureWalletDebitAsync(
+                sellerWallet,
+                feeAmount,
+                feeTx.Id,
+                description,
+                cancellationToken);
+            sellerDebited = debitResult.IsSuccess;
+        }
 
-        var debitResult = await EnsureWalletDebitAsync(
-            sellerWallet,
-            feeAmount,
-            feeTx.Id,
-            description,
-            cancellationToken);
-        if (debitResult.IsFailure)
-            return new SellerFeeChargeResult(feeAmount, Collected: false, Pending: true, currency);
-
+        // ── Always complete the transaction ───────────────────────────────
         if (feeTx.Status != TransactionStatus.Completed)
         {
             var completeResult = feeTx.MarkAsCompleted(GatewayInfo.Empty, _clock.UtcNow);
@@ -876,7 +902,7 @@ public sealed class EscrowSettlementService
                 return completeResult.Error;
         }
 
-        // Credit platform wallet.
+        // ── Always credit the platform wallet ─────────────────────────────
         var platformCreditResult = await CreditPlatformWalletAsync(
             platformWalletResult.Value,
             feeAmount,
@@ -886,7 +912,11 @@ public sealed class EscrowSettlementService
         if (platformCreditResult.IsFailure)
             return platformCreditResult.Error;
 
-        return new SellerFeeChargeResult(feeAmount, Collected: true, Pending: false, currency);
+        return new SellerFeeChargeResult(
+            feeAmount,
+            Collected: sellerDebited,
+            Pending: !sellerDebited,
+            currency);
     }
 
     private async Task<Transaction?> FindTransactionAsync(

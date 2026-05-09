@@ -180,6 +180,13 @@ internal static class PaymentReadModelMapper
             return typeId == "hold" ? "withdrawal_hold" : "withdrawal_release";
         }
 
+        // Platform fee deduction — structural check on Transaction.Type.
+        // Must run BEFORE order-reference fallback so fee debits linked to
+        // orders (e.g. seller commission after buyer-win dispute) are correctly
+        // classified as "fee" instead of "order_payment".
+        if (wt.Transaction?.Type == TransactionType.Fee && typeId == "debit")
+            return "fee";
+
         // Auction deposit lifecycle: Hold → deposit reservation, Release → refund
         // back into the available balance after the auction settles for a
         // non-winner / cancelled / no-reserve case. Debit on an auction ref =
@@ -220,8 +227,12 @@ internal static class PaymentReadModelMapper
         if (referenceType == "escrow" && typeId == "credit")
             return "seller_payout";
 
-        // Platform fee deduction.
-        if (wt.Description?.Contains("Fee", StringComparison.OrdinalIgnoreCase) == true && typeId == "debit")
+        // Platform fee deduction — legacy string-match fallback for rows
+        // that lack a Transaction FK (pre-revamp data). The structural
+        // Transaction.Type == Fee check above handles all new rows.
+        if (wt.Transaction is null
+            && wt.Description?.Contains("Fee", StringComparison.OrdinalIgnoreCase) == true
+            && typeId == "debit")
             return "fee";
 
         // Generic fallback so the FE always has a key (no null event type).

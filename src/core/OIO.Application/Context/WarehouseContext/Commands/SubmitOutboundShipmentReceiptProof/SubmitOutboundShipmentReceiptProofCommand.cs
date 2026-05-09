@@ -4,6 +4,7 @@ using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.MediaContext.Services;
+using OIO.Application.Context.OrderContext.Services;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Application.Context.WarehouseContext.Queries.GetBuyerOutboundShipmentByToken;
@@ -12,6 +13,7 @@ using OIO.Domain.Context.Shared.Entities;
 using OIO.Domain.Context.Shared.Errors;
 using OIO.Domain.Context.Shared.ValueObjects.Ids;
 using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments;
+using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
@@ -26,7 +28,8 @@ internal sealed class SubmitOutboundShipmentReceiptProofCommandHandler(
     IUnitOfWork unitOfWork,
     IClock clock,
     ICurrentUser currentUser,
-    IMediaRelocationService mediaRelocationService)
+    IMediaRelocationService mediaRelocationService,
+    IOrderDeliveryService orderDeliveryService)
     : ICommandHandler<SubmitOutboundShipmentReceiptProofCommand, BuyerOutboundShipmentDetailDto>
 {
     public async Task<Result<BuyerOutboundShipmentDetailDto, Error>> Handle(
@@ -96,6 +99,22 @@ internal sealed class SubmitOutboundShipmentReceiptProofCommandHandler(
         var ackResult = shipment.AcknowledgeReceivedByBuyer(now, "receipt_proof");
         if (ackResult.IsFailure)
             return ackResult.Error;
+
+        // ── Auto-deliver: when the buyer submits receipt proof but the
+        // shipment/order haven't been marked as delivered by warehouse staff
+        // yet, promote both to Delivered so the buyer can immediately proceed
+        // to inspect-and-accept without waiting for a staff action.
+        if (shipment.Status != OutboundShipmentStatus.Delivered)
+        {
+            var deliverResult = shipment.RecordDelivered(deliveredAt: now, now: now);
+            // Idempotent — ignore failure if already delivered
+            if (deliverResult.IsFailure &&
+                shipment.Status != OutboundShipmentStatus.Delivered)
+                return deliverResult.Error;
+        }
+
+        var orderDeliveredResult = await orderDeliveryService.MarkAsDeliveredAsync(order, now, cancellationToken);
+        if (orderDeliveredResult.IsFailure) return orderDeliveredResult.Error;
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

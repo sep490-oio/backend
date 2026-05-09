@@ -132,6 +132,44 @@ internal sealed class ConfirmOrderReturnReceivedCommandHandler(
             await EmitDeferredRefundFailedAsync(order, decision, refundResult.Error, cancellationToken);
         }
 
+        // Charge seller commission when the deferred refund succeeds.
+        // DisputeResolutionService skips ChargeSellerCommissionOnBuyerRefundAsync
+        // when it defers the refund via open_return (the `break` inside the
+        // refund_buyer / full_refund case exits before the commission call).
+        // Fire it here so the seller's platform fee is always collected.
+        if (refundFired && refundResult.IsSuccess
+            && order.Return.DeferredRefundIntent is not null
+            && order.Return.DeferredRefundIntent != DeferredRefundIntent.None)
+        {
+            var commissionResult = await settlementService.ChargeSellerCommissionOnBuyerRefundAsync(
+                order,
+                disputeId: order.Return.Id.Value,  // use return ID as reference
+                reason: "Platform commission for buyer-win dispute return",
+                cancellationToken);
+
+            if (commissionResult.IsFailure)
+            {
+                logger.LogWarning(
+                    "ConfirmOrderReturnReceived: seller commission charge failed for Order {OrderId}: {Error}. " +
+                    "Refund already committed — commission will need manual collection.",
+                    order.Id.Value, commissionResult.Error.Message);
+            }
+            else if (commissionResult.Value.Pending)
+            {
+                logger.LogWarning(
+                    "ConfirmOrderReturnReceived: seller commission pending (insufficient funds) for Order {OrderId}. " +
+                    "Amount={Amount} Currency={Currency}",
+                    order.Id.Value, commissionResult.Value.FeeAmount, commissionResult.Value.Currency);
+            }
+            else if (commissionResult.Value.Collected)
+            {
+                logger.LogInformation(
+                    "ConfirmOrderReturnReceived: seller commission charged for Order {OrderId}. " +
+                    "Amount={Amount} Currency={Currency}",
+                    order.Id.Value, commissionResult.Value.FeeAmount, commissionResult.Value.Currency);
+            }
+        }
+
         // Save the refund transactions (or admin-ticket side effects) now.
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

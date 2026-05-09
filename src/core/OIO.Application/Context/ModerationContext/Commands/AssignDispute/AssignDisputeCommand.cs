@@ -1,7 +1,9 @@
 using CSharpFunctionalExtensions;
+using MediatR;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
+using OIO.Application.Context.ModerationContext.Events;
 using OIO.Domain.Context.ModerationContext.Aggregates.Disputes;
 using OIO.Domain.Context.ModerationContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Checks.Extensions;
@@ -25,7 +27,8 @@ public sealed record AssignDisputeCommand(
 internal sealed class AssignDisputeCommandHandler(
     IDbContext dbContext,
     IUnitOfWork unitOfWork,
-    IClock clock)
+    IClock clock,
+    IPublisher publisher)
     : ICommandHandler<AssignDisputeCommand>
 {
     public async Task<UnitResult<Error>> Handle(
@@ -45,6 +48,11 @@ internal sealed class AssignDisputeCommandHandler(
         if (result.IsFailure) return result.Error;
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await publisher.Publish(
+            new DisputeChangedEvent(dispute.Id, clock.UtcNow),
+            cancellationToken);
+
         return UnitResult.Success<Error>();
     }
 }

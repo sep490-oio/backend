@@ -1,9 +1,11 @@
 using System.Text.Json;
 using CSharpFunctionalExtensions;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
+using OIO.Application.Context.ModerationContext.Events;
 using OIO.Application.Context.ModerationContext.Services;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.ModerationContext.Aggregates.Disputes;
@@ -43,6 +45,7 @@ internal sealed class ResolveCaseDisputeCommandHandler(
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
     IClock clock,
+    IPublisher publisher,
     IDisputeResolutionService resolutionService)
     : ICommandHandler<ResolveCaseDisputeCommand>
 {
@@ -100,6 +103,11 @@ internal sealed class ResolveCaseDisputeCommandHandler(
         if (applyResult.IsFailure) return applyResult.Error;
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await publisher.Publish(
+            new DisputeChangedEvent(dispute.Id, clock.UtcNow),
+            cancellationToken);
+
         return UnitResult.Success<Error>();
     }
 }

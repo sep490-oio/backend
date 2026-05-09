@@ -1,7 +1,9 @@
 using CSharpFunctionalExtensions;
+using MediatR;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
+using OIO.Application.Context.ModerationContext.Events;
 using OIO.Domain.Context.ModerationContext.Aggregates.Disputes;
 using OIO.Domain.Context.ModerationContext.Enums;
 using OIO.Domain.Context.ModerationContext.ValueObjects.Ids;
@@ -26,7 +28,8 @@ public sealed record TransitionDisputeStatusCommand(
 internal sealed class TransitionDisputeStatusCommandHandler(
     IDbContext dbContext,
     IUnitOfWork unitOfWork,
-    IClock clock)
+    IClock clock,
+    IPublisher publisher)
     : ICommandHandler<TransitionDisputeStatusCommand>
 {
     public async Task<UnitResult<Error>> Handle(
@@ -51,6 +54,11 @@ internal sealed class TransitionDisputeStatusCommandHandler(
         if (result.IsFailure) return result.Error;
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await publisher.Publish(
+            new DisputeChangedEvent(dispute.Id, clock.UtcNow),
+            cancellationToken);
+
         return UnitResult.Success<Error>();
     }
 }

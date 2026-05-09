@@ -1,8 +1,10 @@
 using CSharpFunctionalExtensions;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
+using OIO.Application.Context.ModerationContext.Events;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.ModerationContext.Aggregates.Disputes;
 using OIO.Domain.Context.ModerationContext.ValueObjects.Ids;
@@ -28,7 +30,8 @@ internal sealed class RejectDisputeCommandHandler(
     IDbContext dbContext,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    IClock clock)
+    IClock clock,
+    IPublisher publisher)
     : ICommandHandler<RejectDisputeCommand>
 {
     public async Task<UnitResult<Error>> Handle(
@@ -49,6 +52,11 @@ internal sealed class RejectDisputeCommandHandler(
         if (result.IsFailure) return result.Error;
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await publisher.Publish(
+            new DisputeChangedEvent(dispute.Id, clock.UtcNow),
+            cancellationToken);
+
         return UnitResult.Success<Error>();
     }
 }
