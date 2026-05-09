@@ -891,9 +891,11 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
     public Result<AuctionBuyNowReservation, Error> InitiateBuyNowReservation(
         UserId buyerId,
         DateTime nowUtc,
-        TimeSpan reservationWindow)
+        TimeSpan reservationWindow,
+        TimeSpan? qualificationSafetyMargin = null)
     {
-        var result = EnsureCanInitiateBuyNow(buyerId, nowUtc);
+        var safetyMargin = qualificationSafetyMargin ?? TimeSpan.FromMinutes(3);
+        var result = EnsureCanInitiateBuyNow(buyerId, nowUtc, safetyMargin);
         if (result.IsFailure)
             return result.Error;
 
@@ -921,7 +923,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             buyNowPrice: buyNowPrice,
             depositAppliedAmount: depositMoneyResult.Value,
             gatewayAmountDue: dueMoneyResult.Value,
-            expiresAt: nowUtc.Add(reservationWindow),
+            expiresAt: ComputeReservationExpiry(nowUtc, reservationWindow),
             nowUtc: nowUtc);
 
         if (reservationResult.IsFailure)
@@ -2024,7 +2026,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         return UnitResult.Success<Error>();
     }
 
-    private UnitResult<Error> EnsureCanInitiateBuyNow(UserId buyerId, DateTime nowUtc)
+    private UnitResult<Error> EnsureCanInitiateBuyNow(UserId buyerId, DateTime nowUtc, TimeSpan qualificationSafetyMargin)
     {
         if (Pricing.BuyNowAmount is null || !Pricing.IsBuyNowAvailable)
             return AuctionErrors.Auction.NotSupportBuyNow;
@@ -2050,6 +2052,11 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
             if (!Info.IsQualificationOpen(nowUtc))
                 return AuctionErrors.Auction.BuyNowQualificationNotOpenYet;
+
+            // Guard C: block Buy Now if too close to qualification end
+            var qualRemaining = Info.Qualification!.EndTime - nowUtc;
+            if (qualRemaining < qualificationSafetyMargin)
+                return AuctionErrors.Auction.BuyNowTooCloseToQualificationEnd;
         }
         else if (Status != AuctionStatus.Active)
         {
@@ -2057,6 +2064,26 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         }
 
         return UnitResult.Success<Error>();
+    }
+
+    /// <summary>
+    /// Computes the actual reservation expiry, capping at the qualification window end
+    /// when the auction is in the Scheduled (qualification) phase.
+    /// This prevents reservations from outliving the qualification window.
+    /// </summary>
+    private DateTime ComputeReservationExpiry(DateTime nowUtc, TimeSpan reservationWindow)
+    {
+        var rawExpiry = nowUtc.Add(reservationWindow);
+
+        if (Status == AuctionStatus.Scheduled
+            && Info?.Qualification is not null
+            && Info.IsQualificationOpen(nowUtc))
+        {
+            var qualEnd = Info.Qualification.EndTime;
+            return rawExpiry < qualEnd ? rawExpiry : qualEnd;
+        }
+
+        return rawExpiry;
     }
 
     private UnitResult<Error> EnsureBuyerQualifiedForBuyNow(UserId buyerId, DateTime nowUtc)
@@ -2159,6 +2186,8 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             CompensationDuration: compensationDuration,
             PreviousEndTime: oldEndTime,
             NewEndTime: Info.EndTime,
+            NewStartTime: Info.StartTime,
+            NewQualificationEndTime: Info.Qualification?.EndTime,
             AuctionPhase: Status == AuctionStatus.Scheduled ? "deposit" : "active",
             OccurredAt: nowUtc));
 
@@ -2594,9 +2623,42 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         }
 
         // Branch C: there is a current winner who is not this bidder — engage proxy
-        return EngageAutoBidAgainstCurrentWinner(
+        var engageResult = EngageAutoBidAgainstCurrentWinner(
             autoBid, bidderId, nowUtc,
             extensionThresholdMinutes, maxExtensions, maxDuration);
+
+        if (engageResult.IsFailure)
+            return engageResult.Error;
+
+        // Buy-now-by-proxy: if engagement pushed the price to or past buyNowPrice, end immediately.
+        if (Pricing.HasBuyNowPrice && Pricing.CurrentAmount >= Pricing.BuyNowAmount!.Value)
+        {
+            var winner = GetCurrentWinningBid();
+            if (winner is not null)
+            {
+                winner.MarkAsWon();
+                Status = AuctionStatus.Sold;
+                ActualEndTime = nowUtc;
+                WinnerId = winner.BidderId;
+                ModifiedAt = nowUtc;
+
+                foreach (var otherBid in _bids.Where(b => b.Id != winner.Id && b.Status == Enums.BidStatus.Winning))
+                    otherBid.MarkAsOutbid();
+                foreach (var ab in _autoBids.Where(ab => ab.IsEnabled))
+                    ab.MarkAsOutbid(nowUtc);
+
+                RaiseDomainEvent(new AuctionSoldEvent(
+                    AuctionId: $"{Id}",
+                    WinnerId: $"{winner.BidderId}",
+                    SellerId: $"{Item.SellerId}",
+                    FinalPrice: Pricing.CurrentAmount,
+                    Currency: Pricing.Currency.Id,
+                    TotalBids: BidCount,
+                    OccurredAt: nowUtc));
+            }
+        }
+
+        return UnitResult.Success<Error>();
     }
 
     private UnitResult<Error> EngageAutoBidAgainstCurrentWinner(
@@ -2640,6 +2702,10 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             if (resolvedAmount > autoBidCeiling)
                 resolvedAmount = autoBidCeiling;
 
+            // Buy-now cap: never exceed buyNowPrice
+            if (Pricing.HasBuyNowPrice && resolvedAmount > Pricing.BuyNowAmount!.Value)
+                resolvedAmount = Pricing.BuyNowAmount.Value;
+
             var resolvedPrice = Money.Of(resolvedAmount, Pricing.Currency);
             var placeResult = PlaceAutoBidInternal(autoBid, resolvedPrice, nowUtc,
                 raiseOutbidEvent: true,
@@ -2673,6 +2739,10 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
                     resolvedAmount = minimumRequired.Amount;
                 if (resolvedAmount > currentWinnerCeiling)
                     resolvedAmount = currentWinnerCeiling;
+
+                // Buy-now cap: never exceed buyNowPrice
+                if (Pricing.HasBuyNowPrice && resolvedAmount > Pricing.BuyNowAmount!.Value)
+                    resolvedAmount = Pricing.BuyNowAmount.Value;
 
                 var resolvedPrice = Money.Of(resolvedAmount, Pricing.Currency);
                 var placeResult = PlaceAutoBidInternal(winnerAutoBid, resolvedPrice, nowUtc,

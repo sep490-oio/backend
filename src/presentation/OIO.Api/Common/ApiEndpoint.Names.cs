@@ -407,6 +407,7 @@ public static partial class ApiEndpoint
             public const string RetryDeferredRefund = nameof(RetryDeferredRefund);
 
             public const string ConfirmOrderReceipt = nameof(ConfirmOrderReceipt);
+            public const string CancelOrderPayment = nameof(CancelOrderPayment);
             public const string UpdateOrderShipping = nameof(UpdateOrderShipping);
             public const string ConfirmSellerOrder = nameof(ConfirmSellerOrder);
             public const string MarkOrderPickedUp = nameof(MarkOrderPickedUp);

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
+using OIO.Application.Abstractions.Scheduling;
 using OIO.Application.Context.AuctionContext.Commands.EndAuction;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Enums;
@@ -111,12 +112,44 @@ public sealed class ExpireBuyNowReservationsJob : BackgroundService
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            if (auction.Status == AuctionStatus.Active &&
-                auction.Info is not null &&
-                auction.Info.EndTime <= nowUtc &&
-                auction.GetActiveBuyNowReservation(nowUtc) is null)
+            // After compensation extends auction timings, reschedule Quartz timers
+            // so CloseQualificationJob / ActivateAuctionJob / EndAuctionJob fire at
+            // the correct (extended) times. Without this, the one-shot qualification
+            // close timer fires at the original time and the auction is incorrectly
+            // cancelled or gets stuck in Scheduled status forever.
+            if (auction.Info is not null)
             {
-                await sender.Send(new EndAuctionCommand(auction.Id.Value), cancellationToken);
+                var scheduler = scope.ServiceProvider.GetRequiredService<IAuctionScheduler>();
+
+                if (auction.Status == AuctionStatus.Scheduled && auction.Info.HasQualification)
+                {
+                    // Deposit phase: reschedule qualification close, start, and end
+                    await scheduler.ScheduleQualificationCloseAsync(
+                        auction.Id.Value, auction.Info.Qualification!.EndTime, cancellationToken);
+                    await scheduler.ScheduleStartAsync(
+                        auction.Id.Value, auction.Info.StartTime, cancellationToken);
+                    await scheduler.ScheduleEndAsync(
+                        auction.Id.Value, auction.Info.EndTime, cancellationToken);
+
+                    _logger.LogInformation(
+                        "Rescheduled timers for auction {AuctionId} after buy-now compensation. " +
+                        "QualClose={QualEndTime}, Start={StartTime}, End={EndTime}",
+                        auction.Id.Value, auction.Info.Qualification.EndTime,
+                        auction.Info.StartTime, auction.Info.EndTime);
+                }
+                else if (auction.Status == AuctionStatus.Active)
+                {
+                    // Active phase: only end time was extended
+                    await scheduler.RescheduleEndAsync(
+                        auction.Id.Value, auction.Info.EndTime, cancellationToken);
+
+                    // Check if auction should end now
+                    if (auction.Info.EndTime <= nowUtc
+                        && auction.GetActiveBuyNowReservation(nowUtc) is null)
+                    {
+                        await sender.Send(new EndAuctionCommand(auction.Id.Value), cancellationToken);
+                    }
+                }
             }
         }
     }

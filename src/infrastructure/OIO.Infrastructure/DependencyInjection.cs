@@ -422,6 +422,9 @@ services.AddScoped<IMediaDirectUploadService, CloudinaryDirectUploadService>();
             services.ConfigureOptions<WarehouseReturnAutoConfirmJobSetup>();
             services.ConfigureOptions<OrderReturnAutoConfirmJobSetup>();
 
+            // Dispute auto-escalation (overdue awaiting_respondent).
+            services.ConfigureOptions<DisputeResponseDeadlineWatcherJobSetup>();
+
             services.AddScoped<SellerTrustScoreCalculator>();
 
             // Notification Delivery Job

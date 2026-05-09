@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using OIO.Domain.Context.Shared.Enums;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.SeedWork.Checks.Extensions;
@@ -55,12 +55,14 @@ public sealed class AuctionPricing : ValueObject
         decimal? buyNowPrice = null)
     {
         var check = AuctionPricing.Check(isInvariant: true)
+            .Field(startingPrice, x => x.StartingAmount)
+            .Positive()
             .Field(bidIncrement, x => x.BidIncrementAmount)
             .Positive()
             .Field(reservePrice, x => x.ReserveAmount)
             .WhenHasValue(x => x.GreaterThanOrEqual(startingPrice))
             .Field(buyNowPrice, x => x.BuyNowAmount)
-            .WhenHasValue(x => x.GreaterThan(startingPrice))
+            .WhenHasValue(x => x.Positive().GreaterThan(startingPrice))
             .ToUnitResult();
 
         if (check.IsFailure)

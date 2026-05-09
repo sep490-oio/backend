@@ -11,6 +11,7 @@ using SellerDirectShipmentEntity = OIO.Domain.Context.OrderContext.Aggregates.Se
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Enums;
+using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Application.Context.WarehouseContext.Queries.GetBuyerOutboundShipmentByToken;
 using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments;
@@ -126,6 +127,22 @@ internal sealed class GetOrderByIdQueryHandler(
             .Include(s => s.Evidence)
             .FirstOrDefaultAsync(s => s.OrderId == order.Id, cancellationToken);
 
+        // Normal auction winner deposit: load the held/converted deposit so
+        // the mapping can display the offset on the checkout / order detail
+        // page even before payment completes.
+        decimal? winnerDepositAmount = null;
+        if (buyNowReservation is null)
+        {
+            var winnerDeposit = await dbContext.Set<AuctionDeposit>()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    d => d.AuctionId == order.AuctionId &&
+                         d.BidderId == order.BuyerId &&
+                         (d.Status == DepositStatus.Held || d.Status == DepositStatus.ConvertedToPayment),
+                    cancellationToken);
+            winnerDepositAmount = winnerDeposit?.Amount.Amount;
+        }
+
         // Buyer-scoped warehouse outbound snapshot. Only populated for the
         // order buyer and when an active (non-terminal) outbound shipment
         // exists. Mirrors BuyerOutboundShipmentDetailBuilder's flag logic so
@@ -178,7 +195,8 @@ internal sealed class GetOrderByIdQueryHandler(
             orderTransactions: orderTransactions,
             directShipment: directShipment,
             warehouseOutboundShipment: warehouseOutboundDto,
-            buyNowReservation: buyNowReservation);
+            buyNowReservation: buyNowReservation,
+            winnerDepositAmount: winnerDepositAmount);
     }
 
     private static string? ResolveUserDisplayName(User? user)

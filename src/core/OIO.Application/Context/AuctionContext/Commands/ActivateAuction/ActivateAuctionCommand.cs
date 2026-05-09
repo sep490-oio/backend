@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using OIO.Application.Abstractions.Clock;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Data;
@@ -51,6 +51,7 @@ internal sealed class ActivateAuctionCommandHandler
             queryBuilder: query => query
                 .Include(x => x.Deposits)
                 .Include(x => x.Participants)
+                .Include(x => x.BuyNowReservations)
                 .AsSplitQuery(),
             cancellationToken: cancellationToken);
 

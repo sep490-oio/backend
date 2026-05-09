@@ -74,7 +74,11 @@ public sealed class EscrowSettlementService
         if (platformWalletResult.IsFailure)
             return platformWalletResult.Error;
 
-        var grossAmount = escrows.Sum(x => x.Amount.Amount);
+        // Fee calculation uses the canonical order total — NOT escrows.Sum() —
+        // because legacy escrow data may be inconsistent (missing deposit escrow
+        // or double-counted wallet hold). The order's TotalAmount is the single
+        // source of truth for the auction final price.
+        var grossAmount = order.Pricing.TotalAmount.Amount;
         var settlementResult = CalculateSellerSettlement(
             grossAmount,
             currency,

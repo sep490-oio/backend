@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OIO.Application.Abstractions.Clock;
@@ -490,6 +490,24 @@ internal sealed class ProcessVnPayCallbackCommandHandler
 
             if (debitPendingResult.IsFailure)
                 return debitPendingResult.Error;
+
+            // Create a separate escrow for the deposit portion so that
+            // escrow total = TotalAmount (gateway/wallet escrow + deposit escrow).
+            var depositEscrowResult = Escrow.Create(
+                transaction.OrderId.Value,
+                transaction.Id,
+                winnerDeposit.Amount,
+                winnerDeposit.Amount.Currency.Id,
+                now);
+
+            if (depositEscrowResult.IsFailure)
+                return depositEscrowResult.Error;
+
+            _dbContext.Insert(depositEscrowResult.Value);
+
+            _logger.LogInformation(
+                "Deposit escrow created for OrderId={OrderId}, DepositAmount={DepositAmount}",
+                order.Id.Value, winnerDeposit.Amount.Amount);
         }
 
         // 6. Mark order as paid

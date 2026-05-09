@@ -166,12 +166,12 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
                     var result = await _escrowSettlementService.ReleaseToSellerAsync(
                         order, "Dispute resolution: release to seller", null, ct);
                     if (result.IsFailure)
-                        return result.Error;
-
-                    if (result.IsFailure)
+                    {
                         _logger.LogWarning(
                             "Dispute {DisputeId}: escrow release_to_seller failed — {Error}",
                             dispute.Id, result.Error.Message);
+                        return result.Error;
+                    }
                     break;
                 }
 
@@ -188,13 +188,13 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
                     var result = await _escrowSettlementService.RefundBuyerAsync(
                         order, null, "Dispute resolution: full refund to buyer", null, ct);
                     if (result.IsFailure)
-                        return result.Error;
-
-                    if (result.IsFailure)
+                    {
                         _logger.LogWarning(
                             "Dispute {DisputeId}: escrow refund_buyer failed — {Error}",
                             dispute.Id, result.Error.Message);
-                    else if (shouldChargeInspectionFee)
+                        return result.Error;
+                    }
+                    if (shouldChargeInspectionFee)
                         await ChargeBuyerWinInspectionFeeForResolvedCaseAsync(order, dispute, ct);
                     break;
                 }
@@ -219,12 +219,12 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
                     var result = await _escrowSettlementService.RefundBuyerAsync(
                         order, actionSet.RefundAmount, "Dispute resolution: partial refund to buyer", null, ct);
                     if (result.IsFailure)
-                        return result.Error;
-
-                    if (result.IsFailure)
+                    {
                         _logger.LogWarning(
                             "Dispute {DisputeId}: escrow partial_refund failed — {Error}",
                             dispute.Id, result.Error.Message);
+                        return result.Error;
+                    }
                     break;
                 }
 
@@ -292,14 +292,14 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
                     var result = await _escrowSettlementService.RefundBuyerAsync(
                         order, null, "Dispute resolution: full refund", null, ct);
                     if (result.IsFailure)
-                        return result.Error;
-
-                    if (result.IsSuccess && shouldChargeInspectionFee)
-                        await ChargeBuyerWinInspectionFeeForResolvedCaseAsync(order, dispute, ct);
-                    if (result.IsFailure)
+                    {
                         _logger.LogWarning(
                             "Dispute {DisputeId}: refund full_refund failed — {Error}",
                             dispute.Id, result.Error.Message);
+                        return result.Error;
+                    }
+                    if (shouldChargeInspectionFee)
+                        await ChargeBuyerWinInspectionFeeForResolvedCaseAsync(order, dispute, ct);
                     break;
                 }
 
@@ -316,12 +316,12 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
                     var result = await _escrowSettlementService.RefundBuyerAsync(
                         order, actionSet.RefundAmount, "Dispute resolution: partial refund", null, ct);
                     if (result.IsFailure)
-                        return result.Error;
-
-                    if (result.IsFailure)
+                    {
                         _logger.LogWarning(
                             "Dispute {DisputeId}: refund partial_refund failed — {Error}",
                             dispute.Id, result.Error.Message);
+                        return result.Error;
+                    }
                     break;
                 }
 

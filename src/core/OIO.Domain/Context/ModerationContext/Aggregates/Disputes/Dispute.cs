@@ -289,13 +289,14 @@ public sealed class Dispute : AggregateRoot<DisputeId>, IAuditableEntity
 
     public void AssignTo(UserId adminId, DateTime nowUtc)
     {
+        var oldStatus = Status.Id;
         AssignedTo = adminId;
         Status = DisputeStatus.UnderReview;
         ModifiedAt = nowUtc;
 
         _statusHistory.Add(DisputeStatusHistory.Create(
             disputeId: Id,
-            oldStatus: Status.Id,
+            oldStatus: oldStatus,
             newStatus: DisputeStatus.UnderReview.Id,
             changedBy: adminId,
             reason: "Assigned to admin",
@@ -331,6 +332,36 @@ public sealed class Dispute : AggregateRoot<DisputeId>, IAuditableEntity
             newStatus: newStatus.Id,
             changedBy: null,
             reason: $"Transitioned to {newStatus.Id}",
+            nowUtc: nowUtc));
+
+        return UnitResult.Success<Error>();
+    }
+
+    /// <summary>
+    /// Transitions the dispute to <see cref="DisputeStatus.AwaitingRespondent"/>
+    /// and stamps the <see cref="ResponseDeadline"/> so the auto-escalation
+    /// Quartz job (<c>DisputeResponseDeadlineWatcherJob</c>) knows when to act.
+    /// </summary>
+    public UnitResult<Error> TransitionToAwaitingRespondent(
+        int responseDeadlineDays,
+        DateTime nowUtc)
+    {
+        if (!Status.CanTransitionTo(DisputeStatus.AwaitingRespondent))
+            return Error.Conflict(
+                "Dispute.InvalidTransition",
+                $"Cannot transition from '{Status.Id}' to 'awaiting_respondent'.");
+
+        var oldStatus = Status.Id;
+        Status = DisputeStatus.AwaitingRespondent;
+        ResponseDeadline = nowUtc.AddDays(responseDeadlineDays);
+        ModifiedAt = nowUtc;
+
+        _statusHistory.Add(DisputeStatusHistory.Create(
+            disputeId: Id,
+            oldStatus: oldStatus,
+            newStatus: DisputeStatus.AwaitingRespondent.Id,
+            changedBy: null,
+            reason: $"Awaiting respondent — deadline {ResponseDeadline:o}",
             nowUtc: nowUtc));
 
         return UnitResult.Success<Error>();

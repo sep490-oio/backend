@@ -101,6 +101,7 @@ public sealed class AuctionPollingFallbackJob : IJob
         var noDepositCandidates = await dbContext.Set<Auction>()
             .Include(a => a.Deposits)
             .Include(a => a.Participants)
+            .Include(a => a.BuyNowReservations)
             .Include(a => a.Item)
             .Where(a => a.Status == AuctionStatus.Scheduled
                         && a.Info != null && a.Info.Qualification!.EndTime <= now)
@@ -112,6 +113,19 @@ public sealed class AuctionPollingFallbackJob : IJob
             // Match CloseQualificationJob logic: need >= 2 bid-eligible participants.
             if (auction.HasBidEligibleParticipants(now))
                 continue;
+
+            // Defer cancel if a buy-now reservation is still pending —
+            // check IsPendingPayment (not IsActive) to cover the race window
+            // between reservation expiry and ExpireBuyNowReservationsJob processing.
+            var pendingBuyNow = auction.BuyNowReservations
+                .FirstOrDefault(r => r.IsPendingPayment);
+            if (pendingBuyNow is not null)
+            {
+                _logger.LogInformation(
+                    "🛡️ Fallback: deferring cancel for auction {Id} — pending buy-now reservation {ReservationId}.",
+                    auction.Id, pendingBuyNow.Id.Value);
+                continue;
+            }
 
             var heldCount = auction.Deposits.Count(d => d.IsHeld);
 

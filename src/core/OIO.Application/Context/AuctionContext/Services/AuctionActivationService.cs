@@ -45,6 +45,12 @@ internal sealed class AuctionActivationService
 
         if (!auction.HasBidEligibleParticipants(nowUtc))
         {
+            // Defer cancel if a buy-now reservation is still pending —
+            // check IsPendingPayment (not IsActive) to cover the race window
+            // between reservation expiry and ExpireBuyNowReservationsJob processing.
+            if (auction.BuyNowReservations.Any(r => r.IsPendingPayment))
+                return UnitResult.Success<Error>();
+
             var cancelResult = auction.CancelAuction(NoEligibleParticipantsAutoCancelReason, nowUtc);
             if (cancelResult.IsFailure)
                 return cancelResult.Error;

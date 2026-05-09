@@ -58,8 +58,6 @@ internal sealed class GetSellerEscrowLedgerQueryHandler
             .Include(e => e.Order)
             .Where(e => e.Order.SellerId == userId)
             .OrderByDescending(e => e.HeldAt)
-            .Skip(skip)
-            .Take(take)
             .Select(e => new EscrowLedgerProjection
             {
                 EscrowId = e.Id.Value,
@@ -67,6 +65,9 @@ internal sealed class GetSellerEscrowLedgerQueryHandler
                 OrderNumber = e.Order.OrderNumber.Value,
                 AuctionId = e.Order.AuctionId.Value,
                 GrossAmount = e.Amount.Amount,
+                // Canonical order total — used for fee calculation instead of
+                // summing escrow amounts which may be inconsistent for legacy data.
+                OrderTotalAmount = e.Order.Pricing.TotalAmount.Amount,
                 Currency = e.Currency,
                 OrderStatusId = e.Order.Status.Id,
                 EscrowStatusId = e.Status.Id,
@@ -81,11 +82,20 @@ internal sealed class GetSellerEscrowLedgerQueryHandler
             })
             .ToListAsync(cancellationToken);
 
-        if (escrowRows.Count == 0)
+        // Group escrows by order — multiple escrows may exist per order
+        // (e.g. gateway escrow + deposit escrow). The seller ledger should
+        // show one row per order with fees based on order.TotalAmount.
+        var orderGroups = escrowRows
+            .GroupBy(r => r.OrderId)
+            .Skip(skip)
+            .Take(take)
+            .ToList();
+
+        if (orderGroups.Count == 0)
             return Result.Success<IReadOnlyList<SellerEscrowLedgerRowDto>, Error>(Array.Empty<SellerEscrowLedgerRowDto>());
 
-        var auctionIdValues = escrowRows.Select(r => AuctionId.From(r.AuctionId)).Distinct().ToArray();
-        var orderIdValues = escrowRows.Select(r => OrderId.From(r.OrderId)).Distinct().ToArray();
+        var auctionIdValues = orderGroups.Select(g => AuctionId.From(g.First().AuctionId)).Distinct().ToArray();
+        var orderIdValues = orderGroups.Select(g => OrderId.From(g.Key)).Distinct().ToArray();
 
         // Auction → Item title (Order has AuctionId; Item lives via Auction.ItemId).
         var auctionItemTitles = await _dbContext.Set<Auction>()
@@ -116,51 +126,62 @@ internal sealed class GetSellerEscrowLedgerQueryHandler
             .GroupBy(d => d.OrderId)
             .ToDictionary(g => g.Key, g => g.OrderBy(x => x.CreatedAt).Last());
 
-        var rows = new List<SellerEscrowLedgerRowDto>(escrowRows.Count);
-        foreach (var row in escrowRows)
+        var rows = new List<SellerEscrowLedgerRowDto>(orderGroups.Count);
+        foreach (var group in orderGroups)
         {
-            var includeInspection = row.IsPlatformVerifiedItem;
+            // Use the first escrow for order-level metadata; pick the most
+            // significant escrow status (holding > released > refunded).
+            var representative = group.First();
+            var escrowStatusId = group.Any(e => e.EscrowStatusId == EscrowStatus.Holding.Id)
+                ? EscrowStatus.Holding.Id
+                : group.Any(e => e.EscrowStatusId == EscrowStatus.ReleasedToSeller.Id)
+                    ? EscrowStatus.ReleasedToSeller.Id
+                    : representative.EscrowStatusId;
+
+            // Use canonical order total for fee/settlement calculation
+            var grossAmount = representative.OrderTotalAmount;
+            var includeInspection = representative.IsPlatformVerifiedItem;
             var settlementResult = EscrowSettlementService.CalculateSellerSettlement(
                 settlementOptions,
-                row.GrossAmount,
-                row.Currency,
+                grossAmount,
+                representative.Currency,
                 includeInspectionFee: includeInspection);
             if (settlementResult.IsFailure)
                 return settlementResult.Error;
 
             var breakdown = settlementResult.Value;
-            var isHolding = row.EscrowStatusId == EscrowStatus.Holding.Id;
+            var isHolding = escrowStatusId == EscrowStatus.Holding.Id;
 
             var holdReason = ResolveHoldReason(
                 isHolding: isHolding,
-                disputedAt: row.DisputedAt,
-                orderStatusId: row.OrderStatusId,
-                isVerified: row.IsPlatformVerifiedItem);
+                disputedAt: representative.DisputedAt,
+                orderStatusId: representative.OrderStatusId,
+                isVerified: representative.IsPlatformVerifiedItem);
 
             var expectedReleaseAt = ResolveExpectedReleaseAt(
-                row,
+                representative,
                 orderOptions.ReturnDecisionWindowDays);
 
-            disputeByOrder.TryGetValue(row.OrderId, out var dispute);
+            disputeByOrder.TryGetValue(representative.OrderId, out var dispute);
 
             decimal? actualReleased = null;
-            if (!isHolding && row.ReleasedToId == "seller")
+            if (!isHolding && group.Any(e => e.ReleasedToId == "seller"))
                 actualReleased = breakdown.SellerNetAmount;
 
             rows.Add(new SellerEscrowLedgerRowDto(
-                OrderId: row.OrderId,
-                OrderNumber: row.OrderNumber,
-                AuctionId: row.AuctionId,
-                ItemTitle: auctionItemTitles.TryGetValue(row.AuctionId, out var title) ? title : string.Empty,
-                GrossPaidAmount: row.GrossAmount,
-                Currency: row.Currency,
-                OrderStatus: row.OrderStatusId,
-                EscrowStatus: row.EscrowStatusId,
+                OrderId: representative.OrderId,
+                OrderNumber: representative.OrderNumber,
+                AuctionId: representative.AuctionId,
+                ItemTitle: auctionItemTitles.TryGetValue(representative.AuctionId, out var title) ? title : string.Empty,
+                GrossPaidAmount: grossAmount,
+                Currency: representative.Currency,
+                OrderStatus: representative.OrderStatusId,
+                EscrowStatus: escrowStatusId,
                 HoldReason: holdReason,
-                BuyerPaidAt: row.PaidAt,
+                BuyerPaidAt: representative.PaidAt,
                 ExpectedReleaseAt: expectedReleaseAt,
-                DecisionWindowEndsAt: row.DecisionWindowEndsAt,
-                IsPlatformVerifiedItem: row.IsPlatformVerifiedItem,
+                DecisionWindowEndsAt: representative.DecisionWindowEndsAt,
+                IsPlatformVerifiedItem: representative.IsPlatformVerifiedItem,
                 PlatformCommissionAmount: breakdown.PlatformCommission,
                 InspectionFeeAmount: breakdown.InspectionFee,
                 EstimatedNetPayout: breakdown.SellerNetAmount,
@@ -231,6 +252,7 @@ internal sealed class GetSellerEscrowLedgerQueryHandler
         public string OrderNumber { get; init; } = string.Empty;
         public Guid AuctionId { get; init; }
         public decimal GrossAmount { get; init; }
+        public decimal OrderTotalAmount { get; init; }
         public string Currency { get; init; } = string.Empty;
         public string OrderStatusId { get; init; } = string.Empty;
         public string EscrowStatusId { get; init; } = string.Empty;

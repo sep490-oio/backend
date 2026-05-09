@@ -64,6 +64,7 @@ public sealed class CloseQualificationJob : IJob
             query => query
                 .Include(a => a.Deposits)
                 .Include(a => a.Participants)
+                .Include(a => a.BuyNowReservations)
                 .Include(a => a.Item)
                 .AsSplitQuery(),
             context.CancellationToken);
@@ -90,6 +91,23 @@ public sealed class CloseQualificationJob : IJob
             _logger.LogDebug(
                 "CloseQualificationJob: qualification window for auction {AuctionId} is not yet closed, skipping.",
                 auctionId);
+            return;
+        }
+
+        // If a buy-now reservation is still pending (awaiting payment or
+        // awaiting the expire-job to process it), defer the cancel decision.
+        // We check IsPendingPayment rather than IsActive because IsActive
+        // returns false once ExpiresAt <= now, but the ExpireBuyNowReservationsJob
+        // (which runs every ~60s) may not have processed it yet. The expire
+        // job applies ApplyBuyNowCompensation which extends the qualification
+        // window. Cancelling here would race against that compensation.
+        var pendingReservation = auction.BuyNowReservations
+            .FirstOrDefault(r => r.IsPendingPayment);
+        if (pendingReservation is not null)
+        {
+            _logger.LogInformation(
+                "⏸️ CloseQualificationJob: auction {AuctionId} has pending buy-now reservation {ReservationId}, deferring cancel decision.",
+                auctionId, pendingReservation.Id.Value);
             return;
         }
 

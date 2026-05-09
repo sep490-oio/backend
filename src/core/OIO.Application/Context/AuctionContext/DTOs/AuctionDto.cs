@@ -40,4 +40,5 @@ public sealed record AuctionDto(
     bool IsEndingSoon,
     bool IsOnWatchList,
     bool CanOfferRunnerUp,
+    decimal RequiredDepositAmount,
     DateTime CreatedAt);

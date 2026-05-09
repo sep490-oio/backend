@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.Options;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
+using OIO.Application.Context.OrderContext.Commands.CreateAdminRefundRetryTicket;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders.Events;
 using OIO.Domain.Context.OrderContext.Enums;
@@ -94,6 +96,34 @@ internal sealed class OrderReturnDeadlineWatcherJob : IJob
                 dbContext.Update(orderReturn);
                 await unitOfWork.SaveChangesAsync(ct);
                 expiredCount++;
+
+                // If this return had a deferred refund (from dispute resolution),
+                // create an admin ticket so the stuck refund is surfaced for review.
+                if (orderReturn.DeferredRefundIntent is not null
+                    && orderReturn.DeferredRefundIntent != DeferredRefundIntent.None)
+                {
+                    try
+                    {
+                        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
+                        await sender.Send(new CreateAdminRefundRetryTicketCommand(
+                            OrderId: orderReturn.OrderId.Value,
+                            OrderReturnId: orderReturn.Id.Value,
+                            Intent: orderReturn.DeferredRefundIntent.Id,
+                            Amount: orderReturn.DeferredRefundAmount,
+                            FailureReason: "Return expired: buyer did not ship within deadline. Deferred refund requires admin review."),
+                            ct);
+
+                        _logger.LogWarning(
+                            "OrderReturnDeadlineWatcher: Deferred refund pending review — OrderReturn {OrderReturnId} expired with intent={Intent}, amount={Amount}",
+                            orderReturn.Id.Value, orderReturn.DeferredRefundIntent.Id, orderReturn.DeferredRefundAmount);
+                    }
+                    catch (Exception ticketEx)
+                    {
+                        _logger.LogError(ticketEx,
+                            "OrderReturnDeadlineWatcher: failed to create admin refund ticket for OrderReturn {OrderReturnId}",
+                            orderReturn.Id.Value);
+                    }
+                }
             }
             catch (Exception ex)
             {

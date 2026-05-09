@@ -8,6 +8,7 @@ using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.Grains;
+using OIO.Domain.Context.AuctionContext.Policies;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
 using OIO.Domain.Context.Shared.ValueObjects;
@@ -90,6 +91,12 @@ internal sealed class DepositFromWalletCommandHandler(
         // 3. Check no existing held deposit
         if (auction.Deposits.Any(d => d.BidderId == userId && d.IsHeld))
             return Error.Conflict("AuctionDeposit.AlreadyHeld", "An active deposit already exists for this auction.");
+
+        // 3b. Validate deposit amount matches policy
+        var requiredDeposit = DepositPolicy.ComputeRequiredDeposit(auction.Pricing.StartingAmount);
+        if (request.Amount != requiredDeposit)
+            return Error.Validation("Amount", "AuctionDeposit.InvalidAmount",
+                $"Deposit amount must be exactly {requiredDeposit}. Got {request.Amount}.");
 
         // 4. Validate currency matches auction
         if (!string.Equals(request.Currency, auction.Pricing.Currency.Id, StringComparison.OrdinalIgnoreCase))

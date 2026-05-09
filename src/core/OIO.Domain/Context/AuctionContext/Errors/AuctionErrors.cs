@@ -167,6 +167,10 @@ public static readonly Error NoRunnerUp =
         public static readonly Error BuyNowQualificationNotOpenYet =
             Error.Conflict("Auction.BuyNowQualificationNotOpenYet",
                 "The qualification (deposit) period for this auction has not started yet.");
+
+        public static readonly Error BuyNowTooCloseToQualificationEnd =
+            Error.Conflict("Auction.BuyNowTooCloseToQualificationEnd",
+                "Buy Now is not available within the last 3 minutes of the qualification window. Please wait for the auction to start.");
     }
 
     public static class Bid

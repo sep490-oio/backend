@@ -23,7 +23,8 @@ internal static class OrderMappings
         IReadOnlyList<Transaction>? orderTransactions = null,
         SellerDirectShipment? directShipment = null,
         OrderWarehouseOutboundShipmentDto? warehouseOutboundShipment = null,
-        AuctionBuyNowReservation? buyNowReservation = null)
+        AuctionBuyNowReservation? buyNowReservation = null,
+        decimal? winnerDepositAmount = null)
     {
         // Amount paid from escrows (holding or released_to_seller). Null when
         // no escrows exist so FE can distinguish "unpaid" from "0".
@@ -45,6 +46,7 @@ internal static class OrderMappings
                 .Where(t => t.Status == TransactionStatus.Completed)
                 .ToList();
 
+            // Buy-now deposit applied transactions
             var depositTxs = completed
                 .Where(t =>
                     (t.Description != null && t.Description.Contains("[AuctionBuyNowDepositApplied]")) ||
@@ -52,6 +54,19 @@ internal static class OrderMappings
                 .ToList();
             if (depositTxs.Count > 0)
                 depositAppliedAmount = depositTxs.Sum(t => t.Amount.Amount);
+
+            // Normal auction winner deposit applied — the callback handler
+            // uses description "Auction winner deposit applied for order {id}".
+            if (depositAppliedAmount is null)
+            {
+                var winnerDepositTxs = completed
+                    .Where(t =>
+                        t.Description != null &&
+                        t.Description.StartsWith("Auction winner deposit applied for order"))
+                    .ToList();
+                if (winnerDepositTxs.Count > 0)
+                    depositAppliedAmount = winnerDepositTxs.Sum(t => t.Amount.Amount);
+            }
 
             var walletTxs = completed
                 .Where(t =>
@@ -84,6 +99,17 @@ internal static class OrderMappings
             buyNowReservation.DepositAppliedAmountValue > 0m)
         {
             depositAppliedAmount = buyNowReservation.DepositAppliedAmountValue;
+        }
+
+        // Final fallback for normal auction winners: if no deposit transaction
+        // has been recorded yet (pre-payment state), use the winner deposit
+        // amount passed from the query handler.
+        if (depositAppliedAmount is null &&
+            buyNowReservation is null &&
+            winnerDepositAmount is not null &&
+            winnerDepositAmount > 0m)
+        {
+            depositAppliedAmount = winnerDepositAmount;
         }
 
         var escrowStatus =

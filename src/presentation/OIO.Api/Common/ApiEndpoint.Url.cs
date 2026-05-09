@@ -385,6 +385,7 @@ public static partial class ApiEndpoint
             public const string RetryDeferredRefund = $"api/admin/orders/{{orderId:guid}}/returns/{{returnId:guid}}/retry-refund";
 
             public const string ConfirmReceipt = $"{Base}/{{orderId:guid}}/confirm-receipt";
+            public const string CancelPayment = $"{Base}/{{orderId:guid}}/cancel-payment";
             public const string UpdateShipping = $"{Base}/{{orderId:guid}}/shipping";
             public const string Confirm = $"{Base}/{{orderId:guid}}/confirm";
             public const string MarkPickedUp = $"{Base}/{{orderId:guid}}/mark-picked-up";

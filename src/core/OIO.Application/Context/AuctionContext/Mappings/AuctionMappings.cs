@@ -2,6 +2,7 @@ using OIO.Application.Abstractions.Sorting;
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Enums;
+using OIO.Domain.Context.AuctionContext.Policies;
 
 namespace OIO.Application.Context.AuctionContext.Mappings;
 
@@ -86,6 +87,7 @@ internal static class AuctionMappings
             IsEndingSoon: auction.IsEndingSoon(nowUtc, extensionThresholdMinutes),
             IsOnWatchList: isOnWatchList,
             CanOfferRunnerUp: CalculateCanOfferRunnerUp(auction, nowUtc),
+            RequiredDepositAmount: DepositPolicy.ComputeRequiredDeposit(auction.Pricing.StartingAmount),
             CreatedAt: auction.CreatedAt);
     }
 

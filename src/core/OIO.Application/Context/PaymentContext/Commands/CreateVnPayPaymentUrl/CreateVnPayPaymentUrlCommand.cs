@@ -9,6 +9,7 @@ using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.Errors;
+using OIO.Domain.Context.AuctionContext.Policies;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.Aggregates.PaymentMethods;
@@ -146,6 +147,12 @@ internal sealed class CreateVnPayPaymentUrlCommandHandler
                     "AuctionDeposit.AlreadyHeld",
                     "An active deposit already exists for this auction.");
             }
+
+            // Validate deposit amount matches policy
+            var requiredDeposit = DepositPolicy.ComputeRequiredDeposit(auction.Pricing.StartingAmount);
+            if (request.Amount != requiredDeposit)
+                return Error.Validation("Amount", "AuctionDeposit.InvalidAmount",
+                    $"Deposit amount must be exactly {requiredDeposit}. Got {request.Amount}.");
         }
         else if (request.Purpose == PaymentPurpose.AuctionBuyNow)
         {

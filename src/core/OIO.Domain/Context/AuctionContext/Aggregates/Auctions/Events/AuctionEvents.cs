@@ -115,6 +115,8 @@ public sealed record AuctionBuyNowCompensationExtendedEvent(
     TimeSpan CompensationDuration,
     DateTime PreviousEndTime,
     DateTime NewEndTime,
+    DateTime NewStartTime,
+    DateTime? NewQualificationEndTime,
     string AuctionPhase,
     DateTime OccurredAt)
     : DomainEvent(OccurredAt);

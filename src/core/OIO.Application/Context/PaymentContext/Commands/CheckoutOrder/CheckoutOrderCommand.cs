@@ -112,15 +112,37 @@ internal sealed class CheckoutOrderCommandHandler
         DateTime now,
         CancellationToken cancellationToken)
     {
+        // Resolve the deposit offset — either from a buy-now reservation or
+        // from the winner's normal auction deposit (non-buy-now auction win).
+        var depositOffset = buyNowDepositOffset;
+
+        if (buyNowReservation is null)
+        {
+            var winnerDeposit = await _dbContext.Set<AuctionDeposit>()
+                .FirstOrDefaultAsync(
+                    d => d.AuctionId == order.AuctionId &&
+                         d.BidderId == order.BuyerId &&
+                         d.Status == DepositStatus.Held,
+                    cancellationToken);
+
+            if (winnerDeposit is not null)
+                depositOffset = winnerDeposit.Amount.Amount;
+        }
+
         // For buy-now orders, charge the gateway only for the portion not covered
         // by the held deposit. If the deposit fully covers the order, settle the
         // order internally (mirrors the full-wallet path) rather than issuing a
         // zero-amount VNPay URL.
-        var vnpayChargeAmount = order.Pricing.TotalAmount.Amount - buyNowDepositOffset;
+        var vnpayChargeAmount = order.Pricing.TotalAmount.Amount - depositOffset;
         if (vnpayChargeAmount <= 0m && buyNowReservation is not null)
         {
             return await SettleBuyNowOrderWithDepositOnlyAsync(order, now, cancellationToken);
         }
+
+        // Guard: if deposit fully covers the amount for a non-buy-now winner,
+        // fall through to the wallet path which handles zero-charge correctly.
+        if (vnpayChargeAmount <= 0m)
+            vnpayChargeAmount = 0m;
 
         var createUrlCommand = new CreateVnPayPaymentUrlCommand(
             Amount: vnpayChargeAmount,

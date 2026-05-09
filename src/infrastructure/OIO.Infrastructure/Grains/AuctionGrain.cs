@@ -908,7 +908,14 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
             if (auction.Status != AuctionStatus.Active)
                 return UnitResult.Success<Error>();
 
-            if (auction.GetActiveBuyNowReservation(nowUtc) is not null)
+            // Defer ending if a buy-now reservation is still PendingPayment —
+            // even if ExpiresAt <= now (the ExpireBuyNowReservationsJob hasn't
+            // processed it yet). The expire job applies ApplyBuyNowCompensation
+            // which extends EndTime. Ending here would race against that compensation.
+            // Uses IsPendingPayment (not IsActive) to cover the window between
+            // expiry and ExpireBuyNowReservationsJob processing — same guard as
+            // CloseQualificationJob.
+            if (auction.BuyNowReservations.Any(r => r.IsPendingPayment))
                 return UnitResult.Success<Error>();
 
             if (auction.AuctionType == AuctionType.Sealed)
