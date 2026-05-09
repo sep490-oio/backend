@@ -501,5 +501,68 @@ public sealed class Order : AggregateRoot<OrderId>, IAuditableEntity
         return true;
     }
 
+    // ────────────────────────────────────────────────────────────────────
+    // Admin-only interventions — bypass normal state-machine guards.
+    // Authorization is enforced at the endpoint level (admin:payments:manage).
+    // ────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Admin force-cancel: allows cancellation from any non-terminal status.
+    /// Financial consequences (escrow release, deposit refund) are handled
+    /// by the command handler, not in this domain method.
+    /// </summary>
+    public UnitResult<Error> AdminForceCancel(string reason, DateTime nowUtc)
+    {
+        if (Status == OrderStatus.Cancelled || Status == OrderStatus.Refunded)
+            return Errors.OrderErrors.Order.InvalidState(Status.Id, "admin force cancel");
+
+        Status = OrderStatus.Cancelled;
+        CancelledAt = nowUtc;
+        Notes = AppendNote(Notes, $"[ADMIN] Force Cancel: {reason}");
+        ModifiedAt = nowUtc;
+
+        RaiseDomainEvent(new OrderCancelledEvent(
+            OrderId: $"{Id}",
+            BuyerId: $"{BuyerId}",
+            OrderNumber: OrderNumber.Value,
+            Reason: $"[ADMIN] {reason}",
+            OccurredAt: nowUtc));
+
+        return UnitResult.Success<Error>();
+    }
+
+    /// <summary>
+    /// Admin force-refund: marks order as refunded from any non-terminal status.
+    /// Actual wallet refund + escrow release is handled by the command handler.
+    /// </summary>
+    public UnitResult<Error> AdminForceRefund(string reason, DateTime nowUtc)
+    {
+        if (Status == OrderStatus.Refunded || Status == OrderStatus.Cancelled)
+            return Errors.OrderErrors.Order.InvalidState(Status.Id, "admin force refund");
+
+        Status = OrderStatus.Refunded;
+        Notes = AppendNote(Notes, $"[ADMIN] Force Refund: {reason}");
+        ModifiedAt = nowUtc;
+
+        return UnitResult.Success<Error>();
+    }
+
+    /// <summary>
+    /// Admin override status: direct status transition without normal guards.
+    /// Use with extreme caution — this can put the order into an inconsistent
+    /// state. All overrides are logged in Notes for audit trail.
+    /// </summary>
+    public UnitResult<Error> AdminOverrideStatus(OrderStatus newStatus, string reason, DateTime nowUtc)
+    {
+        var oldStatus = Status;
+        Status = newStatus;
+        Notes = AppendNote(Notes, $"[ADMIN] Status override {oldStatus.Id} → {newStatus.Id}: {reason}");
+        ModifiedAt = nowUtc;
+        return UnitResult.Success<Error>();
+    }
+
+    private static string? AppendNote(string? existing, string note) =>
+        string.IsNullOrEmpty(existing) ? note : $"{existing}\n{note}";
+
     private Order() { }
 }

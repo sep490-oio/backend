@@ -181,6 +181,22 @@ public static partial class ApiEndpoint
             public const string GetCompletedAuctions = nameof(GetCompletedAuctions);
             public const string GetCompletedAuctionById = nameof(GetCompletedAuctionById);
 
+            // Admin Orders
+            public const string GetAdminOrders = nameof(GetAdminOrders);
+            public const string GetAdminOrderById = nameof(GetAdminOrderById);
+            public const string AdminForceCancelOrder = nameof(AdminForceCancelOrder);
+            public const string AdminForceRefundOrder = nameof(AdminForceRefundOrder);
+            public const string AdminOverrideOrderStatus = nameof(AdminOverrideOrderStatus);
+
+            // Admin Auction Actions
+            public const string AdminForceCancelAuction = nameof(AdminForceCancelAuction);
+            public const string AdminTerminateAuction = nameof(AdminTerminateAuction);
+            public const string AdminExtendAuctionTime = nameof(AdminExtendAuctionTime);
+            public const string AdminOverrideAuctionStatus = nameof(AdminOverrideAuctionStatus);
+            public const string AdminForceEndAuction = nameof(AdminForceEndAuction);
+            public const string AdminRelistAuction = nameof(AdminRelistAuction);
+            public const string AdminRemoveBidWithRefund = nameof(AdminRemoveBidWithRefund);
+
             // Warehouse inspection reject recovery (Phase D)
             public const string GetPendingInspectionRejectReturns = nameof(GetPendingInspectionRejectReturns);
             public const string RetryPendingInspectionReject = nameof(RetryPendingInspectionReject);
@@ -277,6 +293,7 @@ public static partial class ApiEndpoint
         {
             public const string GetSellerFinanceOverview = nameof(GetSellerFinanceOverview);
             public const string GetSellerEscrowLedger = nameof(GetSellerEscrowLedger);
+            public const string GetSellerAuctionDeposits = nameof(GetSellerAuctionDeposits);
         }
 
         public static class Reviews
@@ -388,6 +405,8 @@ public static partial class ApiEndpoint
             public const string GetEscrowById = nameof(GetEscrowById);
             public const string GetSummary = nameof(GetSummary);
             public const string GetPlatformWallet = nameof(GetPlatformWallet);
+            public const string GetPlatformWalletTransactions = nameof(GetPlatformWalletTransactions);
+            public const string GetRevenueHistory = nameof(GetRevenueHistory);
             public const string CompleteWithdrawal = nameof(CompleteWithdrawal);
         }
 

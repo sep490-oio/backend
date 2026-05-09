@@ -2226,6 +2226,54 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         return UnitResult.Success<Error>();
     }
 
+    // ==================================================================================
+    //                         ADMIN-ONLY METHODS
+    // ==================================================================================
+
+    /// <summary>
+    /// Admin extends the auction end time by a specified duration.
+    /// Only valid for Scheduled or Active auctions.
+    /// Does NOT count as an auto-extend; purely compensatory.
+    /// </summary>
+    public UnitResult<Error> AdminExtendEndTime(TimeSpan extension, string reason, DateTime nowUtc)
+    {
+        if (Status != AuctionStatus.Active && Status != AuctionStatus.Scheduled)
+            return AuctionErrors.Auction.InvalidState(Status.Id, "extend end time");
+
+        if (Info is null)
+            return Error.Validation("Info", "Auction.NoTimingInfo",
+                "Cannot extend auction without timing information.");
+
+        if (extension <= TimeSpan.Zero)
+            return Error.Validation("Extension", "Auction.InvalidExtension",
+                "Extension must be a positive duration.");
+
+        var extendResult = Info.ExtendByCompensation(extension);
+        if (extendResult.IsFailure)
+            return extendResult.Error;
+
+        Info = extendResult.Value;
+        ModifiedAt = nowUtc;
+
+        return UnitResult.Success<Error>();
+    }
+
+    /// <summary>
+    /// Admin directly overrides the auction status, bypassing the normal state machine.
+    /// Use with extreme caution — no domain events are raised.
+    /// </summary>
+    public UnitResult<Error> AdminOverrideStatus(AuctionStatus newStatus, string reason, DateTime nowUtc)
+    {
+        if (Status == newStatus)
+            return Error.Validation("Status", "Auction.SameStatus",
+                "Cannot override to the same status.");
+
+        Status = newStatus;
+        ModifiedAt = nowUtc;
+
+        return UnitResult.Success<Error>();
+    }
+
     public UnitResult<Error> MarkPaymentDefaulted(DateTime nowUtc)
     {
         if (WinnerId is null)

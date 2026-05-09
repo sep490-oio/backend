@@ -119,6 +119,22 @@ public static partial class ApiEndpoint
             public const string GetCompletedAuctions = $"{Base}/auctions/completed";
             public const string GetCompletedAuctionById = $"{Base}/auctions/completed/{{auctionId:guid}}";
 
+            // Admin Orders
+            public const string GetAdminOrders = $"{Base}/orders";
+            public const string GetAdminOrderById = $"{Base}/orders/{{orderId:guid}}";
+            public const string AdminForceCancelOrder = $"{Base}/orders/{{orderId:guid}}/force-cancel";
+            public const string AdminForceRefundOrder = $"{Base}/orders/{{orderId:guid}}/force-refund";
+            public const string AdminOverrideOrderStatus = $"{Base}/orders/{{orderId:guid}}/override-status";
+
+            // Admin Auction Actions
+            public const string AdminForceCancelAuction = $"{Base}/auctions/{{auctionId:guid}}/force-cancel";
+            public const string AdminTerminateAuction = $"{Base}/auctions/{{auctionId:guid}}/terminate";
+            public const string AdminExtendAuctionTime = $"{Base}/auctions/{{auctionId:guid}}/extend-time";
+            public const string AdminOverrideAuctionStatus = $"{Base}/auctions/{{auctionId:guid}}/override-status";
+            public const string AdminForceEndAuction = $"{Base}/auctions/{{auctionId:guid}}/force-end";
+            public const string AdminRelistAuction = $"{Base}/auctions/{{auctionId:guid}}/relist";
+            public const string AdminRemoveBidWithRefund = $"{Base}/auctions/{{auctionId:guid}}/bids/{{bidId:guid}}/remove";
+
             // Repair utilities (one-off)
             public const string RepairStuckInAuctionItems = $"{Base}/repair/stuck-in-auction-items";
 
@@ -245,6 +261,7 @@ public static partial class ApiEndpoint
 
             public const string Overview = $"{Base}/overview";
             public const string EscrowLedger = $"{Base}/escrow-ledger";
+            public const string AuctionDeposits = $"{Base}/auction-deposits";
         }
 
         public static class Reviews
@@ -364,6 +381,8 @@ public static partial class ApiEndpoint
             public const string GetEscrowById = $"{Base}/escrows/{{escrowId:guid}}";
             public const string GetSummary = $"{Base}/summary";
             public const string GetPlatformWallet = $"{Base}/platform-wallet";
+            public const string GetPlatformWalletTransactions = $"{Base}/platform-wallet/transactions";
+            public const string GetRevenueHistory = $"{Base}/revenue-history";
             public const string CompleteWithdrawal = $"{Base}/withdrawals/{{withdrawalId:guid}}/complete";
         }
 
