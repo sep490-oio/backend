@@ -255,8 +255,9 @@ internal sealed class CheckoutOrderCommandHandler
         if (txnNumberResult.IsFailure)
             return txnNumberResult.Error;
 
-        // Create Money
-        var moneyResult = Money.Create(orderAmount, order.Currency);
+        // Create Money — amount represents the net wallet payment (excluding deposit).
+        // This mirrors the VNPay path where transaction.Amount = gateway charge only.
+        var moneyResult = Money.Create(remainingAmount, order.Currency);
         if (moneyResult.IsFailure)
             return moneyResult.Error;
 
@@ -293,6 +294,20 @@ internal sealed class CheckoutOrderCommandHandler
 
             if (debitPendingResult.IsFailure)
                 return debitPendingResult.Error;
+
+            // Create a separate escrow for the deposit portion (mirrors VNPay path)
+            // so that escrow total = TotalAmount (wallet escrow + deposit escrow).
+            var depositEscrowResult = Escrow.Create(
+                order.Id,
+                transaction.Id,
+                winnerDeposit.Amount,
+                winnerDeposit.Amount.Currency.Id,
+                now);
+
+            if (depositEscrowResult.IsFailure)
+                return depositEscrowResult.Error;
+
+            _dbContext.Insert(depositEscrowResult.Value);
         }
 
         // Debit remaining from wallet
@@ -308,7 +323,7 @@ internal sealed class CheckoutOrderCommandHandler
                 return debitResult.Error;
         }
 
-        // Create Escrow
+        // Create Escrow for the wallet payment portion (net of deposit)
         var escrowResult = Escrow.Create(
             order.Id,
             transaction.Id,
