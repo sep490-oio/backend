@@ -4,13 +4,16 @@ using OIO.Application.Abstractions.Commons;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.PaymentContext.DTOs;
-using OIO.Application.Context.PaymentContext.Queries;
 using OIO.Application.Extensions;
+using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.Aggregates.Escrows;
 using OIO.Domain.Context.PaymentContext.Enums;
+using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
+using static OIO.Application.Context.OrderContext.Queries.Admin.GetCompletedAuctions.GetCompletedAuctionsQueryHandler;
 
 namespace OIO.Application.Context.PaymentContext.Queries.Admins.GetAdminEscrows;
 
@@ -70,6 +73,70 @@ internal sealed class GetAdminEscrowsQueryHandler
             .Select(x => x.ToDto())
             .ToPagedListAsync(count, parameters, cancellationToken);
 
-        return items;
+        // ── Batch-enrich with display names ──────────────────────────────
+        var userIds = items.Items
+            .SelectMany(e => new[] { UserId.From(e.BuyerId), UserId.From(e.SellerId) })
+            .Distinct()
+            .ToList();
+
+        var users = userIds.Count > 0
+            ? await _dbContext.Set<User>()
+                .AsNoTracking()
+                .Include(u => u.SellerProfile)
+                .Where(u => userIds.Contains(u.Id))
+                .ToListAsync(cancellationToken)
+            : [];
+        var usersById = users.ToDictionary(u => u.Id.Value);
+
+        // Resolve order numbers.
+        var orderIds = items.Items
+            .Select(e => OrderId.From(e.OrderId))
+            .Distinct()
+            .ToList();
+
+        var orderData = orderIds.Count > 0
+            ? await _dbContext.Set<Order>()
+                .AsNoTracking()
+                .Where(o => orderIds.Contains(o.Id))
+                .Select(o => new { Id = o.Id.Value, Number = o.OrderNumber.Value, AuctionId = o.AuctionId.Value })
+                .ToListAsync(cancellationToken)
+            : [];
+        var orderNumberById = orderData.ToDictionary(o => o.Id, o => o.Number);
+
+        // Resolve auction item titles via order → auction.
+        var auctionIds = orderData
+            .Select(o => AuctionId.From(o.AuctionId))
+            .Distinct()
+            .ToList();
+
+        var auctionTitles = auctionIds.Count > 0
+            ? await _dbContext.Set<Domain.Context.AuctionContext.Aggregates.Auctions.Auction>()
+                .AsNoTracking()
+                .Where(a => auctionIds.Contains(a.Id))
+                .Select(a => new { Id = a.Id.Value, Title = a.Item.Title.Value })
+                .ToListAsync(cancellationToken)
+            : [];
+        var titleByAuctionId = auctionTitles.ToDictionary(a => a.Id, a => a.Title);
+
+        // Build auction-title lookup keyed by orderId.
+        var titleByOrderId = orderData.ToDictionary(
+            o => o.Id,
+            o => titleByAuctionId.TryGetValue(o.AuctionId, out var t) ? t : null);
+
+        var enriched = items.Items
+            .Select(e => e with
+            {
+                OrderNumber = orderNumberById.TryGetValue(e.OrderId, out var on) ? on : null,
+                BuyerDisplayName = usersById.TryGetValue(e.BuyerId, out var buyer)
+                    ? ResolveUserDisplayName(buyer) : null,
+                SellerDisplayName = usersById.TryGetValue(e.SellerId, out var seller)
+                    ? ResolveSellerDisplayName(seller) : null,
+                AuctionItemTitle = titleByOrderId.TryGetValue(e.OrderId, out var at) ? at : null,
+            })
+            .ToList();
+
+        return new PagedList<EscrowDto>(
+            enriched, items.Metadata.TotalCount,
+            items.Metadata.CurrentPage, items.Metadata.PageSize);
     }
 }

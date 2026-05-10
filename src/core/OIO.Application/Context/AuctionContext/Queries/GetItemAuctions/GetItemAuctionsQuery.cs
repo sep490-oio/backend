@@ -1,0 +1,64 @@
+using CSharpFunctionalExtensions;
+using Microsoft.EntityFrameworkCore;
+using OIO.Application.Abstractions.Clock;
+using OIO.Application.Abstractions.Commons;
+using OIO.Application.Abstractions.Data;
+using OIO.Application.Abstractions.Messaging;
+using OIO.Application.Context.AuctionContext.DTOs;
+using OIO.Application.Context.AuctionContext.Mappings;
+using OIO.Application.Context.UserContext.Services;
+using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
+using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
+using OIO.Domain.SeedWork.Errors;
+
+namespace OIO.Application.Context.AuctionContext.Queries.GetItemAuctions;
+
+public sealed record GetItemAuctionsQuery(Guid ItemId) : IQuery<List<AuctionListItemDto>>;
+
+internal sealed class GetItemAuctionsQueryHandler
+    : IQueryHandler<GetItemAuctionsQuery, List<AuctionListItemDto>>
+{
+    private readonly IDbContext _dbContext;
+    private readonly ICurrentUser _currentUser;
+    private readonly IRuntimeSettings _runtimeSettings;
+    private readonly IClock _clock;
+
+    public GetItemAuctionsQueryHandler(
+        IDbContext dbContext,
+        ICurrentUser currentUser,
+        IRuntimeSettings runtimeSettings,
+        IClock clock)
+    {
+        _dbContext = dbContext;
+        _currentUser = currentUser;
+        _runtimeSettings = runtimeSettings;
+        _clock = clock;
+    }
+
+    public async Task<Result<List<AuctionListItemDto>, Error>> Handle(
+        GetItemAuctionsQuery request,
+        CancellationToken cancellationToken)
+    {
+        var nowUtc = _clock.UtcNow;
+        var itemId = ItemId.From(request.ItemId);
+
+        // Verify the item belongs to the current user.
+        var auctions = await _dbContext.Set<Auction>()
+            .AsNoTracking()
+            .Include(a => a.Item)
+                .ThenInclude(i => i.Media)
+            .Include(a => a.BuyNowReservations)
+            .AsSplitQuery()
+            .Where(a => a.Item.Id == itemId && a.Item.SellerId == _currentUser.UserId)
+            .OrderByDescending(a => a.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        var extensionThreshold = _runtimeSettings.Auction.ExtensionThreshold;
+
+        var dtos = auctions
+            .Select(a => a.ToListItemDto(nowUtc, extensionThreshold))
+            .ToList();
+
+        return dtos;
+    }
+}

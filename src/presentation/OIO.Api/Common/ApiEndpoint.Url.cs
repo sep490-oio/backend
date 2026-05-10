@@ -172,6 +172,7 @@ public static partial class ApiEndpoint
             public const string GetBySeller = $"{Base}/my";
             public const string Shipping = $"{Base}/{{itemId:guid}}/shipping";
             public const string CreateAuction = $"{Base}/{{itemId:guid}}/auctions";
+            public const string GetItemAuctions = $"{Base}/{{itemId:guid}}/auctions";
 
             // Images
             public const string AddMedia = $"{Base}/{{itemId:guid}}/media";
@@ -384,6 +385,8 @@ public static partial class ApiEndpoint
             public const string GetPlatformWalletTransactions = $"{Base}/platform-wallet/transactions";
             public const string GetRevenueHistory = $"{Base}/revenue-history";
             public const string CompleteWithdrawal = $"{Base}/withdrawals/{{withdrawalId:guid}}/complete";
+            public const string ForceReleaseEscrow = $"{Base}/escrows/{{escrowId:guid}}/force-release";
+            public const string ForceRefundEscrow = $"{Base}/escrows/{{escrowId:guid}}/force-refund";
         }
 
         public static class Orders
@@ -427,6 +430,8 @@ public static partial class ApiEndpoint
 
             public const string MyAuctions = $"{Base}/auctions";
             public const string MyBids = $"{Base}/bids";
+            public const string MyDeposits = $"{Base}/deposits";
+            public const string MyParticipations = $"{Base}/participations";
             public const string MyAuctionWatchlist = $"{Base}/auctions/watch-list";
             public const string MyPendingWinnerOffers = $"{Base}/winner-offers";
             public const string AddAddress = $"{Base}/addresses";

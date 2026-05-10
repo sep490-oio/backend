@@ -71,12 +71,20 @@ internal static class PaymentReadModelMapper
             CreatedAt: withdrawal.CreatedAt,
             ProcessedAt: withdrawal.ProcessedAt);
 
-    public static PaymentTransactionDto ToDto(this Transaction transaction)
+    public static PaymentTransactionDto ToDto(
+        this Transaction transaction,
+        string? userDisplayName = null,
+        string? orderNumber = null,
+        string? auctionItemTitle = null)
         => new(
             Id: transaction.Id.Value,
             TransactionNumber: transaction.TransactionNumber.Value,
             UserId: transaction.UserId.Value,
+            UserDisplayName: userDisplayName,
             OrderId: transaction.OrderId?.Value,
+            OrderNumber: orderNumber,
+            AuctionId: transaction.AuctionId?.Value,
+            AuctionItemTitle: auctionItemTitle,
             Type: transaction.Type.Id,
             Amount: transaction.Amount.Amount,
             Fee: transaction.Fee,
@@ -88,12 +96,21 @@ internal static class PaymentReadModelMapper
             CreatedAt: transaction.CreatedAt,
             ProcessedAt: transaction.ProcessedAt);
 
-    public static EscrowDto ToDto(this Escrow escrow)
+    public static EscrowDto ToDto(
+        this Escrow escrow,
+        string? orderNumber = null,
+        string? buyerDisplayName = null,
+        string? sellerDisplayName = null,
+        string? auctionItemTitle = null)
         => new(
             Id: escrow.Id.Value,
             OrderId: escrow.OrderId.Value,
+            OrderNumber: orderNumber,
             BuyerId: escrow.Order.BuyerId.Value,
+            BuyerDisplayName: buyerDisplayName,
             SellerId: escrow.Order.SellerId.Value,
+            SellerDisplayName: sellerDisplayName,
+            AuctionItemTitle: auctionItemTitle,
             Amount: escrow.Amount.Amount,
             Currency: escrow.Currency,
             Status: escrow.Status.Id,
