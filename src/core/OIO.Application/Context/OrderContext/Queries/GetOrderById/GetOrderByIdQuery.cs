@@ -186,6 +186,22 @@ internal sealed class GetOrderByIdQueryHandler(
             }
         }
 
+        // Hybrid wallet+VNPay payments create WalletTransaction entries (not
+        // Transaction entities) when the wallet portion is committed. Query the
+        // buyer's wallet ledger for the [HybridHold] marker to resolve the
+        // wallet portion amount for the DTO breakdown.
+        decimal? hybridWalletHoldAmount = null;
+        var orderIdStr = order.Id.Value.ToString();
+        var hybridHoldTx = await dbContext.Set<OIO.Domain.Context.PaymentContext.Aggregates.Wallets.WalletTransaction>()
+            .AsNoTracking()
+            .Where(wt => wt.Description != null &&
+                         wt.Description.Contains("[HybridHold]") &&
+                         wt.Description.Contains(orderIdStr))
+            .OrderByDescending(wt => wt.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (hybridHoldTx is not null)
+            hybridWalletHoldAmount = hybridHoldTx.Amount;
+
         return order.ToDto(
             item: itemSummary,
             sellerFulfillment: sellerFulfillment,
@@ -196,7 +212,8 @@ internal sealed class GetOrderByIdQueryHandler(
             directShipment: directShipment,
             warehouseOutboundShipment: warehouseOutboundDto,
             buyNowReservation: buyNowReservation,
-            winnerDepositAmount: winnerDepositAmount);
+            winnerDepositAmount: winnerDepositAmount,
+            hybridWalletHoldAmount: hybridWalletHoldAmount);
     }
 
     private static string? ResolveUserDisplayName(User? user)

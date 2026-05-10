@@ -243,6 +243,17 @@ public sealed class InboundShipment : AggregateRoot<InboundShipmentId>
 
         // Seller transitions: AwaitingPickup → InTransit, InTransit → SellerClaimsArrived
         // Staff transitions:  AwaitingPickup → InTransit, InTransit → Arrived, SellerClaimsArrived → Arrived
+
+        // Guard: once arrived or beyond, no backward/manual transitions allowed
+        if (Status == InboundShipmentStatus.Arrived ||
+            Status == InboundShipmentStatus.Inspected ||
+            Status == InboundShipmentStatus.Completed ||
+            Status == InboundShipmentStatus.Cancelled ||
+            Status == InboundShipmentStatus.Failed)
+        {
+            return WarehouseErrors.InboundShipment.InvalidTransition;
+        }
+
         if (Status == InboundShipmentStatus.AwaitingPickup &&
             newStatus != InboundShipmentStatus.InTransit)
             return WarehouseErrors.InboundShipment.InvalidTransition;
