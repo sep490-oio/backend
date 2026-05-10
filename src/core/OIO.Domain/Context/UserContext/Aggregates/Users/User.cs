@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using CSharpFunctionalExtensions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
@@ -323,7 +323,8 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
             return UserErrors.User.EmailNotConfirmed;
         };
 
-        TwoFactorEnabled = true;
+        // Only set the provider preference — TwoFactorEnabled stays false
+        // until ConfirmTotpSetup verifies the code and calls ConfirmTotpSetup().
         TwoFactorProvider = provider;
         ModifiedAt = now;
 

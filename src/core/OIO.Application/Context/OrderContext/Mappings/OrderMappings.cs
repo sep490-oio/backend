@@ -24,7 +24,8 @@ internal static class OrderMappings
         SellerDirectShipment? directShipment = null,
         OrderWarehouseOutboundShipmentDto? warehouseOutboundShipment = null,
         AuctionBuyNowReservation? buyNowReservation = null,
-        decimal? winnerDepositAmount = null)
+        decimal? winnerDepositAmount = null,
+        decimal? hybridWalletHoldAmount = null)
     {
         // Amount paid from escrows (holding or released_to_seller). Null when
         // no escrows exist so FE can distinguish "unpaid" from "0".
@@ -75,6 +76,12 @@ internal static class OrderMappings
                 .ToList();
             if (walletTxs.Count > 0)
                 walletAppliedAmount = walletTxs.Sum(t => t.Amount.Amount);
+
+            // Hybrid wallet hold creates WalletTransaction entries (not Transaction
+            // entities), so the filter above won't find them. Fall back to the
+            // amount the query handler resolved from the wallet ledger.
+            if (walletAppliedAmount is null && hybridWalletHoldAmount is not null && hybridWalletHoldAmount > 0m)
+                walletAppliedAmount = hybridWalletHoldAmount;
 
             var depositIds = depositTxs.Select(t => t.Id).ToHashSet();
             var walletIds = walletTxs.Select(t => t.Id).ToHashSet();

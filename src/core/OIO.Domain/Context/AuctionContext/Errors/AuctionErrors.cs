@@ -194,6 +194,10 @@ public static readonly Error NoRunnerUp =
         public static readonly Error LiveBiddingUnavailableForSealedAuction =
             Error.Conflict("Bid.SealedAuctionOnly",
                 "This auction only accepts sealed bids.");
+
+        public static readonly Error AlreadyWinning =
+            Error.Conflict("Bid.AlreadyWinning",
+                "You are already the highest bidder. Placing another bid would unnecessarily raise the price.");
     }
 
     public static class AutoBid

@@ -725,6 +725,11 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             return result.Error;
         }
 
+        // Prevent self-outbid: if the bidder is already the highest bidder, reject the manual bid
+        var currentWinningBid = GetCurrentWinningBid();
+        if (currentWinningBid is not null && currentWinningBid.BidderId == bidderId)
+            return AuctionErrors.Bid.AlreadyWinning;
+
         var minimumBid = GetMinimumBidAmount();
         var previousHighestBid = Pricing.CurrentAmount;
 

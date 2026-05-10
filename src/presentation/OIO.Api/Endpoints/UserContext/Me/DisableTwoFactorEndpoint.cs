@@ -7,13 +7,16 @@ namespace OIO.Api.Endpoints.UserContext.Me;
 
 public class DisableTwoFactorEndpoint : IEndpoint
 {
+    public record DisableTwoFactorRequest(string Code);
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost(ApiEndpoint.Url.Me.DisableTwoFactor, async (
+                DisableTwoFactorRequest request,
                 ISender sender,
                 CancellationToken ct) =>
             {
-                var command = new DisableTwoFactorCommand();
+                var command = new DisableTwoFactorCommand(request.Code);
                 
                 var result = await sender.Send(command, ct);
 

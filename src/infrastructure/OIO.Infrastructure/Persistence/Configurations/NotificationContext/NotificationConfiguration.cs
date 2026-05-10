@@ -25,7 +25,7 @@ internal sealed class NotificationConfiguration : IEntityTypeConfiguration<Domai
 
         builder.Property(n => n.EventType)
             .HasColumnName("event_type")
-            .HasMaxLength(50)
+            .HasMaxLength(100)
             .IsRequired();
 
         builder.Property(n => n.Title)

@@ -1,4 +1,5 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
+using OIO.Application.Abstractions.Auth;
 using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
@@ -17,17 +18,20 @@ internal sealed class DisableTwoFactorCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
+    private readonly ITotpService _totpService;
 
     public DisableTwoFactorCommandHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
-        IClock clock)
+        IClock clock,
+        ITotpService totpService)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
+        _totpService = totpService;
     }
 
     public async Task<UnitResult<Error>> Handle(
@@ -35,12 +39,23 @@ internal sealed class DisableTwoFactorCommandHandler
         CancellationToken cancellationToken)
     {
         var nowUtc = _clock.UtcNow;
-        
 
-        var user = await _dbContext.GetByIdAsync<User,UserId>(_currentUser.UserId, cancellationToken: cancellationToken);
+        var user = await _dbContext.GetByIdAsync<User, UserId>(
+            _currentUser.UserId, cancellationToken: cancellationToken);
         
         if (user is null)
             return UserErrors.User.NotFound(_currentUser.UserId);
+
+        // Require TOTP verification before allowing disable
+        if (user.TwoFactorEnabled && !string.IsNullOrWhiteSpace(user.TwoFactorSecret))
+        {
+            if (!_totpService.VerifyCode(user.TwoFactorSecret, request.Code, out _))
+            {
+                return Error.Unauthorized(
+                    code: "User.Totp.InvalidCode",
+                    description: "The provided TOTP code is invalid.");
+            }
+        }
 
         var disableTwoFactorResult = user.DisableTwoFactor(nowUtc);
 
