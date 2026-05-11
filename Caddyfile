@@ -6,6 +6,10 @@ fe.newlsun.com {
     reverse_proxy frontend:80
 }
 
+oio.vn {
+    reverse_proxy frontend:80
+}
+
 seq.newlsun.com {
     reverse_proxy seq:80
 }
