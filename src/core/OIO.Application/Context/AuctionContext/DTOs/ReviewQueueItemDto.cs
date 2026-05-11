@@ -7,6 +7,8 @@ public sealed record ReviewQueueItemDto(
     string Status,
     string Condition,
     Guid SellerId,
+    string? SellerName,
+    string? PrimaryImageUrl,
     Guid? AssignedAdminId,
     int ResubmissionCount,
     int MediaCount,

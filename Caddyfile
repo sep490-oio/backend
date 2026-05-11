@@ -5,7 +5,3 @@ api.newlsun.com {
 fe.newlsun.com, oio.vn {
     reverse_proxy frontend:80
 }
-
-seq.newlsun.com {
-    reverse_proxy seq:80
-}

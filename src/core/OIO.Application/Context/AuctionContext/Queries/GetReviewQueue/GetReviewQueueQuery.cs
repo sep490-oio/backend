@@ -10,6 +10,7 @@ using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.CatalogContext.Enums;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
 
@@ -76,22 +77,39 @@ internal sealed class GetReviewQueueQueryHandler
             .AsSplitQuery()
             .ToPagedListAsync(totalCount, parameters, cancellationToken);
 
+        var sellerIds = pagedItems.Items.Select(x => x.SellerId).Distinct().ToList();
+        var sellerNameLookup = await _dbContext.Set<SellerProfile>()
+            .AsNoTracking()
+            .Where(x => sellerIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, x => x.StoreName, cancellationToken);
+
         var items = pagedItems.Items
-            .Select(item => new ReviewQueueItemDto(
-                ItemId: item.Id.Value,
-                AuctionId: item.Auctions
-                    .OrderByDescending(a => a.CreatedAt)
-                    .Select(a => a.Id.Value)
-                    .FirstOrDefault(),
-                Title: item.Title.Value,
-                Status: item.Status.Id,
-                Condition: item.Condition.Id,
-                SellerId: item.SellerId.Value,
-                AssignedAdminId: item.AssignedAdminId?.Value,
-                ResubmissionCount: item.ResubmissionCount,
-                MediaCount: item.Media.Count,
-                SubmittedAt: item.SubmittedAt,
-                CreatedAt: item.CreatedAt))
+            .Select(item =>
+            {
+                sellerNameLookup.TryGetValue(item.SellerId, out var sellerName);
+                var primaryImage = item.Media
+                    .OrderBy(m => m.IsPrimary ? 0 : 1)
+                    .ThenBy(m => m.SortOrder)
+                    .FirstOrDefault();
+
+                return new ReviewQueueItemDto(
+                    ItemId: item.Id.Value,
+                    AuctionId: item.Auctions
+                        .OrderByDescending(a => a.CreatedAt)
+                        .Select(a => a.Id.Value)
+                        .FirstOrDefault(),
+                    Title: item.Title.Value,
+                    Status: item.Status.Id,
+                    Condition: item.Condition.Id,
+                    SellerId: item.SellerId.Value,
+                    SellerName: sellerName,
+                    PrimaryImageUrl: primaryImage?.Info.SecureUrl,
+                    AssignedAdminId: item.AssignedAdminId?.Value,
+                    ResubmissionCount: item.ResubmissionCount,
+                    MediaCount: item.Media.Count,
+                    SubmittedAt: item.SubmittedAt,
+                    CreatedAt: item.CreatedAt);
+            })
             .ToList();
 
         return items.ToPagedList(totalCount, parameters);
