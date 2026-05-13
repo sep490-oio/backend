@@ -3,6 +3,8 @@ namespace OIO.Application.Context.PaymentContext.DTOs;
 public sealed record AdminWithdrawalRequestDetailDto(
     Guid Id,
     Guid UserId,
+    string? UserDisplayName,
+    string? UserEmail,
     Guid WalletId,
     decimal Amount,
     decimal Fee,
@@ -15,5 +17,8 @@ public sealed record AdminWithdrawalRequestDetailDto(
     string? TransferProofUrl,
     string? TransferNote,
     Guid? ProcessedBy,
+    string? ProcessedByDisplayName,
     DateTime CreatedAt,
-    DateTime? ProcessedAt);
+    DateTime? ProcessedAt,
+    bool IsHighRisk = false,
+    bool UserKycVerified = false);

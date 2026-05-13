@@ -20,6 +20,8 @@ using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
+using OIO.Domain.Context.PaymentContext.Aggregates.Withdrawals;
+using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 using CategoryId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.CategoryId;
 
@@ -287,6 +289,23 @@ internal sealed class MediaRelocationService : IMediaRelocationService
             return UnitResult.Success<Error>();
         }
 
+        if (_contextRegistry.IsWithdrawalContext(upload.Context))
+        {
+            var withdrawal = await FindWithdrawalRequestAsync(upload.EntityId, cancellationToken);
+            if (withdrawal is null)
+                return Error.NotFound("Media.WithdrawalNotFound", $"Withdrawal request '{upload.EntityId}' was not found during media relocation.");
+
+            var oldUrl = upload.Info.SecureUrl;
+            var newUrl = info.SecureUrl;
+            if (!string.IsNullOrWhiteSpace(oldUrl) && !string.IsNullOrWhiteSpace(newUrl))
+            {
+                var refreshResult = withdrawal.RefreshTransferProofUrl(oldUrl, newUrl);
+                if (refreshResult.IsFailure)
+                    return refreshResult.Error;
+            }
+            return UnitResult.Success<Error>();
+        }
+
         return Error.Validation("context", "Media.UnsupportedContext", $"Media relocation does not support context '{upload.Context}'.");
     }
 
@@ -429,6 +448,18 @@ internal sealed class MediaRelocationService : IMediaRelocationService
 
         return await _dbContext.GetByIdAsync<DisputeMessageAttachment, DisputeMessageAttachmentId>(
             attachmentId,
+            cancellationToken: cancellationToken);
+    }
+
+    private async Task<WithdrawalRequest?> FindWithdrawalRequestAsync(string entityId, CancellationToken cancellationToken)
+    {
+        var withdrawalId = WithdrawalRequestId.Parse(entityId);
+        var local = _dbContext.Set<WithdrawalRequest>().Local.FirstOrDefault(x => x.Id == withdrawalId);
+        if (local is not null)
+            return local;
+
+        return await _dbContext.GetByIdAsync<WithdrawalRequest, WithdrawalRequestId>(
+            withdrawalId,
             cancellationToken: cancellationToken);
     }
 

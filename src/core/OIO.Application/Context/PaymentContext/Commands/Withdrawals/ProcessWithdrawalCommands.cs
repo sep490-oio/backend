@@ -4,10 +4,13 @@ using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.Services;
+using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
 using OIO.Domain.Context.PaymentContext.Aggregates.Withdrawals;
 using OIO.Domain.Context.PaymentContext.Enums;
+using OIO.Domain.Context.PaymentContext.ValueObjects;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
+using OIO.Domain.Context.Shared.Entities;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
@@ -122,6 +125,20 @@ internal sealed class RejectWithdrawalCommandHandler
                 return unholdResult.Error;
         }
 
+        // Mark corresponding Transaction as Failed
+        var txn = await _dbContext.Set<Transaction>()
+            .FirstOrDefaultAsync(t =>
+                t.UserId == withdrawal.UserId &&
+                t.Type == TransactionType.Withdrawal &&
+                (t.Status == TransactionStatus.Pending || t.Status == TransactionStatus.Processing) &&
+                t.Amount.Amount == withdrawal.Amount,
+                cancellationToken);
+
+        if (txn is not null)
+        {
+            txn.MarkAsFailed(GatewayInfo.Empty, now);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return UnitResult.Success<Error>();
     }
@@ -198,6 +215,36 @@ internal sealed class CompleteWithdrawalCommandHandler
 
         if (debitResult.IsFailure)
             return Error.Conflict("Wallet.DebitPendingFailed", debitResult.Error.Message);
+
+        // Mark corresponding Transaction as Completed
+        var txn = await _dbContext.Set<Transaction>()
+            .FirstOrDefaultAsync(t =>
+                t.UserId == withdrawal.UserId &&
+                t.Type == TransactionType.Withdrawal &&
+                (t.Status == TransactionStatus.Pending || t.Status == TransactionStatus.Processing) &&
+                t.Amount.Amount == withdrawal.Amount,
+                cancellationToken);
+
+        if (txn is not null)
+        {
+            txn.MarkAsCompleted(GatewayInfo.Empty, now);
+        }
+
+        // Link the transfer proof MediaUpload to the withdrawal so the
+        // relocation background job can move it from /pending/ to permanent
+        // storage and update WithdrawalRequest.TransferProofUrl.
+        var mediaUpload = await _dbContext.Set<MediaUpload>()
+            .Where(m => m.UserId == _currentUser.UserId
+                && m.Context == "withdrawal_transfer_proof"
+                && m.Info.SecureUrl == request.TransferProofUrl
+                && m.EntityId == null)
+            .OrderByDescending(m => m.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (mediaUpload is not null)
+        {
+            mediaUpload.LinkToEntity(withdrawal.Id, now);
+        }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return UnitResult.Success<Error>();

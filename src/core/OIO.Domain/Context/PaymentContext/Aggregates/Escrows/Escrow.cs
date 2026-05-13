@@ -129,4 +129,36 @@ public sealed class Escrow : AggregateRoot<EscrowId>
 
         return UnitResult.Success<SeedWork.Errors.Error>();
     }
+
+    public UnitResult<SeedWork.Errors.Error> ForfeitToPlatform(
+        TransactionId forfeitTransactionId,
+        UserId createdBy,
+        DateTime now)
+    {
+        if (Status != EscrowStatus.Holding)
+        {
+            return SeedWork.Errors.Error.Conflict("Escrow.InvalidStatus", "Escrow is not in holding state.");
+        }
+
+        Status = EscrowStatus.ForfeitedToPlatform;
+        ReleasedTo = EscrowReleaseTo.Platform;
+        ReleaseTransactionId = forfeitTransactionId;
+        ReleasedAt = now;
+
+        var releaseEvent = EscrowReleaseEvent.Create(
+            Id,
+            EscrowReleaseType.Forfeit,
+            "PlatformForfeit",
+            null,
+            Amount.Amount,
+            createdBy,
+            now);
+            
+        _releaseEvents.Add(releaseEvent.Value);
+
+        RaiseDomainEvent(new EscrowForfeitedToPlatformDomainEvent(
+            Id, OrderId.Value, Amount.Amount, Currency, now));
+
+        return UnitResult.Success<SeedWork.Errors.Error>();
+    }
 }

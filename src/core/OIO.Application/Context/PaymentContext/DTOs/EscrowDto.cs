@@ -15,4 +15,6 @@ public sealed record EscrowDto(
     Guid? HoldTransactionId,
     DateTime CreatedAt,
     DateTime? ReleasedAt,
-    DateTime? RefundedAt);
+    DateTime? RefundedAt,
+    string? HoldReason = null,
+    IReadOnlyCollection<EscrowReleaseEventDto>? ReleaseEvents = null);

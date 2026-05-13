@@ -413,6 +413,8 @@ public static partial class ApiEndpoint
             public const string CompleteWithdrawal = nameof(CompleteWithdrawal);
             public const string ForceReleaseEscrow = nameof(ForceReleaseEscrow);
             public const string ForceRefundEscrow = nameof(ForceRefundEscrow);
+            public const string ForceForfeitEscrow = nameof(ForceForfeitEscrow);
+            public const string BulkApproveWithdrawals = nameof(BulkApproveWithdrawals);
         }
 
         public static class Orders

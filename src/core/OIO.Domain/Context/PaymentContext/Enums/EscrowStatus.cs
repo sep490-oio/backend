@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 
 namespace OIO.Domain.Context.PaymentContext.Enums;
 
@@ -8,5 +8,6 @@ public sealed class EscrowStatus : EnumValueObject<EscrowStatus>
     public static readonly EscrowStatus ReleasedToSeller = new("released_to_seller");
     public static readonly EscrowStatus RefundedToBuyer = new("refunded_to_buyer");
     public static readonly EscrowStatus Disputed = new("disputed");
+    public static readonly EscrowStatus ForfeitedToPlatform = new("forfeited");
     private EscrowStatus(string id) : base(id) { }
 }

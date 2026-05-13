@@ -148,4 +148,24 @@ public sealed class WithdrawalRequest : AggregateRoot<WithdrawalRequestId>, ICre
         ProcessedAt = nowUtc;
         return CSharpFunctionalExtensions.UnitResult.Success<SeedWork.Errors.Error>();
     }
+
+    /// <summary>
+    /// Media relocation callback — updates the transfer proof URL after Cloudinary
+    /// moves the image from the temporary /pending/ folder to its permanent path.
+    /// </summary>
+    public CSharpFunctionalExtensions.UnitResult<SeedWork.Errors.Error> RefreshTransferProofUrl(
+        string oldUrl,
+        string newUrl)
+    {
+        if (string.IsNullOrWhiteSpace(TransferProofUrl))
+            return SeedWork.Errors.Error.Conflict("Withdrawal.NoTransferProof",
+                "Cannot refresh transfer proof URL — no proof has been uploaded yet.");
+
+        // Only update if the current URL matches the old one (guard against stale relocation)
+        if (!string.Equals(TransferProofUrl, oldUrl, StringComparison.Ordinal))
+            return CSharpFunctionalExtensions.UnitResult.Success<SeedWork.Errors.Error>();
+
+        TransferProofUrl = newUrl;
+        return CSharpFunctionalExtensions.UnitResult.Success<SeedWork.Errors.Error>();
+    }
 }

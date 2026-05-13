@@ -66,19 +66,41 @@ internal sealed class RefundEscrowCommandHandler : ICommandHandler<RefundEscrowC
         if (buyerWallet is null)
             return Error.NotFound("Wallet.NotFound", "Buyer wallet not found.");
 
-        // 1. Create a Wallet Transaction (Credit) for the Buyer
+        // 1. Create Transaction for Refund
+        var txNumberResult = TransactionNumber.Create($"REFUND-{Guid.CreateVersion7():N}");
+        if (txNumberResult.IsFailure)
+            return txNumberResult.Error;
+
+        var txResult = Transaction.Create(
+            order.BuyerId,
+            txNumberResult.Value,
+            TransactionType.Refund,
+            escrow.Amount,
+            escrow.Currency,
+            $"Admin force refund escrow to buyer for Order {order.OrderNumber.Value} - Reason: {request.Reason}",
+            now,
+            escrow.OrderId);
+
+        if (txResult.IsFailure)
+            return txResult.Error;
+
+        var transaction = txResult.Value;
+        transaction.MarkAsCompleted(GatewayInfo.Empty, now);
+        _dbContext.Set<Transaction>().Add(transaction);
+
+        // 2. Create a Wallet Transaction (Credit) for the Buyer
         var creditResult = buyerWallet.Credit(
             amount: escrow.Amount.Amount,
-            transactionId: escrow.HoldTransactionId, // Link back to the original funding transaction
+            transactionId: transaction.Id,
             description: $"Escrow refunded to buyer for Order {order.OrderNumber.Value} - Reason: {request.Reason}",
             nowUtc: now);
 
         if (creditResult.IsFailure)
             return Error.Conflict("Wallet.CreditFailed", creditResult.Error.Message);
 
-        // 2. Perform Refund on Escrow Domain
+        // 3. Perform Refund on Escrow Domain
         var refundResult = escrow.RefundToBuyer(
-            refundTransactionId: escrow.HoldTransactionId.Value,
+            refundTransactionId: transaction.Id,
             createdBy: _currentUser.UserId,
             now: now);
 

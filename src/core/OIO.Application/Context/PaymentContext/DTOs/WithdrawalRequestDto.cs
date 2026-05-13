@@ -13,4 +13,6 @@ public sealed record WithdrawalRequestDto(
     string? TransferProofUrl,
     string? TransferNote,
     DateTime CreatedAt,
-    DateTime? ProcessedAt);
+    DateTime? ProcessedAt,
+    bool IsHighRisk = false,
+    bool UserKycVerified = false);

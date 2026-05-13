@@ -12,6 +12,7 @@ using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 using static OIO.Application.Context.OrderContext.Queries.Admin.GetCompletedAuctions.GetCompletedAuctionsQueryHandler;
 
@@ -23,6 +24,10 @@ public record AdminTransactionFilterParameters : PagedParameters
     public string? Type { get; init; }
     public Guid? UserId { get; init; }
     public Guid? OrderId { get; init; }
+    public DateTime? FromDate { get; init; }
+    public DateTime? ToDate { get; init; }
+    public string? SearchTerm { get; init; }
+    public string? GatewayProvider { get; init; }
 }
 
 public sealed record GetAdminTransactionsQuery(
@@ -53,6 +58,18 @@ internal sealed class GetAdminTransactionsQueryHandler
         if (parameters.OrderId.HasValue)
             query = query.Where(x => x.OrderId == OrderId.From(parameters.OrderId.Value));
 
+        if (parameters.FromDate.HasValue)
+            query = query.Where(x => x.CreatedAt >= parameters.FromDate.Value);
+
+        if (parameters.ToDate.HasValue)
+            query = query.Where(x => x.CreatedAt <= parameters.ToDate.Value);
+
+        if (!string.IsNullOrWhiteSpace(parameters.SearchTerm))
+        {
+            var searchTerm = parameters.SearchTerm.Trim().ToLower();
+            query = query.Where(x => x.TransactionNumber.Value.ToLower().Contains(searchTerm));
+        }
+
         if (!string.IsNullOrWhiteSpace(parameters.Status))
         {
             var status = TransactionStatus.FromId(parameters.Status);
@@ -69,6 +86,19 @@ internal sealed class GetAdminTransactionsQueryHandler
                 return Error.Validation("type", "Transaction.InvalidType", "Unsupported transaction type.");
 
             query = query.Where(x => x.Type == type.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(parameters.GatewayProvider))
+        {
+            var provider = parameters.GatewayProvider.Trim().ToLower();
+            if (provider == "wallet" || provider == "system")
+            {
+                query = query.Where(x => string.IsNullOrEmpty(x.Gateway.Provider) || x.Gateway.Provider.ToLower() == "system");
+            }
+            else
+            {
+                query = query.Where(x => x.Gateway.Provider != null && x.Gateway.Provider.ToLower() == provider);
+            }
         }
 
         query = query.OrderByDescending(x => x.CreatedAt);
@@ -127,15 +157,97 @@ internal sealed class GetAdminTransactionsQueryHandler
             : [];
         var titleByAuctionId = auctionTitles.ToDictionary(a => a.Id, a => a.Title);
 
-        var enriched = items.Items
-            .Select(t => t with
+        var withdrawalTxns = items.Items
+            .Where(t => t.Type == TransactionType.Withdrawal.Id)
+            .ToList();
+
+        var withdrawRequestsByTxnId = new Dictionary<Guid, Domain.Context.PaymentContext.Aggregates.Withdrawals.WithdrawalRequest>();
+        if (withdrawalTxns.Count > 0)
+        {
+            var userIdsForWithdrawals = withdrawalTxns.Select(t => UserId.From(t.UserId)).Distinct().ToList();
+            var minDate = withdrawalTxns.Min(t => t.CreatedAt).AddMinutes(-2);
+            var maxDate = withdrawalTxns.Max(t => t.CreatedAt).AddMinutes(2);
+
+            var wReqs = await _dbContext.Set<Domain.Context.PaymentContext.Aggregates.Withdrawals.WithdrawalRequest>()
+                .AsNoTracking()
+                .Where(w => userIdsForWithdrawals.Contains(w.UserId) && w.CreatedAt >= minDate && w.CreatedAt <= maxDate)
+                .ToListAsync(cancellationToken);
+
+            foreach (var tx in withdrawalTxns)
             {
-                UserDisplayName = usersById.TryGetValue(t.UserId, out var u)
-                    ? ResolveUserDisplayName(u) : null,
-                OrderNumber = t.OrderId.HasValue && orderNumberById.TryGetValue(t.OrderId.Value, out var on)
-                    ? on : null,
-                AuctionItemTitle = t.AuctionId.HasValue && titleByAuctionId.TryGetValue(t.AuctionId.Value, out var at)
-                    ? at : null,
+                var req = wReqs.FirstOrDefault(w => w.UserId.Value == tx.UserId && w.Amount == tx.Amount && Math.Abs((w.CreatedAt - tx.CreatedAt).TotalSeconds) < 10);
+                if (req != null)
+                {
+                    withdrawRequestsByTxnId[tx.Id] = req;
+                    if (req.ProcessedBy != null)
+                        userIds.Add(req.ProcessedBy.Value); // Ensure admin is in userIds to fetch name later if not already there
+                }
+            }
+        }
+
+        // Fetch escrows to map processed by for release, refund, forfeit
+        var transactionIds = items.Items.Select(t => (TransactionId?)TransactionId.From(t.Id)).ToList();
+        var escrowTxns = await _dbContext.Set<Domain.Context.PaymentContext.Aggregates.Escrows.Escrow>()
+            .AsNoTracking()
+            .Include(e => e.ReleaseEvents)
+            .Where(e => e.ReleaseTransactionId != null && transactionIds.Contains(e.ReleaseTransactionId))
+            .ToListAsync(cancellationToken);
+
+        var escrowByTxnId = escrowTxns.ToDictionary(e => e.ReleaseTransactionId!.Value);
+        
+        foreach (var escrow in escrowTxns)
+        {
+            var latestReleaseEvent = escrow.ReleaseEvents.OrderByDescending(x => x.CreatedAt).FirstOrDefault();
+            if (latestReleaseEvent?.CreatedBy != null)
+            {
+                userIds.Add(latestReleaseEvent.CreatedBy.Value);
+            }
+        }
+
+        // Re-fetch users if we added new admin ids
+        var additionalUserIds = userIds.Except(usersById.Keys.Select(k => UserId.From(k))).ToList();
+        if (additionalUserIds.Count > 0)
+        {
+            var additionalUsers = await _dbContext.Set<User>()
+                .AsNoTracking()
+                .Where(u => additionalUserIds.Contains(u.Id))
+                .ToListAsync(cancellationToken);
+            foreach (var au in additionalUsers)
+                usersById[au.Id.Value] = au;
+        }
+
+        var enriched = items.Items
+            .Select(t => 
+            {
+                var wReq = withdrawRequestsByTxnId.GetValueOrDefault(t.Id);
+                var escrow = escrowByTxnId.GetValueOrDefault(TransactionId.From(t.Id));
+                var latestEscrowEvent = escrow?.ReleaseEvents.OrderByDescending(x => x.CreatedAt).FirstOrDefault();
+
+                var processedBy = wReq?.ProcessedBy?.Value ?? latestEscrowEvent?.CreatedBy?.Value;
+                
+                string? processedByName = null;
+                if (processedBy.HasValue)
+                {
+                    if (usersById.TryGetValue(processedBy.Value, out var au))
+                    {
+                        processedByName = ResolveUserDisplayName(au);
+                    }
+                }
+
+                var processNote = wReq?.TransferNote ?? wReq?.RejectionReason ?? latestEscrowEvent?.TriggerSourceType;
+                
+                return t with
+                {
+                    UserDisplayName = usersById.TryGetValue(t.UserId, out var u)
+                        ? ResolveUserDisplayName(u) : null,
+                    OrderNumber = t.OrderId.HasValue && orderNumberById.TryGetValue(t.OrderId.Value, out var on)
+                        ? on : null,
+                    AuctionItemTitle = t.AuctionId.HasValue && titleByAuctionId.TryGetValue(t.AuctionId.Value, out var at)
+                        ? at : null,
+                    ProcessedBy = processedBy,
+                    ProcessedByDisplayName = processedByName,
+                    ProcessNote = processNote
+                };
             })
             .ToList();
 

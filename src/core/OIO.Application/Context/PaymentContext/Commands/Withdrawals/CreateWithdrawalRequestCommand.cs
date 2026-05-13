@@ -4,8 +4,12 @@ using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.Services;
+using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
 using OIO.Domain.Context.PaymentContext.Aggregates.Withdrawals;
+using OIO.Domain.Context.PaymentContext.Enums;
+using OIO.Domain.Context.PaymentContext.ValueObjects;
+using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
@@ -64,17 +68,47 @@ internal sealed class CreateWithdrawalRequestCommandHandler
         // 2. Tính phí rút tiền (có thể cấu hình, hiện tại 0)
         decimal fee = 0;
 
-        // 3. Hold tiền trong ví
+        // 3. Tạo Transaction (Pending) để ghi nhận withdrawal vào sổ cái
+        var txNumberResult = TransactionNumber.Create($"WD-{Guid.CreateVersion7():N}");
+        if (txNumberResult.IsFailure)
+            return txNumberResult.Error;
+
+        var amountMoneyResult = Money.Create(request.Amount, wallet.WalletFunds.Currency);
+        if (amountMoneyResult.IsFailure)
+            return amountMoneyResult.Error;
+
+        var txResult = Transaction.Create(
+            userId,
+            txNumberResult.Value,
+            TransactionType.Withdrawal,
+            amountMoneyResult.Value,
+            wallet.WalletFunds.Currency.Id,
+            $"Withdrawal request - {request.Amount:N0} to {request.BankName} / {request.AccountHolder}",
+            now);
+
+        if (txResult.IsFailure)
+            return txResult.Error;
+
+        var transaction = txResult.Value;
+        if (fee > 0)
+        {
+            var netMoneyResult = Money.Create(request.Amount - fee, wallet.WalletFunds.Currency);
+            if (netMoneyResult.IsSuccess)
+                transaction.SetFee(fee, netMoneyResult.Value);
+        }
+        _dbContext.Set<Transaction>().Add(transaction);
+
+        // 4. Hold tiền trong ví (liên kết transactionId)
         var holdResult = wallet.Hold(
             request.Amount,
-            transactionId: null,
+            transactionId: transaction.Id,
             description: $"Withdrawal hold - {request.Amount}",
             nowUtc: now);
 
         if (holdResult.IsFailure)
             return holdResult.Error;
 
-        // 4. Tạo WithdrawalRequest
+        // 5. Tạo WithdrawalRequest
         var bankAccount = BankAccount.Create(
             request.BankName,
             request.AccountNumber,

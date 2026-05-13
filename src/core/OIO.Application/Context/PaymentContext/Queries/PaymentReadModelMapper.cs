@@ -56,6 +56,8 @@ internal static class PaymentReadModelMapper
         => new(
             Id: withdrawal.Id.Value,
             UserId: withdrawal.UserId.Value,
+            UserDisplayName: null,
+            UserEmail: null,
             WalletId: withdrawal.WalletId.Value,
             Amount: withdrawal.Amount,
             Fee: withdrawal.Fee,
@@ -68,14 +70,20 @@ internal static class PaymentReadModelMapper
             TransferProofUrl: withdrawal.TransferProofUrl,
             TransferNote: withdrawal.TransferNote,
             ProcessedBy: withdrawal.ProcessedBy?.Value,
+            ProcessedByDisplayName: null,
             CreatedAt: withdrawal.CreatedAt,
-            ProcessedAt: withdrawal.ProcessedAt);
+            ProcessedAt: withdrawal.ProcessedAt,
+            IsHighRisk: withdrawal.Amount > 10000000m,
+            UserKycVerified: false);
 
     public static PaymentTransactionDto ToDto(
         this Transaction transaction,
         string? userDisplayName = null,
         string? orderNumber = null,
-        string? auctionItemTitle = null)
+        string? auctionItemTitle = null,
+        Guid? processedBy = null,
+        string? processedByDisplayName = null,
+        string? processNote = null)
         => new(
             Id: transaction.Id.Value,
             TransactionNumber: transaction.TransactionNumber.Value,
@@ -94,7 +102,10 @@ internal static class PaymentReadModelMapper
             GatewayProvider: transaction.Gateway.Provider,
             Description: transaction.Description,
             CreatedAt: transaction.CreatedAt,
-            ProcessedAt: transaction.ProcessedAt);
+            ProcessedAt: transaction.ProcessedAt,
+            ProcessedBy: processedBy,
+            ProcessedByDisplayName: processedByDisplayName,
+            ProcessNote: processNote);
 
     public static EscrowDto ToDto(
         this Escrow escrow,
@@ -117,7 +128,19 @@ internal static class PaymentReadModelMapper
             HoldTransactionId: escrow.HoldTransactionId?.Value,
             CreatedAt: escrow.HeldAt,
             ReleasedAt: escrow.Status == EscrowStatus.RefundedToBuyer ? null : escrow.ReleasedAt,
-            RefundedAt: escrow.Status == EscrowStatus.RefundedToBuyer ? escrow.ReleasedAt : null);
+            RefundedAt: escrow.Status == EscrowStatus.RefundedToBuyer ? escrow.ReleasedAt : null,
+            ReleaseEvents: escrow.ReleaseEvents
+                .OrderByDescending(x => x.CreatedAt)
+                .Select(x => new EscrowReleaseEventDto(
+                    Id: x.Id.Value,
+                    ReleaseType: x.ReleaseType.Id,
+                    TriggerSourceType: x.TriggerSourceType,
+                    TriggerSourceId: x.TriggerSourceId,
+                    Amount: x.Amount,
+                    CreatedBy: x.CreatedBy?.Value,
+                    CreatedByDisplayName: null,
+                    CreatedAt: x.CreatedAt))
+                .ToList());
 
     public static EscrowDetailDto ToDetailDto(this Escrow escrow)
         => new(
@@ -142,6 +165,7 @@ internal static class PaymentReadModelMapper
                     TriggerSourceId: x.TriggerSourceId,
                     Amount: x.Amount,
                     CreatedBy: x.CreatedBy?.Value,
+                    CreatedByDisplayName: null,
                     CreatedAt: x.CreatedAt))
                 .ToList());
 

@@ -7,4 +7,5 @@ public sealed record EscrowReleaseEventDto(
     Guid? TriggerSourceId,
     decimal Amount,
     Guid? CreatedBy,
+    string? CreatedByDisplayName,
     DateTime CreatedAt);

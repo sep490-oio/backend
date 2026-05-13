@@ -387,6 +387,8 @@ public static partial class ApiEndpoint
             public const string CompleteWithdrawal = $"{Base}/withdrawals/{{withdrawalId:guid}}/complete";
             public const string ForceReleaseEscrow = $"{Base}/escrows/{{escrowId:guid}}/force-release";
             public const string ForceRefundEscrow = $"{Base}/escrows/{{escrowId:guid}}/force-refund";
+            public const string ForceForfeitEscrow = $"{Base}/escrows/{{escrowId:guid}}/force-forfeit";
+            public const string BulkApproveWithdrawals = $"{Base}/withdrawals/bulk-approve";
         }
 
         public static class Orders

@@ -23,6 +23,7 @@ public record AdminEscrowFilterParameters : PagedParameters
     public Guid? OrderId { get; init; }
     public Guid? BuyerId { get; init; }
     public Guid? SellerId { get; init; }
+    public string? SearchTerm { get; init; }
 }
 
 public sealed record GetAdminEscrowsQuery(
@@ -46,6 +47,7 @@ internal sealed class GetAdminEscrowsQueryHandler
         var query = _dbContext.Set<Escrow>()
             .AsNoTracking()
             .Include(x => x.Order)
+            .Include(x => x.ReleaseEvents)
             .AsQueryable();
 
         if (parameters.OrderId.HasValue)
@@ -66,22 +68,31 @@ internal sealed class GetAdminEscrowsQueryHandler
             query = query.Where(x => x.Status == status.Value);
         }
 
+        if (!string.IsNullOrWhiteSpace(parameters.SearchTerm))
+        {
+            var term = parameters.SearchTerm.Trim().ToLower();
+            query = query.Where(x =>
+                x.Order.OrderNumber.Value.ToLower().Contains(term));
+        }
+
         query = query.OrderByDescending(x => x.HeldAt);
 
         var count = await query.CountAsync(cancellationToken);
         var items = await query
-            .Select(x => x.ToDto())
+            .Select(x => x.ToDto(null, null, null, null))
             .ToPagedListAsync(count, parameters, cancellationToken);
 
         // ── Batch-enrich with display names ──────────────────────────────
         var userIds = items.Items
             .SelectMany(e => new[] { UserId.From(e.BuyerId), UserId.From(e.SellerId) })
+            .Concat(items.Items.SelectMany(e => e.ReleaseEvents ?? []).Where(r => r.CreatedBy != null).Select(r => UserId.From(r.CreatedBy!.Value)))
             .Distinct()
             .ToList();
 
         var users = userIds.Count > 0
             ? await _dbContext.Set<User>()
                 .AsNoTracking()
+                .Include(u => u.Profile)
                 .Include(u => u.SellerProfile)
                 .Where(u => userIds.Contains(u.Id))
                 .ToListAsync(cancellationToken)
@@ -132,6 +143,12 @@ internal sealed class GetAdminEscrowsQueryHandler
                 SellerDisplayName = usersById.TryGetValue(e.SellerId, out var seller)
                     ? ResolveSellerDisplayName(seller) : null,
                 AuctionItemTitle = titleByOrderId.TryGetValue(e.OrderId, out var at) ? at : null,
+                ReleaseEvents = e.ReleaseEvents?.Select(r => r with
+                {
+                    CreatedByDisplayName = r.CreatedBy != null && usersById.TryGetValue(r.CreatedBy.Value, out var admin)
+                        ? (admin.Profile?.Name?.DisplayName ?? admin.Profile?.Name?.FullName ?? admin.UserName.Value)
+                        : null
+                }).ToList()
             })
             .ToList();
 

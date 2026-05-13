@@ -16,6 +16,7 @@ public record AdminWithdrawalFilterParameters : PagedParameters
 {
     public string? Status { get; init; }
     public Guid? UserId { get; init; }
+    public string? SearchTerm { get; init; }
 }
 
 public sealed record GetAdminWithdrawalsQuery(
@@ -52,14 +53,59 @@ internal sealed class GetAdminWithdrawalsQueryHandler
             query = query.Where(x => x.Status == status.Value);
         }
 
+        if (!string.IsNullOrWhiteSpace(parameters.SearchTerm))
+        {
+            var term = parameters.SearchTerm.Trim().ToLower();
+            query = query.Where(x =>
+                (x.BankAccount.AccountHolder != null && x.BankAccount.AccountHolder.ToLower().Contains(term)) ||
+                (x.BankAccount.AccountNumber != null && x.BankAccount.AccountNumber.ToLower().Contains(term)) ||
+                x.UserId.Value.ToString().ToLower().Contains(term));
+        }
+
         query = query.OrderByDescending(x => x.CreatedAt);
 
         var count = await query.CountAsync(cancellationToken);
-        var items = await query
-            .Select(x => x.ToAdminDetailDto())
+        var pagedItems = await query
             .ToPagedListAsync(count, parameters, cancellationToken);
 
-        return items;
+        var userIds = pagedItems.Items.Select(x => x.UserId).Distinct().ToList();
+        var adminIds = pagedItems.Items.Where(x => x.ProcessedBy != null).Select(x => x.ProcessedBy!.Value).Distinct().ToList();
+        var allUserIds = userIds.Concat(adminIds).Distinct().ToList();
+
+        var users = await _dbContext.Set<Domain.Context.UserContext.Aggregates.Users.User>()
+            .AsNoTracking()
+            .Include(u => u.Profile)
+            .Include(u => u.SellerProfile)
+            .Where(u => allUserIds.Contains(u.Id))
+            .ToListAsync(cancellationToken);
+            
+        var usersById = users.ToDictionary(u => u.Id.Value);
+
+        var items = pagedItems.Items.Select(x => 
+        {
+            var dto = x.ToAdminDetailDto();
+            var user = usersById.GetValueOrDefault(x.UserId.Value);
+            var adminUser = x.ProcessedBy != null ? usersById.GetValueOrDefault(x.ProcessedBy.Value.Value) : null;
+            var isKycVerified = user?.SellerProfile?.Status == Domain.Context.UserContext.Enums.SellerProfileStatus.Verified;
+            var displayName = user?.Profile?.Name?.DisplayName 
+                ?? user?.Profile?.Name?.FullName;
+            var adminName = adminUser?.Profile?.Name?.DisplayName 
+                ?? adminUser?.Profile?.Name?.FullName ?? adminUser?.UserName.Value;
+
+            return dto with { 
+                UserDisplayName = string.IsNullOrWhiteSpace(displayName) ? user?.UserName.Value : displayName,
+                UserEmail = user?.Email.Value,
+                ProcessedByDisplayName = adminName,
+                IsHighRisk = x.Amount > 10_000_000m,
+                UserKycVerified = isKycVerified
+            };
+        }).ToList();
+
+        return new PagedList<AdminWithdrawalRequestDetailDto>(
+            items, 
+            pagedItems.Metadata.TotalCount, 
+            pagedItems.Metadata.CurrentPage, 
+            pagedItems.Metadata.PageSize);
     }
 }
 

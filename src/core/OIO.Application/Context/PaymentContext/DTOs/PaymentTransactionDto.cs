@@ -18,4 +18,7 @@ public sealed record PaymentTransactionDto(
     string? GatewayProvider,
     string? Description,
     DateTime CreatedAt,
-    DateTime? ProcessedAt);
+    DateTime? ProcessedAt,
+    Guid? ProcessedBy = null,
+    string? ProcessedByDisplayName = null,
+    string? ProcessNote = null);

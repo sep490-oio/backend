@@ -65,9 +65,19 @@ internal sealed class GetPaymentSummaryQueryHandler
             x => x.Status == WithdrawalStatus.Pending,
             cancellationToken);
 
+        var withdrawalPendingTotal = await withdrawals
+            .Where(x => x.Status == WithdrawalStatus.Pending)
+            .Select(x => (decimal?)x.Amount)
+            .SumAsync(cancellationToken) ?? 0m;
+
         var holdingEscrowCount = await escrows.CountAsync(
             x => x.Status == EscrowStatus.Holding,
             cancellationToken);
+
+        var holdingEscrowTotal = await escrows
+            .Where(x => x.Status == EscrowStatus.Holding)
+            .Select(x => (decimal?)x.Amount.Amount)
+            .SumAsync(cancellationToken) ?? 0m;
 
         var releasedEscrowTotal = await escrows
             .Where(x => x.Status == EscrowStatus.ReleasedToSeller)
@@ -84,7 +94,9 @@ internal sealed class GetPaymentSummaryQueryHandler
             FailedPayments: failedPayments,
             WalletTopUps: walletTopUps,
             WithdrawalPendingCount: withdrawalPendingCount,
+            WithdrawalPendingTotal: withdrawalPendingTotal,
             HoldingEscrowCount: holdingEscrowCount,
+            HoldingEscrowTotal: holdingEscrowTotal,
             ReleasedEscrowTotal: releasedEscrowTotal,
             RefundedEscrowTotal: refundedEscrowTotal);
     }

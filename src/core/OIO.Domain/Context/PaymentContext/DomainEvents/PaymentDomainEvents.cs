@@ -77,6 +77,13 @@ public sealed record EscrowRefundedToBuyerDomainEvent(
     string Currency,
     DateTime OccurredAt) : DomainEvent(OccurredAt);
 
+public sealed record EscrowForfeitedToPlatformDomainEvent(
+    EscrowId EscrowId,
+    Guid OrderId,
+    decimal Amount,
+    string Currency,
+    DateTime OccurredAt) : DomainEvent(OccurredAt);
+
 // ─── Withdrawal Events ──────────────────────────────────────────────
 
 public sealed record WithdrawalRequestCreatedDomainEvent(

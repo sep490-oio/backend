@@ -150,6 +150,8 @@ public sealed class UploadContextRegistry
     public bool IsShipmentContext(string contextName) =>
         contextName.StartsWith("shipment_", StringComparison.OrdinalIgnoreCase);
 
+    public bool IsWithdrawalContext(string contextName) =>
+        contextName.StartsWith("withdrawal_", StringComparison.OrdinalIgnoreCase);
     // ==================== Resource Type Limits ====================
 
     public int GetMaxUploadsForContext(string contextName)

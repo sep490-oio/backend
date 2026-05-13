@@ -14,7 +14,8 @@ namespace OIO.Application.Context.PaymentContext.Queries.Admins.GetPlatformWalle
 public sealed record GetPlatformWalletTransactionsQuery(
     int PageNumber = 1,
     int PageSize = 20,
-    string? Type = null) : IQuery<PlatformWalletTransactionsResultDto>;
+    string? Type = null,
+    string? Category = null) : IQuery<PlatformWalletTransactionsResultDto>;
 
 public sealed record PlatformWalletTransactionDto(
     Guid Id,
@@ -59,6 +60,28 @@ internal sealed class GetPlatformWalletTransactionsQueryHandler(IDbContext dbCon
         {
             var type = request.Type.ToLowerInvariant();
             query = query.Where(wt => wt.Type.Id == type);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Category))
+        {
+            var cat = request.Category.ToLowerInvariant();
+            if (cat == "commission")
+            {
+                query = query.Where(wt => wt.Description != null && (wt.Description.ToLower().Contains("commission") || wt.Description.ToLower().Contains("platform")) || wt.Type.Id == "credit");
+            }
+            else if (cat == "inspection_fee")
+            {
+                query = query.Where(wt => wt.Description != null && wt.Description.ToLower().Contains("inspection"));
+            }
+            else if (cat == "forfeit")
+            {
+                query = query.Where(wt => wt.Description != null && (wt.Description.ToLower().Contains("forfeit") || wt.Description.ToLower().Contains("penalty")));
+            }
+            else if (cat == "refund")
+            {
+                query = query.Where(wt => wt.Type.Id == "debit");
+            }
+            // other
         }
 
         var totalCount = await query.CountAsync(cancellationToken);

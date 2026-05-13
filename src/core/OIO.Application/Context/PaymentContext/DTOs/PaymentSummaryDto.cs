@@ -5,6 +5,8 @@ public sealed record PaymentSummaryDto(
     int FailedPayments,
     int WalletTopUps,
     int WithdrawalPendingCount,
+    decimal WithdrawalPendingTotal,
     int HoldingEscrowCount,
+    decimal HoldingEscrowTotal,
     decimal ReleasedEscrowTotal,
     decimal RefundedEscrowTotal);

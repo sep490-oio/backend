@@ -7,31 +7,31 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.PaymentContext.Aggregates.Escrows;
-using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.PaymentContext.ValueObjects;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 
-namespace OIO.Application.Context.PaymentContext.Commands.Escrows.ReleaseEscrow;
+namespace OIO.Application.Context.PaymentContext.Commands.Escrows.ForceForfeitEscrow;
 
-public sealed record ReleaseEscrowCommand(Guid EscrowId, string Reason) : ICommand;
+public sealed record ForceForfeitEscrowCommand(Guid EscrowId, string Reason) : ICommand;
 
-internal sealed class ReleaseEscrowCommandHandler : ICommandHandler<ReleaseEscrowCommand>
+internal sealed class ForceForfeitEscrowCommandHandler : ICommandHandler<ForceForfeitEscrowCommand>
 {
     private readonly IDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
     private readonly ICurrentUser _currentUser;
-    private readonly ILogger<ReleaseEscrowCommandHandler> _logger;
+    private readonly ILogger<ForceForfeitEscrowCommandHandler> _logger;
 
-    public ReleaseEscrowCommandHandler(
+    public ForceForfeitEscrowCommandHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         IClock clock,
         ICurrentUser currentUser,
-        ILogger<ReleaseEscrowCommandHandler> logger)
+        ILogger<ForceForfeitEscrowCommandHandler> logger)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
@@ -40,7 +40,7 @@ internal sealed class ReleaseEscrowCommandHandler : ICommandHandler<ReleaseEscro
         _logger = logger;
     }
 
-    public async Task<UnitResult<Error>> Handle(ReleaseEscrowCommand request, CancellationToken cancellationToken)
+    public async Task<UnitResult<Error>> Handle(ForceForfeitEscrowCommand request, CancellationToken cancellationToken)
     {
         var now = _clock.UtcNow;
         var escrowId = EscrowId.From(request.EscrowId);
@@ -60,24 +60,25 @@ internal sealed class ReleaseEscrowCommandHandler : ICommandHandler<ReleaseEscro
         if (order is null)
             return Error.NotFound("Order.NotFound", "Order associated with escrow not found.");
 
-        var sellerWallet = await _dbContext.Set<Wallet>()
-            .FirstOrDefaultAsync(w => w.UserId == order.SellerId, cancellationToken);
+        // Fetch platform wallet
+        var platformWallet = await _dbContext.Set<Wallet>()
+            .FirstOrDefaultAsync(w => w.Type == WalletType.Platform, cancellationToken);
 
-        if (sellerWallet is null)
-            return Error.NotFound("Wallet.NotFound", "Seller wallet not found.");
+        if (platformWallet is null)
+            return Error.NotFound("Wallet.NotFound", "Platform wallet not found.");
 
-        // 1. Create Transaction for Payout
-        var txNumberResult = TransactionNumber.Create($"PAYOUT-{Guid.CreateVersion7():N}");
+        // 1. Create Transaction for Fee (Forfeit)
+        var txNumberResult = TransactionNumber.Create($"FEE-{Guid.CreateVersion7():N}");
         if (txNumberResult.IsFailure)
             return txNumberResult.Error;
 
         var txResult = Transaction.Create(
-            order.SellerId,
+            order.BuyerId, // The funds originated from the buyer
             txNumberResult.Value,
-            TransactionType.Payout,
+            TransactionType.Fee,
             escrow.Amount,
             escrow.Currency,
-            $"Admin force release escrow to seller for Order {order.OrderNumber.Value} - Reason: {request.Reason}",
+            $"Admin force forfeit escrow to platform for Order {order.OrderNumber.Value} - Reason: {request.Reason}",
             now,
             escrow.OrderId);
 
@@ -88,28 +89,28 @@ internal sealed class ReleaseEscrowCommandHandler : ICommandHandler<ReleaseEscro
         transaction.MarkAsCompleted(GatewayInfo.Empty, now);
         _dbContext.Set<Transaction>().Add(transaction);
 
-        // 2. Create a Wallet Transaction (Credit) for the Seller
-        var creditResult = sellerWallet.Credit(
+        // 2. Create a Wallet Transaction (Credit) for the Platform
+        var creditResult = platformWallet.Credit(
             amount: escrow.Amount.Amount,
             transactionId: transaction.Id,
-            description: $"Escrow released to seller for Order {order.OrderNumber.Value} - Reason: {request.Reason}",
+            description: $"Escrow forfeit to platform for Order {order.OrderNumber.Value} - Reason: {request.Reason}",
             nowUtc: now);
 
         if (creditResult.IsFailure)
             return Error.Conflict("Wallet.CreditFailed", creditResult.Error.Message);
 
-        // 3. Perform Release on Escrow Domain
-        var releaseResult = escrow.ReleaseToSeller(
-            releaseTransactionId: transaction.Id,
+        // 3. Perform Forfeit on Escrow Domain
+        var forfeitResult = escrow.ForfeitToPlatform(
+            forfeitTransactionId: transaction.Id,
             createdBy: _currentUser.UserId,
             now: now);
 
-        if (releaseResult.IsFailure)
-            return Error.Conflict("Escrow.ReleaseFailed", releaseResult.Error.Message);
+        if (forfeitResult.IsFailure)
+            return Error.Conflict("Escrow.ForfeitFailed", forfeitResult.Error.Message);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Successfully released escrow {EscrowId} to seller {SellerId} for order {OrderId}", escrow.Id.Value, order.SellerId.Value, order.Id.Value);
+        _logger.LogInformation("Successfully forfeited escrow {EscrowId} to platform for order {OrderId}", escrow.Id.Value, order.Id.Value);
 
         return UnitResult.Success<Error>();
     }
