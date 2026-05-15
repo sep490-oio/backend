@@ -9,6 +9,7 @@ using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
 using OIO.Domain.Context.ModerationContext.Aggregates.Disputes;
 using OIO.Domain.Context.ModerationContext.ValueObjects.Ids;
+using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.Aggregates.SellerDirectShipments;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.Entities;
@@ -276,6 +277,17 @@ internal sealed class MediaRelocationService : IMediaRelocationService
                 return direct.RefreshEvidenceSnapshot(upload.Id, info, nowUtc);
             }
 
+            if (string.Equals(upload.IdType, nameof(OrderReturnEvidenceId), StringComparison.Ordinal))
+            {
+                var order = await FindOrderForReturnEvidenceAsync(upload.EntityId, cancellationToken);
+                if (order?.Return is null)
+                    return Error.NotFound(
+                        "Media.OrderReturnNotFound",
+                        $"Order return for evidence '{upload.EntityId}' was not found during media relocation.");
+
+                return order.Return.RefreshEvidenceSnapshot(upload.Id, info, nowUtc);
+            }
+
             return MediaErrors.UnsupportedShipmentEntityType(upload.IdType);
         }
 
@@ -437,6 +449,22 @@ internal sealed class MediaRelocationService : IMediaRelocationService
             shipmentId,
             query => query.Include(x => x.Evidence),
             cancellationToken);
+    }
+
+    private async Task<Order?> FindOrderForReturnEvidenceAsync(string entityId, CancellationToken cancellationToken)
+    {
+        var evidenceId = OrderReturnEvidenceId.Parse(entityId);
+        
+        var local = _dbContext.Set<Order>().Local
+            .FirstOrDefault(o => o.Return != null && o.Return.Evidence.Any(e => e.Id == evidenceId));
+            
+        if (local is not null)
+            return local;
+
+        return await _dbContext.Set<Order>()
+            .Include(o => o.Return)
+            .ThenInclude(r => r!.Evidence)
+            .FirstOrDefaultAsync(o => o.Return != null && o.Return.Evidence.Any(e => e.Id == evidenceId), cancellationToken);
     }
 
     private async Task<DisputeMessageAttachment?> FindDisputeMessageAttachmentAsync(string entityId, CancellationToken cancellationToken)

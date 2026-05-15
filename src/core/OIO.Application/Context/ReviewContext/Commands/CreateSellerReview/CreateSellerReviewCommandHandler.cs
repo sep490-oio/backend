@@ -105,7 +105,19 @@ internal sealed class CreateSellerReviewCommandHandler(
             isVerifiedPurchase: true,
             createdAt: clock.UtcNow);
 
-        // 8. Persist
+        // 8. Update SellerRatingSummary
+        var summary = await dbContext.Set<SellerRatingSummary>()
+            .FirstOrDefaultAsync(s => s.SellerId == order.SellerId, cancellationToken);
+
+        if (summary is null)
+        {
+            summary = new SellerRatingSummary(order.SellerId);
+            dbContext.Insert(summary);
+        }
+        
+        summary.ApplyReview(review);
+
+        // 9. Persist
         dbContext.Insert(review);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

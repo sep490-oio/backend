@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
@@ -49,5 +49,19 @@ internal sealed class ItemQuestionConfiguration : IEntityTypeConfiguration<ItemQ
             .HasColumnName("created_at")
             .HasDefaultValueSql("CURRENT_TIMESTAMP")
             .IsRequired();
+
+        // Moderation fields
+        builder.Property(q => q.HiddenByAdminId)
+            .HasColumnName("hidden_by_admin_id")
+            .HasConversion(
+                x => x != null ? x.Value.Value : (Guid?)null,
+                x => x.HasValue ? UserId.From(x.Value) : null);
+
+        builder.Property(q => q.HiddenAt)
+            .HasColumnName("hidden_at");
+
+        builder.Property(q => q.HiddenReason)
+            .HasColumnName("hidden_reason")
+            .HasMaxLength(500);
     }
 }

@@ -1,0 +1,28 @@
+using MediatR;
+using OIO.Api.Common;
+using OIO.Application.Context.AuctionContext.Commands.ShowItemQuestion;
+using OIO.Domain.AppDefinitions;
+
+namespace OIO.Api.Endpoints.ModerationContext.Admins;
+
+public sealed class ShowItemQuestionEndpoint : IEndpoint
+{
+    public void MapEndpoint(IEndpointRouteBuilder app)
+    {
+        app.MapPost(ApiEndpoint.Url.Admins.ShowItemQuestion, async (
+                Guid itemId,
+                Guid questionId,
+                ISender sender,
+                CancellationToken ct) =>
+            {
+                var command = new ShowItemQuestionCommand(itemId, questionId);
+                var result = await sender.Send(command, ct);
+                return result.ToNoContentHttpResult();
+            })
+            .RequireAuthorization(App.Permissions.Catalogs.Admin.ManageItems)
+            .WithName(ApiEndpoint.Names.Admins.ShowItemQuestion)
+            .WithTags(ApiEndpoint.Tags.Admins)
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+    }
+}

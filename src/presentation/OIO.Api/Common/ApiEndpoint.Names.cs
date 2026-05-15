@@ -155,11 +155,19 @@ public static partial class ApiEndpoint
 
             // Item Moderation
             public const string GetItemReviewQueue = nameof(GetItemReviewQueue);
+            public const string GetAdminItems = nameof(GetAdminItems);
             public const string GetAdminItemDetail = nameof(GetAdminItemDetail);
+            public const string GetAdminItemLogistics = nameof(GetAdminItemLogistics);
             public const string ApproveItem = nameof(ApproveItem);
             public const string RejectItem = nameof(RejectItem);
             public const string AssignItemReviewer = nameof(AssignItemReviewer);
             public const string GetItemReviewHistory = nameof(GetItemReviewHistory);
+
+            // Item Q&A Moderation
+            public const string GetAdminItemQuestions = nameof(GetAdminItemQuestions);
+            public const string HideItemQuestion = nameof(HideItemQuestion);
+            public const string ShowItemQuestion = nameof(ShowItemQuestion);
+
             public const string SetAuctionCuration = nameof(SetAuctionCuration);
             public const string RevealSealedBid = nameof(RevealSealedBid);
             public const string TriggerAuctionEmergency = nameof(TriggerAuctionEmergency);
@@ -194,6 +202,8 @@ public static partial class ApiEndpoint
             public const string AdminForceCancelAuction = nameof(AdminForceCancelAuction);
             public const string AdminTerminateAuction = nameof(AdminTerminateAuction);
             public const string AdminExtendAuctionTime = nameof(AdminExtendAuctionTime);
+            public const string AdminForceStartQualification = nameof(AdminForceStartQualification);
+            public const string AdminForceStartBidding = nameof(AdminForceStartBidding);
             public const string AdminOverrideAuctionStatus = nameof(AdminOverrideAuctionStatus);
             public const string AdminForceEndAuction = nameof(AdminForceEndAuction);
             public const string AdminRelistAuction = nameof(AdminRelistAuction);

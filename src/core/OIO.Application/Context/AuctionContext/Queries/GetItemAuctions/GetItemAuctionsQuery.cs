@@ -7,6 +7,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.AuctionContext.DTOs;
 using OIO.Application.Context.AuctionContext.Mappings;
 using OIO.Application.Context.UserContext.Services;
+using OIO.Domain.AppDefinitions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
@@ -42,14 +43,16 @@ internal sealed class GetItemAuctionsQueryHandler
         var nowUtc = _clock.UtcNow;
         var itemId = ItemId.From(request.ItemId);
 
-        // Verify the item belongs to the current user.
+        // Verify the item belongs to the current user or the user is an admin.
+        var isAdmin = _currentUser.IsAuthenticated && _currentUser.IsInRole(App.Roles.Catalogs.Admin);
+
         var auctions = await _dbContext.Set<Auction>()
             .AsNoTracking()
             .Include(a => a.Item)
                 .ThenInclude(i => i.Media)
             .Include(a => a.BuyNowReservations)
             .AsSplitQuery()
-            .Where(a => a.Item.Id == itemId && a.Item.SellerId == _currentUser.UserId)
+            .Where(a => a.Item.Id == itemId && (a.Item.SellerId == _currentUser.UserId || isAdmin))
             .OrderByDescending(a => a.CreatedAt)
             .ToListAsync(cancellationToken);
 

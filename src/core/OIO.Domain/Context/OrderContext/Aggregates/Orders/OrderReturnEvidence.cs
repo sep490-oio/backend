@@ -44,4 +44,14 @@ public sealed class OrderReturnEvidence : BaseEntity<OrderReturnEvidenceId>, ICr
     public string ResourceType { get; private set; } = null!;
     public DateTime CreatedAt { get; private set; }
     public UserId CreatedBy { get; private set; }
+
+    /// <summary>
+    /// Refreshes the cached <see cref="SecureUrl"/> snapshot after media
+    /// relocation. Aggregate-only entry-point.
+    /// </summary>
+    internal void UpdateMediaUrl(string secureUrl)
+    {
+        if (!string.IsNullOrWhiteSpace(secureUrl))
+            SecureUrl = secureUrl;
+    }
 }

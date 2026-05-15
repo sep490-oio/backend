@@ -341,6 +341,91 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         return UnitResult.Success<Error>();
     }
 
+    public UnitResult<Error> ForceStartQualification(DateTime nowUtc)
+    {
+        if (Status != AuctionStatus.Scheduled)
+            return AuctionErrors.Auction.InvalidState(Status.Id, "force start qualification");
+
+        if (Info is null || !Info.HasQualification)
+            return AuctionErrors.Auction.QualificationWindowRequired;
+
+        // If qualification is already open or past, just return success
+        if (nowUtc >= Info.Qualification!.StartTime)
+            return UnitResult.Success<Error>();
+
+        var newQualStart = nowUtc;
+        var newQualEnd = Info.Qualification.EndTime;
+
+        // If shifting the start time passes the end time, shift the end time forward by 15 mins to guarantee a valid window.
+        if (newQualEnd <= newQualStart)
+            newQualEnd = newQualStart.AddMinutes(15);
+
+        var newQualResult = QualificationWindow.Create(newQualStart, newQualEnd);
+        if (newQualResult.IsFailure)
+            return newQualResult.Error;
+
+        var newQual = newQualResult.Value;
+
+        // Ensure StartTime is strictly after newQualEnd
+        var newStartTime = Info.StartTime;
+        if (newStartTime <= newQualEnd)
+            newStartTime = newQualEnd.AddMinutes(1);
+
+        var newInfoResult = AuctionInfo.Create(
+            nowUtc: nowUtc,
+            startTime: newStartTime,
+            endTime: Info.EndTime,
+            autoExtend: Info.AutoExtend,
+            extensionMinutes: Info.ExtensionMinutes,
+            qualification: newQual);
+
+        if (newInfoResult.IsFailure)
+            return newInfoResult.Error;
+
+        Info = newInfoResult.Value;
+        ModifiedAt = nowUtc;
+
+        return UnitResult.Success<Error>();
+    }
+
+    public UnitResult<Error> ForceStartBidding(DateTime nowUtc)
+    {
+        var result = EnsureCanTransition(AuctionStatus.Active);
+
+        if (result.IsFailure)
+            return result.Error;
+
+        if (Info is null)
+            return AuctionErrors.Auction.TimingRequired;
+
+        // Ensure StartTime matches the force start time
+        var newStartTime = nowUtc;
+
+        // Ensure EndTime is strictly after newStartTime
+        var newEndTime = Info.EndTime;
+        if (newEndTime <= newStartTime)
+            newEndTime = newStartTime.AddHours(1);
+
+        var newInfoResult = AuctionInfo.Create(
+            nowUtc: nowUtc,
+            startTime: newStartTime,
+            endTime: newEndTime,
+            autoExtend: Info.AutoExtend,
+            extensionMinutes: Info.ExtensionMinutes,
+            qualification: Info.Qualification);
+
+        if (newInfoResult.IsFailure)
+            return newInfoResult.Error;
+
+        Info = newInfoResult.Value;
+        Status = AuctionStatus.Active;
+        ModifiedAt = nowUtc;
+
+        RaiseDomainEvent(new AuctionStartedEvent($"{Id}", nowUtc));
+
+        return UnitResult.Success<Error>();
+    }
+
     public bool HasBidEligibleParticipants(DateTime nowUtc)
     {
         return _participants.Count(participant => IsBidEligibleParticipant(participant, nowUtc)) >= 2;

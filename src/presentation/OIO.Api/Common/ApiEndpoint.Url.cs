@@ -91,11 +91,18 @@ public static partial class ApiEndpoint
 
             // Item Moderation
             public const string GetItemReviewQueue = $"{Base}/items/review-queue";
+            public const string GetAdminItems = $"{Base}/items";
             public const string GetAdminItemDetail = $"{Base}/items/{{itemId:guid}}";
+            public const string GetAdminItemLogistics = $"{Base}/items/{{itemId:guid}}/logistics";
             public const string ApproveItem = $"{Base}/items/{{itemId:guid}}/approve";
             public const string RejectItem = $"{Base}/items/{{itemId:guid}}/reject";
             public const string AssignItemReviewer = $"{Base}/items/{{itemId:guid}}/assign";
             public const string GetItemReviewHistory = $"{Base}/items/{{itemId:guid}}/reviews";
+
+            // Item Q&A Moderation
+            public const string GetAdminItemQuestions = $"{Base}/items/{{itemId:guid}}/questions";
+            public const string HideItemQuestion = $"{Base}/items/{{itemId:guid}}/questions/{{questionId:guid}}/hide";
+            public const string ShowItemQuestion = $"{Base}/items/{{itemId:guid}}/questions/{{questionId:guid}}/show";
             public const string SetAuctionCuration = $"{Base}/auctions/{{auctionId:guid}}/curation";
             public const string RevealSealedBid = $"{Base}/auctions/{{auctionId:guid}}/sealed-bids/{{sealedBidId:guid}}/reveal";
             public const string TriggerAuctionEmergency = $"{Base}/auctions/{{auctionId:guid}}/emergencies";
@@ -130,6 +137,8 @@ public static partial class ApiEndpoint
             public const string AdminForceCancelAuction = $"{Base}/auctions/{{auctionId:guid}}/force-cancel";
             public const string AdminTerminateAuction = $"{Base}/auctions/{{auctionId:guid}}/terminate";
             public const string AdminExtendAuctionTime = $"{Base}/auctions/{{auctionId:guid}}/extend-time";
+            public const string AdminForceStartQualification = $"{Base}/auctions/{{auctionId:guid}}/force-start-qualification";
+            public const string AdminForceStartBidding = $"{Base}/auctions/{{auctionId:guid}}/force-start-bidding";
             public const string AdminOverrideAuctionStatus = $"{Base}/auctions/{{auctionId:guid}}/override-status";
             public const string AdminForceEndAuction = $"{Base}/auctions/{{auctionId:guid}}/force-end";
             public const string AdminRelistAuction = $"{Base}/auctions/{{auctionId:guid}}/relist";

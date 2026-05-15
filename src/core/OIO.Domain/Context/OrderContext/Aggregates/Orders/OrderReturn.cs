@@ -2,6 +2,8 @@ using CSharpFunctionalExtensions;
 using OIO.Domain.Context.OrderContext.Enums;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.Entities;
+using OIO.Domain.Context.Shared.ValueObjects;
+using OIO.Domain.Context.Shared.ValueObjects.Ids;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
 using OIO.Domain.SeedWork.Errors;
@@ -282,6 +284,25 @@ public sealed class OrderReturn : BaseEntity<OrderReturnId>
                 $"QR token can only be issued in Approved or ReturnInTransit status, but return is '{Status.Id}'.");
 
         QrToken = qrToken;
+        return UnitResult.Success<Error>();
+    }
+
+    /// <summary>
+    /// Refreshes the cached <see cref="OrderReturnEvidence.SecureUrl"/>
+    /// snapshot for the evidence matching <paramref name="mediaUploadId"/>.
+    /// Called by the media relocation pipeline after Cloudinary rename so the
+    /// snapshot URL no longer points to the <c>/pending/</c> folder.
+    /// </summary>
+    public UnitResult<Error> RefreshEvidenceSnapshot(
+        MediaUploadId mediaUploadId,
+        MediaInfo info,
+        DateTime nowUtc)
+    {
+        var evidence = _evidence.FirstOrDefault(e => e.MediaUploadId == mediaUploadId);
+        if (evidence is null)
+            return Error.NotFound("OrderReturn.EvidenceNotFound", "Return evidence not found for media upload.");
+
+        evidence.UpdateMediaUrl(info.SecureUrl ?? string.Empty);
         return UnitResult.Success<Error>();
     }
 }

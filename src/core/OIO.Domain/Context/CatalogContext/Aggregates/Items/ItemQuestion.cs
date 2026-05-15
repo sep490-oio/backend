@@ -1,4 +1,4 @@
-﻿using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Entities;
 using ItemId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId;
 using ItemQuestionId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemQuestionId;
@@ -14,6 +14,11 @@ public sealed class ItemQuestion : BaseEntity<ItemQuestionId>, ICreatedAtEntity
     public DateTime? AnsweredAt { get; private set; }
     public bool IsPublic { get; private set; }
     public DateTime CreatedAt { get; private set; }
+
+    // Moderation fields
+    public UserId? HiddenByAdminId { get; private set; }
+    public DateTime? HiddenAt { get; private set; }
+    public string? HiddenReason { get; private set; }
 
     private ItemQuestion() { }
 
@@ -43,6 +48,19 @@ public sealed class ItemQuestion : BaseEntity<ItemQuestionId>, ICreatedAtEntity
     
     public bool IsAnswered => Answer is not null;
 
-    public void Hide() => IsPublic = false;
-    public void Show() => IsPublic = true;
+    public void Hide(UserId adminId, string reason, DateTime nowUtc)
+    {
+        IsPublic = false;
+        HiddenByAdminId = adminId;
+        HiddenAt = nowUtc;
+        HiddenReason = reason;
+    }
+
+    public void Show()
+    {
+        IsPublic = true;
+        HiddenByAdminId = null;
+        HiddenAt = null;
+        HiddenReason = null;
+    }
 }

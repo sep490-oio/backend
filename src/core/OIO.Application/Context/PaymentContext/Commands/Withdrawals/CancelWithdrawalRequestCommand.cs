@@ -9,6 +9,7 @@ using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
 using OIO.Domain.Context.PaymentContext.Aggregates.Withdrawals;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
+using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.PaymentContext.Commands.Withdrawals;
@@ -67,6 +68,20 @@ internal sealed class CancelWithdrawalRequestCommandHandler
 
         if (unholdResult.IsFailure)
             return Error.Conflict("Wallet.UnholdFailed", unholdResult.Error.Message);
+
+        // Mark corresponding Transaction as Failed so it doesn't stay pending for admins
+        var txn = await _dbContext.Set<Transaction>()
+            .FirstOrDefaultAsync(t =>
+                t.UserId == withdrawal.UserId &&
+                t.Type == OIO.Domain.Context.PaymentContext.Enums.TransactionType.Withdrawal &&
+                (t.Status == OIO.Domain.Context.PaymentContext.Enums.TransactionStatus.Pending || t.Status == OIO.Domain.Context.PaymentContext.Enums.TransactionStatus.Processing) &&
+                t.Amount.Amount == withdrawal.Amount,
+                cancellationToken);
+
+        if (txn is not null)
+        {
+            txn.MarkAsFailed(OIO.Domain.Context.PaymentContext.ValueObjects.GatewayInfo.Empty, _clock.UtcNow);
+        }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return PaymentReadModelMapper.ToDto(withdrawal);
