@@ -29,45 +29,38 @@ internal sealed class AdminForceCancelAuctionCommandHandler(
     IDbContext dbContext,
     IUnitOfWork unitOfWork,
     IAuctionScheduler scheduler,
-    IClock clock)
+    IClock clock,
+    IGrainFactory grainFactory)
     : ICommandHandler<AdminForceCancelAuctionCommand>
 {
     public async Task<UnitResult<Error>> Handle(
         AdminForceCancelAuctionCommand request,
         CancellationToken cancellationToken)
     {
+        var grain = grainFactory.GetGrain<OIO.Domain.Context.AuctionContext.Grains.IAuctionGrain>(request.AuctionId);
+        
+        var grainResult = await grain.ForceCancelAuctionAsync(request.Reason, cancellationToken);
+        if (grainResult.IsFailure) return grainResult.Error;
+
         var auctionId = AuctionId.From(request.AuctionId);
-        var auction = await dbContext.GetByIdAsync<Auction, AuctionId>(
-            id: auctionId,
-            queryBuilder: query => query
-                .Include(a => a.Bids)
-                .Include(a => a.AutoBids)
-                .Include(a => a.PriceHistories)
-                .Include(a => a.Watchers)
-                .Include(a => a.Item)
-                .AsSplitQuery(),
-            cancellationToken: cancellationToken);
-
-        if (auction is null)
-            return AuctionErrors.Auction.NotFound(auctionId);
-
-        var nowUtc = clock.UtcNow;
-
-        var result = auction.CancelAuction($"[ADMIN] {request.Reason}", nowUtc, isAdminOverride: true);
-        if (result.IsFailure)
-            return result;
-
-        var item = await dbContext.GetByIdAsync<Item, ItemId>(auction.ItemId, cancellationToken: cancellationToken);
-        if (item is not null)
+        var auction = await dbContext.GetByIdAsync<Auction, AuctionId>(auctionId, cancellationToken: cancellationToken);
+        
+        if (auction is not null)
         {
-            var itemResult = item.ReturnToActive(nowUtc);
-            if (itemResult.IsFailure)
-                return itemResult;
+            var item = await dbContext.GetByIdAsync<Item, ItemId>(auction.ItemId, cancellationToken: cancellationToken);
+            if (item is not null)
+            {
+                var nowUtc = clock.UtcNow;
+                var itemResult = item.ReturnToActive(nowUtc);
+                if (itemResult.IsFailure)
+                    return itemResult;
+                
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+            }
         }
 
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        await scheduler.CancelAsync(auction.Id.Value, cancellationToken);
+        await scheduler.CancelAsync(request.AuctionId, cancellationToken);
 
-        return result;
+        return UnitResult.Success<Error>();
     }
 }

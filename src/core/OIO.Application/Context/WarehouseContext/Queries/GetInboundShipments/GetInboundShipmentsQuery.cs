@@ -23,8 +23,8 @@ public record GetInboundShipmentsQueryFilter : PagedParameters
     public Guid?     SellerId { get; init; }
     public Guid?     ItemId { get; init; }
     public string?   Search { get; init; }
-    public DateTime? FromDate { get; init; }
-    public DateTime? ToDate { get; init; }
+    public DateTimeOffset? FromDate { get; init; }
+    public DateTimeOffset? ToDate { get; init; }
     public bool?     RequiresPlatformInspection { get; init; }
 }
 

@@ -28,41 +28,41 @@ internal sealed class AdminForceStartQualificationCommandHandler
     private readonly IDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
+    private readonly OIO.Application.Abstractions.Scheduling.IAuctionScheduler _scheduler;
+    private readonly IGrainFactory _grainFactory;
 
     public AdminForceStartQualificationCommandHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
-        IClock clock)
+        IClock clock,
+        OIO.Application.Abstractions.Scheduling.IAuctionScheduler scheduler,
+        IGrainFactory grainFactory)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _clock = clock;
+        _scheduler = scheduler;
+        _grainFactory = grainFactory;
     }
 
     public async Task<UnitResult<Error>> Handle(
         AdminForceStartQualificationCommand request,
         CancellationToken cancellationToken)
     {
+        var grain = _grainFactory.GetGrain<OIO.Domain.Context.AuctionContext.Grains.IAuctionGrain>(request.AuctionId);
+        
+        var grainResult = await grain.ForceStartQualificationAsync(cancellationToken);
+        if (grainResult.IsFailure) return grainResult.Error;
+
         var auctionId = AuctionId.From(request.AuctionId);
-
-        var auction = await _dbContext.GetByIdAsync<Auction, AuctionId>(
-            id: auctionId,
-            cancellationToken: cancellationToken);
-
-        if (auction is null)
-            return AuctionErrors.Auction.NotFound(auctionId);
-
-        if (auction.Status != AuctionStatus.Scheduled)
-            return AuctionErrors.Auction.InvalidState(auction.Status.Id, "force start qualification");
-
-        var nowUtc = _clock.UtcNow;
-
-        var result = auction.ForceStartQualification(nowUtc);
-
-        if (result.IsFailure)
-            return result.Error;
-
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        var auction = await _dbContext.GetByIdAsync<Auction, AuctionId>(auctionId, cancellationToken: cancellationToken);
+        
+        if (auction is not null && auction.Info is not null && auction.Info.HasQualification)
+        {
+            // Re-schedule based on the forced active qualification period
+            await _scheduler.ScheduleQualificationCloseAsync(auction.Id.Value, auction.Info.Qualification!.EndTime, cancellationToken);
+            await _scheduler.ScheduleStartAsync(auction.Id.Value, auction.Info.StartTime, cancellationToken);
+        }
 
         return UnitResult.Success<Error>();
     }

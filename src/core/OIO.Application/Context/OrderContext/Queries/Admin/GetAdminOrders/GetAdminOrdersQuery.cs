@@ -16,8 +16,8 @@ public record GetAdminOrdersQueryFilter : PagedParameters
 {
     public string? Status { get; init; }
     public string? Search { get; init; }
-    public DateTime? FromDate { get; init; }
-    public DateTime? ToDate { get; init; }
+    public DateTimeOffset? FromDate { get; init; }
+    public DateTimeOffset? ToDate { get; init; }
 }
 
 public sealed record GetAdminOrdersQuery(GetAdminOrdersQueryFilter Parameters)

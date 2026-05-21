@@ -165,6 +165,57 @@ public sealed class AuctionInfo : ValueObject
             extensionCount: ExtensionCount);
     }
 
+    public Result<AuctionInfo, Error> ForceStartQualification(DateTime nowUtc)
+    {
+        if (Qualification is null) return AuctionErrors.Auction.QualificationWindowRequired;
+        if (nowUtc >= Qualification.StartTime) return this;
+
+        var newQualStart = nowUtc;
+        var newQualEnd = Qualification.EndTime;
+        if (newQualEnd <= newQualStart) newQualEnd = newQualStart.AddMinutes(15);
+
+        var newQualResult = QualificationWindow.Create(newQualStart, newQualEnd);
+        if (newQualResult.IsFailure) return newQualResult.Error;
+
+        var newStartTime = StartTime;
+        if (newStartTime <= newQualEnd) newStartTime = newQualEnd.AddMinutes(1);
+
+        return new AuctionInfo(
+            startTime: newStartTime,
+            endTime: EndTime,
+            qualification: newQualResult.Value,
+            autoExtend: AutoExtend,
+            extensionMinutes: ExtensionMinutes,
+            extensionCount: ExtensionCount);
+    }
+
+    public Result<AuctionInfo, Error> ForceStartBidding(DateTime nowUtc)
+    {
+        var newStartTime = nowUtc;
+        var newEndTime = EndTime;
+        if (newEndTime <= newStartTime) newEndTime = newStartTime.AddHours(1);
+
+        QualificationWindow? newQual = Qualification;
+        if (newQual is not null && newQual.EndTime >= newStartTime)
+        {
+            var qualStart = newQual.StartTime;
+            if (qualStart >= newStartTime) qualStart = newStartTime.AddMinutes(-2);
+            var qualEnd = newStartTime.AddMinutes(-1);
+            
+            var newQualResult = QualificationWindow.Create(qualStart, qualEnd);
+            if (newQualResult.IsFailure) return newQualResult.Error;
+            newQual = newQualResult.Value;
+        }
+
+        return new AuctionInfo(
+            startTime: newStartTime,
+            endTime: newEndTime,
+            qualification: newQual,
+            autoExtend: AutoExtend,
+            extensionMinutes: ExtensionMinutes,
+            extensionCount: ExtensionCount);
+    }
+
     protected override IEnumerable<object> GetEqualityComponents()
     {
         yield return StartTime;

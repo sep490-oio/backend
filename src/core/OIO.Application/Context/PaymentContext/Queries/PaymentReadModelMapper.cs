@@ -140,7 +140,8 @@ internal static class PaymentReadModelMapper
                     CreatedBy: x.CreatedBy?.Value,
                     CreatedByDisplayName: null,
                     CreatedAt: x.CreatedAt))
-                .ToList());
+                .ToList(),
+            IsDisputed: escrow.Order?.Status == OIO.Domain.Context.OrderContext.Enums.OrderStatus.Disputed);
 
     public static EscrowDetailDto ToDetailDto(this Escrow escrow)
         => new(

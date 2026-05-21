@@ -6,6 +6,7 @@ using OIO.Application.Context.PaymentContext.DTOs;
 using OIO.Domain.Context.PaymentContext.Aggregates.Escrows;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Aggregates.Withdrawals;
+using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.SeedWork.Errors;
 
@@ -89,6 +90,21 @@ internal sealed class GetPaymentSummaryQueryHandler
             .Select(x => (decimal?)x.Amount.Amount)
             .SumAsync(cancellationToken) ?? 0m;
 
+        var platformWallet = await _dbContext.Set<Wallet>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Type == WalletType.Platform, cancellationToken);
+            
+        var totalRevenue = platformWallet != null 
+            ? platformWallet.WalletFunds.BalanceAmount + platformWallet.WalletFunds.PendingBalanceAmount 
+            : 0m;
+
+        var allWalletsBalance = await _dbContext.Set<Wallet>()
+            .AsNoTracking()
+            .Select(x => (decimal?)(x.WalletFunds.BalanceAmount + x.WalletFunds.PendingBalanceAmount))
+            .SumAsync(cancellationToken) ?? 0m;
+        
+        var totalSystemBalance = allWalletsBalance + holdingEscrowTotal;
+
         return new PaymentSummaryDto(
             CompletedPayments: completedPayments,
             FailedPayments: failedPayments,
@@ -98,6 +114,8 @@ internal sealed class GetPaymentSummaryQueryHandler
             HoldingEscrowCount: holdingEscrowCount,
             HoldingEscrowTotal: holdingEscrowTotal,
             ReleasedEscrowTotal: releasedEscrowTotal,
-            RefundedEscrowTotal: refundedEscrowTotal);
+            RefundedEscrowTotal: refundedEscrowTotal,
+            TotalRevenue: totalRevenue,
+            TotalSystemBalance: totalSystemBalance);
     }
 }

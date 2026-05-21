@@ -349,36 +349,8 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         if (Info is null || !Info.HasQualification)
             return AuctionErrors.Auction.QualificationWindowRequired;
 
-        // If qualification is already open or past, just return success
-        if (nowUtc >= Info.Qualification!.StartTime)
-            return UnitResult.Success<Error>();
-
-        var newQualStart = nowUtc;
-        var newQualEnd = Info.Qualification.EndTime;
-
-        // If shifting the start time passes the end time, shift the end time forward by 15 mins to guarantee a valid window.
-        if (newQualEnd <= newQualStart)
-            newQualEnd = newQualStart.AddMinutes(15);
-
-        var newQualResult = QualificationWindow.Create(newQualStart, newQualEnd);
-        if (newQualResult.IsFailure)
-            return newQualResult.Error;
-
-        var newQual = newQualResult.Value;
-
-        // Ensure StartTime is strictly after newQualEnd
-        var newStartTime = Info.StartTime;
-        if (newStartTime <= newQualEnd)
-            newStartTime = newQualEnd.AddMinutes(1);
-
-        var newInfoResult = AuctionInfo.Create(
-            nowUtc: nowUtc,
-            startTime: newStartTime,
-            endTime: Info.EndTime,
-            autoExtend: Info.AutoExtend,
-            extensionMinutes: Info.ExtensionMinutes,
-            qualification: newQual);
-
+        var newInfoResult = Info.ForceStartQualification(nowUtc);
+        
         if (newInfoResult.IsFailure)
             return newInfoResult.Error;
 
@@ -3009,3 +2981,4 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         return reservation;
     }
 }
+

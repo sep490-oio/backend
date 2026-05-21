@@ -17,6 +17,8 @@ public record AdminWithdrawalFilterParameters : PagedParameters
     public string? Status { get; init; }
     public Guid? UserId { get; init; }
     public string? SearchTerm { get; init; }
+    public DateTimeOffset? FromDate { get; init; }
+    public DateTimeOffset? ToDate { get; init; }
 }
 
 public sealed record GetAdminWithdrawalsQuery(
@@ -61,6 +63,12 @@ internal sealed class GetAdminWithdrawalsQueryHandler
                 (x.BankAccount.AccountNumber != null && x.BankAccount.AccountNumber.ToLower().Contains(term)) ||
                 x.UserId.Value.ToString().ToLower().Contains(term));
         }
+
+        if (parameters.FromDate.HasValue)
+            query = query.Where(x => x.CreatedAt >= parameters.FromDate.Value);
+
+        if (parameters.ToDate.HasValue)
+            query = query.Where(x => x.CreatedAt <= parameters.ToDate.Value);
 
         query = query.OrderByDescending(x => x.CreatedAt);
 

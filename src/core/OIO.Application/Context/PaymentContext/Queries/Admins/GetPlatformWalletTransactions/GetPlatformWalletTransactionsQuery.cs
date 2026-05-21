@@ -15,7 +15,10 @@ public sealed record GetPlatformWalletTransactionsQuery(
     int PageNumber = 1,
     int PageSize = 20,
     string? Type = null,
-    string? Category = null) : IQuery<PlatformWalletTransactionsResultDto>;
+    string? Category = null,
+    DateTimeOffset? FromDate = null,
+    DateTimeOffset? ToDate = null,
+    string? SearchTerm = null) : IQuery<PlatformWalletTransactionsResultDto>;
 
 public sealed record PlatformWalletTransactionDto(
     Guid Id,
@@ -36,7 +39,9 @@ public sealed record PlatformWalletTransactionsResultDto(
     int TotalCount,
     int PageNumber,
     int PageSize,
-    string Currency);
+    string Currency,
+    decimal TotalCreditAmount,
+    decimal TotalDebitAmount);
 
 // ── Handler ─────────────────────────────────────────────────────────────
 
@@ -88,7 +93,28 @@ internal sealed class GetPlatformWalletTransactionsQueryHandler(IDbContext dbCon
             // other
         }
 
+        if (request.FromDate.HasValue)
+        {
+            query = query.Where(wt => wt.CreatedAt >= request.FromDate.Value);
+        }
+
+        if (request.ToDate.HasValue)
+        {
+            query = query.Where(wt => wt.CreatedAt <= request.ToDate.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+        {
+            var term = request.SearchTerm.ToLowerInvariant();
+            // In EF Core, checking if wt.Description is not null and Contains is safe
+            query = query.Where(wt => wt.Description != null && wt.Description.ToLower().Contains(term));
+        }
+
         var totalCount = await query.CountAsync(cancellationToken);
+
+        // Compute sums
+        var totalCredit = await query.Where(wt => wt.Type.Id == "credit").SumAsync(wt => wt.Amount, cancellationToken);
+        var totalDebit = await query.Where(wt => wt.Type.Id == "debit").SumAsync(wt => wt.Amount, cancellationToken);
 
         var items = await query
             .Include(wt => wt.Transaction)
@@ -218,7 +244,9 @@ internal sealed class GetPlatformWalletTransactionsQueryHandler(IDbContext dbCon
             TotalCount: totalCount,
             PageNumber: request.PageNumber,
             PageSize: request.PageSize,
-            Currency: currency);
+            Currency: currency,
+            TotalCreditAmount: totalCredit,
+            TotalDebitAmount: totalDebit);
     }
 
     private static string ClassifyTransaction(WalletTransaction wt)

@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using CSharpFunctionalExtensions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Grains.GrainModels;
@@ -60,6 +60,12 @@ public interface IAuctionGrain : IGrainWithGuidKey
         CancellationToken cancellationToken = default);
 
     Task<Result<AuctionSnapshotGrain, Error>> GetSnapshotAsync(CancellationToken cancellationToken = default);
+
+    // Admin Overrides
+    Task<UnitResult<Error>> ForceCancelAuctionAsync(string reason, CancellationToken cancellationToken = default);
+    Task<UnitResult<Error>> TerminateAuctionAsync(string reason, CancellationToken cancellationToken = default);
+    Task<UnitResult<Error>> ForceStartQualificationAsync(CancellationToken cancellationToken = default);
+    Task<UnitResult<Error>> ForceStartBiddingAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Invalidate cached auction state. Call after external mutations (e.g. deposit from wallet, VNPay callback)

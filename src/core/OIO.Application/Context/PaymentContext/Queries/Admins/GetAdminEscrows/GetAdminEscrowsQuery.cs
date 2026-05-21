@@ -24,6 +24,8 @@ public record AdminEscrowFilterParameters : PagedParameters
     public Guid? BuyerId { get; init; }
     public Guid? SellerId { get; init; }
     public string? SearchTerm { get; init; }
+    public DateTimeOffset? FromDate { get; init; }
+    public DateTimeOffset? ToDate { get; init; }
 }
 
 public sealed record GetAdminEscrowsQuery(
@@ -74,6 +76,12 @@ internal sealed class GetAdminEscrowsQueryHandler
             query = query.Where(x =>
                 x.Order.OrderNumber.Value.ToLower().Contains(term));
         }
+
+        if (parameters.FromDate.HasValue)
+            query = query.Where(x => x.HeldAt >= parameters.FromDate.Value);
+
+        if (parameters.ToDate.HasValue)
+            query = query.Where(x => x.HeldAt <= parameters.ToDate.Value);
 
         query = query.OrderByDescending(x => x.HeldAt);
 

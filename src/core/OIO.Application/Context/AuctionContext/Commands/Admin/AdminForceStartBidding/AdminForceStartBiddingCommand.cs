@@ -31,73 +31,52 @@ internal sealed class AdminForceStartBiddingCommandHandler
     private readonly IClock _clock;
     private readonly IUnitOfWork _unitOfWork;
     private readonly OIO.Application.Abstractions.Scheduling.IAuctionScheduler _scheduler;
+    private readonly IGrainFactory _grainFactory;
 
     public AdminForceStartBiddingCommandHandler(
         IDbContext dbContext,
         IClock clock,
         IUnitOfWork unitOfWork,
-        OIO.Application.Abstractions.Scheduling.IAuctionScheduler scheduler)
+        OIO.Application.Abstractions.Scheduling.IAuctionScheduler scheduler,
+        IGrainFactory grainFactory)
     {
         _dbContext = dbContext;
         _clock = clock;
         _unitOfWork = unitOfWork;
         _scheduler = scheduler;
+        _grainFactory = grainFactory;
     }
 
     public async Task<UnitResult<Error>> Handle(
         AdminForceStartBiddingCommand request,
         CancellationToken cancellationToken)
     {
-        var auctionId = AuctionId.From(request.AuctionId);
-        var auction = await _dbContext.GetByIdAsync<Auction, AuctionId>(
-            id: auctionId,
-            queryBuilder: query => query
-                .Include(x => x.Deposits)
-                .Include(x => x.Participants)
-                .Include(x => x.BuyNowReservations)
-                .AsSplitQuery(),
-            cancellationToken: cancellationToken);
-
-        if (auction is null)
-            return AuctionErrors.Auction.NotFound(auctionId);
-
-        if (auction.Info is null)
-            return AuctionErrors.Auction.TimingRequired;
-
-        if (!auction.Info.HasQualification)
-            return AuctionErrors.Auction.QualificationWindowRequired;
-
-        if (auction.Status != AuctionStatus.Scheduled)
-            return AuctionErrors.Auction.InvalidState(auction.Status.Id, "force start bidding");
-
-        var nowUtc = _clock.UtcNow;
-
-        // Force Start Bidding requires updating the StartTime to now
-        // so that the AuctionInfo is accurate.
-        var forceStartResult = auction.ForceStartBidding(nowUtc);
-        if (forceStartResult.IsFailure)
-            return forceStartResult.Error;
-
-        // Persist the StartTime change before ActivationService triggers Start()
-        // Wait, ForceStartBidding ALREADY calls Start() inside it and sets Status = Active!
-        // So auction.Status is now Active. 
-        // We still need to sync the Item status and schedule the end job.
+        var grain = _grainFactory.GetGrain<OIO.Domain.Context.AuctionContext.Grains.IAuctionGrain>(request.AuctionId);
         
-        var startItem = await _dbContext.GetByIdAsync<OIO.Domain.Context.CatalogContext.Aggregates.Items.Item, OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId>(
-            auction.ItemId,
-            cancellationToken: cancellationToken);
+        var grainResult = await grain.ForceStartBiddingAsync(cancellationToken);
+        if (grainResult.IsFailure) return grainResult.Error;
 
-        if (startItem is not null)
+        var auctionId = AuctionId.From(request.AuctionId);
+        var auction = await _dbContext.GetByIdAsync<Auction, AuctionId>(auctionId, cancellationToken: cancellationToken);
+
+        if (auction is not null && auction.Info is not null)
         {
-            var startItemSyncResult = startItem.MarkInAuction(nowUtc);
-            if (startItemSyncResult.IsFailure)
-                return startItemSyncResult.Error;
+            var startItem = await _dbContext.GetByIdAsync<OIO.Domain.Context.CatalogContext.Aggregates.Items.Item, OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId>(
+                auction.ItemId,
+                cancellationToken: cancellationToken);
+
+            if (startItem is not null)
+            {
+                var nowUtc = _clock.UtcNow;
+                var startItemSyncResult = startItem.MarkInAuction(nowUtc);
+                if (startItemSyncResult.IsFailure)
+                    return startItemSyncResult.Error;
+                
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+
+            await _scheduler.ScheduleEndAsync(auction.Id.Value, auction.Info.EndTime, cancellationToken);
         }
-
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        // Schedule End
-        await _scheduler.ScheduleEndAsync(auction.Id.Value, auction.Info.EndTime, cancellationToken);
 
         return UnitResult.Success<Error>();
     }

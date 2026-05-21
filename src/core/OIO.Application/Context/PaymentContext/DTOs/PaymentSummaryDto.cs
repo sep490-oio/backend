@@ -9,4 +9,6 @@ public sealed record PaymentSummaryDto(
     int HoldingEscrowCount,
     decimal HoldingEscrowTotal,
     decimal ReleasedEscrowTotal,
-    decimal RefundedEscrowTotal);
+    decimal RefundedEscrowTotal,
+    decimal TotalRevenue,
+    decimal TotalSystemBalance);

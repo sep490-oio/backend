@@ -24,8 +24,8 @@ public record AdminTransactionFilterParameters : PagedParameters
     public string? Type { get; init; }
     public Guid? UserId { get; init; }
     public Guid? OrderId { get; init; }
-    public DateTime? FromDate { get; init; }
-    public DateTime? ToDate { get; init; }
+    public DateTimeOffset? FromDate { get; init; }
+    public DateTimeOffset? ToDate { get; init; }
     public string? SearchTerm { get; init; }
     public string? GatewayProvider { get; init; }
 }
@@ -193,7 +193,7 @@ internal sealed class GetAdminTransactionsQueryHandler
             .Where(e => e.ReleaseTransactionId != null && transactionIds.Contains(e.ReleaseTransactionId))
             .ToListAsync(cancellationToken);
 
-        var escrowByTxnId = escrowTxns.ToDictionary(e => e.ReleaseTransactionId!.Value);
+        var escrowByTxnId = escrowTxns.DistinctBy(e => e.ReleaseTransactionId!.Value).ToDictionary(e => e.ReleaseTransactionId!.Value);
         
         foreach (var escrow in escrowTxns)
         {

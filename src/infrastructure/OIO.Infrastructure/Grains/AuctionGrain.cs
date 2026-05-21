@@ -1017,6 +1017,98 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
     /// Load auction from DB on first access, then use cached version.
     /// Invalidate cache after save to stay consistent.
     /// </summary>
+    public async Task<UnitResult<Error>> ForceCancelAuctionAsync(string reason, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var nowUtc = _clock.UtcNow;
+            var (_, isFailure, auction, error) = await LoadAuctionAsync(cancellationToken);
+
+            if (isFailure) return error;
+
+            var result = auction.CancelAuction($"[ADMIN] {reason}", nowUtc, isAdminOverride: true);
+            if (result.IsFailure) return result.Error;
+
+            await SaveAsync(auction, cancellationToken);
+            await PublishRealtimeAsync(auction.Id.Value, (pub, _) => pub.PublishStateChangedAsync(auction.Id.Value, ct: cancellationToken));
+            return UnitResult.Success<Error>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error forcing cancel auction {AuctionId}", this.GetGrainId());
+            return Error.Unexpected("AuctionGrain.ForceCancelAuctionFailed", "Unexpected error.");
+        }
+    }
+
+    public async Task<UnitResult<Error>> TerminateAuctionAsync(string reason, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var nowUtc = _clock.UtcNow;
+            var (_, isFailure, auction, error) = await LoadAuctionAsync(cancellationToken);
+
+            if (isFailure) return error;
+
+            var result = auction.Terminate($"[ADMIN] {reason}", nowUtc);
+            if (result.IsFailure) return result.Error;
+
+            await SaveAsync(auction, cancellationToken);
+            await PublishRealtimeAsync(auction.Id.Value, (pub, _) => pub.PublishStateChangedAsync(auction.Id.Value, ct: cancellationToken));
+            return UnitResult.Success<Error>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error terminating auction {AuctionId}", this.GetGrainId());
+            return Error.Unexpected("AuctionGrain.TerminateAuctionFailed", "Unexpected error.");
+        }
+    }
+
+    public async Task<UnitResult<Error>> ForceStartQualificationAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var nowUtc = _clock.UtcNow;
+            var (_, isFailure, auction, error) = await LoadAuctionAsync(cancellationToken);
+
+            if (isFailure) return error;
+
+            var result = auction.ForceStartQualification(nowUtc);
+            if (result.IsFailure) return result.Error;
+
+            await SaveAsync(auction, cancellationToken);
+            await PublishRealtimeAsync(auction.Id.Value, (pub, _) => pub.PublishStateChangedAsync(auction.Id.Value, ct: cancellationToken));
+            return UnitResult.Success<Error>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error forcing start qualification {AuctionId}", this.GetGrainId());
+            return Error.Unexpected("AuctionGrain.ForceStartQualificationFailed", "Unexpected error.");
+        }
+    }
+
+    public async Task<UnitResult<Error>> ForceStartBiddingAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var nowUtc = _clock.UtcNow;
+            var (_, isFailure, auction, error) = await LoadAuctionAsync(cancellationToken);
+
+            if (isFailure) return error;
+
+            var result = auction.ForceStartBidding(nowUtc);
+            if (result.IsFailure) return result.Error;
+
+            await SaveAsync(auction, cancellationToken);
+            await PublishRealtimeAsync(auction.Id.Value, (pub, _) => pub.PublishStateChangedAsync(auction.Id.Value, ct: cancellationToken));
+            return UnitResult.Success<Error>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error forcing start bidding {AuctionId}", this.GetGrainId());
+            return Error.Unexpected("AuctionGrain.ForceStartBiddingFailed", "Unexpected error.");
+        }
+    }
+
     private async Task<Result<Auction, Error>> LoadAuctionAsync(CancellationToken cancellationToken = default)
     {
         if (_isLoaded && _auction is not null)

@@ -17,4 +17,5 @@ public sealed record EscrowDto(
     DateTime? ReleasedAt,
     DateTime? RefundedAt,
     string? HoldReason = null,
-    IReadOnlyCollection<EscrowReleaseEventDto>? ReleaseEvents = null);
+    IReadOnlyCollection<EscrowReleaseEventDto>? ReleaseEvents = null,
+    bool IsDisputed = false);

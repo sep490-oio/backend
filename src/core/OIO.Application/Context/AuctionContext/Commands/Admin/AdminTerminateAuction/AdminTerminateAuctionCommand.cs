@@ -27,34 +27,21 @@ internal sealed class AdminTerminateAuctionCommandHandler(
     IDbContext dbContext,
     IUnitOfWork unitOfWork,
     IAuctionScheduler scheduler,
-    IClock clock)
+    IClock clock,
+    IGrainFactory grainFactory)
     : ICommandHandler<AdminTerminateAuctionCommand>
 {
     public async Task<UnitResult<Error>> Handle(
         AdminTerminateAuctionCommand request,
         CancellationToken cancellationToken)
     {
-        var auctionId = AuctionId.From(request.AuctionId);
-        var auction = await dbContext.GetByIdAsync<Auction, AuctionId>(
-            id: auctionId,
-            queryBuilder: query => query
-                .Include(a => a.Bids)
-                .Include(a => a.AutoBids)
-                .Include(a => a.Item)
-                .Include(a => a.WinnerOffers)
-                .AsSplitQuery(),
-            cancellationToken: cancellationToken);
+        var grain = grainFactory.GetGrain<OIO.Domain.Context.AuctionContext.Grains.IAuctionGrain>(request.AuctionId);
+        
+        var grainResult = await grain.TerminateAuctionAsync(request.Reason, cancellationToken);
+        if (grainResult.IsFailure) return grainResult.Error;
 
-        if (auction is null)
-            return AuctionErrors.Auction.NotFound(auctionId);
+        await scheduler.CancelAsync(request.AuctionId, cancellationToken);
 
-        var result = auction.Terminate($"[ADMIN] {request.Reason}", clock.UtcNow);
-        if (result.IsFailure)
-            return result;
-
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        await scheduler.CancelAsync(auction.Id.Value, cancellationToken);
-
-        return result;
+        return UnitResult.Success<Error>();
     }
 }
