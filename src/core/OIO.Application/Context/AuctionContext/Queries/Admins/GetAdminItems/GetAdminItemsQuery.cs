@@ -73,6 +73,21 @@ internal sealed class GetAdminItemsQueryHandler
             query = query.Where(i => i.Title.Value.ToLower().Contains(searchTerm) || i.Id.Value.ToString().Contains(searchTerm));
         }
 
+        if (!string.IsNullOrWhiteSpace(parameters.PhysicalLocation))
+        {
+            var loc = parameters.PhysicalLocation.ToLower();
+            var warehouseItemsQuery = _dbContext.Set<WarehouseItem>().Select(wi => wi.ItemId);
+            
+            if (loc == "warehouse")
+            {
+                query = query.Where(i => _dbContext.Set<WarehouseItem>().Any(wi => wi.ItemId == i.Id));
+            }
+            else if (loc == "seller")
+            {
+                query = query.Where(i => !_dbContext.Set<WarehouseItem>().Any(wi => wi.ItemId == i.Id));
+            }
+        }
+
         var totalCount = await query.CountAsync(cancellationToken);
 
         var pagedItems = await query
@@ -142,13 +157,6 @@ internal sealed class GetAdminItemsQueryHandler
             })
             .ToList();
 
-        if (!string.IsNullOrWhiteSpace(parameters.PhysicalLocation))
-        {
-            var loc = parameters.PhysicalLocation.ToLower();
-            items = items.Where(i => i.CurrentPhysicalLocation != null && i.CurrentPhysicalLocation.ToLower().Contains(loc)).ToList();
-            totalCount = items.Count; // Approximate
-        }
-
-        return items.ToPagedList(totalCount, parameters);
+        return items.ToPagedList(pagedItems.Metadata);
     }
 }

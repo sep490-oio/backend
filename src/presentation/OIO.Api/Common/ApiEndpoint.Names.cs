@@ -162,6 +162,7 @@ public static partial class ApiEndpoint
             public const string RejectItem = nameof(RejectItem);
             public const string AssignItemReviewer = nameof(AssignItemReviewer);
             public const string GetItemReviewHistory = nameof(GetItemReviewHistory);
+            public const string GetAdminItemAuctions = nameof(GetAdminItemAuctions);
 
             // Item Q&A Moderation
             public const string GetAdminItemQuestions = nameof(GetAdminItemQuestions);

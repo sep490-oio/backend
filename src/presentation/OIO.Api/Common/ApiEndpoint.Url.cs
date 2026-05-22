@@ -98,6 +98,7 @@ public static partial class ApiEndpoint
             public const string RejectItem = $"{Base}/items/{{itemId:guid}}/reject";
             public const string AssignItemReviewer = $"{Base}/items/{{itemId:guid}}/assign";
             public const string GetItemReviewHistory = $"{Base}/items/{{itemId:guid}}/reviews";
+            public const string GetAdminItemAuctions = $"{Base}/items/{{itemId:guid}}/auctions";
 
             // Item Q&A Moderation
             public const string GetAdminItemQuestions = $"{Base}/items/{{itemId:guid}}/questions";

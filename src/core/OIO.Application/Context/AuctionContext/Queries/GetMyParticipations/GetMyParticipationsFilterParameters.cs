@@ -9,4 +9,5 @@ public record GetMyParticipationsFilterParameters : PagedParameters, ISortByPara
     /// </summary>
     public string? Status { get; init; }
     public string? SortBy { get; init; }
+    public string? Search { get; init; }
 }

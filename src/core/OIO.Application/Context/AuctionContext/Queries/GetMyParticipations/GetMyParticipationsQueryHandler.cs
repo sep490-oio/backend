@@ -71,6 +71,15 @@ internal sealed class GetMyParticipationsQueryHandler
                 _ => query, // "all"
             };
         }
+        
+        // ── Search ──
+        if (!string.IsNullOrWhiteSpace(parameters.Search))
+        {
+            var searchTerm = parameters.Search.ToLower();
+            query = query.Where(d => 
+                d.Auction.Item.Title.Value.ToLower().Contains(searchTerm) || 
+                d.AuctionId.Value.ToString().ToLower().Contains(searchTerm));
+        }
 
         // Default sort: newest deposit first
         query = query.OrderByDescending(d => d.CreatedAt);
