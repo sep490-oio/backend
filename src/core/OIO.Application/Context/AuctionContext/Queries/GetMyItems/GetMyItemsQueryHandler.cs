@@ -84,8 +84,42 @@ internal sealed class GetMyItemsQueryHandler
             .Include(item => item.Media)
             .ToPagedListAsync(totalCount, parameters, cancellationToken);
 
+        var pagedItemIds = pagedItems.Items.Select(x => x.Id).ToList();
+        
+        var auctions = await _dbContext.Set<OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Auction>()
+            .AsNoTracking()
+            .Where(a => pagedItemIds.Contains(a.ItemId))
+            .ToListAsync(cancellationToken);
+
+        var auctionsByItemId = auctions
+            .GroupBy(a => a.ItemId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(a => a.CreatedAt).ToList());
+
         var itemDtos = pagedItems.Items
-            .Select(item => item.ToDto(activeInboundItemGuids.Contains(item.Id.Value)))
+            .Select(item =>
+            {
+                bool hasLiveAuction = false;
+                ItemAuctionSummaryDto? auctionSummary = null;
+
+                if (auctionsByItemId.TryGetValue(item.Id, out var itemAuctions) && itemAuctions.Count > 0)
+                {
+                    hasLiveAuction = itemAuctions.Any(a => a.Status == OIO.Domain.Context.AuctionContext.Enums.AuctionStatus.Active);
+                    var latest = itemAuctions.First();
+                    auctionSummary = new ItemAuctionSummaryDto(
+                        AuctionId: latest.Id.Value,
+                        AuctionStatus: latest.Status.Id,
+                        AuctionType: latest.AuctionType?.Id ?? "Regular",
+                        CurrentPrice: latest.Pricing.CurrentAmount,
+                        Currency: latest.Pricing.Currency.Id,
+                        StartTime: latest.Info?.StartTime,
+                        EndTime: latest.Info?.EndTime);
+                }
+
+                return item.ToDto(
+                    hasInboundShipment: activeInboundItemGuids.Contains(item.Id.Value),
+                    hasLiveAuction: hasLiveAuction,
+                    auction: auctionSummary);
+            })
             .ToList();
 
         return new PagedList<ItemDto>(itemDtos, pagedItems.Metadata);

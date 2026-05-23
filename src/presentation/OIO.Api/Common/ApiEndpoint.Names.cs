@@ -256,9 +256,10 @@ public static partial class ApiEndpoint
 
         public static class Auctions
         {
-            public const string GetAllAuctions = nameof(GetAllAuctions);
             public const string CreateAuction = nameof(CreateAuction);
+            public const string GetAllAuctions = nameof(GetAllAuctions);
             public const string GetAuctionById = nameof(GetAuctionById);
+            public const string GetAuctionParticipants = nameof(GetAuctionParticipants);
             public const string UpdateAuction = nameof(UpdateAuction);
             public const string GetAuctionBids = nameof(GetAuctionBids);
             public const string CancelAuction = nameof(CancelAuction);

@@ -11,4 +11,15 @@ public sealed record ItemDto(
     int Quantity,
     IReadOnlyList<ItemMediaDto> Images,
     DateTime CreatedAt,
-    bool HasInboundShipment = false);
+    bool HasInboundShipment = false,
+    bool HasLiveAuction = false,
+    ItemAuctionSummaryDto? Auction = null);
+
+public sealed record ItemAuctionSummaryDto(
+    Guid AuctionId,
+    string AuctionStatus,
+    string AuctionType,
+    decimal CurrentPrice,
+    string Currency,
+    DateTimeOffset? StartTime,
+    DateTimeOffset? EndTime);

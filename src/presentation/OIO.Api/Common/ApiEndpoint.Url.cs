@@ -213,6 +213,7 @@ public static partial class ApiEndpoint
             public const string GetById = $"{Base}/{{auctionId:guid}}";
             public const string Update = $"{Base}/{{auctionId:guid}}";
             public const string GetBids = $"{Base}/{{auctionId:guid}}/bids";
+            public const string GetParticipants = $"{Base}/{{auctionId:guid}}/participants";
             public const string Cancel = $"{Base}/{{auctionId:guid}}/cancel";
             public const string AdminReject = $"{Base}/{{auctionId:guid}}/admin-reject";
             public const string Close = $"{Base}/{{auctionId:guid}}/close";

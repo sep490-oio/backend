@@ -6,7 +6,7 @@ namespace OIO.Application.Context.AuctionContext.Mappings;
 
 public static class ItemMappings {
 
-    public static ItemDto ToDto(this Item item, bool hasInboundShipment = false)
+    public static ItemDto ToDto(this Item item, bool hasInboundShipment = false, bool hasLiveAuction = false, ItemAuctionSummaryDto? auction = null)
     {
         return new ItemDto(
             Id: item.Id.Value,
@@ -19,7 +19,9 @@ public static class ItemMappings {
             Quantity: item.Quantity,
             Images: item.Media.Select(i => i.ToDto()).ToList(),
             CreatedAt: item.CreatedAt,
-            HasInboundShipment: hasInboundShipment);
+            HasInboundShipment: hasInboundShipment,
+            HasLiveAuction: hasLiveAuction,
+            Auction: auction);
     }
     
     public static readonly SortMappingDefinition ItemDtoSortMapping = SortMappingBuilder<ItemDto, Item>
