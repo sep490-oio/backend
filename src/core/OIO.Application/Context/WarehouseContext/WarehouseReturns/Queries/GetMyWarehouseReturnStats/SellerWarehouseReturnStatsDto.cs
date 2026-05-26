@@ -1,0 +1,3 @@
+namespace OIO.Application.Context.WarehouseContext.WarehouseReturns.Queries.GetMyWarehouseReturnStats;
+
+public sealed record SellerWarehouseReturnStatsDto(int ActiveWarehouseReturns);

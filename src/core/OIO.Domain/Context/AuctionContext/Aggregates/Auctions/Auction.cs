@@ -170,34 +170,13 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         return UnitResult.Success<Error>();
     }
 
-    public UnitResult<Error> MarkApproved(DateTime nowUtc)
-    {
-        var result = EnsureCanTransition(AuctionStatus.Approved);
-
-        if (result.IsFailure)
-            return result.Error;
-
-        Status = AuctionStatus.Approved;
-        ModifiedAt = nowUtc;
-
-        RaiseDomainEvent(new AuctionApprovedEvent(
-            AuctionId: $"{Id}",
-            ItemId: $"{ItemId}",
-            ReviewerId: $"{Item.ReviewedBy}",
-            OccurredAt: nowUtc));
-
-        return UnitResult.Success<Error>();
-    }
-
     public UnitResult<Error> MarkRejected(string reason, DateTime nowUtc)
     {
         // Bug #1 fix: relax guard so admin can reject an auction at any pre-bidding stage.
-        // Previous code accepted only Pending — but SubmitConfiguration bypasses Pending and
-        // jumps to Approved/Scheduled directly, making MarkRejected unreachable.
         // Active/Ended/Sold/Terminated/etc. cannot be soft-rejected (use Terminate instead).
-        if (Status != AuctionStatus.Pending &&
-            Status != AuctionStatus.Approved &&
-            Status != AuctionStatus.Scheduled)
+        if (Status != AuctionStatus.Approved &&
+            Status != AuctionStatus.Scheduled &&
+            Status != AuctionStatus.Draft)
             return AuctionErrors.Auction.InvalidState(Status.Id, "reject");
 
         RejectionCount++;
@@ -313,16 +292,7 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         return UnitResult.Success<Error>();
     }
 
-    public UnitResult<Error> Resubmit(bool verifyByPlatform, DateTime nowUtc)
-    {
-        if (Status != AuctionStatus.Pending)
-            return AuctionErrors.Auction.InvalidState(Status.Id, "resubmit");
 
-        VerifyByPlatform = verifyByPlatform;
-        ModifiedAt = nowUtc;
-
-        return UnitResult.Success<Error>();
-    }
 
     public UnitResult<Error> Start(DateTime nowUtc)
     {
@@ -1394,100 +1364,82 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         int maxExtensions,
         TimeSpan maxDuration)
     {
-        var currentPrice = Pricing.CurrentAmount;
-        var currency = Pricing.Currency;
-
-        // 1. Collect all eligible auto-bids (excluding the manual bidder)
-        var eligibleAutoBids = _autoBids
-            .Where(ab => ab.BidderId != excludeBidderId &&
-                         ab.IsEnabled &&
-                         ab.Status == AutoBidStatus.Active)
-            .OrderByDescending(ab => ab.Budget.MaxAmount)
-            .ThenBy(ab => ab.CreatedAt)
-            .ToList();
-
-        if (eligibleAutoBids.Count == 0)
-            return UnitResult.Success<Error>();
-
-        // 2. Check if manual bidder also has an auto-bid (their ceiling)
-        var manualBidderAutoBid = _autoBids
-            .FirstOrDefault(ab => ab.BidderId == excludeBidderId &&
-                                  ab.IsEnabled &&
-                                  ab.Status == AutoBidStatus.Active);
-
-        // 3. Determine winner: highest ceiling among all eligible auto-bids
-        var winner = eligibleAutoBids[0]; // sorted DESC by MaxAmount
-        var winnerCeiling = winner.Budget.MaxAmount;
-
-        // 4. Determine runner-up ceiling
-        //    = max of: current visible price, manual bidder's auto-bid ceiling, second-highest auto-bid ceiling
-        var runnerUpCeiling = currentPrice;
-
-        if (manualBidderAutoBid is not null && manualBidderAutoBid.Budget.MaxAmount > runnerUpCeiling)
-            runnerUpCeiling = manualBidderAutoBid.Budget.MaxAmount;
-
-        if (eligibleAutoBids.Count > 1 && eligibleAutoBids[1].Budget.MaxAmount > runnerUpCeiling)
-            runnerUpCeiling = eligibleAutoBids[1].Budget.MaxAmount;
-
-        // 5. Check if winner can actually beat the minimum next bid
-        var minimumRequired = GetMinimumBidAmount();
-        if (!winner.CanBid(minimumRequired))
+        int safetyCounter = 0;
+        int ticks = 1;
+        
+        while (safetyCounter++ < 50)
         {
-            // Winner can't afford → mark all as outbid, nobody counters
-            foreach (var ab in eligibleAutoBids)
+            var minRequired = GetMinimumBidAmount();
+            var currentLeader = GetCurrentWinningBid()?.BidderId;
+
+            // Find all active auto-bids EXCEPT the current leader
+            // who can afford to increase the current price
+            var challengers = _autoBids
+                .Where(ab => ab.IsEnabled && 
+                             ab.Status == AutoBidStatus.Active && 
+                             ab.BidderId != currentLeader &&
+                             ab.Budget.MaxAmount > Pricing.CurrentAmount)
+                .ToList();
+
+            if (challengers.Count == 0)
+                break; // No one can compete anymore
+
+            // Pick the earliest placed autobid to break ties
+            var nextAttacker = challengers.OrderBy(ab => ab.CreatedAt).First();
+
+            // Calculate the step (with fast-forward logic if the distance is huge)
+            var distance = nextAttacker.Budget.MaxAmount - minRequired.Amount;
+            var step = minRequired.Amount;
+            
+            // If the distance is very large and there's another challenger, jump to speed up the loop
+            if (distance > minRequired.Amount * 10 && challengers.Count > 1) 
             {
-                if (ab.Status == AutoBidStatus.Active)
-                    ab.MarkAsOutbid(nowUtc);
+                step += distance / 5; // jump 20% of the distance each step
             }
-            return UnitResult.Success<Error>();
+
+            var bidAmountAmount = Math.Min(step, nextAttacker.Budget.MaxAmount);
+            var bidPrice = Money.Of(bidAmountAmount, Pricing.Currency);
+
+            // Cap at Buy Now
+            if (Pricing.HasBuyNowPrice && bidPrice.Amount > Pricing.BuyNowAmount!.Value)
+            {
+                bidPrice = Money.Of(Pricing.BuyNowAmount.Value, Pricing.Currency);
+            }
+
+            // Place the bid
+            var placeResult = PlaceAutoBidInternal(
+                nextAttacker, 
+                bidPrice, 
+                nowUtc.AddTicks(ticks++),
+                raiseOutbidEvent: true,
+                extensionThresholdMinutes: extensionThresholdMinutes,
+                maxExtensions: maxExtensions,
+                maxDuration: maxDuration);
+
+            if (placeResult.IsFailure)
+            {
+                // Safety escape if internal validation fails
+                nextAttacker.MarkAsOutbid(nowUtc.AddTicks(ticks++));
+                continue;
+            }
+            
+            // Stop early if BuyNow is reached
+            if (Pricing.HasBuyNowPrice && Pricing.CurrentAmount >= Pricing.BuyNowAmount!.Value)
+                break;
         }
 
-        // 6. Resolve the visible price
-        //    = min(winner ceiling, runner-up ceiling + increment)
-        var bidIncrement = GetEffectiveAutoBidIncrement(winner);
-        var resolvedAmount = Math.Min(winnerCeiling, runnerUpCeiling + bidIncrement);
-
-        // Ensure resolved amount is at least the minimum required bid
-        if (resolvedAmount < minimumRequired.Amount)
-            resolvedAmount = minimumRequired.Amount;
-
-        // Cap at winner's ceiling
-        if (resolvedAmount > winnerCeiling)
-            resolvedAmount = winnerCeiling;
-
-        // Buy-now cap: auto-bid resolution may cross the buy-now threshold; when it does,
-        // settle the auction at exactly buyNowPrice rather than the raw ceiling. This keeps
-        // AuctionSoldEvent.FinalPrice and downstream order pricing aligned with Buy Now.
-        if (Pricing.HasBuyNowPrice && resolvedAmount > Pricing.BuyNowAmount!.Value)
-            resolvedAmount = Pricing.BuyNowAmount.Value;
-
-        var resolvedPrice = Money.Of(resolvedAmount, currency);
-
-        // 7. Place ONE counter-bid at the resolved price
-        var counterBidTime = nowUtc.AddTicks(1); // slightly after manual bid for ordering
-        var placeResult = PlaceAutoBidInternal(
-            winner, resolvedPrice, counterBidTime,
-            raiseOutbidEvent: true,
-            extensionThresholdMinutes: extensionThresholdMinutes,
-            maxExtensions: maxExtensions,
-            maxDuration: maxDuration);
-
-        if (placeResult.IsFailure)
-            return placeResult.Error;
-
-        // 8. Mark all OTHER auto-bids as outbid (they lost the proxy resolution)
-        foreach (var ab in eligibleAutoBids)
+        // Mark all losing autobids as Outbid
+        var finalLeader = GetCurrentWinningBid()?.BidderId;
+        var finalMinRequired = GetMinimumBidAmount();
+        
+        foreach (var ab in _autoBids.Where(ab => ab.IsEnabled && ab.Status == AutoBidStatus.Active))
         {
-            if (ab.Id != winner.Id && ab.Status == AutoBidStatus.Active)
-                ab.MarkAsOutbid(counterBidTime);
-        }
-
-        // 9. If manual bidder had an auto-bid and was outbid by winner, mark it
-        if (manualBidderAutoBid is not null &&
-            manualBidderAutoBid.Status == AutoBidStatus.Active &&
-            manualBidderAutoBid.Budget.MaxAmount < resolvedAmount)
-        {
-            manualBidderAutoBid.MarkAsOutbid(counterBidTime);
+            // If they are not the leader and can't even beat the current price, they are outbid.
+            // Using CurrentAmount instead of MinimumRequired to allow for squeeze bids.
+            if (ab.BidderId != finalLeader && ab.Budget.MaxAmount <= Pricing.CurrentAmount)
+            {
+                ab.MarkAsOutbid(nowUtc.AddTicks(ticks++));
+            }
         }
 
         return UnitResult.Success<Error>();
@@ -1503,7 +1455,16 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         TimeSpan maxDuration = default)
     {
         // 1. Validate BEFORE mutating — ensure pricing and budget are valid
-        var pricingCheck = Pricing.WithNewBid(bidAmount.Amount, GetMinimumBidAmount().Amount);
+        var minRequired = GetMinimumBidAmount().Amount;
+        
+        // Allow an auto-bid to place its exact maximum even if it doesn't meet the full increment,
+        // as long as it improves the current price (squeeze bid).
+        if (bidAmount.Amount == autoBid.Budget.MaxAmount && bidAmount.Amount > Pricing.CurrentAmount)
+        {
+            minRequired = Math.Min(minRequired, bidAmount.Amount);
+        }
+
+        var pricingCheck = Pricing.WithNewBid(bidAmount.Amount, minRequired);
         if (pricingCheck.IsFailure)
             return pricingCheck.Error;
 

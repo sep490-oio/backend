@@ -58,6 +58,7 @@ public static partial class App
                     Permissions.Catalogs.Me.ReadWatchlist,
                     Permissions.Catalogs.Me.ReadTerms,
                     Permissions.Catalogs.Me.AcceptTerms,
+                    Permissions.Catalogs.Me.ReadBids,
 
                     // Verification & Seller Profile
                     Permissions.Catalogs.Me.ManageVerification,

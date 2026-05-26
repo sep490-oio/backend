@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
@@ -53,7 +53,76 @@ internal sealed class GetInboundShipmentByIdQueryHandler(IDbContext db, ICurrent
         var primaryMedia = item?.Media.FirstOrDefault(m => m.IsPrimary)
                            ?? item?.Media.FirstOrDefault();
         string? itemImageUrl = primaryMedia?.Info.SecureUrl;
+        
+        List<string>? itemImageUrls = item?.Media
+            .OrderBy(m => m.SortOrder)
+            .Where(m => !string.IsNullOrEmpty(m.Info.SecureUrl))
+            .Select(m => m.Info.SecureUrl!)
+            .ToList();
 
-        return shipment.ToDto() with { ItemTitle = itemTitle, ItemImageUrl = itemImageUrl };
+        List<string>? receiptPhotos = null;
+        if (shipment.ExtraData is not null)
+        {
+            try
+            {
+                var doc = System.Text.Json.JsonDocument.Parse(shipment.ExtraData.RawJson);
+                if (doc.RootElement.TryGetProperty("packageReceipt", out var packageReceipt) &&
+                    packageReceipt.TryGetProperty("photos", out var photosArr) &&
+                    photosArr.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    receiptPhotos = photosArr.EnumerateArray()
+                        .Select(x => x.GetString())
+                        .Where(x => !string.IsNullOrEmpty(x))
+                        .Cast<string>()
+                        .ToList();
+                }
+            }
+            catch { /* ignore parsing errors */ }
+        }
+
+        InboundShipmentWarehouseItemDto? warehousePackage = null;
+        if (isStaffRole)
+        {
+            var warehouseItem = await db.Set<OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.WarehouseItem>()
+                .AsNoTracking()
+                .Include(w => w.Media)
+                .FirstOrDefaultAsync(w => w.InboundShipmentId == shipmentId, cancellationToken);
+
+            if (warehouseItem is not null)
+            {
+                string? storageLocationLabel = null;
+                if (warehouseItem.StorageLocationId is not null)
+                {
+                    var location = await db.Set<OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseStorage.WarehouseStorageLocation>()
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(l => l.Id == warehouseItem.StorageLocationId, cancellationToken);
+                    storageLocationLabel = location?.Label;
+                }
+
+                warehousePackage = new InboundShipmentWarehouseItemDto(
+                    Id: warehouseItem.Id.Value,
+                    Status: warehouseItem.Status.Id,
+                    StorageLocationLabel: storageLocationLabel,
+                    Media: warehouseItem.Media
+                        .OrderBy(m => m.SortOrder)
+                        .Select(m => new WarehouseItemMediaDto(
+                            Id: m.Id.Value,
+                            ResourceType: m.ResourceType,
+                            IsPrimary: m.IsPrimary,
+                            SortOrder: m.SortOrder,
+                            SecureUrl: m.Info.SecureUrl!,
+                            FileName: m.Info.FileName))
+                        .ToList()
+                );
+            }
+        }
+
+        return shipment.ToDto() with { 
+            ItemTitle = itemTitle, 
+            ItemImageUrl = itemImageUrl,
+            ItemImageUrls = itemImageUrls,
+            ReceiptPhotos = receiptPhotos,
+            WarehousePackage = warehousePackage
+        };
     }
 }

@@ -34,7 +34,7 @@ internal sealed class AdminOverrideAuctionStatusCommandHandler(
     private static readonly Dictionary<string, AuctionStatus> StatusMap = new(StringComparer.OrdinalIgnoreCase)
     {
         ["draft"] = AuctionStatus.Draft,
-        ["pending"] = AuctionStatus.Pending,
+
         ["approved"] = AuctionStatus.Approved,
         ["scheduled"] = AuctionStatus.Scheduled,
         ["active"] = AuctionStatus.Active,

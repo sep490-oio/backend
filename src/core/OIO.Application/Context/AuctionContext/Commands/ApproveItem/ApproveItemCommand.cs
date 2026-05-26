@@ -10,6 +10,7 @@ using OIO.Domain.Context.CatalogContext.Enums;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
 using ItemId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId;
+using OIO.Application.Context.AuctionContext.Services;
 
 namespace OIO.Application.Context.AuctionContext.Commands.ApproveItem;
 
@@ -30,17 +31,20 @@ internal sealed class ApproveItemCommandHandler : ICommandHandler<ApproveItemCom
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
+    private readonly ContinueVerifiedAuctionService _continuationService;
 
     public ApproveItemCommandHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
-        IClock clock)
+        IClock clock,
+        ContinueVerifiedAuctionService continuationService)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
+        _continuationService = continuationService;
     }
 
     public async Task<UnitResult<Error>> Handle(
@@ -64,6 +68,10 @@ internal sealed class ApproveItemCommandHandler : ICommandHandler<ApproveItemCom
 
         var result = item.Approve(adminId, nowUtc);
         if (result.IsFailure) return result.Error;
+
+        var continueResult = await _continuationService.ContinueAsync(itemId.Value, cancellationToken);
+        if (continueResult.IsFailure)
+            return continueResult.Error;
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

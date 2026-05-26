@@ -190,9 +190,7 @@ internal sealed class UpdateAuctionCommandHandler
             request.StartTime.HasValue ||
             request.EndTime.HasValue ||
             request.QualificationStartAt.HasValue ||
-            request.QualificationEndAt.HasValue ||
-            request.AutoExtend.HasValue ||
-            request.ExtensionMinutes.HasValue;
+            request.QualificationEndAt.HasValue;
 
         if (!shouldRebuildInfo)
             return (AuctionInfo?)null;

@@ -150,7 +150,7 @@ internal sealed class GetWarehouseItemsQueryHandler(IDbContext db)
                             ResourceType: m.ResourceType,
                             IsPrimary:    m.IsPrimary,
                             SortOrder:    m.SortOrder,
-                            SecureUrl:    m.Info.SecureUrl,
+                            SecureUrl:    m.Info.SecureUrl!,
                             FileName:     m.Info.FileName))
                         .ToList());
             })

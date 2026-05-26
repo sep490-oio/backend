@@ -36,7 +36,7 @@ internal sealed class AuctionDraftCreationService(IDbContext dbContext)
     private static readonly string[] BlockingAuctionStatuses =
     [
         AuctionStatus.Draft.Id,
-        AuctionStatus.Pending.Id,
+
         AuctionStatus.Approved.Id,
         AuctionStatus.Scheduled.Id,
         AuctionStatus.Active.Id,

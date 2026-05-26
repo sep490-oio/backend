@@ -5,7 +5,6 @@ namespace OIO.Domain.Context.AuctionContext.Enums;
 public sealed class AuctionStatus : EnumValueObject<AuctionStatus>
 {
     public static readonly AuctionStatus Draft = new("draft");
-    public static readonly AuctionStatus Pending = new("pending");
     public static readonly AuctionStatus Approved = new("approved");
     public static readonly AuctionStatus Scheduled = new("scheduled");
     public static readonly AuctionStatus Active = new("active");
@@ -41,10 +40,7 @@ public sealed class AuctionStatus : EnumValueObject<AuctionStatus>
     public bool CanTransitionTo(AuctionStatus target) =>
         (Id, target.Id) switch
         {
-            ("draft", "pending") => true,
             ("draft", "cancelled") => true,
-            ("pending", "approved") => true,
-            ("pending", "cancelled") => true,
             ("approved", "scheduled") => true,
             ("approved", "cancelled") => true,
             ("scheduled", "active") => true,

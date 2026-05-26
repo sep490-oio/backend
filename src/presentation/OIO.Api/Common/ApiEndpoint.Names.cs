@@ -21,6 +21,7 @@ public static partial class ApiEndpoint
         public static class Me
         {
             public const string GetMyAuctions = nameof(GetMyAuctions);
+            public const string GetMyAuctionStats = nameof(GetMyAuctionStats);
             public const string GetMyBids = nameof(GetMyBids);
             public const string GetMyDeposits = nameof(GetMyDeposits);
             public const string GetMyParticipations = nameof(GetMyParticipations);
@@ -49,6 +50,7 @@ public static partial class ApiEndpoint
             public const string CheckPendingTerms = nameof(CheckPendingTerms);
             public const string GetMyWallet = nameof(GetMyWallet);
             public const string GetMyOrders = nameof(GetMyOrders);
+            public const string GetMyOrderStats = nameof(GetMyOrderStats);
             public const string GetMyOutboundShipments = nameof(GetMyOutboundShipments);
             public const string AcknowledgeOutboundShipmentReceived = nameof(AcknowledgeOutboundShipmentReceived);
             public const string GetBuyerOutboundShipmentById = nameof(GetBuyerOutboundShipmentById);
@@ -85,6 +87,7 @@ public static partial class ApiEndpoint
             public const string CreateSellerProfile = nameof(CreateSellerProfile);
             public const string GetMySellerProfile = nameof(GetMySellerProfile);
             public const string UpdateSellerProfile = nameof(UpdateSellerProfile);
+            public const string GetDashboardStats = nameof(GetDashboardStats);
 
             // Notification Preferences
             public const string GetNotificationPreferences = nameof(GetNotificationPreferences);
@@ -235,6 +238,7 @@ public static partial class ApiEndpoint
             public const string GetPublicItems = nameof(GetPublicItems);
             public const string GetItemById = nameof(GetItemById);
             public const string GetMyItems = nameof(GetMyItems);
+            public const string GetMyItemStats = nameof(GetMyItemStats);
             public const string SubmitItem = nameof(SubmitItem);
             public const string ActivateItem = nameof(ActivateItem);
             public const string AdminRemoveItem = nameof(AdminRemoveItem);
@@ -328,6 +332,7 @@ public static partial class ApiEndpoint
             public const string UpdateExternalOutboundShipmentStatus    = nameof(UpdateExternalOutboundShipmentStatus);
             public const string GhnWebhook           = nameof(GhnWebhook);
             public const string GetInspectionQueue   = nameof(GetInspectionQueue);
+            public const string GetInspectionDashboardStats = nameof(GetInspectionDashboardStats);
             public const string InspectWarehouseItem = nameof(InspectWarehouseItem);
             public const string ReviewWarehouseInspection = nameof(ReviewWarehouseInspection);
             public const string StoreWarehouseItem   = nameof(StoreWarehouseItem);
@@ -372,6 +377,7 @@ public static partial class ApiEndpoint
             public const string RecordWarehouseReturnDeliveryFailure = nameof(RecordWarehouseReturnDeliveryFailure);
             public const string MarkWarehouseReturnDelivered = nameof(MarkWarehouseReturnDelivered);
             public const string GetMyWarehouseReturns               = nameof(GetMyWarehouseReturns);
+            public const string GetMyWarehouseReturnStats           = nameof(GetMyWarehouseReturnStats);
             public const string GetPendingStaffReturns              = nameof(GetPendingStaffReturns);
 
             // Warehouse → Seller returns — evidence + QR scan (Phase C).

@@ -30,4 +30,13 @@ public sealed record InboundShipmentDto(
     DateTime? ModifiedAt,
     IReadOnlyList<ShipmentTrackingEventDto> TrackingEvents,
     string? ItemTitle = null,
-    string? ItemImageUrl = null);
+    string? ItemImageUrl = null,
+    IReadOnlyList<string>? ItemImageUrls = null,
+    IReadOnlyList<string>? ReceiptPhotos = null,
+    InboundShipmentWarehouseItemDto? WarehousePackage = null);
+
+public sealed record InboundShipmentWarehouseItemDto(
+    Guid Id,
+    string Status,
+    string? StorageLocationLabel,
+    IReadOnlyList<WarehouseItemMediaDto> Media);

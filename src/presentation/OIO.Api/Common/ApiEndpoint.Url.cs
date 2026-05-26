@@ -180,6 +180,7 @@ public static partial class ApiEndpoint
             public const string Activate = $"{Base}/{{itemId:guid}}/activate";
             public const string AdminRemove = $"{Base}/{{itemId:guid}}/admin-remove";
             public const string GetBySeller = $"{Base}/my";
+            public const string GetMyItemStats = $"{Base}/my/stats";
             public const string Shipping = $"{Base}/{{itemId:guid}}/shipping";
             public const string CreateAuction = $"{Base}/{{itemId:guid}}/auctions";
             public const string GetItemAuctions = $"{Base}/{{itemId:guid}}/auctions";
@@ -289,6 +290,7 @@ public static partial class ApiEndpoint
             private const string Base = "api/warehouse";
             
             public const string InspectionQueue = $"{Base}/inbound-shipments/inspection-queue";
+            public const string InspectionDashboardStats = $"{Base}/inbound-shipments/inspection-dashboard-stats";
             public const string InspectWarehouseItem = $"{Base}/inbound-shipments/{{shipmentId:guid}}/inspect";
             public const string ReviewWarehouseInspection = $"{Base}/inbound-shipments/{{shipmentId:guid}}/review";
             public const string BookInbound  = $"{Base}/inbound-shipments";
@@ -337,6 +339,7 @@ public static partial class ApiEndpoint
             public const string WarehouseStaffReturnDeliveryFailure      = $"{Base}-staff/returns/{{id:guid}}/delivery-failure";
             public const string WarehouseStaffReturnMarkDelivered       = $"{Base}-staff/returns/{{id:guid}}/mark-delivered";
             public const string SellerWarehouseReturns                   = "api/seller/warehouse-returns";
+            public const string SellerWarehouseReturnStats               = "api/seller/warehouse-returns/stats";
             public const string SellerWarehouseReturnConfirmReceipt      = "api/seller/warehouse-returns/{id:guid}/confirm-receipt";
 
             // Warehouse → Seller returns — evidence + QR scan (Phase C).
@@ -442,6 +445,7 @@ public static partial class ApiEndpoint
             private const string Base = "api/me";
 
             public const string MyAuctions = $"{Base}/auctions";
+            public const string MyAuctionStats = $"{Base}/auctions/stats";
             public const string MyBids = $"{Base}/bids";
             public const string MyDeposits = $"{Base}/deposits";
             public const string MyParticipations = $"{Base}/participations";
@@ -476,6 +480,7 @@ public static partial class ApiEndpoint
             public const string CancelWithdrawal = $"{Base}/wallet/withdrawals/{{withdrawalId:guid}}/cancel";
             public const string GetMyActiveDeposits = $"{Base}/deposits/active";
             public const string GetMyOrders = $"{Base}/orders";
+            public const string GetMyOrderStats = $"{Base}/orders/stats";
             public const string GetMyOutboundShipments = $"{Base}/outbound-shipments";
             public const string AcknowledgeOutboundShipmentReceived = $"{Base}/outbound-shipments/{{shipmentId:guid}}/acknowledge-received";
             public const string GetBuyerOutboundShipmentById = $"{Base}/outbound-shipments/{{shipmentId:guid}}";
@@ -515,6 +520,7 @@ public static partial class ApiEndpoint
             public const string CreateSellerProfile = $"{Base}/seller-profile";
             public const string GetMySellerProfile = $"{Base}/seller-profile";
             public const string UpdateSellerProfile = $"{Base}/seller-profile";
+            public const string GetDashboardStats = $"{Base}/seller-profile/dashboard-stats";
 
             // Notification Preferences
             public const string NotificationPreferences = $"{Base}/notification-preferences";

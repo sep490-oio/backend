@@ -24,6 +24,11 @@ public record GetInspectionQueueQueryFilters : PagedParameters
     /// Optional filter: only include items whose Item.RequiresPlatformInspection matches.
     /// </summary>
     public bool? RequiresPlatformInspection { get; init; }
+
+    /// <summary>
+    /// Optional filter by Item Category.
+    /// </summary>
+    public Guid? CategoryId { get; init; }
 }
 
 public sealed record GetInspectionQueueQuery(
@@ -59,6 +64,11 @@ internal sealed class GetInspectionQueueQueryHandler(Application.Abstractions.Da
         {
             var flag = parameters.RequiresPlatformInspection.Value;
             itemsQuery = itemsQuery.Where(x => x.RequiresPlatformInspection == flag);
+        }
+        if (parameters.CategoryId.HasValue)
+        {
+            var categoryId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.CategoryId.From(parameters.CategoryId.Value);
+            itemsQuery = itemsQuery.Where(x => x.CategoryId == categoryId);
         }
 
         var items = await itemsQuery.ToListAsync(cancellationToken);

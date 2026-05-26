@@ -61,7 +61,7 @@ public static class GetAuctionsStatusFilter
 
     private static Expression<Func<Auction, bool>> NonTransient() =>
         x => x.Status != AuctionStatus.Draft &&
-             x.Status != AuctionStatus.Pending &&
+
              x.Status != AuctionStatus.Approved &&
              x.Status != AuctionStatus.Ended;
 }

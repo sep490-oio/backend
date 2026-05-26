@@ -34,20 +34,20 @@ public static class HybridCacheExtensions
     /// <remarks>Will never add or alter the state of any items in the cache.</remarks>
     public async static Task<(bool Exists, T? Value)> TryGetValueAsync<T>(this HybridCache cache, string key, CancellationToken cancellationToken = default)
     {
-        var exists = true;
 
-        var result = await cache.GetOrCreateAsync<object, T>(
+        var result = await cache.GetOrCreateAsync<object, T?>(
             key,
             null!,
-            (_, _) =>
-            {
-                exists = false;
-                return new ValueTask<T>(default(T)!);
-            },
+            (_, _) => ValueTask.FromResult<T?>(default),
             Options,
             null,
-            cancellationToken);
+            CancellationToken.None);
 
-        return (exists, result);
+        if (result == null!)
+        {
+            return (false, default);
+        }
+        
+        return (true, result);
     }
 }

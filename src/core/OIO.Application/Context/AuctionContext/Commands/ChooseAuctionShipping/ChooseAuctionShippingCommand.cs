@@ -108,7 +108,7 @@ internal sealed class ChooseAuctionShippingCommandHandler
         if (auction.Item.SellerId != _currentUser.UserId)
             return AuctionErrors.Auction.OnlyOwnerOfItem;
 
-        if (auction.Status != AuctionStatus.Draft && auction.Status != AuctionStatus.Pending)
+        if (auction.Status != AuctionStatus.Draft)
             return AuctionErrors.Auction.InvalidState(auction.Status.Id, "choose shipping");
 
         var serviceRequest = new ItemShippingSelectionRequest(

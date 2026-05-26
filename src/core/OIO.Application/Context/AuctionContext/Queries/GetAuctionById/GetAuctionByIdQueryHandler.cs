@@ -53,7 +53,7 @@ internal sealed class GetAuctionByIdQueryHandler
         var auction = await _dbContext.GetByIdAsync<Auction, AuctionId>(
             id: auctionId,
             queryBuilder: query => query
-                .Include(a => a.Bids.OrderByDescending(b => b.CreatedAt))
+                .Include(a => a.Bids.OrderByDescending(b => b.CreatedAt).ThenByDescending(b => b.Amount.Amount))
                 .Include(a => a.AutoBids)
                 .Include(a => a.BuyNowReservations)
                 .Include(a => a.SealedBids)
@@ -162,6 +162,7 @@ internal sealed class GetAuctionByIdQueryHandler
 
         var recentBids = auction.Bids
             .OrderByDescending(b => b.CreatedAt)
+            .ThenByDescending(b => b.Amount.Amount)
             .Take(20)
             .ToList();
 

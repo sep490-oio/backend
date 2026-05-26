@@ -15,6 +15,7 @@ public sealed class GetInspectionQueueEndpoint : IEndpoint
                 int? pageNumber = null,
                 int? pageSize = null,
                 string? status = null,
+                Guid? categoryId = null,
                 ISender sender = default!,
                 CancellationToken ct = default) =>
             {
@@ -23,6 +24,7 @@ public sealed class GetInspectionQueueEndpoint : IEndpoint
                     PageNumber = pageNumber,
                     PageSize = pageSize,
                     Status = status,
+                    CategoryId = categoryId
                 };
                 var result = await sender.Send(new GetInspectionQueueQuery(filters), ct);
                 return result.ToOkHttpResult();
