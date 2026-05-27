@@ -1,16 +1,16 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using System.Collections.Concurrent;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 
 namespace OIO.Infrastructure.Authorizations;
 
 internal sealed class PermissionAuthorizationPolicyProvider : DefaultAuthorizationPolicyProvider
 {
-    private readonly AuthorizationOptions _authorizationOptions;
+    private readonly ConcurrentDictionary<string, AuthorizationPolicy> _policies = new(StringComparer.OrdinalIgnoreCase);
 
     public PermissionAuthorizationPolicyProvider(IOptions<AuthorizationOptions> options)
         : base(options)
     {
-        _authorizationOptions = options.Value;
     }
 
     public override async Task<AuthorizationPolicy?> GetPolicyAsync(string policyName)
@@ -22,12 +22,11 @@ internal sealed class PermissionAuthorizationPolicyProvider : DefaultAuthorizati
             return policy;
         }
 
-        var permissionPolicy = new AuthorizationPolicyBuilder()
-            .AddRequirements(new PermissionRequirement(policyName))
-            .Build();
-
-        _authorizationOptions.AddPolicy(policyName, permissionPolicy);
-
-        return permissionPolicy;
+        return _policies.GetOrAdd(policyName, name =>
+        {
+            return new AuthorizationPolicyBuilder()
+                .AddRequirements(new PermissionRequirement(name))
+                .Build();
+        });
     }
 }

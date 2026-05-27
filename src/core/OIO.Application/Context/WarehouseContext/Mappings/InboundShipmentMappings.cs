@@ -1,3 +1,4 @@
+using OIO.Application.Abstractions.Sorting;
 using OIO.Application.Context.WarehouseContext.DTOs;
 using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
 
@@ -47,4 +48,19 @@ internal static class InboundShipmentMappings
                                       .Select(e => e.ToDto())
                                       .ToList()
         );
+
+    public static readonly SortMappingDefinition InboundPackageDtoSortMapping =
+        SortMappingBuilder<InboundPackageDto, PackageGroupProjection>.Create()
+        .Map(x => x.CreatedAt, x => x.CreatedAt)
+        .Map(x => x.ExpectedArrivalAt, x => x.ExpectedArrivalAt)
+        .Map(x => x.FirstReceivedAt, x => x.FirstReceivedAt)
+        .Build();
+}
+
+public sealed class PackageGroupProjection
+{
+    public required string ClientOrderCode { get; init; }
+    public required DateTime CreatedAt { get; init; }
+    public DateTime? ExpectedArrivalAt { get; init; }
+    public DateTime? FirstReceivedAt { get; init; }
 }

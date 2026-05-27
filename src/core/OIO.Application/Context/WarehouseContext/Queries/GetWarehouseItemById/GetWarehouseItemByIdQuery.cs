@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.WarehouseContext.DTOs;
+using OIO.Application.Context.WarehouseContext.Queries.GetInboundPackages;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
@@ -41,6 +42,9 @@ internal sealed class GetWarehouseItemByIdQueryHandler(IDbContext db)
 
         var shipment = await db.Set<InboundShipment>().AsNoTracking()
             .FirstOrDefaultAsync(s => s.Id == w.InboundShipmentId, cancellationToken);
+        var (receiptMedia, _) = shipment != null 
+            ? PackageStateResolver.ExtractReceipt(shipment) 
+            : (Array.Empty<string>(), null);
 
         var itemId = ItemId.From(w.ItemId);
         var item = await db.Set<Item>().AsNoTracking()
@@ -154,6 +158,7 @@ internal sealed class GetWarehouseItemByIdQueryHandler(IDbContext db)
                     SecureUrl:    m.Info.SecureUrl!,
                     FileName:     m.Info.FileName))
                 .ToList(),
+            ReceiptPhotos:        receiptMedia,
             CanAssignOrMoveLocation: canAssignOrMoveLocation,
             CanBookOutbound:         canBookOutbound,
             OutboundBookingOrderId:  outboundBookingOrderId,

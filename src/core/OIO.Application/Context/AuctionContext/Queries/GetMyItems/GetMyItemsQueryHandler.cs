@@ -37,6 +37,12 @@ internal sealed class GetMyItemsQueryHandler
             .AsNoTracking()
             .Where(i => i.SellerId == _currentUser.UserId);
 
+        if (!string.IsNullOrWhiteSpace(parameters.Search))
+        {
+            var term = parameters.Search.ToLower();
+            query = query.Where(i => i.Title.Value.ToLower().Contains(term));
+        }
+
         // Server-side status filter — was previously missing, which made the
         // /seller/items status pills effectively no-ops.
         if (!string.IsNullOrWhiteSpace(parameters.Status))

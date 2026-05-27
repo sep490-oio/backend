@@ -47,6 +47,7 @@ public sealed record WarehouseItemDetailDto(
     string?   SellerName,
     // Receiving media
     List<WarehouseItemMediaDto> Media,
+    IReadOnlyList<string>? ReceiptPhotos = null,
     // Staff action affordances
     bool      CanAssignOrMoveLocation = false,
     bool      CanBookOutbound = false,

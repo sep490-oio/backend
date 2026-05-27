@@ -6,24 +6,50 @@ using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Application.Context.WarehouseContext.DTOs;
+using OIO.Application.Context.WarehouseContext.Mappings;
+using OIO.Application.Abstractions.Sorting;
 using OIO.Domain.AppDefinitions;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.WarehouseContext.Aggregates.InboundShipments;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 using OIO.Domain.Context.WarehouseContext.Enums;
 using OIO.Domain.SeedWork.Errors;
+using OIO.Domain.SeedWork.Checks.Extensions;
+using OIO.Application.Extensions;
 using ItemId = OIO.Domain.Context.CatalogContext.ValueObjects.Ids.ItemId;
 
 namespace OIO.Application.Context.WarehouseContext.Queries.GetInboundPackages;
 
-public record GetInboundPackagesQueryFilter : PagedParameters
+public record GetInboundPackagesQueryFilter : PagedParameters, ISortByParameter
 {
     public string? PackageState { get; init; }
     public string? Search { get; init; }
+    public string? SortBy { get; init; }
+}
+
+public static class PackageStateFilters
+{
+    public const string AwaitingPickup = "awaiting_pickup";
+    public const string InTransit = "in_transit";
+    public const string PendingArrival = "pending_arrival";
+    public const string Arrived = "arrived";
+    public const string Inspected = "inspected";
+    public const string Stored = "stored";
+    public const string Received = "received";
+    public const string Cancelled = "cancelled";
 }
 
 public sealed record GetInboundPackagesQuery(
-    GetInboundPackagesQueryFilter Parameters) : IQuery<PagedList<InboundPackageDto>>;
+    GetInboundPackagesQueryFilter Parameters) : IQuery<PagedList<InboundPackageDto>>, IHasValidate
+{
+    public ViolationsError Validate()
+    {
+        return GetInboundPackagesQuery.Check()
+            .WithOwnerName("GetInboundPackages")
+            .Field(Parameters.SortBy)
+            .WhenHasValue(x => x.Must(InboundShipmentMappings.InboundPackageDtoSortMapping.ValidateMappings));
+    }
+}
 
 internal sealed class GetInboundPackagesQueryHandler(IDbContext db, ICurrentUser currentUser)
     : IQueryHandler<GetInboundPackagesQuery, PagedList<InboundPackageDto>>
@@ -45,17 +71,142 @@ internal sealed class GetInboundPackagesQueryHandler(IDbContext db, ICurrentUser
 
         if (!string.IsNullOrWhiteSpace(parameters.Search))
         {
-            var s = parameters.Search.Trim();
+            var s = parameters.Search.Trim().ToLower();
             query = query.Where(x =>
-                x.ClientOrderCode.Contains(s) ||
-                (x.CarrierTrackingNumber != null && x.CarrierTrackingNumber.Contains(s)) ||
-                x.SenderName.Contains(s));
+                x.ClientOrderCode.ToLower().Contains(s) ||
+                (x.CarrierTrackingNumber != null && x.CarrierTrackingNumber.ToLower().Contains(s)) ||
+                x.SenderName.ToLower().Contains(s));
         }
 
-        // Load all then group in memory (per project pattern).
-        var shipments = await query.ToListAsync(cancellationToken);
-        if (shipments.Count == 0)
-            return PagedList<InboundPackageDto>.Empty();
+        if (!string.IsNullOrWhiteSpace(parameters.PackageState))
+        {
+            var state = parameters.PackageState.Trim().ToLower();
+            IQueryable<string> matchingKeys;
+            var allCodes = db.Set<InboundShipment>().Select(s => s.ClientOrderCode).Distinct();
+
+            if (state == PackageStateFilters.AwaitingPickup)
+            {
+                matchingKeys = db.Set<InboundShipment>().Where(s => s.Status == InboundShipmentStatus.AwaitingPickup).Select(s => s.ClientOrderCode);
+            }
+            else if (state == PackageStateFilters.InTransit)
+            {
+                matchingKeys = db.Set<InboundShipment>().Where(s => s.Status == InboundShipmentStatus.InTransit || s.Status == InboundShipmentStatus.Delivering).Select(s => s.ClientOrderCode);
+            }
+            else if (state == PackageStateFilters.PendingArrival)
+            {
+                // NO shipment in the package has a WarehouseItem
+                matchingKeys = allCodes.Where(code => 
+                    !db.Set<WarehouseItem>().Any(w => 
+                        db.Set<InboundShipment>().Any(s => s.Id == w.InboundShipmentId && s.ClientOrderCode == code)
+                    )
+                );
+            }
+            else if (state == PackageStateFilters.Arrived)
+            {
+                matchingKeys = db.Set<InboundShipment>().Where(s => s.Status == InboundShipmentStatus.Arrived || s.Status == InboundShipmentStatus.Inspected || s.Status == InboundShipmentStatus.Completed).Select(s => s.ClientOrderCode);
+            }
+            else if (state == PackageStateFilters.Inspected)
+            {
+                // ALL shipments have a WarehouseItem AND ALL WarehouseItems are (Inspected | Reserved | Dispatched)
+                matchingKeys = allCodes.Where(code => 
+                    db.Set<InboundShipment>().Count(s => s.ClientOrderCode == code) == db.Set<WarehouseItem>().Count(w => db.Set<InboundShipment>().Any(s => s.Id == w.InboundShipmentId && s.ClientOrderCode == code))
+                    &&
+                    !db.Set<WarehouseItem>().Any(w => 
+                        db.Set<InboundShipment>().Any(s => s.Id == w.InboundShipmentId && s.ClientOrderCode == code) &&
+                        w.Status != WarehouseItemStatus.Inspected &&
+                        w.Status != WarehouseItemStatus.Reserved &&
+                        w.Status != WarehouseItemStatus.Dispatched
+                    )
+                );
+            }
+            else if (state == PackageStateFilters.Stored)
+            {
+                // ALL shipments have a WarehouseItem AND NO WarehouseItem is Pending/Received/Lost/Damaged 
+                // AND AT LEAST ONE WarehouseItem is Stored
+                matchingKeys = allCodes.Where(code => 
+                    db.Set<InboundShipment>().Count(s => s.ClientOrderCode == code) == db.Set<WarehouseItem>().Count(w => db.Set<InboundShipment>().Any(s => s.Id == w.InboundShipmentId && s.ClientOrderCode == code))
+                    &&
+                    !db.Set<WarehouseItem>().Any(w => 
+                        db.Set<InboundShipment>().Any(s => s.Id == w.InboundShipmentId && s.ClientOrderCode == code) &&
+                        w.Status != WarehouseItemStatus.Inspected &&
+                        w.Status != WarehouseItemStatus.Reserved &&
+                        w.Status != WarehouseItemStatus.Dispatched &&
+                        w.Status != WarehouseItemStatus.Stored
+                    )
+                    &&
+                    db.Set<WarehouseItem>().Any(w => 
+                        db.Set<InboundShipment>().Any(s => s.Id == w.InboundShipmentId && s.ClientOrderCode == code) &&
+                        w.Status == WarehouseItemStatus.Stored
+                    )
+                );
+            }
+            else if (state == PackageStateFilters.Received)
+            {
+                // HAS at least one WarehouseItem AND NOT (All have WarehouseItem AND All are Inspected/Stored/Reserved/Dispatched)
+                matchingKeys = allCodes.Where(code => 
+                    db.Set<WarehouseItem>().Any(w => db.Set<InboundShipment>().Any(s => s.Id == w.InboundShipmentId && s.ClientOrderCode == code))
+                    &&
+                    (
+                        db.Set<InboundShipment>().Count(s => s.ClientOrderCode == code) > db.Set<WarehouseItem>().Count(w => db.Set<InboundShipment>().Any(s => s.Id == w.InboundShipmentId && s.ClientOrderCode == code))
+                        ||
+                        db.Set<WarehouseItem>().Any(w => 
+                            db.Set<InboundShipment>().Any(s => s.Id == w.InboundShipmentId && s.ClientOrderCode == code) &&
+                            w.Status != WarehouseItemStatus.Inspected &&
+                            w.Status != WarehouseItemStatus.Reserved &&
+                            w.Status != WarehouseItemStatus.Dispatched &&
+                            w.Status != WarehouseItemStatus.Stored
+                        )
+                    )
+                );
+            }
+            else if (state == PackageStateFilters.Cancelled)
+            {
+                matchingKeys = allCodes.Where(code => db.Set<InboundShipment>().Where(s => s.ClientOrderCode == code).All(s => s.Status == InboundShipmentStatus.Cancelled));
+            }
+            else
+            {
+                matchingKeys = allCodes;
+            }
+
+            query = query.Where(s => matchingKeys.Contains(s.ClientOrderCode));
+        }
+
+        var groupedQuery = query
+            .GroupBy(x => x.ClientOrderCode)
+            .Select(g => new PackageGroupProjection
+            {
+                ClientOrderCode = g.Key,
+                CreatedAt = g.Min(s => s.CreatedAt),
+                ExpectedArrivalAt = g.Min(s => s.ExpectedArrivalAt),
+                FirstReceivedAt = g.Min(s => s.ArrivedAt)
+            });
+
+        if (string.IsNullOrWhiteSpace(parameters.SortBy))
+        {
+            groupedQuery = groupedQuery.OrderByDescending(p => p.CreatedAt);
+        }
+        else
+        {
+            groupedQuery = groupedQuery.ApplySort(parameters, InboundShipmentMappings.InboundPackageDtoSortMapping);
+        }
+
+        var totalCount = await groupedQuery.CountAsync(cancellationToken);
+        
+        if (totalCount == 0)
+        {
+            
+            return PagedList<InboundPackageDto>.ToPagedList([], 0, parameters);
+        }
+        
+        var pagedKeys = await groupedQuery
+            .Page(parameters)
+            .Select(x => x.ClientOrderCode)
+            .ToListAsync(cancellationToken);
+
+        var shipments = await db.Set<InboundShipment>()
+            .AsNoTracking()
+            .Where(s => pagedKeys.Contains(s.ClientOrderCode))
+            .ToListAsync(cancellationToken);
 
         var shipmentIds = shipments.Select(s => s.Id).Distinct().ToList();
         var warehouseItems = await db.Set<WarehouseItem>()
@@ -93,19 +244,9 @@ internal sealed class GetInboundPackagesQueryHandler(IDbContext db, ICurrentUser
             })
             .ToList();
 
-        if (!string.IsNullOrWhiteSpace(parameters.PackageState))
-            groups = groups.Where(p => p.PackageState == parameters.PackageState || p.DisplayStatus == parameters.PackageState).ToList();
+        var finalSortedGroups = pagedKeys.Select(k => groups.First(g => g.ClientOrderCode == k)).ToList();
 
-        groups = groups
-            .OrderByDescending(p => p.FirstReceivedAt ?? p.ExpectedArrivalAt ?? DateTime.MinValue)
-            .ToList();
-
-        var totalCount = groups.Count;
-        var pageNumber = parameters.EffectivePageNumber;
-        var pageSize = parameters.EffectivePageSize;
-        var paged = groups.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
-
-        return new PagedList<InboundPackageDto>(paged, totalCount, pageNumber, pageSize);
+        return finalSortedGroups.ToPagedList(totalCount, parameters);
     }
 }
 

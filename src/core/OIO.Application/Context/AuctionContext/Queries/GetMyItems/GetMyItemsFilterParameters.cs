@@ -5,6 +5,7 @@ namespace OIO.Application.Context.AuctionContext.Queries.GetMyItems;
 public record GetMyItemsFilterParameters : PagedParameters, ISortByParameter
 {
     public string? SortBy { get; init; }
+    public string? Search { get; init; }
 
     /// <summary>
     /// Optional ItemStatus filter (e.g. "pending_verify", "draft"). Validated

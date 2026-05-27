@@ -12,20 +12,10 @@ public sealed class GetInboundPackagesEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet(ApiEndpoint.Url.Warehouse.InboundPackages, async (
-                int?              pageNumber,
-                int?              pageSize,
-                string?           packageState,
-                string?           search,
-                ISender           sender,
+                [AsParameters] GetInboundPackagesQueryFilter filter,
+                ISender sender,
                 CancellationToken ct) =>
             {
-                var filter = new GetInboundPackagesQueryFilter
-                {
-                    PageNumber   = pageNumber,
-                    PageSize     = pageSize,
-                    PackageState = packageState,
-                    Search       = search,
-                };
                 var result = await sender.Send(new GetInboundPackagesQuery(filter), ct);
                 return result.ToOkHttpResult();
             })
