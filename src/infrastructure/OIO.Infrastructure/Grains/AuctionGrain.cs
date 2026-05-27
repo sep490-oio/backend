@@ -1098,8 +1098,80 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
             var result = auction.ForceStartBidding(nowUtc);
             if (result.IsFailure) return result.Error;
 
+            var bidIdsBefore = auction.Bids.Select(b => b.Id).ToHashSet();
+
+            auction.EngageAllAutoBidsOnStart(nowUtc);
+
+            var newBids = auction.Bids
+                .Where(b => !bidIdsBefore.Contains(b.Id))
+                .OrderBy(b => b.CreatedAt)
+                .Select(b => new BidPublishSnapshot(
+                    BidId: b.Id.Value,
+                    BidderId: b.BidderId.Value,
+                    Amount: b.Amount.Amount,
+                    IsAutoBid: b.IsAutoBid,
+                    CreatedAt: b.CreatedAt))
+                .ToList();
+            var currentPriceAfter = auction.Pricing.CurrentAmount;
+            var minNextBidAfter = auction.GetMinimumBidAmount().Amount;
+            var totalBidsAfter = auction.BidCount;
+
             await SaveAsync(auction, cancellationToken);
-            await PublishRealtimeAsync(auction.Id.Value, (pub, _) => pub.PublishStateChangedAsync(auction.Id.Value, ct: cancellationToken));
+            
+            if (newBids.Count > 0)
+            {
+                await PublishRealtimeAsync(auction.Id.Value, async (publisher, dbContext) =>
+                {
+                    for (var i = 0; i < newBids.Count; i++)
+                    {
+                        var nb = newBids[i];
+                        var isLast = i == newBids.Count - 1;
+                        var displayName = await ResolveBidderDisplayNameAsync(dbContext, nb.BidderId, cancellationToken);
+                        var ts = new DateTimeOffset(DateTime.SpecifyKind(nb.CreatedAt, DateTimeKind.Utc));
+
+                        var pubCurrentPrice = isLast ? currentPriceAfter : nb.Amount;
+                        var pubMinNextBid = isLast ? minNextBidAfter : nb.Amount;
+                        var pubTotalBids = isLast ? totalBidsAfter : (totalBidsAfter - (newBids.Count - 1 - i));
+
+                        await publisher.PublishBidPlacedAsync(
+                            auction.Id.Value,
+                            new BidNotification(
+                                AuctionId: auction.Id.Value,
+                                BidId: nb.BidId,
+                                BidderId: nb.BidderId,
+                                BidderDisplayName: displayName,
+                                Amount: nb.Amount,
+                                CurrentPrice: pubCurrentPrice,
+                                MinimumNextBid: pubMinNextBid,
+                                TotalBids: pubTotalBids,
+                                IsAutoBid: nb.IsAutoBid,
+                                Timestamp: ts),
+                            new AuctionStateSyncOptions(
+                                LastBid: new AuctionStateLastBidInfo(
+                                    BidId: nb.BidId,
+                                    BidderId: nb.BidderId,
+                                    BidderDisplayName: displayName,
+                                    Amount: nb.Amount,
+                                    IsAutoBid: nb.IsAutoBid,
+                                    Timestamp: ts),
+                                NewPriceHistoryPoint: new AuctionStatePriceHistoryPoint(
+                                    Price: pubCurrentPrice,
+                                    Type: "bid",
+                                    BidId: nb.BidId,
+                                    BidderDisplayName: displayName,
+                                    RecordedAt: ts)),
+                            cancellationToken);
+                    }
+                });
+
+                await PublishAllAutoBidStatesAsync(auction.Id.Value, cancellationToken);
+                await PublishRealtimeAsync(auction.Id.Value, (pub, _) => pub.PublishStateChangedAsync(auction.Id.Value, ct: cancellationToken));
+            }
+            else
+            {
+                await PublishRealtimeAsync(auction.Id.Value, (pub, _) => pub.PublishStateChangedAsync(auction.Id.Value, ct: cancellationToken));
+            }
+
             return UnitResult.Success<Error>();
         }
         catch (Exception ex)

@@ -63,16 +63,32 @@ internal sealed class WinnerOrderProvisioner : IWinnerOrderProvisioner
         // that was abandoned. If the same user later wins the auction via bidding,
         // the provisioner must create a fresh PendingPayment order rather than
         // returning the stale Cancelled order (which cannot be paid).
-        var existingOrder = await _dbContext.Set<Order>()
-            .FirstOrDefaultAsync(
+        var existingOrders = await _dbContext.Set<Order>()
+            .Where(
                 order => order.AuctionId == auctionIdVo
                       && order.BuyerId == winnerIdVo
                       && order.Status != OrderStatus.Cancelled
-                      && order.Status != OrderStatus.Refunded,
-                ct);
+                      && order.Status != OrderStatus.Refunded)
+            .ToListAsync(ct);
 
-        if (existingOrder is not null)
-            return existingOrder;
+        var matchingOrder = existingOrders.FirstOrDefault(o => o.Pricing.ItemPrice.Amount == finalPrice);
+        var staleOrders = existingOrders.Where(o => o.Pricing.ItemPrice.Amount != finalPrice).ToList();
+
+        bool hasChanges = false;
+        foreach (var staleOrder in staleOrders)
+        {
+            var cancelResult = staleOrder.Cancel("Superseded by auction win.", occurredAt);
+            if (cancelResult.IsSuccess)
+                hasChanges = true;
+        }
+
+        if (hasChanges)
+        {
+            await _unitOfWork.SaveChangesAsync(ct);
+        }
+
+        if (matchingOrder is not null)
+            return matchingOrder;
 
         var auction = await _dbContext.Set<Auction>()
             .AsNoTracking()

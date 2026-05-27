@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.WarehouseContext.DTOs;
+using OIO.Application.Context.WarehouseContext.Mappings;
 using OIO.Application.Context.WarehouseContext.Queries.GetInboundPackages;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
@@ -65,6 +66,11 @@ internal sealed class GetWarehouseItemByIdQueryHandler(IDbContext db)
             location = await db.Set<WarehouseStorageLocation>().AsNoTracking()
                 .FirstOrDefaultAsync(l => l.Id == locId, cancellationToken);
         }
+
+        var inspection = await db.Set<WarehouseInspection>().AsNoTracking()
+            .Where(x => x.WarehouseItemId == w.Id)
+            .OrderByDescending(x => x.InspectedAt)
+            .FirstOrDefaultAsync(cancellationToken);
 
         var primaryMedia = item?.Media.FirstOrDefault(m => m.IsPrimary)
                            ?? item?.Media.FirstOrDefault();
@@ -163,7 +169,8 @@ internal sealed class GetWarehouseItemByIdQueryHandler(IDbContext db)
             CanBookOutbound:         canBookOutbound,
             OutboundBookingOrderId:  outboundBookingOrderId,
             CanViewOutboundShipment: canViewOutboundShipment,
-            OutboundShipmentId:      outboundShipmentId);
+            OutboundShipmentId:      outboundShipmentId,
+            Inspection:              inspection?.ToDto());
 
         return Result.Success<WarehouseItemDetailDto, Error>(dto);
     }

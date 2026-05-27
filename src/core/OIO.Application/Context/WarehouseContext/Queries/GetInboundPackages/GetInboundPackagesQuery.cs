@@ -92,14 +92,39 @@ internal sealed class GetInboundPackagesQueryHandler(IDbContext db, ICurrentUser
             {
                 matchingKeys = db.Set<InboundShipment>().Where(s => s.Status == InboundShipmentStatus.InTransit || s.Status == InboundShipmentStatus.Delivering).Select(s => s.ClientOrderCode);
             }
-            else if (state == PackageStateFilters.PendingArrival)
+            var shipmentsWithItemsCodes = db.Set<WarehouseItem>()
+                .Join(db.Set<InboundShipment>(), w => w.InboundShipmentId, s => s.Id, (w, s) => s.ClientOrderCode)
+                .Distinct();
+
+            var shipmentsWithStatusNotInspectedReservedDispatched = db.Set<WarehouseItem>()
+                .Where(w => w.Status != WarehouseItemStatus.Inspected && w.Status != WarehouseItemStatus.Reserved && w.Status != WarehouseItemStatus.Dispatched)
+                .Join(db.Set<InboundShipment>(), w => w.InboundShipmentId, s => s.Id, (w, s) => s.ClientOrderCode)
+                .Distinct();
+
+            var shipmentsWithStatusNotInspectedReservedDispatchedStored = db.Set<WarehouseItem>()
+                .Where(w => w.Status != WarehouseItemStatus.Inspected && w.Status != WarehouseItemStatus.Reserved && w.Status != WarehouseItemStatus.Dispatched && w.Status != WarehouseItemStatus.Stored)
+                .Join(db.Set<InboundShipment>(), w => w.InboundShipmentId, s => s.Id, (w, s) => s.ClientOrderCode)
+                .Distinct();
+
+            var shipmentsWithStoredItems = db.Set<WarehouseItem>()
+                .Where(w => w.Status == WarehouseItemStatus.Stored)
+                .Join(db.Set<InboundShipment>(), w => w.InboundShipmentId, s => s.Id, (w, s) => s.ClientOrderCode)
+                .Distinct();
+
+            var fullyReceivedCodes = db.Set<InboundShipment>()
+                .GroupBy(s => s.ClientOrderCode)
+                .Select(g => new
+                {
+                    Code = g.Key,
+                    ShipmentCount = g.Count(),
+                    ItemCount = db.Set<WarehouseItem>().Count(w => db.Set<InboundShipment>().Any(s => s.Id == w.InboundShipmentId && s.ClientOrderCode == g.Key))
+                })
+                .Where(x => x.ShipmentCount == x.ItemCount)
+                .Select(x => x.Code);
+
+            if (state == PackageStateFilters.PendingArrival)
             {
-                // NO shipment in the package has a WarehouseItem
-                matchingKeys = allCodes.Where(code => 
-                    !db.Set<WarehouseItem>().Any(w => 
-                        db.Set<InboundShipment>().Any(s => s.Id == w.InboundShipmentId && s.ClientOrderCode == code)
-                    )
-                );
+                matchingKeys = allCodes.Where(code => !shipmentsWithItemsCodes.Contains(code));
             }
             else if (state == PackageStateFilters.Arrived)
             {
@@ -107,57 +132,19 @@ internal sealed class GetInboundPackagesQueryHandler(IDbContext db, ICurrentUser
             }
             else if (state == PackageStateFilters.Inspected)
             {
-                // ALL shipments have a WarehouseItem AND ALL WarehouseItems are (Inspected | Reserved | Dispatched)
-                matchingKeys = allCodes.Where(code => 
-                    db.Set<InboundShipment>().Count(s => s.ClientOrderCode == code) == db.Set<WarehouseItem>().Count(w => db.Set<InboundShipment>().Any(s => s.Id == w.InboundShipmentId && s.ClientOrderCode == code))
-                    &&
-                    !db.Set<WarehouseItem>().Any(w => 
-                        db.Set<InboundShipment>().Any(s => s.Id == w.InboundShipmentId && s.ClientOrderCode == code) &&
-                        w.Status != WarehouseItemStatus.Inspected &&
-                        w.Status != WarehouseItemStatus.Reserved &&
-                        w.Status != WarehouseItemStatus.Dispatched
-                    )
-                );
+                matchingKeys = fullyReceivedCodes
+                    .Where(c => !shipmentsWithStatusNotInspectedReservedDispatched.Contains(c));
             }
             else if (state == PackageStateFilters.Stored)
             {
-                // ALL shipments have a WarehouseItem AND NO WarehouseItem is Pending/Received/Lost/Damaged 
-                // AND AT LEAST ONE WarehouseItem is Stored
-                matchingKeys = allCodes.Where(code => 
-                    db.Set<InboundShipment>().Count(s => s.ClientOrderCode == code) == db.Set<WarehouseItem>().Count(w => db.Set<InboundShipment>().Any(s => s.Id == w.InboundShipmentId && s.ClientOrderCode == code))
-                    &&
-                    !db.Set<WarehouseItem>().Any(w => 
-                        db.Set<InboundShipment>().Any(s => s.Id == w.InboundShipmentId && s.ClientOrderCode == code) &&
-                        w.Status != WarehouseItemStatus.Inspected &&
-                        w.Status != WarehouseItemStatus.Reserved &&
-                        w.Status != WarehouseItemStatus.Dispatched &&
-                        w.Status != WarehouseItemStatus.Stored
-                    )
-                    &&
-                    db.Set<WarehouseItem>().Any(w => 
-                        db.Set<InboundShipment>().Any(s => s.Id == w.InboundShipmentId && s.ClientOrderCode == code) &&
-                        w.Status == WarehouseItemStatus.Stored
-                    )
-                );
+                matchingKeys = fullyReceivedCodes
+                    .Where(c => shipmentsWithStoredItems.Contains(c))
+                    .Where(c => !shipmentsWithStatusNotInspectedReservedDispatchedStored.Contains(c));
             }
             else if (state == PackageStateFilters.Received)
             {
-                // HAS at least one WarehouseItem AND NOT (All have WarehouseItem AND All are Inspected/Stored/Reserved/Dispatched)
-                matchingKeys = allCodes.Where(code => 
-                    db.Set<WarehouseItem>().Any(w => db.Set<InboundShipment>().Any(s => s.Id == w.InboundShipmentId && s.ClientOrderCode == code))
-                    &&
-                    (
-                        db.Set<InboundShipment>().Count(s => s.ClientOrderCode == code) > db.Set<WarehouseItem>().Count(w => db.Set<InboundShipment>().Any(s => s.Id == w.InboundShipmentId && s.ClientOrderCode == code))
-                        ||
-                        db.Set<WarehouseItem>().Any(w => 
-                            db.Set<InboundShipment>().Any(s => s.Id == w.InboundShipmentId && s.ClientOrderCode == code) &&
-                            w.Status != WarehouseItemStatus.Inspected &&
-                            w.Status != WarehouseItemStatus.Reserved &&
-                            w.Status != WarehouseItemStatus.Dispatched &&
-                            w.Status != WarehouseItemStatus.Stored
-                        )
-                    )
-                );
+                matchingKeys = shipmentsWithItemsCodes
+                    .Where(c => !fullyReceivedCodes.Contains(c) || shipmentsWithStatusNotInspectedReservedDispatchedStored.Contains(c));
             }
             else if (state == PackageStateFilters.Cancelled)
             {

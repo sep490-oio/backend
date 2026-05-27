@@ -354,6 +354,30 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         return UnitResult.Success<Error>();
     }
 
+    /// <summary>
+    /// Engages all active auto-bids immediately when an auction starts.
+    /// This resolves the initial proxy bidding battle if multiple users configured auto-bids during the Scheduled phase.
+    /// </summary>
+    public UnitResult<Error> EngageAllAutoBidsOnStart(
+        DateTime nowUtc,
+        TimeSpan extensionThresholdMinutes = default,
+        int maxExtensions = 0,
+        TimeSpan maxDuration = default)
+    {
+        if (Status != AuctionStatus.Active)
+            return AuctionErrors.Auction.InvalidState(Status.Id, "engage auto bids");
+
+        if (_autoBids.Count(ab => ab.IsEnabled && ab.Status == AutoBidStatus.Active) == 0)
+            return UnitResult.Success<Error>();
+
+        return ResolveProxyBids(
+            excludeBidderId: UserId.From(Guid.Empty), // Let everyone fight
+            nowUtc: nowUtc,
+            extensionThresholdMinutes: extensionThresholdMinutes,
+            maxExtensions: maxExtensions,
+            maxDuration: maxDuration);
+    }
+
     public bool HasBidEligibleParticipants(DateTime nowUtc)
     {
         return _participants.Count(participant => IsBidEligibleParticipant(participant, nowUtc)) >= 2;
@@ -1339,10 +1363,6 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         return engageResult.IsFailure ? engageResult.Error : UnitResult.Success<Error>();
     }
     
-    /// <summary>
-    /// Proxy bidding resolution: determines the winner and resolved price in one pass.
-    /// Creates at most ONE counter-bid instead of cascading individual bids.
-    /// </summary>
     private UnitResult<Error> ResolveProxyBids(
         UserId excludeBidderId,
         DateTime nowUtc,
@@ -1350,51 +1370,94 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         int maxExtensions,
         TimeSpan maxDuration)
     {
-        int safetyCounter = 0;
-        int ticks = 1;
+        var currentLeaderId = GetCurrentWinningBid()?.BidderId;
+        var currentPrice = Pricing.CurrentAmount;
+
+        var activeAutoBids = _autoBids
+            .Where(ab => ab.IsEnabled && ab.Status == AutoBidStatus.Active)
+            .ToList();
+
+        if (activeAutoBids.Count == 0)
+            return UnitResult.Success<Error>();
+
+        var participants = new List<(UserId BidderId, decimal MaxAmount, AutoBid? AutoBid, DateTime CreatedAt)>();
         
-        while (safetyCounter++ < 50)
+        if (currentLeaderId is not null)
         {
-            var minRequired = GetMinimumBidAmount();
-            var currentLeader = GetCurrentWinningBid()?.BidderId;
+            var leaderAutoBid = activeAutoBids.FirstOrDefault(ab => ab.BidderId == currentLeaderId);
+            if (leaderAutoBid == null)
+            {
+                participants.Add((currentLeaderId.Value, currentPrice, null, DateTime.MinValue));
+            }
+        }
 
-            // Find all active auto-bids EXCEPT the current leader
-            // who can afford to increase the current price
-            var challengers = _autoBids
-                .Where(ab => ab.IsEnabled && 
-                             ab.Status == AutoBidStatus.Active && 
-                             ab.BidderId != currentLeader &&
-                             ab.Budget.MaxAmount > Pricing.CurrentAmount)
-                .ToList();
+        foreach (var ab in activeAutoBids)
+        {
+            participants.Add((ab.BidderId, ab.Budget.MaxAmount, ab, ab.CreatedAt));
+        }
 
-            if (challengers.Count == 0)
-                break; // No one can compete anymore
+        var orderedParticipants = participants
+            .OrderByDescending(p => p.MaxAmount)
+            .ThenBy(p => p.CreatedAt)
+            .ToList();
 
-            // Pick the earliest placed autobid to break ties
-            var nextAttacker = challengers.OrderBy(ab => ab.CreatedAt).First();
+        var ultimateWinner = orderedParticipants.First();
+        var bidsToPlace = new List<(AutoBid Attacker, decimal Amount)>();
 
-            // Calculate the step (with fast-forward logic if the distance is huge)
-            var distance = nextAttacker.Budget.MaxAmount - minRequired.Amount;
-            var step = minRequired.Amount;
+        var losingAutoBidders = orderedParticipants
+            .Skip(1)
+            .Where(p => p.AutoBid != null && p.MaxAmount > currentPrice)
+            .OrderBy(p => p.MaxAmount)
+            .ThenBy(p => p.CreatedAt);
+
+        decimal simulatedPrice = currentPrice;
+
+        foreach (var loser in losingAutoBidders)
+        {
+            var bidAmount = loser.MaxAmount;
+            if (bidAmount >= simulatedPrice) 
+            {
+                bidsToPlace.Add((loser.AutoBid!, bidAmount));
+                simulatedPrice = bidAmount;
+            }
+        }
+
+        if (ultimateWinner.AutoBid != null)
+        {
+            var increment = ultimateWinner.AutoBid.Budget.IncrementAmount ?? Pricing.BidIncrementAmount;
             
-            // If the distance is very large and there's another challenger, jump to speed up the loop
-            if (distance > minRequired.Amount * 10 && challengers.Count > 1) 
+            if (ultimateWinner.BidderId != currentLeaderId || simulatedPrice > currentPrice)
             {
-                step += distance / 5; // jump 20% of the distance each step
+                var winningBidAmount = simulatedPrice + increment;
+                
+                if (winningBidAmount > ultimateWinner.MaxAmount)
+                    winningBidAmount = ultimateWinner.MaxAmount;
+
+                if (winningBidAmount < simulatedPrice)
+                    winningBidAmount = simulatedPrice;
+
+                bool shouldPlace = true;
+                if (winningBidAmount <= currentPrice && ultimateWinner.BidderId == currentLeaderId)
+                    shouldPlace = false;
+
+                if (shouldPlace)
+                {
+                    bidsToPlace.Add((ultimateWinner.AutoBid, winningBidAmount));
+                }
             }
+        }
 
-            var bidAmountAmount = Math.Min(step, nextAttacker.Budget.MaxAmount);
-            var bidPrice = Money.Of(bidAmountAmount, Pricing.Currency);
+        int ticks = 1;
+        foreach (var bidToPlace in bidsToPlace)
+        {
+            var amountToBid = bidToPlace.Amount;
+            if (Pricing.HasBuyNowPrice && amountToBid > Pricing.BuyNowAmount!.Value)
+                amountToBid = Pricing.BuyNowAmount.Value;
 
-            // Cap at Buy Now
-            if (Pricing.HasBuyNowPrice && bidPrice.Amount > Pricing.BuyNowAmount!.Value)
-            {
-                bidPrice = Money.Of(Pricing.BuyNowAmount.Value, Pricing.Currency);
-            }
-
-            // Place the bid
+            var bidPrice = Money.Of(amountToBid, Pricing.Currency);
+            
             var placeResult = PlaceAutoBidInternal(
-                nextAttacker, 
+                bidToPlace.Attacker, 
                 bidPrice, 
                 nowUtc.AddTicks(ticks++),
                 raiseOutbidEvent: true,
@@ -1404,24 +1467,17 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
 
             if (placeResult.IsFailure)
             {
-                // Safety escape if internal validation fails
-                nextAttacker.MarkAsOutbid(nowUtc.AddTicks(ticks++));
-                continue;
+                bidToPlace.Attacker.MarkAsOutbid(nowUtc.AddTicks(ticks++));
             }
-            
-            // Stop early if BuyNow is reached
+
             if (Pricing.HasBuyNowPrice && Pricing.CurrentAmount >= Pricing.BuyNowAmount!.Value)
                 break;
         }
 
-        // Mark all losing autobids as Outbid
         var finalLeader = GetCurrentWinningBid()?.BidderId;
-        var finalMinRequired = GetMinimumBidAmount();
         
         foreach (var ab in _autoBids.Where(ab => ab.IsEnabled && ab.Status == AutoBidStatus.Active))
         {
-            // If they are not the leader and can't even beat the current price, they are outbid.
-            // Using CurrentAmount instead of MinimumRequired to allow for squeeze bids.
             if (ab.BidderId != finalLeader && ab.Budget.MaxAmount <= Pricing.CurrentAmount)
             {
                 ab.MarkAsOutbid(nowUtc.AddTicks(ticks++));
@@ -2805,100 +2861,14 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         if (!autoBid.CanBid(minimumRequired))
             return UnitResult.Success<Error>();
 
-        var autoBidCeiling = autoBid.Budget.MaxAmount;
-        var currentWinnerCeiling = Pricing.CurrentAmount;
-
-        var winnerAutoBid = _autoBids
-            .FirstOrDefault(ab => ab.BidderId == currentWinning.BidderId &&
-                                  ab.IsEnabled &&
-                                  ab.Status == AutoBidStatus.Active);
-
-        if (winnerAutoBid is not null)
-            currentWinnerCeiling = winnerAutoBid.Budget.MaxAmount;
-
-        int ticks = 1;
-
-        if (autoBidCeiling > currentWinnerCeiling)
-        {
-            // A defends up to their ceiling if needed
-            if (winnerAutoBid is not null && currentWinnerCeiling > Pricing.CurrentAmount)
-            {
-                var aDefendAmount = currentWinnerCeiling;
-                if (Pricing.HasBuyNowPrice && aDefendAmount > Pricing.BuyNowAmount!.Value)
-                    aDefendAmount = Pricing.BuyNowAmount.Value;
-
-                var aDefendPrice = Money.Of(aDefendAmount, Pricing.Currency);
-                PlaceAutoBidInternal(winnerAutoBid, aDefendPrice, nowUtc.AddTicks(ticks++), raiseOutbidEvent: false);
-            }
-
-            // B places winning bid
-            var currentMinRequired = GetMinimumBidAmount().Amount;
-            var bBidAmount = Math.Min(autoBidCeiling, currentWinnerCeiling + GetEffectiveAutoBidIncrement(autoBid));
-            if (bBidAmount < currentMinRequired)
-                bBidAmount = currentMinRequired;
-
-            if (Pricing.HasBuyNowPrice && bBidAmount > Pricing.BuyNowAmount!.Value)
-                bBidAmount = Pricing.BuyNowAmount.Value;
-
-            var bBidPrice = Money.Of(bBidAmount, Pricing.Currency);
-            var placeBResult = PlaceAutoBidInternal(autoBid, bBidPrice, nowUtc.AddTicks(ticks++), raiseOutbidEvent: true, extensionThresholdMinutes, maxExtensions, maxDuration);
-            if (placeBResult.IsFailure) return placeBResult.Error;
-
-            if (winnerAutoBid is not null && winnerAutoBid.Status == AutoBidStatus.Active)
-                winnerAutoBid.MarkAsOutbid(nowUtc.AddTicks(ticks++));
-        }
-        else if (autoBidCeiling == currentWinnerCeiling)
-        {
-            // Tie: B places bid at their ceiling, then A matches to keep the lead
-            var tieAmount = autoBidCeiling;
-            if (Pricing.HasBuyNowPrice && tieAmount > Pricing.BuyNowAmount!.Value)
-                tieAmount = Pricing.BuyNowAmount.Value;
-
-            var tiePrice = Money.Of(tieAmount, Pricing.Currency);
-            
-            // B bids
-            var placeBResult = PlaceAutoBidInternal(autoBid, tiePrice, nowUtc.AddTicks(ticks++), raiseOutbidEvent: true);
-            
-            // A defends
-            if (winnerAutoBid is not null)
-            {
-                PlaceAutoBidInternal(winnerAutoBid, tiePrice, nowUtc.AddTicks(ticks++), raiseOutbidEvent: true, extensionThresholdMinutes, maxExtensions, maxDuration);
-            }
-
-            if (autoBid.Status == AutoBidStatus.Active)
-                autoBid.MarkAsOutbid(nowUtc.AddTicks(ticks++));
-        }
-        else
-        {
-            // B places bid at their ceiling (losing)
-            var bBidAmount = autoBidCeiling;
-            if (Pricing.HasBuyNowPrice && bBidAmount > Pricing.BuyNowAmount!.Value)
-                bBidAmount = Pricing.BuyNowAmount.Value;
-
-            var bBidPrice = Money.Of(bBidAmount, Pricing.Currency);
-            PlaceAutoBidInternal(autoBid, bBidPrice, nowUtc.AddTicks(ticks++), raiseOutbidEvent: true);
-
-            // A defends and beats B
-            if (winnerAutoBid is not null)
-            {
-                var currentMinRequired = GetMinimumBidAmount().Amount;
-                var aBidAmount = Math.Min(currentWinnerCeiling, autoBidCeiling + GetEffectiveAutoBidIncrement(winnerAutoBid));
-                if (aBidAmount < currentMinRequired)
-                    aBidAmount = currentMinRequired;
-
-                if (Pricing.HasBuyNowPrice && aBidAmount > Pricing.BuyNowAmount!.Value)
-                    aBidAmount = Pricing.BuyNowAmount.Value;
-
-                var aBidPrice = Money.Of(aBidAmount, Pricing.Currency);
-                var placeAResult = PlaceAutoBidInternal(winnerAutoBid, aBidPrice, nowUtc.AddTicks(ticks++), raiseOutbidEvent: true, extensionThresholdMinutes, maxExtensions, maxDuration);
-                if (placeAResult.IsFailure) return placeAResult.Error;
-            }
-
-            if (autoBid.Status == AutoBidStatus.Active)
-                autoBid.MarkAsOutbid(nowUtc.AddTicks(ticks++));
-        }
-
-        return UnitResult.Success<Error>();
+        // Just run ResolveProxyBids to let ALL autobidders fight it out.
+        // It will automatically fast-forward and handle ties correctly (earliest configured wins).
+        return ResolveProxyBids(
+            excludeBidderId: UserId.From(Guid.Empty), // Let everyone fight including current winner
+            nowUtc: nowUtc,
+            extensionThresholdMinutes: extensionThresholdMinutes,
+            maxExtensions: maxExtensions,
+            maxDuration: maxDuration);
     }
 
     private decimal GetEffectiveAutoBidIncrement(AutoBid autoBid)

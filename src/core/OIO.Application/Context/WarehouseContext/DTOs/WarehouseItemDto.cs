@@ -53,4 +53,6 @@ public sealed record WarehouseItemDetailDto(
     bool      CanBookOutbound = false,
     Guid?     OutboundBookingOrderId = null,
     bool      CanViewOutboundShipment = false,
-    Guid?     OutboundShipmentId = null);
+    Guid?     OutboundShipmentId = null,
+    // Inspection
+    WarehouseInspectionDto? Inspection = null);
