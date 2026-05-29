@@ -10,6 +10,7 @@ using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.AppDefinitions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
+using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.AuctionContext.Queries.GetItemAuctions;
@@ -56,10 +57,16 @@ internal sealed class GetItemAuctionsQueryHandler
             .OrderByDescending(a => a.CreatedAt)
             .ToListAsync(cancellationToken);
 
+        var auctionIds = auctions.Select(a => a.Id).ToList();
+        var ordersByAuctionId = await _dbContext.Set<Order>()
+            .AsNoTracking()
+            .Where(o => auctionIds.Contains(o.AuctionId))
+            .ToDictionaryAsync(o => o.AuctionId, o => o.Id.Value, cancellationToken);
+
         var extensionThreshold = _runtimeSettings.Auction.ExtensionThreshold;
 
         var dtos = auctions
-            .Select(a => a.ToListItemDto(nowUtc, extensionThreshold))
+            .Select(a => a.ToListItemDto(nowUtc, extensionThreshold, false, ordersByAuctionId.GetValueOrDefault(a.Id)))
             .ToList();
 
         return dtos;

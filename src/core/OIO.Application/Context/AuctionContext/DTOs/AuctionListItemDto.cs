@@ -23,4 +23,5 @@ public sealed record AuctionListItemDto(
     Guid SellerId,
     string ItemStatus,
     string AuctionType,
-    bool IsOnWatchList);
+    bool IsOnWatchList,
+    Guid? OrderId = null);

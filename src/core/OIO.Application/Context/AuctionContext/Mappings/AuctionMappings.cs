@@ -8,7 +8,7 @@ namespace OIO.Application.Context.AuctionContext.Mappings;
 
 internal static class AuctionMappings
 {
-    public static AuctionListItemDto ToListItemDto(this Auction auction, DateTime nowUtc, TimeSpan extensionThresholdMinutes, bool isOnWatchList = false)
+    public static AuctionListItemDto ToListItemDto(this Auction auction, DateTime nowUtc, TimeSpan extensionThresholdMinutes, bool isOnWatchList = false, Guid? orderId = null)
     {
         var activeReservation = auction.GetActiveBuyNowReservation(nowUtc);
         var primaryImageUrl = auction.Item.Media
@@ -40,7 +40,8 @@ internal static class AuctionMappings
             SellerId: auction.Item.SellerId.Value,
             ItemStatus: auction.Item.Status.Id,
             AuctionType: auction.AuctionType?.Id ?? "Regular",
-            IsOnWatchList: isOnWatchList);
+            IsOnWatchList: isOnWatchList,
+            OrderId: orderId);
     }
 
     public static AuctionDto ToDto(this Auction auction, DateTime nowUtc, TimeSpan extensionThresholdMinutes, bool isOnWatchList = false)
