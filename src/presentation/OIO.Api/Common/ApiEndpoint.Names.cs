@@ -201,6 +201,7 @@ public static partial class ApiEndpoint
             public const string AdminForceCancelOrder = nameof(AdminForceCancelOrder);
             public const string AdminForceRefundOrder = nameof(AdminForceRefundOrder);
             public const string AdminOverrideOrderStatus = nameof(AdminOverrideOrderStatus);
+            public const string AdminProvisionWinnerOrder = nameof(AdminProvisionWinnerOrder);
 
             // Admin Auction Actions
             public const string AdminForceCancelAuction = nameof(AdminForceCancelAuction);
@@ -457,6 +458,8 @@ public static partial class ApiEndpoint
             public const string MarkOrderPickedUp = nameof(MarkOrderPickedUp);
             public const string MarkOrderOnDelivering = nameof(MarkOrderOnDelivering);
             public const string MarkOrderDelivered = nameof(MarkOrderDelivered);
+
+            public const string SellerProvisionWinnerOrder = nameof(SellerProvisionWinnerOrder);
 
             // Seller direct shipments
             public const string CreateSellerDirectShipment = nameof(CreateSellerDirectShipment);

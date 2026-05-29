@@ -56,8 +56,6 @@ internal sealed class GetCompletedAuctionByIdQueryHandler(
             .Include(o => o.OutboundShipments)
             .FirstOrDefaultAsync(o => o.AuctionId == auctionId, cancellationToken);
 
-        if (order is null)
-            return Error.NotFound("Order.NotFound", "Order for this auction was not found.");
 
         // Resolve warehouse flow to match list derivation.
         WarehouseItem? warehouseItem = null;
@@ -71,14 +69,13 @@ internal sealed class GetCompletedAuctionByIdQueryHandler(
         }
         var flow = warehouseItem is not null ? "warehouse_managed" : "seller_self_ship";
 
-        // Load display names for buyer + seller (same shape as GetOrderById).
         var users = await dbContext.Set<User>()
             .AsNoTracking()
             .Include(u => u.SellerProfile)
-            .Where(u => u.Id == order.BuyerId || u.Id == order.SellerId)
+            .Where(u => u.Id == auction.WinnerId || u.Id == auction.Item!.SellerId)
             .ToListAsync(cancellationToken);
-        var buyer = users.FirstOrDefault(u => u.Id == order.BuyerId);
-        var seller = users.FirstOrDefault(u => u.Id == order.SellerId);
+        var buyer = auction.WinnerId != null ? users.FirstOrDefault(u => u.Id == auction.WinnerId) : null;
+        var seller = auction.Item != null ? users.FirstOrDefault(u => u.Id == auction.Item.SellerId) : null;
         var buyerDisplayName = GetCompletedAuctionsQueryHandler.ResolveUserDisplayName(buyer);
         var sellerDisplayName = GetCompletedAuctionsQueryHandler.ResolveSellerDisplayName(seller);
 
@@ -91,66 +88,85 @@ internal sealed class GetCompletedAuctionByIdQueryHandler(
             .Select(m => m.Info.SecureUrl)
             .FirstOrDefault();
 
+        string paymentStatus = "uncreated";
+        string fulfillmentStatus = "uncreated";
+        if (order != null)
+        {
+            paymentStatus = GetCompletedAuctionsQueryHandler.DerivePaymentStatus(order, nowUtc);
+            fulfillmentStatus = GetCompletedAuctionsQueryHandler.DeriveFulfillmentStatus(order, flow);
+        }
+
         var summary = new AdminCompletedAuctionListItemDto(
             AuctionId: auction.Id.Value,
             ItemTitle: auction.Item?.Title.Value ?? string.Empty,
             ItemPrimaryImageUrl: primaryImageUrl,
             WinnerId: auction.WinnerId?.Value,
             WinnerDisplayName: buyerDisplayName,
-            SellerId: order.SellerId.Value,
+            SellerId: seller?.Id.Value ?? Guid.Empty,
             SellerDisplayName: sellerDisplayName,
-            FinalPrice: order.Pricing.ItemPrice.Amount,
-            Currency: order.Currency,
-            OrderId: order.Id.Value,
-            OrderNumber: order.OrderNumber.Value,
-            OrderStatus: order.Status.Id,
-            PaymentStatus: GetCompletedAuctionsQueryHandler.DerivePaymentStatus(order, nowUtc),
+            FinalPrice: order?.Pricing.ItemPrice.Amount ?? auction.Pricing.CurrentAmount,
+            Currency: order?.Currency ?? auction.Pricing.Currency.Id,
+            OrderId: order?.Id.Value,
+            OrderNumber: order?.OrderNumber.Value,
+            OrderStatus: order?.Status.Id,
+            PaymentStatus: paymentStatus,
             FulfillmentFlow: flow,
-            FulfillmentStatus: GetCompletedAuctionsQueryHandler.DeriveFulfillmentStatus(order, flow),
-            PaymentDueAt: order.PaymentDueAt,
-            PaidAt: order.PaidAt,
-            ShipByAt: order.ShipByAt,
-            IsShippingOverdue: order.IsShippingOverdue,
-            EscalatedAt: order.EscalatedAt,
-            EscalationReason: order.EscalationReason,
-            CreatedAt: order.CreatedAt);
+            FulfillmentStatus: fulfillmentStatus,
+            PaymentDueAt: order?.PaymentDueAt,
+            PaidAt: order?.PaidAt,
+            ShipByAt: order?.ShipByAt,
+            IsShippingOverdue: order?.IsShippingOverdue,
+            EscalatedAt: order?.EscalatedAt,
+            EscalationReason: order?.EscalationReason,
+            CreatedAt: order?.CreatedAt);
 
-        var itemSummary = order.ToItemSummary(auction);
-        var sellerFulfillment = order.BuildSellerFulfillment(warehouseItem);
+        OrderDto? orderDto = null;
+        if (order != null)
+        {
+            var itemSummary = order.ToItemSummary(auction);
+            var sellerFulfillment = order.BuildSellerFulfillment(warehouseItem);
 
-        // 1:1 seller direct shipment (if any) — admin needs this to render
-        // the DirectShipmentAdminBlock on the completed-auction detail page.
-        var directShipment = await dbContext.Set<SellerDirectShipmentEntity>()
-            .AsNoTracking()
-            .Include(s => s.Evidence)
-            .FirstOrDefaultAsync(s => s.OrderId == order.Id, cancellationToken);
+            // 1:1 seller direct shipment (if any) — admin needs this to render
+            // the DirectShipmentAdminBlock on the completed-auction detail page.
+            var directShipment = await dbContext.Set<SellerDirectShipmentEntity>()
+                .AsNoTracking()
+                .Include(s => s.Evidence)
+                .FirstOrDefaultAsync(s => s.OrderId == order.Id, cancellationToken);
 
-        var orderDto = order.ToDto(
-            item: itemSummary,
-            sellerFulfillment: sellerFulfillment,
-            buyerDisplayName: buyerDisplayName,
-            sellerDisplayName: sellerDisplayName,
-            directShipment: directShipment);
+            orderDto = order.ToDto(
+                item: itemSummary,
+                sellerFulfillment: sellerFulfillment,
+                buyerDisplayName: buyerDisplayName,
+                sellerDisplayName: sellerDisplayName,
+                directShipment: directShipment);
+        }
 
         // Attach latest outbound shipment DTO (null for self-ship orders
         // that have not been picked up yet).
         OutboundShipmentDto? outboundDto = null;
-        var latestShipment = order.OutboundShipments
-            .OrderByDescending(s => s.CreatedAt)
-            .FirstOrDefault();
-        if (latestShipment is not null)
-            outboundDto = latestShipment.ToDto();
+        if (order != null)
+        {
+            var latestShipment = order.OutboundShipments
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefault();
+            if (latestShipment is not null)
+                outboundDto = latestShipment.ToDto();
+        }
 
         // Monitoring alerts keyed by order (EntityType="order") — this is the
         // same entity filter the shared MonitoringAlert query uses, so admin
         // operators see the exact same rows here as on the alert triage page.
-        var orderGuid = order.Id.Value;
-        var monitoringAlerts = await dbContext.Set<MonitoringAlert>()
-            .AsNoTracking()
-            .Where(x => x.EntityType == "Order" && x.EntityId == orderGuid)
-            .OrderByDescending(x => x.CreatedAt)
-            .Select(x => x.ToDto())
-            .ToListAsync(cancellationToken);
+        var monitoringAlerts = new List<MonitoringAlertDto>();
+        if (order != null)
+        {
+            var orderGuid = order.Id.Value;
+            monitoringAlerts = await dbContext.Set<MonitoringAlert>()
+                .AsNoTracking()
+                .Where(x => x.EntityType == "Order" && x.EntityId == orderGuid)
+                .OrderByDescending(x => x.CreatedAt)
+                .Select(x => x.ToDto())
+                .ToListAsync(cancellationToken);
+        }
 
         return new AdminCompletedAuctionDetailDto(
             Summary: summary,

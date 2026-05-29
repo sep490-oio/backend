@@ -18,26 +18,26 @@ public sealed record AdminCompletedAuctionListItemDto(
     string? SellerDisplayName,
     decimal FinalPrice,
     string Currency,
-    Guid OrderId,
-    string OrderNumber,
-    string OrderStatus,
+    Guid? OrderId,
+    string? OrderNumber,
+    string? OrderStatus,
     // pending_payment | paid | payment_overdue
-    string PaymentStatus,
+    string? PaymentStatus,
     // seller_self_ship | warehouse_managed
-    string FulfillmentFlow,
+    string? FulfillmentFlow,
     // awaiting_seller_ship | warehouse_outbound_pending | picked_up | on_delivering
     // | delivered | shipping_overdue | escalated
-    string FulfillmentStatus,
+    string? FulfillmentStatus,
     DateTime? PaymentDueAt,
     DateTime? PaidAt,
     DateTime? ShipByAt,
-    bool IsShippingOverdue,
+    bool? IsShippingOverdue,
     DateTime? EscalatedAt,
     string? EscalationReason,
-    DateTime CreatedAt);
+    DateTime? CreatedAt);
 
 public sealed record AdminCompletedAuctionDetailDto(
     AdminCompletedAuctionListItemDto Summary,
-    OrderDto Order,
+    OrderDto? Order,
     OutboundShipmentDto? OutboundShipment,
     IReadOnlyList<MonitoringAlertDto> MonitoringAlerts);

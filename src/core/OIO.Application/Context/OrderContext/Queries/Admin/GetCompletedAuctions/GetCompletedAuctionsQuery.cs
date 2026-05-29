@@ -136,13 +136,19 @@ internal sealed class GetCompletedAuctionsQueryHandler(
         var rows = new List<AdminCompletedAuctionListItemDto>(candidateAuctions.Count);
         foreach (var auction in candidateAuctions)
         {
-            if (!ordersByAuction.TryGetValue(auction.Id, out var order)) continue;
+            ordersByAuction.TryGetValue(auction.Id, out var order);
 
             var hasWarehouseItem = auction.Item is not null && warehouseItemItemIds.Contains(auction.Item.Id.Value);
             var flow = hasWarehouseItem ? "warehouse_managed" : "seller_self_ship";
 
-            var paymentStatus = DerivePaymentStatus(order, nowUtc);
-            var fulfillmentStatus = DeriveFulfillmentStatus(order, flow);
+            string paymentStatus = "uncreated";
+            string fulfillmentStatus = "uncreated";
+
+            if (order != null)
+            {
+                paymentStatus = DerivePaymentStatus(order, nowUtc);
+                fulfillmentStatus = DeriveFulfillmentStatus(order, flow);
+            }
 
             // Apply derived filters in-memory.
             if (!string.IsNullOrWhiteSpace(parameters.PaymentStatus) &&
@@ -151,11 +157,12 @@ internal sealed class GetCompletedAuctionsQueryHandler(
             if (!string.IsNullOrWhiteSpace(parameters.FulfillmentStatus) &&
                 !string.Equals(parameters.FulfillmentStatus, fulfillmentStatus, StringComparison.OrdinalIgnoreCase))
                 continue;
-            if (parameters.OnlyOverdue == true && !order.IsShippingOverdue && fulfillmentStatus != "shipping_overdue")
+            if (parameters.OnlyOverdue == true && (order == null || !order.IsShippingOverdue) && fulfillmentStatus != "shipping_overdue")
                 continue;
 
-            var buyer = usersById.TryGetValue(order.BuyerId.Value, out var b) ? b : null;
-            var seller = usersById.TryGetValue(order.SellerId.Value, out var s) ? s : null;
+            var buyer = order != null && usersById.TryGetValue(order.BuyerId.Value, out var b) ? b : 
+                        auction.WinnerId != null && usersById.TryGetValue(auction.WinnerId.Value.Value, out var ab) ? ab : null;
+            var seller = auction.Item != null && usersById.TryGetValue(auction.Item.SellerId.Value, out var s) ? s : null;
 
             var primaryImageUrl = auction.Item?.Media
                 .Where(m => m.IsPrimary)
@@ -169,23 +176,23 @@ internal sealed class GetCompletedAuctionsQueryHandler(
                 ItemPrimaryImageUrl: primaryImageUrl,
                 WinnerId: auction.WinnerId?.Value,
                 WinnerDisplayName: ResolveUserDisplayName(buyer),
-                SellerId: order.SellerId.Value,
+                SellerId: seller?.Id.Value ?? Guid.Empty,
                 SellerDisplayName: ResolveSellerDisplayName(seller),
-                FinalPrice: order.Pricing.ItemPrice.Amount,
-                Currency: order.Currency,
-                OrderId: order.Id.Value,
-                OrderNumber: order.OrderNumber.Value,
-                OrderStatus: order.Status.Id,
+                FinalPrice: order?.Pricing.ItemPrice.Amount ?? auction.Pricing.CurrentAmount,
+                Currency: order?.Currency ?? auction.Pricing.Currency.Id,
+                OrderId: order?.Id.Value,
+                OrderNumber: order?.OrderNumber.Value,
+                OrderStatus: order?.Status.Id,
                 PaymentStatus: paymentStatus,
                 FulfillmentFlow: flow,
                 FulfillmentStatus: fulfillmentStatus,
-                PaymentDueAt: order.PaymentDueAt,
-                PaidAt: order.PaidAt,
-                ShipByAt: order.ShipByAt,
-                IsShippingOverdue: order.IsShippingOverdue,
-                EscalatedAt: order.EscalatedAt,
-                EscalationReason: order.EscalationReason,
-                CreatedAt: order.CreatedAt));
+                PaymentDueAt: order?.PaymentDueAt,
+                PaidAt: order?.PaidAt,
+                ShipByAt: order?.ShipByAt,
+                IsShippingOverdue: order?.IsShippingOverdue,
+                EscalatedAt: order?.EscalatedAt,
+                EscalationReason: order?.EscalationReason,
+                CreatedAt: order?.CreatedAt));
         }
 
         var totalCount = rows.Count;

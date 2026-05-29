@@ -133,6 +133,7 @@ public static partial class ApiEndpoint
             public const string AdminForceCancelOrder = $"{Base}/orders/{{orderId:guid}}/force-cancel";
             public const string AdminForceRefundOrder = $"{Base}/orders/{{orderId:guid}}/force-refund";
             public const string AdminOverrideOrderStatus = $"{Base}/orders/{{orderId:guid}}/override-status";
+            public const string AdminProvisionWinnerOrder = $"{Base}/auctions/completed/{{auctionId:guid}}/provision-order";
 
             // Admin Auction Actions
             public const string AdminForceCancelAuction = $"{Base}/auctions/{{auctionId:guid}}/force-cancel";
@@ -429,6 +430,8 @@ public static partial class ApiEndpoint
             public const string MarkPickedUp = $"{Base}/{{orderId:guid}}/mark-picked-up";
             public const string MarkOnDelivering = $"{Base}/{{orderId:guid}}/mark-on-delivering";
             public const string MarkDelivered = $"{Base}/{{orderId:guid}}/mark-delivered";
+
+            public const string SellerProvisionWinnerOrder = $"api/seller/auctions/completed/{{auctionId:guid}}/provision-order";
 
             // Seller direct shipments (1:1 with order)
             public const string CreateSellerDirectShipment = $"{Base}/{{orderId:guid}}/self-shipments";

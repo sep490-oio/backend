@@ -61,7 +61,7 @@ internal sealed class ReturnAuctionDepositCommandHandler : ICommandHandler<Retur
         var unholdResult = wallet.Unhold(
             amount: deposit.Amount.Amount,
             transactionId: deposit.TransactionId,
-            description: $"Returned auction deposit - Reason: {request.Reason}",
+            description: $"Returned auction deposit - Reason: {request.Reason} for auction {deposit.AuctionId.Value}",
             nowUtc: now);
 
         if (unholdResult.IsFailure)
