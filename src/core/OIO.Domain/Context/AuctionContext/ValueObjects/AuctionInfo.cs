@@ -193,16 +193,21 @@ public sealed class AuctionInfo : ValueObject
     {
         var newStartTime = nowUtc;
         var newEndTime = EndTime;
-        if (newEndTime <= newStartTime) newEndTime = newStartTime.AddHours(1);
+        
+        if (newEndTime <= newStartTime) 
+            newEndTime = newStartTime + TotalDuration;
 
         QualificationWindow? newQual = Qualification;
         if (newQual is not null && newQual.EndTime >= newStartTime)
         {
-            var qualStart = newQual.StartTime;
-            if (qualStart >= newStartTime) qualStart = newStartTime.AddMinutes(-2);
             var qualEnd = newStartTime.AddMinutes(-1);
+            var qualStart = newQual.StartTime;
+            
+            if (qualStart >= qualEnd) 
+                qualStart = qualEnd.AddMinutes(-1);
             
             var newQualResult = QualificationWindow.Create(qualStart, qualEnd);
+            
             if (newQualResult.IsFailure) return newQualResult.Error;
             newQual = newQualResult.Value;
         }

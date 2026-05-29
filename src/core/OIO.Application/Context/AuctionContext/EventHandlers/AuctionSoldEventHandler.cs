@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Context.NotificationContext;
 using OIO.Application.Context.NotificationContext.Commands.CreateNotification;
@@ -8,6 +9,8 @@ using OIO.Application.Context.OrderContext.Services;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Events;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
+using OIO.Domain.Context.CatalogContext.Aggregates.Items;
+using OIO.Domain.Context.CatalogContext.Enums;
 using OIO.Domain.Context.NotificationContext.Enums;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.Enums;
@@ -26,19 +29,22 @@ internal sealed class AuctionSoldEventHandler
     private readonly ISender _sender;
     private readonly IWinnerOrderProvisioner _winnerOrderProvisioner;
     private readonly ILogger<AuctionSoldEventHandler> _logger;
-
+    private readonly IClock _clock;
+    
     public AuctionSoldEventHandler(
         IDbContext dbContext,
         IUnitOfWork unitOfWork,
         ISender sender,
         IWinnerOrderProvisioner winnerOrderProvisioner,
-        ILogger<AuctionSoldEventHandler> logger)
+        ILogger<AuctionSoldEventHandler> logger,
+        IClock clock)
     {
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _sender = sender;
         _winnerOrderProvisioner = winnerOrderProvisioner;
         _logger = logger;
+        _clock = clock;
     }
 
     public async Task Handle(AuctionSoldEvent notification, CancellationToken cancellationToken)
@@ -63,11 +69,11 @@ internal sealed class AuctionSoldEventHandler
         // idempotent fallback.
         if (auction?.Item is not null)
         {
-            var trackedItem = await _dbContext.Set<OIO.Domain.Context.CatalogContext.Aggregates.Items.Item>()
+            var trackedItem = await _dbContext.Set<Item>()
                 .FirstOrDefaultAsync(i => i.Id == auction.Item.Id, cancellationToken);
-            if (trackedItem is not null && trackedItem.Status != OIO.Domain.Context.CatalogContext.Enums.ItemStatus.Sold)
+            if (trackedItem is not null && trackedItem.Status != ItemStatus.Sold)
             {
-                var markResult = trackedItem.MarkSold(DateTime.UtcNow);
+                var markResult = trackedItem.MarkSold(_clock.UtcNow);
                 if (markResult.IsFailure)
                 {
                     // Bug #5 fix: previously the result was discarded, leading to split-brain
