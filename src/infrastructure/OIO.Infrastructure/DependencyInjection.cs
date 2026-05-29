@@ -167,6 +167,7 @@ public static class DependencyInjection
                         errorCodesToAdd: null);
 
                     npgsqlOptions.CommandTimeout(30);
+                    npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
                 }).UseSnakeCaseNamingConvention();
 
                 options.AddInterceptors(

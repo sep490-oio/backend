@@ -63,6 +63,8 @@ internal sealed class CancelOrderPaymentCommandHandler(
         var auction = await dbContext.GetByIdAsync<Auction, AuctionId>(
             order.AuctionId,
             queryBuilder: q => q
+                .Include(a => a.Bids)
+                .Include(a => a.WinnerOffers)
                 .Include(a => a.Deposits)
                 .Include(a => a.BuyNowReservations)
                 .Include(a => a.Item)

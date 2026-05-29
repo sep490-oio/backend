@@ -206,9 +206,21 @@ internal sealed class GetAuctionByIdQueryHandler
 
             if (isAuctionWinner || isBuyNowWinner || isSeller)
             {
-                var order = await _dbContext.Set<Order>()
+                var query = _dbContext.Set<Order>()
                     .AsNoTracking()
-                    .Where(o => o.AuctionId == auctionId)
+                    .Where(o => o.AuctionId == auctionId);
+                
+                if (isSeller)
+                {
+                    query = query.Where(o => o.BuyerId == auction.WinnerId);
+                }
+                else
+                {
+                    query = query.Where(o => o.BuyerId == userId);
+                }
+
+                var order = await query
+                    .OrderByDescending(o => o.CreatedAt)
                     .FirstOrDefaultAsync(cancellationToken);
 
                 if (order is not null)
