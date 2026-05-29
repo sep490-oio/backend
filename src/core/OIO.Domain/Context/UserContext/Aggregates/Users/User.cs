@@ -464,12 +464,14 @@ public sealed class User : AggregateRoot<UserId>, IAuditableEntity, ISoftDeletab
     public bool IsLockedOut(DateTime now) =>
         LockoutEnabled && LockoutEnd.HasValue && LockoutEnd.Value > now;
     
-    public void Unlock(DateTime now)
+    public UnitResult<Error> Unlock(DateTime now)
     {
         LockoutEnd = null;
         LockoutReason = null;
         AccessFailedCount = 0;
-        ModifiedAt = now;
+        var unitResult = ChangeStatus(UserStatus.Active, now);
+            
+        return unitResult;
     }
     
     public UnitResult<Error> UpdateProfile(

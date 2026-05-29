@@ -65,8 +65,13 @@ internal sealed class UnlockUserCommandHandler
         
         if (!actor.CanManage(targetUser))
             return UserErrors.User.InsufficientRoleLevel;
+        
+        var unlockUserResult = targetUser.Unlock(nowUtc);
 
-        targetUser.Unlock(nowUtc);
+        if (unlockUserResult.IsFailure)
+        {
+            return unlockUserResult.Error;
+        }
         
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
