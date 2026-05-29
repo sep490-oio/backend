@@ -61,9 +61,9 @@ if (app.Environment.IsDevelopment() || features.EnableScalar)
     await app.ApplyMigrationsAsync();
     await DatabaseSeeder.SeedAsync(app.Services);
     
-    // using var scope = app.Services.CreateScope();
-    // var sender = scope.ServiceProvider.GetRequiredService<MediatR.ISender>();
-    // await sender.Send(new OIO.Application.Context.SearchContext.Commands.BootstrapSync.BootstrapSearchCommand());
+    using var scope = app.Services.CreateScope();
+    var sender = scope.ServiceProvider.GetRequiredService<MediatR.ISender>();
+    await sender.Send(new OIO.Application.Context.SearchContext.Commands.BootstrapSync.BootstrapSearchCommand());
 }
 
 app.UseHttpsRedirection();
