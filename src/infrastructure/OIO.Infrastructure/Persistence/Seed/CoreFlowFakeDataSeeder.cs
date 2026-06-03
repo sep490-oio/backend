@@ -216,31 +216,43 @@ public static class CoreFlowFakeDataSeeder
         ILogger logger)
     {
         var existing = await dbContext.Set<TermsDocument>()
-            .FirstOrDefaultAsync(x => x.TermType == termType && x.Status == TermsDocumentStatus.Active);
+            .OrderByDescending(x => x.Version)
+            .FirstOrDefaultAsync(x => x.TermType == termType);
 
         if (existing is not null)
-            return existing;
+        {
+            if (existing.Status == TermsDocumentStatus.Active)
+                return existing;
+                
+            if (existing.Status == TermsDocumentStatus.Draft)
+            {
+                existing.Activate(nowUtc, owner.Id);
+                return existing;
+            }
+        }
+
+        int version = existing is null ? 1 : existing.Version + 1;
 
         var upload = CreateConfirmedUpload(
             userId: owner.Id,
             context: "terms_document",
             resourceType: "raw",
             folder: "seed/terms",
-            publicId: $"{termType}-v1",
-            secureUrl: $"https://example.com/seed/terms/{termType}-v1.pdf",
-            fileName: $"{termType}-terms-v1.pdf",
+            publicId: $"{termType}-v{version}",
+            secureUrl: $"https://example.com/seed/terms/{termType}-v{version}.pdf",
+            fileName: $"{termType}-terms-v{version}.pdf",
             nowUtc: nowUtc,
             format: "pdf",
             bytes: 8_192);
 
         dbContext.Insert(upload);
 
-        var terms = TermsDocument.Create(termType, 1, upload, owner.Id, nowUtc).Value;
+        var terms = TermsDocument.Create(termType, version, upload, owner.Id, nowUtc).Value;
         terms.Activate(nowUtc, owner.Id);
 
         dbContext.Insert(terms);
 
-        logger.LogInformation("Seeded fake active terms document for type '{TermType}'.", termType);
+        logger.LogInformation("Seeded fake active terms document for type '{TermType}' version {Version}.", termType, version);
 
         return terms;
     }
