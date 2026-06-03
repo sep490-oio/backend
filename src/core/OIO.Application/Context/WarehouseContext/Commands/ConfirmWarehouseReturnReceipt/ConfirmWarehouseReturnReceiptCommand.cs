@@ -59,6 +59,20 @@ internal sealed class ConfirmWarehouseReturnReceiptCommandHandler(
         if (confirmResult.IsFailure)
             return confirmResult.Error;
 
+        var warehouseItem = await dbContext.Set<OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.WarehouseItem>()
+            .FirstOrDefaultAsync(wi => wi.Id == shipment.WarehouseItemId, cancellationToken);
+            
+        if (warehouseItem is not null)
+        {
+            warehouseItem.ClearStorageLocation(now);
+            
+            var itemResult = warehouseItem.MarkReturnedToSeller(now);
+            if (itemResult.IsFailure)
+                return itemResult.Error;
+            
+            dbContext.Update(warehouseItem);
+        }
+
         dbContext.Update(shipment);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

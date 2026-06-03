@@ -329,6 +329,20 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
     }
 
     /// <summary>
+    /// Explicitly remove the item from its storage location.
+    /// Called when the item physically leaves the warehouse (e.g., return shipment dispatched).
+    /// </summary>
+    public UnitResult<e> ClearStorageLocation(DateTime now)
+    {
+        if (StorageLocationId is not null)
+        {
+            StorageLocationId = null;
+            ModifiedAt        = now;
+        }
+        return UnitResult.Success<e>();
+    }
+
+    /// <summary>
     /// Transition the item into the warehouse→seller return flow. Called when a
     /// warehouse inspector rejects the item and the platform routes it back to
     /// the seller. Allowed from {Received, Inspected, Stored}.
@@ -357,6 +371,21 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
             return WarehouseErrors.WarehouseItem.CannotMarkAwaitingDisposition;
 
         Status     = WarehouseItemStatus.AwaitingDisposition;
+        ModifiedAt = now;
+        return UnitResult.Success<e>();
+    }
+
+    /// <summary>
+    /// Transition the item to ReturnedToSeller when the warehouse-to-seller return shipment
+    /// is delivered and confirmed by the seller. This is a terminal state for the physical item
+    /// in the warehouse network.
+    /// </summary>
+    public UnitResult<e> MarkReturnedToSeller(DateTime now)
+    {
+        if (Status != WarehouseItemStatus.AwaitingSellerReturn)
+            return WarehouseErrors.WarehouseItem.InvalidState;
+
+        Status     = WarehouseItemStatus.ReturnedToSeller;
         ModifiedAt = now;
         return UnitResult.Success<e>();
     }

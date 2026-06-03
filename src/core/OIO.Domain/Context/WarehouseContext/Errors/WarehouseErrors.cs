@@ -118,6 +118,10 @@ public static class WarehouseErrors
             code: "WarehouseItem.CannotMarkAwaitingDisposition",
             description: "Item must be in 'awaiting_seller_return' before it can be moved to 'awaiting_disposition'.");
 
+        public static readonly Error InvalidState = Error.Conflict(
+            code: "WarehouseItem.InvalidState",
+            description: "Item is not in a state that allows this transition.");
+
         public static readonly Error NotDispatched = Error.Conflict(
             code: "WarehouseItem.NotDispatched",
             description: "Item must be dispatched before this operation is allowed.");

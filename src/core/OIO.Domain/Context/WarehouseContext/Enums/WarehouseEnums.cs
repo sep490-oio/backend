@@ -75,6 +75,7 @@ public sealed class WarehouseItemStatus : EnumValueObject<WarehouseItemStatus>
     public static readonly WarehouseItemStatus Lost                  = new("lost");
     public static readonly WarehouseItemStatus Damaged               = new("damaged");
     public static readonly WarehouseItemStatus AwaitingSellerReturn  = new("awaiting_seller_return");
+    public static readonly WarehouseItemStatus ReturnedToSeller      = new("returned_to_seller");
     public static readonly WarehouseItemStatus AwaitingDisposition   = new("awaiting_disposition");
 
     private WarehouseItemStatus(string id) : base(id) { }

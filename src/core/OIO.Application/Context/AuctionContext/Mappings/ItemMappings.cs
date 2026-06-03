@@ -6,7 +6,7 @@ namespace OIO.Application.Context.AuctionContext.Mappings;
 
 public static class ItemMappings {
 
-    public static ItemDto ToDto(this Item item, bool hasInboundShipment = false, bool hasLiveAuction = false, ItemAuctionSummaryDto? auction = null)
+    public static ItemDto ToDto(this Item item, bool hasInboundShipment = false, bool hasLiveAuction = false, Guid? warehouseItemId = null, ItemAuctionSummaryDto? auction = null)
     {
         return new ItemDto(
             Id: item.Id.Value,
@@ -21,6 +21,7 @@ public static class ItemMappings {
             CreatedAt: item.CreatedAt,
             HasInboundShipment: hasInboundShipment,
             HasLiveAuction: hasLiveAuction,
+            WarehouseItemId: warehouseItemId,
             Auction: auction);
     }
     

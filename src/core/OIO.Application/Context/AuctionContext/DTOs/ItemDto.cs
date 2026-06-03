@@ -13,6 +13,7 @@ public sealed record ItemDto(
     DateTime CreatedAt,
     bool HasInboundShipment = false,
     bool HasLiveAuction = false,
+    Guid? WarehouseItemId = null,
     ItemAuctionSummaryDto? Auction = null);
 
 public sealed record ItemAuctionSummaryDto(

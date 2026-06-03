@@ -9,10 +9,12 @@ namespace OIO.Api.Endpoints.UserContext.Me;
 
 public sealed class GetMyInboundShipmentsEndpoint : IEndpoint
 {
+    public sealed record Parameters : GetMyInboundShipmentsFilterParameters;
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet(ApiEndpoint.Url.Me.GetMyInboundShipments, async (
-                [AsParameters] PagedParameters parameters,
+                [AsParameters] Parameters parameters,
                 ISender sender,
                 CancellationToken ct) =>
             {

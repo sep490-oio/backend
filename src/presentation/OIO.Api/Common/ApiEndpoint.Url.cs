@@ -74,6 +74,7 @@ public static partial class ApiEndpoint
 
             // Seller Profiles
             public const string GetSellerProfiles = $"{Base}/seller-profiles";
+            public const string GetSellerProfileById = $"{Base}/seller-profiles/{{id:guid}}";
             public const string VerifySellerProfile = $"{Base}/seller-profiles/{{id:guid}}/verify";
             public const string RejectSellerProfile = $"{Base}/seller-profiles/{{id:guid}}/reject";
 

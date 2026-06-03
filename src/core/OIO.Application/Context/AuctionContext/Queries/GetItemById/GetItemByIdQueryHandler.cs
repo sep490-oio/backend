@@ -61,7 +61,15 @@ internal sealed class GetItemByIdQueryHandler
                            s.Status != InboundShipmentStatus.Cancelled &&
                            s.Status != InboundShipmentStatus.Failed,
                 cancellationToken);
+                
+        var warehouseItem = await _dbContext.Set<OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.WarehouseItem>()
+            .AsNoTracking()
+            .Where(w => w.ItemId == itemId.Value && w.Status != WarehouseItemStatus.ReturnedToSeller)
+            .OrderByDescending(w => w.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
 
-        return item.ToDto(hasInbound);
+        return item.ToDto(
+            hasInboundShipment: hasInbound,
+            warehouseItemId: warehouseItem?.Id.Value);
     }
 }

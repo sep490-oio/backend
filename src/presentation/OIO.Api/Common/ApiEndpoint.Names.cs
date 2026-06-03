@@ -141,6 +141,7 @@ public static partial class ApiEndpoint
 
             // Seller Profiles
             public const string GetSellerProfiles = nameof(GetSellerProfiles);
+            public const string GetSellerProfileById = nameof(GetSellerProfileById);
             public const string VerifySellerProfile = nameof(VerifySellerProfile);
             public const string RejectSellerProfile = nameof(RejectSellerProfile);
 

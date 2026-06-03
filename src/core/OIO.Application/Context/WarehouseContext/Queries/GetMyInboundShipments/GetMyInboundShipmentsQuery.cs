@@ -12,7 +12,7 @@ using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.WarehouseContext.Queries.GetMyInboundShipments;
 
-public sealed record GetMyInboundShipmentsQuery(PagedParameters Parameters) : IQuery<PagedList<InboundShipmentDto>>;
+public sealed record GetMyInboundShipmentsQuery(GetMyInboundShipmentsFilterParameters Parameters) : IQuery<PagedList<InboundShipmentDto>>;
 
 internal sealed class GetMyInboundShipmentsQueryHandler(
     IDbContext dbContext,
@@ -27,6 +27,11 @@ internal sealed class GetMyInboundShipmentsQueryHandler(
 
         var query = dbContext.Set<InboundShipment>()
             .Where(s => s.SellerId == currentUser.UserId);
+
+        if (parameters.ItemId.HasValue)
+        {
+            query = query.Where(s => s.ItemId == parameters.ItemId.Value);
+        }
 
         var totalCounts = await query.CountAsync(cancellationToken);
 

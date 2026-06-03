@@ -101,6 +101,16 @@ internal sealed class GetMyItemsQueryHandler
             .GroupBy(a => a.ItemId)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(a => a.CreatedAt).ToList());
 
+        var pagedItemIdsForDb = pagedItemIds.Select(x => x.Value).ToList();
+        var warehouseItems = await _dbContext.Set<OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.WarehouseItem>()
+            .AsNoTracking()
+            .Where(w => pagedItemIdsForDb.Contains(w.ItemId) && w.Status != WarehouseItemStatus.ReturnedToSeller)
+            .ToListAsync(cancellationToken);
+
+        var warehouseItemIdByItemId = warehouseItems
+            .GroupBy(w => w.ItemId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(w => w.CreatedAt).First().Id.Value);
+
         var itemDtos = pagedItems.Items
             .Select(item =>
             {
@@ -124,6 +134,7 @@ internal sealed class GetMyItemsQueryHandler
                 return item.ToDto(
                     hasInboundShipment: activeInboundItemGuids.Contains(item.Id.Value),
                     hasLiveAuction: hasLiveAuction,
+                    warehouseItemId: warehouseItemIdByItemId.GetValueOrDefault(item.Id.Value),
                     auction: auctionSummary);
             })
             .ToList();

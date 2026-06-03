@@ -5,6 +5,7 @@ using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Abstractions.Security;
+using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseToSellerShipments;
 using OIO.Domain.Context.WarehouseContext.Errors;
 using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
@@ -65,6 +66,14 @@ internal sealed class MarkWarehouseReturnShippedCommandHandler(
 
         if (shipResult.IsFailure)
             return shipResult.Error;
+
+        var warehouseItem = await dbContext.Set<WarehouseItem>()
+            .FirstOrDefaultAsync(wi => wi.Id == shipment.WarehouseItemId, cancellationToken);
+        if (warehouseItem is not null)
+        {
+            warehouseItem.ClearStorageLocation(now);
+            dbContext.Update(warehouseItem);
+        }
 
         // C7: issue a signed return-scoped QR token so the seller can scan on arrival.
         var qrToken = qrTokenService.Issue(
