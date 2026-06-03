@@ -59,13 +59,15 @@ internal sealed class GetMyItemsQueryHandler
             query = query.Where(i => i.RequiresPlatformInspection == flag);
         }
 
-        // hasActiveInbound = item has an InboundShipment whose status is neither
-        // Cancelled nor Failed. The inbound-book picker passes hasActiveInbound=false
-        // so a re-attempt is allowed once a previous shipment is cancelled/failed.
+        // hasActiveInbound = item has an InboundShipment whose status is active
+        // (not Cancelled, Failed, Inspected, or Completed).
+        // Once Inspected/Completed, it becomes a WarehouseItem.
         var activeInboundItemGuids = await _dbContext.Set<InboundShipment>()
             .Where(s => s.SellerId == _currentUser.UserId &&
                         s.Status != InboundShipmentStatus.Cancelled &&
-                        s.Status != InboundShipmentStatus.Failed)
+                        s.Status != InboundShipmentStatus.Failed &&
+                        s.Status != InboundShipmentStatus.Inspected &&
+                        s.Status != InboundShipmentStatus.Completed)
             .Select(s => s.ItemId)
             .Distinct()
             .ToListAsync(cancellationToken);
@@ -139,6 +141,6 @@ internal sealed class GetMyItemsQueryHandler
             })
             .ToList();
 
-        return new PagedList<ItemDto>(itemDtos, pagedItems.Metadata);
+        return itemDtos.ToPagedList(pagedItems.Metadata);
     }
 }

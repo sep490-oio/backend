@@ -62,16 +62,19 @@ internal sealed class ConfirmWarehouseReturnReceiptCommandHandler(
         var warehouseItem = await dbContext.Set<OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.WarehouseItem>()
             .FirstOrDefaultAsync(wi => wi.Id == shipment.WarehouseItemId, cancellationToken);
             
-        if (warehouseItem is not null)
+        if (warehouseItem is null)
         {
-            warehouseItem.ClearStorageLocation(now);
-            
-            var itemResult = warehouseItem.MarkReturnedToSeller(now);
-            if (itemResult.IsFailure)
-                return itemResult.Error;
-            
-            dbContext.Update(warehouseItem);
+            logger.LogWarning("WarehouseItem not found for WarehouseToSellerShipment {ShipmentId}. WarehouseItemId={WarehouseItemId}", shipment.Id.Value, shipment.WarehouseItemId.Value);
+            return Error.NotFound("WarehouseItem.NotFound", "The warehouse item associated with this shipment was not found.");
         }
+
+        warehouseItem.ClearStorageLocation(now);
+        
+        var itemResult = warehouseItem.MarkReturnedToSeller(now);
+        if (itemResult.IsFailure)
+            return itemResult.Error;
+        
+        dbContext.Update(warehouseItem);
 
         dbContext.Update(shipment);
         await unitOfWork.SaveChangesAsync(cancellationToken);

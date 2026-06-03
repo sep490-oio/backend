@@ -429,6 +429,7 @@ public static partial class ApiEndpoint
             public const string GetSummary = nameof(GetSummary);
             public const string GetPlatformWallet = nameof(GetPlatformWallet);
             public const string GetPlatformWalletTransactions = nameof(GetPlatformWalletTransactions);
+            public const string GetAdminUserWalletByUserId = nameof(GetAdminUserWalletByUserId);
             public const string GetRevenueHistory = nameof(GetRevenueHistory);
             public const string CompleteWithdrawal = nameof(CompleteWithdrawal);
             public const string ForceReleaseEscrow = nameof(ForceReleaseEscrow);

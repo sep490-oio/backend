@@ -399,6 +399,7 @@ public static partial class ApiEndpoint
             public const string GetSummary = $"{Base}/summary";
             public const string GetPlatformWallet = $"{Base}/platform-wallet";
             public const string GetPlatformWalletTransactions = $"{Base}/platform-wallet/transactions";
+            public const string GetAdminUserWalletByUserId = $"{Base}/users/{{userId:guid}}/wallet";
             public const string GetRevenueHistory = $"{Base}/revenue-history";
             public const string CompleteWithdrawal = $"{Base}/withdrawals/{{withdrawalId:guid}}/complete";
             public const string ForceReleaseEscrow = $"{Base}/escrows/{{escrowId:guid}}/force-release";

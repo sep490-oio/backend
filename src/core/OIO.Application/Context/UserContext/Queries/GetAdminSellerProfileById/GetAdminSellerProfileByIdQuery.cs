@@ -12,7 +12,7 @@ using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.UserContext.Queries.GetAdminSellerProfileById;
 
-public sealed record GetAdminSellerProfileByIdQuery(Guid SellerId) : IQuery<SellerProfileDto>, IHasValidate
+public sealed record GetAdminSellerProfileByIdQuery(Guid SellerId) : IQuery<AdminSellerProfileDetailDto>, IHasValidate
 {
     public ViolationsError Validate()
     {
@@ -23,7 +23,7 @@ public sealed record GetAdminSellerProfileByIdQuery(Guid SellerId) : IQuery<Sell
 }
 
 internal sealed class GetAdminSellerProfileByIdQueryHandler
-    : IQueryHandler<GetAdminSellerProfileByIdQuery, SellerProfileDto>
+    : IQueryHandler<GetAdminSellerProfileByIdQuery, AdminSellerProfileDetailDto>
 {
     private readonly IDbContext _dbContext;
 
@@ -32,19 +32,23 @@ internal sealed class GetAdminSellerProfileByIdQueryHandler
         _dbContext = dbContext;
     }
 
-    public async Task<Result<SellerProfileDto, Error>> Handle(
+    public async Task<Result<AdminSellerProfileDetailDto, Error>> Handle(
         GetAdminSellerProfileByIdQuery request,
         CancellationToken cancellationToken)
     {
         var sellerId = UserId.From(request.SellerId);
 
         var profile = await _dbContext.Set<SellerProfile>()
+            .Include(p => p.User)
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == sellerId, cancellationToken);
             
         if (profile is null)
             return UserErrors.SellerProfile.NotFoundById(sellerId);
             
-        return profile.ToDto();
+        return new AdminSellerProfileDetailDto(
+            Profile: profile.ToDto(),
+            User: profile.User.ToDto()
+        );
     }
 }

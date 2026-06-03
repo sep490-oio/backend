@@ -22,7 +22,7 @@ public class GetSellerProfileByIdEndpoint : IEndpoint
             .RequireAuthorization(App.Permissions.Catalogs.Admin.ManageSellerProfiles)
             .WithName(ApiEndpoint.Names.Admins.GetSellerProfileById)
             .WithTags(ApiEndpoint.Tags.Admins)
-            .Produces<SellerProfileDto>(StatusCodes.Status200OK)
+            .Produces<AdminSellerProfileDetailDto>(StatusCodes.Status200OK)
             .ProducesValidationProblem()
             .Produces(StatusCodes.Status404NotFound);
     }

@@ -111,6 +111,32 @@ internal sealed class CloudinarySignatureService : IMediaSignatureService
 
             if (result.Error is not null)
             {
+                if (result.Error.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                {
+                    var getResourceParams = new GetResourceParams(toPublicId)
+                    {
+                        ResourceType = MapResourceType(resourceType)
+                    };
+                    var targetResource = await cloudinary.GetResourceAsync(getResourceParams, ct);
+                    
+                    if (targetResource.Error is null && !string.IsNullOrWhiteSpace(targetResource.PublicId))
+                    {
+                        var finalFolderRecovered = ExtractFolder(targetResource.PublicId);
+                        var secureUrlRecovered = !string.IsNullOrWhiteSpace(targetResource.SecureUrl)
+                            ? targetResource.SecureUrl
+                            : targetResource.Url ?? string.Empty;
+
+                        _logger.LogInformation(
+                            "Recovered previously renamed {Type} resource {ToPublicId}",
+                            resourceType, targetResource.PublicId);
+
+                        return new RenameResourceResult(
+                            targetResource.PublicId,
+                            finalFolderRecovered,
+                            secureUrlRecovered);
+                    }
+                }
+
                 _logger.LogWarning(
                     "Failed to rename {Type} resource from {FromPublicId} to {ToPublicId}. Error: {Error}",
                     resourceType, fromPublicId, toPublicId, result.Error.Message);
