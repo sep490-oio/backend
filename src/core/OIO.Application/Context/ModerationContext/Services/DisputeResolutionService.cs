@@ -12,8 +12,10 @@ using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
 using OIO.Domain.Context.ModerationContext.Aggregates.Disputes;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.Enums;
+using OIO.Domain.Context.UserContext.ValueObjects.Ids;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.WarehouseContext.Aggregates.OutboundShipments;
+using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 using OIO.Domain.Context.WarehouseContext.ValueObjects.Ids;
 using OIO.Domain.SeedWork.Errors;
 using OIO.Application.Context.OrderContext.Services;
@@ -29,6 +31,7 @@ public sealed record DisputeResolutionActionSet
     public string? ItemAction { get; init; }
     public string? AuctionAction { get; init; }
     public string? PenaltyAction { get; init; }
+    public string? WarehouseInspectionAction { get; init; }
 
     /// <summary>
     /// Optional fee-payer selector for <c>open_return</c>. Accepts <c>"buyer"</c>,
@@ -132,7 +135,10 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
         // 5. Auction action
         await ApplyAuctionActionAsync(actionSet, dispute, now, ct);
 
-        // 6. Penalty action (V1: flag only, no automated enforcement)
+        // 6. Warehouse Inspection action
+        await ApplyWarehouseInspectionActionAsync(actionSet, dispute, now, ct);
+
+        // 7. Penalty action (V1: flag only, no automated enforcement)
         ApplyPenaltyAction(actionSet, dispute);
 
         await _unitOfWork.SaveChangesAsync(ct);
@@ -767,6 +773,79 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
                     "Dispute {DisputeId}: unknown penalty action '{Action}'",
                     dispute.Id, actionSet.PenaltyAction);
                 break;
+        }
+    }
+
+    private async Task ApplyWarehouseInspectionActionAsync(
+        DisputeResolutionActionSet actionSet,
+        Dispute dispute,
+        DateTime now,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(actionSet.WarehouseInspectionAction) || actionSet.WarehouseInspectionAction == "no_action")
+            return;
+
+        try
+        {
+            switch (actionSet.WarehouseInspectionAction)
+            {
+                case "force_reinspection":
+                {
+                    if (dispute.WarehouseItemId is null)
+                    {
+                        _logger.LogWarning(
+                            "Dispute {DisputeId}: force_reinspection skipped — no linked warehouse item",
+                            dispute.Id);
+                        break;
+                    }
+
+                    var warehouseItemId = WarehouseItemId.From(dispute.WarehouseItemId.Value);
+                    
+                    var inspection = await _dbContext.Set<WarehouseInspection>()
+                        .OrderByDescending(x => x.CreatedAt)
+                        .FirstOrDefaultAsync(x => x.WarehouseItemId == warehouseItemId, ct);
+
+                    if (inspection is null)
+                    {
+                        _logger.LogWarning(
+                            "Dispute {DisputeId}: force_reinspection skipped — warehouse inspection not found",
+                            dispute.Id);
+                        break;
+                    }
+
+                    var moderatorId = dispute.ResolvedBy.HasValue ? UserId.From(dispute.ResolvedBy.Value) : dispute.ComplainantId; // Fallback to complainant if ResolvedBy is missing somehow
+                    var result = inspection.ForceReinspectionByModerator(
+                        moderatorId,
+                        $"Forced re-inspection via dispute resolution. Outcome: {dispute.ResolutionOutcome}",
+                        now);
+
+                    if (result.IsFailure)
+                    {
+                        _logger.LogWarning(
+                            "Dispute {DisputeId}: force_reinspection failed — {Error}",
+                            dispute.Id, result.Error.Message);
+                    }
+                    else
+                    {
+                        _logger.LogInformation(
+                            "Dispute {DisputeId}: warehouse inspection forced to PendingReview for re-inspection",
+                            dispute.Id);
+                    }
+                    break;
+                }
+
+                default:
+                    _logger.LogWarning(
+                        "Dispute {DisputeId}: unknown warehouse inspection action '{Action}'",
+                        dispute.Id, actionSet.WarehouseInspectionAction);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Dispute {DisputeId}: warehouse inspection action '{Action}' threw an exception",
+                dispute.Id, actionSet.WarehouseInspectionAction);
         }
     }
 

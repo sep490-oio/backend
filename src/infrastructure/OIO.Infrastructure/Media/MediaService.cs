@@ -103,7 +103,7 @@ internal sealed class CloudinarySignatureService : IMediaSignatureService
             var renameParams = new RenameParams(fromPublicId, toPublicId)
             {
                 ResourceType = MapResourceType(resourceType),
-                Overwrite = false,
+                Overwrite = true,
                 Invalidate = true
             };
 

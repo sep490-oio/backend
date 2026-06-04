@@ -1,4 +1,4 @@
-﻿using EFCore.ComplexIndexes;
+using EFCore.ComplexIndexes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
@@ -20,7 +20,7 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
             t.HasCheckConstraint("chk_reserve_gte_starting", "reserve_price IS NULL OR reserve_price >= starting_price");
             t.HasCheckConstraint("chk_buy_now_gt_starting", "buy_now_price IS NULL OR buy_now_price > starting_price");
             t.HasCheckConstraint("chk_current_gte_starting", "current_price >= starting_price");
-            t.HasCheckConstraint("chk_positive_bid_increment", "bid_increment > 0");
+            t.HasCheckConstraint("chk_positive_bid_increment", "bid_increment >= 0");
             t.HasCheckConstraint("chk_qualification_window", "qualification_start_at IS NULL OR qualification_end_at IS NULL OR qualification_end_at > qualification_start_at");
         });
 

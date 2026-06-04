@@ -22,7 +22,8 @@ public sealed record ResolveCaseActionSetRequest(
     string? ShipmentAction,
     string? ItemAction,
     string? AuctionAction,
-    string? PenaltyAction);
+    string? PenaltyAction,
+    string? WarehouseInspectionAction);
 
 public sealed record ResolveCaseDisputeCommand(
     Guid DisputeId,

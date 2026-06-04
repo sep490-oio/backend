@@ -43,6 +43,10 @@ public static class DatabaseSeeder
             await WarehouseFlowFakeDataSeeder.SeedAsync(dbContext, scope.ServiceProvider, logger);
             logger.LogInformation("Database seeding completed successfully.");
         }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("23505") == true || ex.InnerException?.Message.Contains("unique constraint") == true)
+        {
+            logger.LogWarning(ex, "Database seeding collided with another process (unique constraint violation). Continuing safely.");
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "An error occurred while seeding the database.");

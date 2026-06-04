@@ -48,6 +48,12 @@ internal sealed class CreateWarehouseItemDisputeCommandHandler(
         if (warehouseItem is null)
             return Error.NotFound("WarehouseItem.NotFound", "Warehouse item was not found.");
 
+        var inspection = await dbContext.Set<WarehouseInspection>()
+            .AsNoTracking()
+            .OrderByDescending(x => x.CreatedAt)
+            .FirstOrDefaultAsync(x => x.WarehouseItemId == warehouseItem.Id, cancellationToken);
+
+
         var userId = currentUser.UserId;
 
         // Single source of truth: IDisputeEligibilityService resolves caller's role
@@ -75,7 +81,7 @@ internal sealed class CreateWarehouseItemDisputeCommandHandler(
             WarehouseItemId: request.WarehouseItemId,
             PaymentId: null,
             ComplainantUserId: userId.Value,
-            RespondentUserId: null,
+            RespondentUserId: inspection?.InspectedBy.Value,
             Title: request.Title,
             Description: request.Description,
             ContextSnapshotJson: snapshot), cancellationToken);

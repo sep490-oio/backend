@@ -217,6 +217,35 @@ public sealed class WarehouseInspection : AggregateRoot<WarehouseInspectionId>
         return UnitResult.Success<e>();
     }
 
+    /// <summary>
+    /// Moderator-initiated re-inspection request via Dispute Resolution.
+    /// Resets <see cref="DecisionStatus"/> back to PendingReview.
+    /// Can be invoked when the inspection is either PendingReview or Rejected.
+    /// </summary>
+    public UnitResult<e> ForceReinspectionByModerator(UserId moderatorId, string? reason, DateTime now)
+    {
+        if (DecisionStatus != WarehouseInspectionDecisionStatus.PendingReview && 
+            DecisionStatus != WarehouseInspectionDecisionStatus.Rejected)
+        {
+            return e.Conflict(
+                "WarehouseInspection.InvalidStateForForcedReinspection",
+                "Moderator can only force re-inspection when the item is pending review or rejected.");
+        }
+
+        DecisionStatus = WarehouseInspectionDecisionStatus.PendingReview;
+        ModifiedAt = now;
+
+        _decisionLogs.Add(WarehouseInspectionDecisionLog.Create(
+            inspectionId: Id,
+            decisionType: "moderator_forced_reinspection",
+            actorId: moderatorId,
+            actorRole: "moderator",
+            reason: reason,
+            nowUtc: now));
+
+        return UnitResult.Success<e>();
+    }
+
     public UnitResult<e> RefreshEvidenceSnapshot(
         string oldPublicId,
         StorageRef storageRef,
