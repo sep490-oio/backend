@@ -277,6 +277,7 @@ public static partial class ApiEndpoint
             public const string Overview = $"{Base}/overview";
             public const string EscrowLedger = $"{Base}/escrow-ledger";
             public const string AuctionDeposits = $"{Base}/auction-deposits";
+            public const string PendingFees = $"{Base}/pending-fees";
         }
 
         public static class Reviews

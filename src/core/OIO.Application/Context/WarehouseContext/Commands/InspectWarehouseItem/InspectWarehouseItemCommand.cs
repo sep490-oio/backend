@@ -86,7 +86,7 @@ internal sealed class InspectWarehouseItemCommandHandler(
         var existingInspection = await db.Set<WarehouseInspection>()
             .FirstOrDefaultAsync(i => i.InboundShipmentId == shipmentId, cancellationToken);
 
-        if (existingInspection is not null)
+        if (existingInspection is not null && existingInspection.DecisionStatus != WarehouseInspectionDecisionStatus.PendingReview)
             return WarehouseErrors.Inspection.AlreadyExists;
 
         var itemId = ItemId.From(shipment.ItemId);
@@ -154,27 +154,48 @@ internal sealed class InspectWarehouseItemCommandHandler(
         var evidence = InspectionEvidence.From(JsonSerializer.Serialize(
             uploads.Select(upload => InspectionEvidenceSnapshot.Create(upload.StorageRef, upload.Info)).ToList()));
 
-        var createInspectionResult = WarehouseInspection.Create(
-            warehouseItemId: warehouseItem.Id,
-            inboundShipmentId: shipmentId,
-            itemId: shipment.ItemId,
-            declaredCondition: item.Condition,
-            conditionOnArrival: conditionMaybe.Value,
-            evidence: evidence,
-            inspectedBy: staffId,
-            now: now,
-            inspectionNotes: request.InspectionNotes);
+        WarehouseInspection inspection;
 
-        if (createInspectionResult.IsFailure)
-            return createInspectionResult.Error;
+        if (existingInspection is not null)
+        {
+            var updateResult = existingInspection.Update(
+                conditionOnArrival: conditionMaybe.Value,
+                evidence: evidence,
+                inspectedBy: staffId,
+                now: now,
+                inspectionNotes: request.InspectionNotes);
 
-        var inspection = createInspectionResult.Value;
+            if (updateResult.IsFailure)
+                return updateResult.Error;
 
-        var inspectShipmentResult = shipment.RecordInspected(staffId, now);
-        if (inspectShipmentResult.IsFailure)
-            return inspectShipmentResult.Error;
+            inspection = existingInspection;
+        }
+        else
+        {
+            var createInspectionResult = WarehouseInspection.Create(
+                warehouseItemId: warehouseItem.Id,
+                inboundShipmentId: shipmentId,
+                itemId: shipment.ItemId,
+                declaredCondition: item.Condition,
+                conditionOnArrival: conditionMaybe.Value,
+                evidence: evidence,
+                inspectedBy: staffId,
+                now: now,
+                inspectionNotes: request.InspectionNotes);
 
-        db.Insert(inspection);
+            if (createInspectionResult.IsFailure)
+                return createInspectionResult.Error;
+
+            inspection = createInspectionResult.Value;
+            db.Insert(inspection);
+        }
+
+        if (shipment.Status != InboundShipmentStatus.Inspected)
+        {
+            var inspectShipmentResult = shipment.RecordInspected(staffId, now);
+            if (inspectShipmentResult.IsFailure)
+                return inspectShipmentResult.Error;
+        }
 
         foreach (var upload in uploads)
         {

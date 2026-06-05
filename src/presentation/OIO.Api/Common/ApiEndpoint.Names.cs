@@ -315,6 +315,7 @@ public static partial class ApiEndpoint
             public const string GetSellerFinanceOverview = nameof(GetSellerFinanceOverview);
             public const string GetSellerEscrowLedger = nameof(GetSellerEscrowLedger);
             public const string GetSellerAuctionDeposits = nameof(GetSellerAuctionDeposits);
+            public const string GetPendingSellerFees = nameof(GetPendingSellerFees);
         }
 
         public static class Reviews

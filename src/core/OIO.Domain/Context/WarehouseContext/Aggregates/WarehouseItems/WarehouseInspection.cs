@@ -262,4 +262,27 @@ public sealed class WarehouseInspection : AggregateRoot<WarehouseInspectionId>
         ModifiedAt = now;
         return UnitResult.Success<e>();
     }
+
+    public UnitResult<e> Update(
+        WarehouseItemCondition conditionOnArrival,
+        InspectionEvidence evidence,
+        UserId inspectedBy,
+        DateTime now,
+        string? inspectionNotes = null)
+    {
+        if (DecisionStatus != WarehouseInspectionDecisionStatus.PendingReview)
+            return e.Conflict("WarehouseInspection.InvalidState", "Can only update inspection when pending review.");
+
+        if (!evidence.HasAny())
+            return WarehouseErrors.Inspection.EvidenceRequired;
+
+        ConditionOnArrival = conditionOnArrival;
+        Evidence = evidence;
+        InspectedBy = inspectedBy;
+        InspectedAt = now;
+        InspectionNotes = inspectionNotes;
+        ModifiedAt = now;
+
+        return UnitResult.Success<e>();
+    }
 }
