@@ -88,6 +88,7 @@ public sealed class WarehouseToSellerShipmentStatus : EnumValueObject<WarehouseT
     public static readonly WarehouseToSellerShipmentStatus Delivered             = new("delivered");
     public static readonly WarehouseToSellerShipmentStatus ReturnedToWarehouse   = new("returned_to_warehouse");
     public static readonly WarehouseToSellerShipmentStatus Closed                = new("closed");
+    public static readonly WarehouseToSellerShipmentStatus Cancelled             = new("cancelled");
 
     private WarehouseToSellerShipmentStatus(string id) : base(id) { }
 }

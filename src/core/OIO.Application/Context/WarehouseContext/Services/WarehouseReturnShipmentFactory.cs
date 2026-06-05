@@ -76,7 +76,8 @@ internal sealed class WarehouseReturnShipmentFactory(
             .AsNoTracking()
             .Where(s => s.WarehouseInspectionId == inspectionId
                      && s.Status != WarehouseToSellerShipmentStatus.Closed
-                     && s.Status != WarehouseToSellerShipmentStatus.ReturnedToWarehouse)
+                     && s.Status != WarehouseToSellerShipmentStatus.ReturnedToWarehouse
+                     && s.Status != WarehouseToSellerShipmentStatus.Cancelled)
             .Select(s => (Guid?)s.Id.Value)
             .FirstOrDefaultAsync(cancellationToken);
 

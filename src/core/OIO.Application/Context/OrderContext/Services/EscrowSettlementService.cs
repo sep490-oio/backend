@@ -877,24 +877,32 @@ public sealed class EscrowSettlementService
         }
 
         // ── Attempt seller debit ────────────────────────────────────────
-        // The inspection rejection fee is non-negotiable: the platform must
-        // be credited regardless of the seller's current wallet balance.
-        // If the seller can pay, debit their wallet first; if they cannot,
-        // skip the debit (the seller owes a debt) but still complete the
-        // transaction and credit the platform so both ledgers stay in sync.
-        var sellerDebited = false;
-        if (sellerWallet is not null)
+        if (sellerWallet is null)
         {
-            var debitResult = await EnsureWalletDebitAsync(
-                sellerWallet,
+            return new SellerFeeChargeResult(
                 feeAmount,
-                feeTx.Id,
-                description,
-                cancellationToken);
-            sellerDebited = debitResult.IsSuccess;
+                Collected: false,
+                Pending: true,
+                currency);
         }
 
-        // ── Always complete the transaction ───────────────────────────────
+        var debitResult = await EnsureWalletDebitAsync(
+            sellerWallet,
+            feeAmount,
+            feeTx.Id,
+            description,
+            cancellationToken);
+
+        if (debitResult.IsFailure)
+        {
+            return new SellerFeeChargeResult(
+                feeAmount,
+                Collected: false,
+                Pending: true,
+                currency);
+        }
+
+        // ── Seller was successfully debited, complete tx and credit platform ────────────
         if (feeTx.Status != TransactionStatus.Completed)
         {
             var completeResult = feeTx.MarkAsCompleted(GatewayInfo.Empty, _clock.UtcNow);
@@ -902,7 +910,6 @@ public sealed class EscrowSettlementService
                 return completeResult.Error;
         }
 
-        // ── Always credit the platform wallet ─────────────────────────────
         var platformCreditResult = await CreditPlatformWalletAsync(
             platformWalletResult.Value,
             feeAmount,
@@ -914,8 +921,8 @@ public sealed class EscrowSettlementService
 
         return new SellerFeeChargeResult(
             feeAmount,
-            Collected: sellerDebited,
-            Pending: !sellerDebited,
+            Collected: true,
+            Pending: false,
             currency);
     }
 

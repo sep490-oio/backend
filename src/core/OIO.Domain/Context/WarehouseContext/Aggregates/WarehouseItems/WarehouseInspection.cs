@@ -203,6 +203,12 @@ public sealed class WarehouseInspection : AggregateRoot<WarehouseInspectionId>
                 "WarehouseInspection.NotRejected",
                 "Re-inspection can only be requested when the warehouse inspection is in 'rejected' state.");
 
+        var reinspectionCount = _decisionLogs.Count(x => x.DecisionType == "seller_requested_reinspection");
+        if (reinspectionCount >= 1)
+            return e.Conflict(
+                "WarehouseInspection.MaxReinspectionsReached",
+                "Chỉ được phép yêu cầu kiểm định lại 1 lần duy nhất.");
+
         DecisionStatus = WarehouseInspectionDecisionStatus.PendingReview;
         ModifiedAt = now;
 

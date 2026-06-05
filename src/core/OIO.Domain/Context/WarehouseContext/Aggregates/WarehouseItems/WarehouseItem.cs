@@ -360,6 +360,19 @@ public sealed class WarehouseItem : AggregateRoot<WarehouseItemId>
     }
 
     /// <summary>
+    /// Reverts the item back to the warehouse queue when a return is cancelled (e.g., reinspection requested).
+    /// </summary>
+    public UnitResult<e> UndoReturnToSeller(DateTime now)
+    {
+        if (Status != WarehouseItemStatus.AwaitingSellerReturn)
+            return WarehouseErrors.WarehouseItem.InvalidState;
+
+        Status     = WarehouseItemStatus.Stored; // Reset to Stored so it shows up in queue
+        ModifiedAt = now;
+        return UnitResult.Success<e>();
+    }
+
+    /// <summary>
     /// Transition an in-flight warehouse→seller return to the "awaiting disposition"
     /// bucket after a delivery failure. The only legal predecessor is
     /// <see cref="WarehouseItemStatus.AwaitingSellerReturn"/> — the shipment aggregate

@@ -207,6 +207,16 @@ public sealed class WarehouseToSellerShipment : AggregateRoot<WarehouseToSellerS
         return UnitResult.Success<e>();
     }
 
+    public UnitResult<e> Cancel(DateTime nowUtc)
+    {
+        if (Status != WarehouseToSellerShipmentStatus.Pending)
+            return WarehouseErrors.WarehouseToSellerShipment.InvalidState;
+
+        Status     = WarehouseToSellerShipmentStatus.Cancelled;
+        ModifiedAt = nowUtc;
+        return UnitResult.Success<e>();
+    }
+
     /// <summary>
     /// Attaches an evidence photo to this shipment. Silent — does NOT raise a
     /// domain event per Principle 5 (V1 deliberately avoids events on evidence paths).

@@ -918,6 +918,13 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
             if (auction.BuyNowReservations.Any(r => r.IsPendingPayment))
                 return UnitResult.Success<Error>();
 
+            var endResult = auction.End(nowUtc);
+            if (endResult.IsFailure)
+            {
+                DiscardLoadedAuction();
+                return endResult.Error;
+            }
+
             if (auction.AuctionType == AuctionType.Sealed)
             {
                 if (revealedSealedBids is null)
@@ -954,13 +961,6 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                     DiscardLoadedAuction();
                     return revealResult.Error;
                 }
-            }
-
-            var endResult = auction.End(nowUtc);
-            if (endResult.IsFailure)
-            {
-                DiscardLoadedAuction();
-                return endResult.Error;
             }
 
             var resolveResult = auction.Resolve(nowUtc);

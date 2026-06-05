@@ -118,7 +118,6 @@ internal sealed class RequestWarehouseReinspectionCommandHandler(
         //    are once again available physically, OR conceptually back to seller; either
         //    way the seller should open a new inbound shipment instead.
         var returnShipment = await dbContext.Set<WarehouseToSellerShipment>()
-            .AsNoTracking()
             .Where(s => s.WarehouseItemId == warehouseItemId)
             .OrderByDescending(s => s.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);
@@ -144,6 +143,19 @@ internal sealed class RequestWarehouseReinspectionCommandHandler(
             now: nowUtc);
         if (inspectionResult.IsFailure)
             return inspectionResult.Error;
+
+        // Cancel the pending shipment if any
+        if (returnShipment is not null && returnShipment.Status == WarehouseToSellerShipmentStatus.Pending)
+        {
+            var cancelShipmentResult = returnShipment.Cancel(nowUtc);
+            if (cancelShipmentResult.IsFailure)
+                return cancelShipmentResult.Error;
+        }
+
+        // Reset the warehouse item back to Stored
+        var undoReturnResult = warehouseItem.UndoReturnToSeller(nowUtc);
+        if (undoReturnResult.IsFailure)
+            return undoReturnResult.Error;
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
