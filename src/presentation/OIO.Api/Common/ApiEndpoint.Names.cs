@@ -214,6 +214,7 @@ public static partial class ApiEndpoint
             public const string AdminForceEndAuction = nameof(AdminForceEndAuction);
             public const string AdminRelistAuction = nameof(AdminRelistAuction);
             public const string AdminRemoveBidWithRefund = nameof(AdminRemoveBidWithRefund);
+            public const string GetAdminAuctionFinancials = nameof(GetAdminAuctionFinancials);
 
             // Warehouse inspection reject recovery (Phase D)
             public const string GetPendingInspectionRejectReturns = nameof(GetPendingInspectionRejectReturns);

@@ -14,13 +14,15 @@ public sealed class GetPlatformWalletTransactionsEndpoint : IEndpoint
                 int? pageNumber,
                 int? pageSize,
                 string? type,
+                Guid? auctionId,
                 CancellationToken ct) =>
             {
                 var result = await sender.Send(
                     new GetPlatformWalletTransactionsQuery(
                         PageNumber: pageNumber ?? 1,
                         PageSize: pageSize ?? 20,
-                        Type: type), ct);
+                        Type: type,
+                        AuctionId: auctionId), ct);
                 return result.ToOkHttpResult();
             })
             .RequireAuthorization(App.Permissions.Catalogs.Admin.ReadPayments)

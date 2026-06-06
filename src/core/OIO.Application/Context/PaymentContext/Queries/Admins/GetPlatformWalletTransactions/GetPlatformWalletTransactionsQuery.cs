@@ -18,7 +18,8 @@ public sealed record GetPlatformWalletTransactionsQuery(
     string? Category = null,
     DateTimeOffset? FromDate = null,
     DateTimeOffset? ToDate = null,
-    string? SearchTerm = null) : IQuery<PlatformWalletTransactionsResultDto>;
+    string? SearchTerm = null,
+    Guid? AuctionId = null) : IQuery<PlatformWalletTransactionsResultDto>;
 
 public sealed record PlatformWalletTransactionDto(
     Guid Id,
@@ -108,6 +109,11 @@ internal sealed class GetPlatformWalletTransactionsQueryHandler(IDbContext dbCon
             var term = request.SearchTerm.ToLowerInvariant();
             // In EF Core, checking if wt.Description is not null and Contains is safe
             query = query.Where(wt => wt.Description != null && wt.Description.ToLower().Contains(term));
+        }
+
+        if (request.AuctionId.HasValue)
+        {
+            query = query.Where(wt => wt.Transaction != null && wt.Transaction.AuctionId != null && wt.Transaction.AuctionId.Value == request.AuctionId.Value);
         }
 
         var totalCount = await query.CountAsync(cancellationToken);

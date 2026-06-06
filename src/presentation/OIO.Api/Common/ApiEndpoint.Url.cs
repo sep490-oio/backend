@@ -146,6 +146,7 @@ public static partial class ApiEndpoint
             public const string AdminForceEndAuction = $"{Base}/auctions/{{auctionId:guid}}/force-end";
             public const string AdminRelistAuction = $"{Base}/auctions/{{auctionId:guid}}/relist";
             public const string AdminRemoveBidWithRefund = $"{Base}/auctions/{{auctionId:guid}}/bids/{{bidId:guid}}/remove";
+            public const string GetAdminAuctionFinancials = $"{Base}/auctions/{{auctionId:guid}}/financials";
 
             // Repair utilities (one-off)
             public const string RepairStuckInAuctionItems = $"{Base}/repair/stuck-in-auction-items";

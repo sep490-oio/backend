@@ -152,7 +152,8 @@ internal sealed class GetAdminItemsQueryHandler
                     CreatedAt: item.CreatedAt,
                     CurrentPhysicalLocation: physicalLocation,
                     CurrentAuctionId: currentAuction?.Id.Value,
-                    CurrentAuctionStatus: currentAuction?.Status.Id
+                    CurrentAuctionStatus: currentAuction?.Status.Id,
+                    TotalAuctions: item.Auctions.Count
                 );
             })
             .ToList();

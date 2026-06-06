@@ -8,5 +8,6 @@ public sealed record PendingSellerFeeDto(
     string? Description,
     DateTime CreatedAt,
     Guid? OrderId,
-    Guid? AuctionId
+    Guid? AuctionId,
+    Guid? ItemId
 );

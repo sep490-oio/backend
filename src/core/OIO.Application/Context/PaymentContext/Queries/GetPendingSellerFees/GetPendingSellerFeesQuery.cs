@@ -35,9 +35,45 @@ internal sealed class GetPendingSellerFeesQueryHandler(
                 t.Description,
                 t.CreatedAt,
                 t.OrderId == null ? (Guid?)null : t.OrderId.Value.Value,
-                t.AuctionId == null ? (Guid?)null : t.AuctionId.Value.Value
+                t.AuctionId == null ? (Guid?)null : t.AuctionId.Value.Value,
+                null // Temporarily null, we will populate this next
             ))
             .ToListAsync(ct);
+
+        // Fetch related ItemIds for Inspection Rejection fees
+        var inspectionFees = pendingFees.Where(f => f.TransactionNumber.StartsWith("FEE-INSP-REJ-")).ToList();
+        if (inspectionFees.Count > 0)
+        {
+            var inspectionIds = inspectionFees.Select(f =>
+            {
+                if (Guid.TryParse(f.TransactionNumber.Substring("FEE-INSP-REJ-".Length), out var id)) return id;
+                return Guid.Empty;
+            }).Where(id => id != Guid.Empty).ToList();
+
+            if (inspectionIds.Count > 0)
+            {
+                // We use cross-context querying directly on DbContext because it's internal to the query handler
+                var inspections = await dbContext.Set<OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.WarehouseItem>()
+                    .AsNoTracking()
+                    .Where(w => inspectionIds.Contains(w.Id.Value))
+                    .Select(w => new { InspectionId = w.Id.Value, ItemId = w.ItemId })
+                    .ToListAsync(ct);
+
+                var dict = inspections.ToDictionary(x => x.InspectionId, x => x.ItemId);
+
+                for (int i = 0; i < pendingFees.Count; i++)
+                {
+                    var f = pendingFees[i];
+                    if (f.TransactionNumber.StartsWith("FEE-INSP-REJ-"))
+                    {
+                        if (Guid.TryParse(f.TransactionNumber.Substring("FEE-INSP-REJ-".Length), out var id) && dict.TryGetValue(id, out var itemId))
+                        {
+                            pendingFees[i] = f with { ItemId = itemId };
+                        }
+                    }
+                }
+            }
+        }
 
         return pendingFees;
     }

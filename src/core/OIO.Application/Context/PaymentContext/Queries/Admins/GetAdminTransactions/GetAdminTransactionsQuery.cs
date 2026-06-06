@@ -24,6 +24,7 @@ public record AdminTransactionFilterParameters : PagedParameters
     public string? Type { get; init; }
     public Guid? UserId { get; init; }
     public Guid? OrderId { get; init; }
+    public Guid? AuctionId { get; init; }
     public DateTimeOffset? FromDate { get; init; }
     public DateTimeOffset? ToDate { get; init; }
     public string? SearchTerm { get; init; }
@@ -56,7 +57,10 @@ internal sealed class GetAdminTransactionsQueryHandler
             query = query.Where(x => x.UserId == UserId.From(parameters.UserId.Value));
 
         if (parameters.OrderId.HasValue)
-            query = query.Where(x => x.OrderId == OrderId.From(parameters.OrderId.Value));
+            query = query.Where(x => x.OrderId != null && x.OrderId.Value == OrderId.From(parameters.OrderId.Value));
+
+        if (parameters.AuctionId.HasValue)
+            query = query.Where(x => x.AuctionId != null && x.AuctionId.Value == AuctionId.From(parameters.AuctionId.Value));
 
         if (parameters.FromDate.HasValue)
             query = query.Where(x => x.CreatedAt >= parameters.FromDate.Value);
@@ -76,7 +80,7 @@ internal sealed class GetAdminTransactionsQueryHandler
             if (status.HasNoValue)
                 return Error.Validation("status", "Transaction.InvalidStatus", "Unsupported transaction status.");
 
-            query = query.Where(x => x.Status == status.Value);
+            query = query.Where(x => x.Status.Id == status.Value.Id);
         }
 
         if (!string.IsNullOrWhiteSpace(parameters.Type))
@@ -85,7 +89,7 @@ internal sealed class GetAdminTransactionsQueryHandler
             if (type.HasNoValue)
                 return Error.Validation("type", "Transaction.InvalidType", "Unsupported transaction type.");
 
-            query = query.Where(x => x.Type == type.Value);
+            query = query.Where(x => x.Type.Id == type.Value.Id);
         }
 
         if (!string.IsNullOrWhiteSpace(parameters.GatewayProvider))

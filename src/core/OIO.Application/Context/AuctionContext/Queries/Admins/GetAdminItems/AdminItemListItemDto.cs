@@ -14,5 +14,6 @@ public sealed record AdminItemListItemDto(
     DateTime CreatedAt,
     string? CurrentPhysicalLocation,
     Guid? CurrentAuctionId,
-    string? CurrentAuctionStatus
+    string? CurrentAuctionStatus,
+    int TotalAuctions
 );
