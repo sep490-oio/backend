@@ -72,6 +72,14 @@ internal sealed class AuctionDraftCreationService(IDbContext dbContext)
         if (existingAuctions.Any(x => string.Equals(x.Status.Id, AuctionStatus.PaymentDefaulted.Id, StringComparison.Ordinal)))
             return AuctionErrors.Auction.PaymentDefaultedRequiresRelist;
 
+        // An admin-terminated auction permanently blocks the seller from creating a NEW
+        // auction for this item — only an administrator can bring it back via relist
+        // (AdminRelistAuction creates the auction directly and bypasses this service).
+        // The terminal-item-release handler returns the item to Active after a terminate,
+        // so the item-status check above would otherwise let the seller re-create.
+        if (existingAuctions.Any(x => string.Equals(x.Status.Id, AuctionStatus.Terminated.Id, StringComparison.Ordinal)))
+            return AuctionErrors.Auction.TerminatedRequiresRelist;
+
         if (existingAuctions.Any(x => BlockingAuctionStatuses.Contains(x.Status.Id, StringComparer.Ordinal)))
             return AuctionErrors.Auction.ItemAlreadyHasAuction;
 

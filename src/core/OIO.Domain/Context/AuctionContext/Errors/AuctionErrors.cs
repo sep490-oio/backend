@@ -67,6 +67,10 @@ public static class AuctionErrors
             Error.Conflict("Auction.PaymentDefaultedRequiresRelist",
                 "This item has a payment-defaulted auction. Use relist instead of creating a new auction.");
 
+        public static readonly Error TerminatedRequiresRelist =
+            Error.Conflict("Auction.TerminatedRequiresRelist",
+                "This item's auction was terminated by an administrator and cannot be auctioned again. An administrator must relist it.");
+
         public static readonly Error ItemRequiresMedia =
             Error.Conflict("Auction.ItemRequiresMedia",
                 "Item must have at least one image before creating an auction.");

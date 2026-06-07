@@ -232,16 +232,20 @@ internal static class PaymentReadModelMapper
 
         // Auction deposit lifecycle: Hold → deposit reservation, Release → refund
         // back into the available balance after the auction settles for a
-        // non-winner / cancelled / no-reserve case. Debit on an auction ref =
-        // deposit being consumed by an order payment (rare here — usually
-        // Order FK is set instead).
+        // non-winner / cancelled / no-reserve case.
+        // A Credit on a deposit-referenced transaction is the gateway FUNDING of the
+        // deposit: when the wallet is empty, the VNPay deposit flow first Credits the
+        // wallet (money in) and then immediately Holds it. That Credit is incoming
+        // money — NOT a refund — so it is surfaced as a wallet top-up. (A real deposit
+        // refund is a Release/Unhold, handled above.) Debit on an auction ref = deposit
+        // being consumed by an order payment (rare here — usually Order FK is set).
         if (referenceType == "deposit")
         {
             return typeId switch
             {
                 "hold" => "auction_deposit_hold",
                 "release" => "auction_deposit_refund",
-                "credit" => "auction_deposit_refund",
+                "credit" => "wallet_top_up",
                 _ => "auction_deposit_hold",
             };
         }

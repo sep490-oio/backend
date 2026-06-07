@@ -60,7 +60,17 @@ internal sealed class GetMyWalletTransactionsQueryHandler
         if (parameters.To.HasValue)
             query = query.Where(x => x.CreatedAt <= parameters.To.Value);
 
-        query = query.OrderByDescending(x => x.CreatedAt);
+        // Newest-first, but break exact-timestamp ties deterministically. An atomic
+        // "fund-then-hold" auction deposit writes a Credit (wallet top-up) and a Hold
+        // (auction deposit) with the SAME CreatedAt; without a tie-break their relative
+        // order is non-deterministic and the Hold could render above the funding Credit.
+        // BalanceBefore follows the ledger build-up (the funding Credit starts from the
+        // lower running balance), so it deterministically surfaces the top-up above the
+        // deposit hold. Id is a final stable tie-break for pagination.
+        query = query
+            .OrderByDescending(x => x.CreatedAt)
+            .ThenBy(x => x.BalanceBefore)
+            .ThenBy(x => x.Id);
 
         var count = await query.CountAsync(cancellationToken);
         var items = await query
