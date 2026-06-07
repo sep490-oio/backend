@@ -7,8 +7,11 @@ using OIO.Domain.Context.AuctionContext.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.CatalogContext.Enums;
+using OIO.Domain.Context.ModerationContext.Aggregates.Disputes;
+using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.Shared.Enums;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.AuctionContext.Services;
@@ -71,6 +74,39 @@ internal sealed class AuctionDraftCreationService(IDbContext dbContext)
 
         if (existingAuctions.Any(x => BlockingAuctionStatuses.Contains(x.Status.Id, StringComparer.Ordinal)))
             return AuctionErrors.Auction.ItemAlreadyHasAuction;
+
+        var itemIdValue = item.Id.Value;
+        var warehouseItemIds = await dbContext.Set<WarehouseItem>()
+            .Where(wi => wi.ItemId == itemIdValue)
+            .Select(wi => (Guid?)wi.Id.Value)
+            .ToListAsync(cancellationToken);
+            
+        var auctionIds = await dbContext.Set<Auction>()
+            .Where(a => a.ItemId == item.Id)
+            .Select(a => (Guid?)a.Id.Value)
+            .ToListAsync(cancellationToken);
+
+        var auctionVogenIds = await dbContext.Set<Auction>()
+            .Where(a => a.ItemId == item.Id)
+            .Select(a => a.Id)
+            .ToListAsync(cancellationToken);
+
+        var orderIds = await dbContext.Set<Order>()
+            .Where(o => auctionVogenIds.Contains(o.AuctionId))
+            .Select(o => (Guid?)o.Id.Value)
+            .ToListAsync(cancellationToken);
+
+        var hasActiveDispute = await dbContext.Set<Dispute>()
+            .AnyAsync(d =>
+                d.Status.Id != "resolved" && d.Status.Id != "rejected" && d.Status.Id != "cancelled" && d.Status.Id != "closed" &&
+                (
+                    (d.WarehouseItemId != null && warehouseItemIds.Contains(d.WarehouseItemId)) ||
+                    (d.CaseAuctionId != null && auctionIds.Contains(d.CaseAuctionId)) ||
+                    (d.CaseOrderId != null && orderIds.Contains(d.CaseOrderId))
+                ), cancellationToken);
+
+        if (hasActiveDispute)
+            return AuctionErrors.Auction.ItemHasActiveDispute;
 
         var currency = Currency.FromId(request.Currency);
         if (currency.HasNoValue)

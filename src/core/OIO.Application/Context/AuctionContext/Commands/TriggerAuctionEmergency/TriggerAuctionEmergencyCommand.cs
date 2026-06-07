@@ -142,6 +142,12 @@ internal sealed class TriggerAuctionEmergencyCommandHandler
                 status = auction.Status.Id
             });
 
+        var removeItemResult = auction.Item.Remove(_clock.UtcNow);
+        if (removeItemResult.IsFailure)
+        {
+            _logger.LogWarning("Failed to remove item {ItemId} during emergency: {Error}", auction.Item.Id.Value, removeItemResult.Error.Message);
+        }
+
         if (order is not null)
         {
             if (order.Status == OrderStatus.PendingPayment)

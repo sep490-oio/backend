@@ -4,6 +4,7 @@ using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.Aggregates.PaymentMethods;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.PaymentContext.ValueObjects;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
@@ -172,8 +173,8 @@ public sealed class Transaction : AggregateRoot<TransactionId>, ICreatedAtEntity
         if (!string.IsNullOrWhiteSpace(reason))
         {
             Description = string.IsNullOrWhiteSpace(Description)
-                ? $"[cancelled:{reason}]"
-                : $"{Description} [cancelled:{reason}]";
+                ? LedgerDescriptions.CancelledSuffix(reason)
+                : $"{Description} {LedgerDescriptions.CancelledSuffix(reason)}";
         }
         return UnitResult.Success<Error>();
     }

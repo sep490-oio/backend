@@ -17,6 +17,7 @@ using OIO.Domain.Context.OrderContext.Errors;
 using OIO.Domain.Context.PaymentContext.Aggregates.Escrows;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.PaymentContext.ValueObjects;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
@@ -149,7 +150,7 @@ internal sealed class CheckoutOrderCommandHandler
             Currency: order.Currency,
             Purpose: PaymentPurpose.OrderPayment.Id,
             IpAddress: request.IpAddress,
-            Description: $"OrderPayment - Order #{order.OrderNumber.Value}",
+            Description: $"Order payment - Order: {order.OrderNumber.Value}",
             BankCode: request.BankCode,
             AuctionId: order.AuctionId.Value,
             OrderId: order.Id.Value);
@@ -268,7 +269,7 @@ internal sealed class CheckoutOrderCommandHandler
             type: TransactionType.Payment,
             amount: moneyResult.Value,
             currency: order.Currency,
-            description: $"[OrderPayment] Wallet payment for order {order.Id.Value}",
+            description: LedgerDescriptions.WalletOrderPayment(order.Id.Value),
             nowUtc: now,
             orderId: order.Id,
             auctionId: order.AuctionId);
@@ -289,7 +290,7 @@ internal sealed class CheckoutOrderCommandHandler
             var debitPendingResult = wallet.DebitPending(
                 winnerDeposit.Amount.Amount,
                 transaction.Id,
-                $"Auction winner deposit applied for order {order.Id.Value}",
+                LedgerDescriptions.WinnerDepositApplied(order.Id.Value),
                 now);
 
             if (debitPendingResult.IsFailure)
@@ -316,7 +317,7 @@ internal sealed class CheckoutOrderCommandHandler
             var debitResult = wallet.Debit(
                 remainingAmount,
                 transaction.Id,
-                $"Wallet payment for order {order.Id.Value}",
+                LedgerDescriptions.WalletPaymentForOrder(order.Id.Value),
                 now);
 
             if (debitResult.IsFailure)
@@ -392,7 +393,7 @@ internal sealed class CheckoutOrderCommandHandler
             var holdResult = wallet.Hold(
                 walletPortion,
                 null,
-                $"[HybridHold] Hold for hybrid payment - OrderId: {order.Id.Value} - WalletPortion: {walletPortion}",
+                LedgerDescriptions.HybridHold(order.Id.Value, walletPortion),
                 now);
 
             if (holdResult.IsFailure)
@@ -407,7 +408,7 @@ internal sealed class CheckoutOrderCommandHandler
             Currency: order.Currency,
             Purpose: PaymentPurpose.OrderPayment.Id,
             IpAddress: request.IpAddress,
-            Description: $"OrderPayment - Order #{order.OrderNumber.Value} (hybrid: VNPay portion)",
+            Description: $"Order payment - Order: {order.OrderNumber.Value} (hybrid: VNPay portion)",
             BankCode: request.BankCode,
             AuctionId: order.AuctionId.Value,
             OrderId: order.Id.Value);
@@ -422,7 +423,7 @@ internal sealed class CheckoutOrderCommandHandler
                 var unholdResult = wallet.Unhold(
                     walletPortion,
                     null,
-                    $"[HybridHold] Rollback hold for failed hybrid payment - OrderId: {order.Id.Value}",
+                    LedgerDescriptions.HybridHoldRollback(order.Id.Value),
                     now);
 
                 if (unholdResult.IsSuccess)
@@ -486,7 +487,7 @@ internal sealed class CheckoutOrderCommandHandler
             type: TransactionType.Payment,
             amount: moneyResult.Value,
             currency: order.Currency,
-            description: $"[OrderPayment] Buy-now fully covered by deposit for order {order.Id.Value}",
+            description: LedgerDescriptions.BuyNowFullyCoveredByDeposit(order.Id.Value),
             nowUtc: now,
             orderId: order.Id,
             auctionId: order.AuctionId);

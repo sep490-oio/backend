@@ -7,6 +7,7 @@ using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
 using OIO.Domain.Context.PaymentContext.Aggregates.Withdrawals;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.PaymentContext.ValueObjects;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
@@ -118,7 +119,7 @@ internal sealed class RejectWithdrawalCommandHandler
             var unholdResult = wallet.Unhold(
                 withdrawal.Amount,
                 transactionId: null,
-                description: $"Withdrawal rejected - unheld {withdrawal.Amount}",
+                description: LedgerDescriptions.WithdrawalRejectedUnhold(withdrawal.Amount),
                 nowUtc: now);
 
             if (unholdResult.IsFailure)
@@ -210,7 +211,7 @@ internal sealed class CompleteWithdrawalCommandHandler
         var debitResult = wallet.DebitPending(
             withdrawal.Amount,
             transactionId: null,
-            description: $"Withdrawal completed - {withdrawal.Amount}",
+            description: LedgerDescriptions.WithdrawalCompleted(withdrawal.Amount),
             nowUtc: now);
 
         if (debitResult.IsFailure)

@@ -13,6 +13,7 @@ using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.Enums;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.OrderContext.Commands.CancelOrderPayment;
@@ -221,7 +222,7 @@ internal sealed class CancelOrderPaymentCommandHandler(
             var debitResult = wallet.DebitPending(
                 amount: penaltyAmount,
                 transactionId: deposit.TransactionId,
-                description: $"Deposit penalty ({penaltyRate:P0}) for cancelled auction payment",
+                description: LedgerDescriptions.DepositPenalty(penaltyRate),
                 nowUtc: nowUtc);
 
             if (debitResult.IsFailure)
@@ -238,7 +239,7 @@ internal sealed class CancelOrderPaymentCommandHandler(
             var unholdResult = wallet.Unhold(
                 amount: returnAmount,
                 transactionId: deposit.TransactionId,
-                description: $"Partial deposit return ({1 - penaltyRate:P0}) after cancelled auction payment",
+                description: LedgerDescriptions.PartialDepositReturn(1 - penaltyRate),
                 nowUtc: nowUtc);
 
             if (unholdResult.IsFailure)

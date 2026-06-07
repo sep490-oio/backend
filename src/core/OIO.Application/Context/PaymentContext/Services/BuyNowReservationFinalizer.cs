@@ -9,6 +9,7 @@ using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.PaymentContext.Aggregates.Escrows;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.PaymentContext.ValueObjects;
 using OIO.Domain.SeedWork.Errors;
@@ -130,7 +131,7 @@ internal sealed class BuyNowReservationFinalizer
             type: TransactionType.Payment,
             amount: reservation.DepositAppliedAmount,
             currency: reservation.DepositAppliedAmount.Currency.Id,
-            description: $"[AuctionBuyNowDepositApplied] AuctionId: {auction.Id.Value} - ReservationId: {reservation.Id.Value} - OrderId: {order.Id.Value}",
+            description: LedgerDescriptions.BuyNowDepositApplied(auction.Id.Value, reservation.Id.Value, order.Id.Value),
             nowUtc: now,
             orderId: order.Id,
             auctionId: auction.Id,
@@ -152,7 +153,7 @@ internal sealed class BuyNowReservationFinalizer
         var debitPendingResult = wallet.DebitPending(
             reservation.DepositAppliedAmount.Amount,
             fundingTx.Value.Id,
-            $"Auction buy-now deposit applied for reservation {reservation.Id.Value}",
+            LedgerDescriptions.BuyNowDepositAppliedToWallet(reservation.Id.Value),
             now);
 
         if (debitPendingResult.IsFailure)
@@ -160,7 +161,7 @@ internal sealed class BuyNowReservationFinalizer
             var debitResult = wallet.Debit(
                 reservation.DepositAppliedAmount.Amount,
                 fundingTx.Value.Id,
-                $"Auction buy-now deposit applied for reservation {reservation.Id.Value}",
+                LedgerDescriptions.BuyNowDepositAppliedToWallet(reservation.Id.Value),
                 now);
 
             if (debitResult.IsFailure)

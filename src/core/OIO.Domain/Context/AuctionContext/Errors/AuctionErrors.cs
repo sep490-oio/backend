@@ -70,6 +70,10 @@ public static class AuctionErrors
         public static readonly Error ItemRequiresMedia =
             Error.Conflict("Auction.ItemRequiresMedia",
                 "Item must have at least one image before creating an auction.");
+
+        public static readonly Error ItemHasActiveDispute =
+            Error.Conflict("Auction.ItemHasActiveDispute",
+                "This item currently has active disputes and cannot be used for a new auction until resolved.");
         
         public static readonly Error OnlyOwnerOfItem = 
             Error.Forbidden("Auction.OnlyOwnerOfItem", 

@@ -4,6 +4,7 @@ using OIO.Domain.Context.PaymentContext.Aggregates.PaymentMethods;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
 using OIO.Domain.Context.PaymentContext.Aggregates.Withdrawals;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.PaymentContext.Enums;
 
 namespace OIO.Application.Context.PaymentContext.Queries;
@@ -215,7 +216,7 @@ internal static class PaymentReadModelMapper
 
         // Withdrawal flow — easiest to detect via description marker the
         // wallet aggregate writes (no FK on the wallet ledger today).
-        if (wt.Description?.Contains("Withdrawal", StringComparison.OrdinalIgnoreCase) == true)
+        if (wt.Description?.Contains(LedgerMarkers.Withdrawal, StringComparison.OrdinalIgnoreCase) == true)
         {
             // Hold = funds reserved when withdrawal is requested.
             // Debit = funds actually leaving the platform on approval.
@@ -260,8 +261,8 @@ internal static class PaymentReadModelMapper
         // Top-up: explicit marker in transaction description, OR a Credit row
         // with no reference (gateway → wallet).
         var topUpMarker =
-            wt.Transaction?.Description?.Contains("[WalletTopUp]", StringComparison.OrdinalIgnoreCase) == true ||
-            wt.Description?.Contains("wallet top-up", StringComparison.OrdinalIgnoreCase) == true;
+            wt.Transaction?.Description?.Contains(LedgerTags.Bracket(LedgerTags.WalletTopUp), StringComparison.OrdinalIgnoreCase) == true ||
+            wt.Description?.Contains(LedgerMarkers.WalletTopUp, StringComparison.OrdinalIgnoreCase) == true;
         if (topUpMarker || (typeId == "credit" && referenceType is null))
             return "wallet_top_up";
 
@@ -273,7 +274,7 @@ internal static class PaymentReadModelMapper
         // that lack a Transaction FK (pre-revamp data). The structural
         // Transaction.Type == Fee check above handles all new rows.
         if (wt.Transaction is null
-            && wt.Description?.Contains("Fee", StringComparison.OrdinalIgnoreCase) == true
+            && wt.Description?.Contains(LedgerMarkers.Fee, StringComparison.OrdinalIgnoreCase) == true
             && typeId == "debit")
             return "fee";
 
@@ -339,8 +340,8 @@ internal static class PaymentReadModelMapper
         if (walletTransaction.Transaction?.AuctionId is not null)
             return ("deposit", walletTransaction.Transaction.AuctionId.Value.Value);
 
-        if (walletTransaction.Description?.Contains("Auction deposit", StringComparison.OrdinalIgnoreCase) == true ||
-            walletTransaction.Transaction?.Description?.Contains("[AuctionDeposit]", StringComparison.OrdinalIgnoreCase) == true)
+        if (walletTransaction.Description?.Contains(LedgerMarkers.AuctionDeposit, StringComparison.OrdinalIgnoreCase) == true ||
+            walletTransaction.Transaction?.Description?.Contains(LedgerTags.Bracket(LedgerTags.AuctionDeposit), StringComparison.OrdinalIgnoreCase) == true)
         {
             // Try structured marker first (Transaction.Description), then fall
             // back to the WalletTransaction.Description which uses the format
@@ -351,14 +352,14 @@ internal static class PaymentReadModelMapper
             return ("deposit", auctionId);
         }
 
-        if (walletTransaction.Description?.Contains("Withdrawal", StringComparison.OrdinalIgnoreCase) == true)
+        if (walletTransaction.Description?.Contains(LedgerMarkers.Withdrawal, StringComparison.OrdinalIgnoreCase) == true)
             return ("withdrawal", walletTransaction.TransactionId?.Value);
 
-        if (walletTransaction.Description?.Contains("Escrow", StringComparison.OrdinalIgnoreCase) == true)
+        if (walletTransaction.Description?.Contains(LedgerMarkers.Escrow, StringComparison.OrdinalIgnoreCase) == true)
             return ("escrow", walletTransaction.Transaction?.OrderId?.Value ?? walletTransaction.TransactionId?.Value);
 
-        if (walletTransaction.Transaction?.Description?.Contains("[WalletTopUp]", StringComparison.OrdinalIgnoreCase) == true ||
-            walletTransaction.Description?.Contains("wallet top-up", StringComparison.OrdinalIgnoreCase) == true)
+        if (walletTransaction.Transaction?.Description?.Contains(LedgerTags.Bracket(LedgerTags.WalletTopUp), StringComparison.OrdinalIgnoreCase) == true ||
+            walletTransaction.Description?.Contains(LedgerMarkers.WalletTopUp, StringComparison.OrdinalIgnoreCase) == true)
         {
             return ("transaction", walletTransaction.TransactionId?.Value);
         }
@@ -373,7 +374,7 @@ internal static class PaymentReadModelMapper
         if (string.IsNullOrWhiteSpace(description))
             return null;
 
-        const string marker = "AuctionId:";
+        const string marker = LedgerMarkers.AuctionIdMarker;
         var index = description.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
         if (index < 0)
             return null;
@@ -394,19 +395,18 @@ internal static class PaymentReadModelMapper
             return null;
 
         // The description format: "... for auction {guid}"
-        const string marker = "for auction ";
+        const string marker = LedgerMarkers.ForAuctionMarker;
         var index = description.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
         if (index >= 0)
         {
+            // Only accept the token immediately after the marker as the auction id.
+            // (The previous "last whitespace token is a GUID" heuristic was dropped — any
+            // trailing GUID in any description would have parsed as an auction id.)
             var raw = description[(index + marker.Length)..].Trim();
-            if (Guid.TryParse(raw, out var parsed))
+            var firstToken = raw.Split(' ', 2)[0];
+            if (Guid.TryParse(firstToken, out var parsed))
                 return parsed;
         }
-
-        // Last-resort: try the last token
-        var lastSpace = description.LastIndexOf(' ');
-        if (lastSpace >= 0 && Guid.TryParse(description[(lastSpace + 1)..].Trim(), out var fallback))
-            return fallback;
 
         return null;
     }

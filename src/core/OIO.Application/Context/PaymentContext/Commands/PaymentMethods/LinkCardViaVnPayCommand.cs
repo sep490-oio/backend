@@ -5,6 +5,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Abstractions.Payment;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.PaymentContext.ValueObjects;
 using OIO.Domain.Context.Shared.ValueObjects;
@@ -90,7 +91,7 @@ internal sealed class LinkCardViaVnPayCommandHandler
             type: TransactionType.Payment, // reuse Payment type for card-link
             amount: money,
             currency: "VND",
-            description: "Lien ket the thanh toan qua VNPay",
+            description: LedgerDescriptions.LinkPaymentCard(),
             nowUtc: now);
 
         if (isTxnFailure)

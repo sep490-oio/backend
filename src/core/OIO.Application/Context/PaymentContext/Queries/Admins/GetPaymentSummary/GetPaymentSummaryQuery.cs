@@ -7,6 +7,7 @@ using OIO.Domain.Context.PaymentContext.Aggregates.Escrows;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Aggregates.Withdrawals;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.SeedWork.Errors;
 
@@ -56,10 +57,11 @@ internal sealed class GetPaymentSummaryQueryHandler
             x => x.Type == TransactionType.Payment && x.Status == TransactionStatus.Failed,
             cancellationToken);
 
+        var walletTopUpTag = LedgerTags.Bracket(LedgerTags.WalletTopUp);
         var walletTopUps = await transactions.CountAsync(
             x => x.Type == TransactionType.Deposit &&
                  x.Description != null &&
-                 x.Description.Contains("[WalletTopUp]"),
+                 x.Description.Contains(walletTopUpTag),
             cancellationToken);
 
         var withdrawalPendingCount = await withdrawals.CountAsync(

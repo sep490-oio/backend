@@ -8,6 +8,7 @@ using OIO.Application.Context.PaymentContext.Queries;
 using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
 using OIO.Domain.Context.PaymentContext.Aggregates.Withdrawals;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.SeedWork.Errors;
@@ -63,7 +64,7 @@ internal sealed class CancelWithdrawalRequestCommandHandler
         var unholdResult = wallet.Unhold(
             withdrawal.Amount,
             transactionId: null,
-            description: $"Withdrawal cancelled - unheld {withdrawal.Amount}",
+            description: LedgerDescriptions.WithdrawalCancelledUnhold(withdrawal.Amount),
             nowUtc: _clock.UtcNow);
 
         if (unholdResult.IsFailure)

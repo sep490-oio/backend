@@ -6,6 +6,7 @@ using OIO.Application.Abstractions.Clock;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Security;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
+using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.CatalogContext.Aggregates.Items;
 using OIO.Domain.Context.CatalogContext.ValueObjects.Ids;
@@ -640,11 +641,45 @@ internal sealed class DisputeResolutionService : IDisputeResolutionService
                     break;
 
                 case "reject_listing":
-                    // TODO: V1 stub — reject_listing requires moderation workflow
-                    _logger.LogWarning(
-                        "Dispute {DisputeId}: reject_listing is a V1 stub — manual intervention required",
-                        dispute.Id);
+                {
+                    var item = await LoadItemFromDisputeAsync(dispute, ct);
+                    if (item is null)
+                    {
+                        _logger.LogWarning(
+                            "Dispute {DisputeId}: reject_listing skipped — item not found",
+                            dispute.Id);
+                        break;
+                    }
+
+                    var result = item.Remove(now);
+                    if (result.IsFailure)
+                    {
+                        _logger.LogWarning(
+                            "Dispute {DisputeId}: reject_listing (Remove) failed — {Error}",
+                            dispute.Id, result.Error.Message);
+                    }
+                    else
+                    {
+                        _logger.LogInformation(
+                            "Dispute {DisputeId}: item removed due to reject_listing action",
+                            dispute.Id);
+
+                        // Cancel any pending auctions for this item
+                        var pendingAuctions = await _dbContext.Set<Auction>()
+                            .Where(a => a.ItemId == item.Id && (a.Status == AuctionStatus.Draft || a.Status == AuctionStatus.Approved || a.Status == AuctionStatus.Scheduled))
+                            .ToListAsync(ct);
+
+                        foreach (var a in pendingAuctions)
+                        {
+                            var cancelResult = a.CancelAuction("Item rejected via dispute resolution", now);
+                            if (cancelResult.IsFailure)
+                            {
+                                _logger.LogWarning("Dispute {DisputeId}: Failed to cancel auction {AuctionId} when rejecting item: {Error}", dispute.Id, a.Id.Value, cancelResult.Error.Message);
+                            }
+                        }
+                    }
                     break;
+                }
 
                 default:
                     _logger.LogWarning(

@@ -5,6 +5,7 @@ using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.OrderContext.Aggregates.SellerDirectShipments;
 using OIO.Domain.Context.OrderContext.Enums;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems;
 using OIO.Domain.Context.WarehouseContext.Enums;
@@ -50,7 +51,7 @@ internal static class OrderMappings
             // Buy-now deposit applied transactions
             var depositTxs = completed
                 .Where(t =>
-                    (t.Description != null && t.Description.Contains("[AuctionBuyNowDepositApplied]")) ||
+                    (t.Description != null && t.Description.Contains(LedgerTags.Bracket(LedgerTags.AuctionBuyNowDepositApplied))) ||
                     t.TransactionNumber.Value.StartsWith("BNDEP-"))
                 .ToList();
             if (depositTxs.Count > 0)
@@ -63,7 +64,7 @@ internal static class OrderMappings
                 var winnerDepositTxs = completed
                     .Where(t =>
                         t.Description != null &&
-                        t.Description.StartsWith("Auction winner deposit applied for order"))
+                        t.Description.Contains(LedgerMarkers.WinnerDepositApplied))
                     .ToList();
                 if (winnerDepositTxs.Count > 0)
                     depositAppliedAmount = winnerDepositTxs.Sum(t => t.Amount.Amount);
@@ -71,7 +72,7 @@ internal static class OrderMappings
 
             var walletTxs = completed
                 .Where(t =>
-                    (t.Description != null && t.Description.StartsWith("[HybridHold] Wallet portion committed")) ||
+                    (t.Description != null && t.Description.Contains(LedgerMarkers.HybridWalletPortionCommitted)) ||
                     t.TransactionNumber.Value.StartsWith("WLT-"))
                 .ToList();
             if (walletTxs.Count > 0)

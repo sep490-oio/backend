@@ -11,6 +11,7 @@ using OIO.Domain.Context.AuctionContext.Grains;
 using OIO.Domain.Context.AuctionContext.Policies;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
@@ -113,7 +114,7 @@ internal sealed class DepositFromWalletCommandHandler(
         var holdResult = wallet.Hold(
             amount: request.Amount,
             transactionId: null,
-            description: $"Auction deposit from wallet for auction {auctionId}",
+            description: LedgerDescriptions.AuctionDepositFromWallet(auctionId.Value),
             nowUtc: now);
 
         if (holdResult.IsFailure)

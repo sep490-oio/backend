@@ -10,6 +10,7 @@ using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using SellerDirectShipmentEntity = OIO.Domain.Context.OrderContext.Aggregates.SellerDirectShipments.SellerDirectShipment;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.AuctionContext.Enums;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
@@ -192,10 +193,11 @@ internal sealed class GetOrderByIdQueryHandler(
         // wallet portion amount for the DTO breakdown.
         decimal? hybridWalletHoldAmount = null;
         var orderIdStr = order.Id.Value.ToString();
+        var hybridHoldTag = LedgerTags.Bracket(LedgerTags.HybridHold);
         var hybridHoldTx = await dbContext.Set<OIO.Domain.Context.PaymentContext.Aggregates.Wallets.WalletTransaction>()
             .AsNoTracking()
             .Where(wt => wt.Description != null &&
-                         wt.Description.Contains("[HybridHold]") &&
+                         wt.Description.Contains(hybridHoldTag) &&
                          wt.Description.Contains(orderIdStr))
             .OrderByDescending(wt => wt.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);

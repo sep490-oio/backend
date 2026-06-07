@@ -18,6 +18,7 @@ using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.Aggregates.Escrows;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.PaymentContext.ValueObjects;
 using OIO.Domain.Context.Shared.ValueObjects;
@@ -247,13 +248,13 @@ internal sealed class ProcessVnPayCallbackCommandHandler
             return PaymentPurpose.OrderPayment;
 
         var description = transaction.Description ?? string.Empty;
-        if (description.StartsWith("[AuctionDeposit]", StringComparison.OrdinalIgnoreCase))
+        if (description.StartsWith(LedgerTags.Bracket(LedgerTags.AuctionDeposit), StringComparison.OrdinalIgnoreCase))
             return PaymentPurpose.AuctionDeposit;
 
-        if (description.StartsWith("[AuctionBuyNow]", StringComparison.OrdinalIgnoreCase))
+        if (description.StartsWith(LedgerTags.Bracket(LedgerTags.AuctionBuyNow), StringComparison.OrdinalIgnoreCase))
             return PaymentPurpose.AuctionBuyNow;
 
-        if (description.StartsWith("[OrderPayment]", StringComparison.OrdinalIgnoreCase))
+        if (description.StartsWith(LedgerTags.Bracket(LedgerTags.OrderPayment), StringComparison.OrdinalIgnoreCase))
             return PaymentPurpose.OrderPayment;
 
         return PaymentPurpose.WalletTopUp;
@@ -322,7 +323,7 @@ internal sealed class ProcessVnPayCallbackCommandHandler
         var creditResult = wallet.Credit(
             amount: transaction.Amount.Amount,
             transactionId: transaction.Id,
-            description: $"VNPay deposit for auction - TxnRef: {transaction.TransactionNumber.Value}",
+            description: LedgerDescriptions.VnPayAuctionDepositCredit(transaction.TransactionNumber.Value),
             nowUtc: now);
 
         if (creditResult.IsFailure)
@@ -334,7 +335,7 @@ internal sealed class ProcessVnPayCallbackCommandHandler
         var debitResult = wallet.Hold(
             amount: transaction.Amount.Amount,
             transactionId: transaction.Id,
-            description: $"Auction deposit hold - TxnRef: {transaction.TransactionNumber.Value}",
+            description: LedgerDescriptions.AuctionDepositHold(transaction.TransactionNumber.Value),
             nowUtc: now);
 
         if (debitResult.IsFailure)
@@ -405,7 +406,7 @@ internal sealed class ProcessVnPayCallbackCommandHandler
             // Detect hybrid hold by checking wallet transactions for a hold with HybridHold marker for this order
             var hybridHoldTx = wallet.WalletTransactions
                 .Where(wt => wt.Description != null &&
-                             wt.Description.Contains("[HybridHold]") &&
+                             wt.Description.Contains(LedgerTags.Bracket(LedgerTags.HybridHold)) &&
                              wt.Description.Contains(order.Id.Value.ToString()))
                 .OrderByDescending(wt => wt.CreatedAt)
                 .FirstOrDefault();
@@ -451,7 +452,7 @@ internal sealed class ProcessVnPayCallbackCommandHandler
             var debitPendingResult = wallet.DebitPending(
                 walletHoldAmount,
                 transaction.Id,
-                $"[HybridHold] Wallet portion committed for order {order.Id.Value}",
+                LedgerDescriptions.HybridHoldCommitted(order.Id.Value),
                 now);
 
             if (debitPendingResult.IsFailure)
@@ -494,7 +495,7 @@ internal sealed class ProcessVnPayCallbackCommandHandler
             var debitPendingResult = wallet.DebitPending(
                 winnerDeposit.Amount.Amount,
                 transaction.Id,
-                $"Auction winner deposit applied for order {order.Id.Value}",
+                LedgerDescriptions.WinnerDepositApplied(order.Id.Value),
                 now);
 
             if (debitPendingResult.IsFailure)
@@ -794,7 +795,7 @@ internal sealed class ProcessVnPayCallbackCommandHandler
             type: TransactionType.Payment,
             amount: reservation.DepositAppliedAmount,
             currency: reservation.DepositAppliedAmount.Currency.Id,
-            description: $"[AuctionBuyNowDepositApplied] AuctionId: {auction.Id.Value} - ReservationId: {reservation.Id.Value} - OrderId: {order.Id.Value}",
+            description: LedgerDescriptions.BuyNowDepositApplied(auction.Id.Value, reservation.Id.Value, order.Id.Value),
             nowUtc: now,
             orderId: order.Id,
             auctionId: auction.Id,
@@ -816,7 +817,7 @@ internal sealed class ProcessVnPayCallbackCommandHandler
         var debitPendingResult = wallet.DebitPending(
             reservation.DepositAppliedAmount.Amount,
             fundingTx.Value.Id,
-            $"Auction buy-now deposit applied for reservation {reservation.Id.Value}",
+            LedgerDescriptions.BuyNowDepositAppliedToWallet(reservation.Id.Value),
             now);
 
         if (debitPendingResult.IsFailure)
@@ -824,7 +825,7 @@ internal sealed class ProcessVnPayCallbackCommandHandler
             var debitResult = wallet.Debit(
                 reservation.DepositAppliedAmount.Amount,
                 fundingTx.Value.Id,
-                $"Auction buy-now deposit applied for reservation {reservation.Id.Value}",
+                LedgerDescriptions.BuyNowDepositAppliedToWallet(reservation.Id.Value),
                 now);
 
             if (debitResult.IsFailure)
@@ -868,7 +869,7 @@ internal sealed class ProcessVnPayCallbackCommandHandler
         var creditResult = wallet.Credit(
             amount: transaction.Amount.Amount,
             transactionId: transaction.Id,
-            description: $"Late buy-now payment credited to wallet - TxnRef: {transaction.TransactionNumber.Value}",
+            description: LedgerDescriptions.LateBuyNowCredit(transaction.TransactionNumber.Value),
             nowUtc: now);
 
         if (creditResult.IsFailure)
@@ -995,7 +996,7 @@ internal sealed class ProcessVnPayCallbackCommandHandler
         var creditResult = wallet.Credit(
             amount: transaction.Amount.Amount,
             transactionId: transaction.Id,
-            description: $"VNPay wallet top-up - TxnRef: {transaction.TransactionNumber.Value}",
+            description: LedgerDescriptions.WalletTopUpCredit(transaction.TransactionNumber.Value),
             nowUtc: now);
 
         if (creditResult.IsFailure)
@@ -1042,7 +1043,7 @@ internal sealed class ProcessVnPayCallbackCommandHandler
         var orderIdString = order.Id.Value.ToString();
         var hybridHoldTx = wallet.WalletTransactions
             .Where(wt => wt.Description != null &&
-                         wt.Description.Contains("[HybridHold]") &&
+                         wt.Description.Contains(LedgerTags.Bracket(LedgerTags.HybridHold)) &&
                          wt.Description.Contains(orderIdString))
             .OrderByDescending(wt => wt.CreatedAt)
             .FirstOrDefault();
@@ -1054,7 +1055,7 @@ internal sealed class ProcessVnPayCallbackCommandHandler
         var unholdResult = wallet.Unhold(
             holdAmount,
             transaction.Id,
-            $"[HybridHold] Released after failed VNPay payment for order {orderIdString}",
+            LedgerDescriptions.HybridHoldReleased(order.Id.Value),
             now);
 
         if (unholdResult.IsFailure)

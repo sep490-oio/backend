@@ -4,6 +4,7 @@ using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Application.Context.PaymentContext.DTOs;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.SeedWork.Errors;
 
@@ -77,15 +78,15 @@ internal sealed class GetPlatformWalletTransactionsQueryHandler(IDbContext dbCon
             var cat = request.Category.ToLowerInvariant();
             if (cat == "commission")
             {
-                query = query.Where(wt => wt.Description != null && (wt.Description.ToLower().Contains("commission") || wt.Description.ToLower().Contains("platform")) || wt.Type.Id == "credit");
+                query = query.Where(wt => wt.Description != null && (wt.Description.ToLower().Contains(LedgerMarkers.Commission) || wt.Description.ToLower().Contains(LedgerMarkers.Platform)) || wt.Type.Id == "credit");
             }
             else if (cat == "inspection_fee")
             {
-                query = query.Where(wt => wt.Description != null && wt.Description.ToLower().Contains("inspection"));
+                query = query.Where(wt => wt.Description != null && wt.Description.ToLower().Contains(LedgerMarkers.Inspection));
             }
             else if (cat == "forfeit")
             {
-                query = query.Where(wt => wt.Description != null && (wt.Description.ToLower().Contains("forfeit") || wt.Description.ToLower().Contains("penalty")));
+                query = query.Where(wt => wt.Description != null && (wt.Description.ToLower().Contains(LedgerMarkers.Forfeit) || wt.Description.ToLower().Contains(LedgerMarkers.Penalty)));
             }
             else if (cat == "refund")
             {
@@ -259,18 +260,18 @@ internal sealed class GetPlatformWalletTransactionsQueryHandler(IDbContext dbCon
     {
         var desc = wt.Description ?? string.Empty;
 
-        if (desc.Contains("inspection", StringComparison.OrdinalIgnoreCase))
+        if (desc.Contains(LedgerMarkers.Inspection, StringComparison.OrdinalIgnoreCase))
             return "inspection_fee";
 
-        if (desc.Contains("forfeit", StringComparison.OrdinalIgnoreCase) ||
-            desc.Contains("penalty", StringComparison.OrdinalIgnoreCase))
+        if (desc.Contains(LedgerMarkers.Forfeit, StringComparison.OrdinalIgnoreCase) ||
+            desc.Contains(LedgerMarkers.Penalty, StringComparison.OrdinalIgnoreCase))
             return "forfeit";
 
         if (wt.Type == WalletTransactionType.Debit)
             return "refund";
 
-        if (desc.Contains("commission", StringComparison.OrdinalIgnoreCase) ||
-            desc.Contains("Platform", StringComparison.OrdinalIgnoreCase) ||
+        if (desc.Contains(LedgerMarkers.Commission, StringComparison.OrdinalIgnoreCase) ||
+            desc.Contains(LedgerMarkers.Platform, StringComparison.OrdinalIgnoreCase) ||
             wt.Type == WalletTransactionType.Credit)
             return "commission";
 

@@ -14,6 +14,7 @@ using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.OrderContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.Aggregates.PaymentMethods;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.PaymentContext.ValueObjects;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
@@ -228,7 +229,7 @@ internal sealed class CreateVnPayPaymentUrlCommandHandler
         else if (request.Purpose == PaymentPurpose.AuctionDeposit && request.AuctionId.HasValue)
         {
             var pendingAuctionId = AuctionId.From(request.AuctionId.Value);
-            var depositDescPrefix = $"[{PaymentPurpose.AuctionDeposit}]";
+            var depositDescPrefix = LedgerTags.Bracket(LedgerTags.AuctionDeposit);
             transaction = await _dbContext.Set<Transaction>()
                 .FirstOrDefaultAsync(t => 
                     t.UserId == _currentUser.UserId &&
@@ -242,7 +243,7 @@ internal sealed class CreateVnPayPaymentUrlCommandHandler
         else if (request.Purpose == PaymentPurpose.AuctionBuyNow && request.BuyNowReservationId.HasValue)
         {
             var pendingReservationId = AuctionBuyNowReservationId.From(request.BuyNowReservationId.Value);
-            var buyNowDescPrefix = $"[{PaymentPurpose.AuctionBuyNow}]";
+            var buyNowDescPrefix = LedgerTags.Bracket(LedgerTags.AuctionBuyNow);
             transaction = await _dbContext.Set<Transaction>()
                 .FirstOrDefaultAsync(t =>
                     t.UserId == _currentUser.UserId &&
@@ -257,16 +258,17 @@ internal sealed class CreateVnPayPaymentUrlCommandHandler
         // Nếu chưa có giao dịch Pending, tạo mới
         if (transaction is null)
         {
-            var description = $"[{request.Purpose}] {request.Description}";
-            if (request.AuctionId.HasValue)
+            var tag = purpose switch
             {
-                description += $" - AuctionId: {request.AuctionId.Value}";
-            }
-
-            if (request.BuyNowReservationId.HasValue)
-            {
-                description += $" - ReservationId: {request.BuyNowReservationId.Value}";
-            }
+                _ when purpose == PaymentPurpose.AuctionDeposit => LedgerTags.AuctionDeposit,
+                _ when purpose == PaymentPurpose.OrderPayment => LedgerTags.OrderPayment,
+                _ when purpose == PaymentPurpose.AuctionBuyNow => LedgerTags.AuctionBuyNow,
+                _ when purpose == PaymentPurpose.WalletTopUp => LedgerTags.WalletTopUp,
+                _ => throw new ArgumentOutOfRangeException(
+                    nameof(purpose), purpose.Id, "Unknown payment purpose — no ledger tag mapping."),
+            };
+            var description = LedgerDescriptions.Gateway(
+                tag, request.Description, request.AuctionId, request.BuyNowReservationId);
 
             var (_, isTxnFailure, newTransaction, txnError) = Transaction.Create(
                 userId: _currentUser.UserId,

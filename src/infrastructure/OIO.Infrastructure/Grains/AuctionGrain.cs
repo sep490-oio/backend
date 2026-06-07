@@ -14,6 +14,7 @@ using OIO.Domain.Context.AuctionContext.Grains.GrainModels;
 using OIO.Domain.Context.AuctionContext.Grains.GrainValueObjects;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.Aggregates.Users;
@@ -512,8 +513,8 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 }
 
                 UnitResult<Error> holdResult = holdDelta > 0
-                    ? wallet.Hold(holdDelta, null, $"Auto-bid reservation for Auction {this.GetGrainId()}", nowUtc)
-                    : wallet.Unhold(Math.Abs(holdDelta), null, $"Auto-bid reservation adjusted for Auction {this.GetGrainId()}", nowUtc);
+                    ? wallet.Hold(holdDelta, null, LedgerDescriptions.AutoBidReservation(this.GetGrainId().ToString()), nowUtc)
+                    : wallet.Unhold(Math.Abs(holdDelta), null, LedgerDescriptions.AutoBidReservationAdjusted(this.GetGrainId().ToString()), nowUtc);
 
                 if (holdResult.IsFailure)
                 {
@@ -854,7 +855,7 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 var unholdResult = wallet.Unhold(
                     holdAmount,
                     transactionId: null,
-                    description: $"Auto-bid cancelled by user for auction {this.GetGrainId()}",
+                    description: LedgerDescriptions.AutoBidCancelled(this.GetGrainId().ToString()),
                     nowUtc: nowUtc);
 
                 if (unholdResult.IsFailure)

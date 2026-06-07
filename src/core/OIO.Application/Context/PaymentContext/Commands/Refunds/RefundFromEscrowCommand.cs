@@ -7,6 +7,7 @@ using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.PaymentContext.Aggregates.Escrows;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.PaymentContext.ValueObjects;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
@@ -91,8 +92,7 @@ internal sealed class RefundFromEscrowCommandHandler
             TransactionType.Refund,
             moneyResult.Value,
             escrow.Currency,
-            $"Refund for Order #{escrow.OrderId.Value} - " +
-            (request.PartialAmount.HasValue ? $"Partial: {refundAmount}" : "Full refund"),
+            LedgerDescriptions.EscrowRefund(escrow.OrderId.Value, request.PartialAmount),
             now,
             escrow.OrderId);
 
@@ -112,7 +112,7 @@ internal sealed class RefundFromEscrowCommandHandler
         var creditResult = buyerWallet.Credit(
             refundAmount,
             transaction.Id,
-            $"Refund from Escrow #{escrow.Id.Value}",
+            LedgerDescriptions.RefundFromEscrow(escrow.Id.Value),
             now);
 
         if (creditResult.IsFailure)
@@ -140,7 +140,7 @@ internal sealed class RefundFromEscrowCommandHandler
                     TransactionType.Payout,
                     sellerMoneyResult.Value,
                     escrow.Currency,
-                    $"Partial payout (after partial refund) for Order #{escrow.OrderId.Value}",
+                    LedgerDescriptions.PartialPayoutAfterPartialRefund(escrow.OrderId.Value),
                     now,
                     escrow.OrderId);
 
@@ -153,7 +153,7 @@ internal sealed class RefundFromEscrowCommandHandler
                     sellerWallet.Credit(
                         remainingAmount,
                         sellerTx.Id,
-                        $"Partial payout from Escrow #{escrow.Id.Value}",
+                        LedgerDescriptions.PartialPayoutFromEscrow(escrow.Id.Value),
                         now);
                 }
             }

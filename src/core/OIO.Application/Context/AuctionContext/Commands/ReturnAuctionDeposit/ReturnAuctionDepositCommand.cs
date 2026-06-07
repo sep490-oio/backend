@@ -7,6 +7,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.AuctionContext.Commands.ReturnAuctionDeposit;
@@ -61,7 +62,7 @@ internal sealed class ReturnAuctionDepositCommandHandler : ICommandHandler<Retur
         var unholdResult = wallet.Unhold(
             amount: deposit.Amount.Amount,
             transactionId: deposit.TransactionId,
-            description: $"Returned auction deposit - Reason: {request.Reason} for auction {deposit.AuctionId.Value}",
+            description: LedgerDescriptions.ReturnedAuctionDeposit(request.Reason, deposit.AuctionId.Value),
             nowUtc: now);
 
         if (unholdResult.IsFailure)

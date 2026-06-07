@@ -5,6 +5,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.SeedWork.Errors;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 
@@ -48,7 +49,10 @@ internal sealed class GetAdminAuctionFinancialsQueryHandler(IDbContext dbContext
             .Include(wt => wt.Transaction)
             .Where(wt => 
                 (wt.Transaction != null && wt.Transaction.AuctionId == targetAuctionId)
-                || (wt.Description != null && wt.Description.Contains(auctionIdStr))
+                // Fallback only for ledger rows with NO transaction FK (e.g. wallet-funded
+                // deposit / auto-bid holds): match the auction GUID the factory embeds.
+                // User free-text is GUID-stripped by LedgerDescriptions.Safe, so this can't be spoofed.
+                || (wt.Transaction == null && wt.Description != null && wt.Description.Contains(auctionIdStr))
             );
 
         var walletTransactions = await walletTransactionsQuery.ToListAsync(cancellationToken);
@@ -62,8 +66,9 @@ internal sealed class GetAdminAuctionFinancialsQueryHandler(IDbContext dbContext
                 .Include(wt => wt.Transaction)
                 .Where(wt => 
                     (wt.Transaction != null && wt.Transaction.OrderId == targetOrderId)
-                    || (wt.Description != null && wt.Description.Contains(orderIdStr!))
-                    || (wt.Description != null && wt.Description.Contains(orderNumberStr!))
+                    // Fallback only for FK-less ledger rows; spoof-safe via Safe()-stripped free-text.
+                    || (wt.Transaction == null && wt.Description != null && wt.Description.Contains(orderIdStr!))
+                    || (wt.Transaction == null && wt.Description != null && wt.Description.Contains(orderNumberStr!))
                 )
                 .ToListAsync(cancellationToken);
             
@@ -77,8 +82,8 @@ internal sealed class GetAdminAuctionFinancialsQueryHandler(IDbContext dbContext
             // Map wallet semantic types to the expected filtering types (deposit, refund, fee, payment)
             if (wt.Type.Id == "hold") mappedType = "deposit";
             else if (wt.Type.Id == "release") mappedType = "refund";
-            else if (wt.Type.Id == "credit" && wt.Description != null && (wt.Description.Contains("Compensation") || wt.Description.Contains("forfeit"))) mappedType = "fee";
-            else if (wt.Type.Id == "debit" && wt.Description != null && wt.Description.Contains("Payment")) mappedType = "payment";
+            else if (wt.Type.Id == "credit" && wt.Description != null && (wt.Description.Contains(LedgerMarkers.Compensation, StringComparison.OrdinalIgnoreCase) || wt.Description.Contains(LedgerMarkers.Forfeit, StringComparison.OrdinalIgnoreCase))) mappedType = "fee";
+            else if (wt.Type.Id == "debit" && wt.Description != null && wt.Description.Contains(LedgerTags.Bracket(LedgerTags.OrderPayment), StringComparison.OrdinalIgnoreCase)) mappedType = "payment";
 
             financials.Add(new AdminAuctionFinancialDto(
                 Id: wt.Id.Value,

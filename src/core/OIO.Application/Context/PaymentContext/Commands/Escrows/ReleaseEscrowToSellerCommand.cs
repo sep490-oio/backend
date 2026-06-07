@@ -7,6 +7,7 @@ using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.PaymentContext.Aggregates.Escrows;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.PaymentContext.ValueObjects;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
@@ -78,7 +79,7 @@ internal sealed class ReleaseEscrowToSellerCommandHandler
             TransactionType.Payout,
             escrow.Amount,
             escrow.Currency,
-            $"Escrow release payout for Order #{escrow.OrderId.Value}",
+            LedgerDescriptions.EscrowReleasePayout(escrow.OrderId.Value),
             now,
             escrow.OrderId);
 
@@ -98,7 +99,7 @@ internal sealed class ReleaseEscrowToSellerCommandHandler
         var creditResult = sellerWallet.Credit(
             escrow.Amount.Amount,
             transaction.Id,
-            $"Payout from Escrow #{escrow.Id.Value}",
+            LedgerDescriptions.PayoutFromEscrow(escrow.Id.Value),
             now);
 
         if (creditResult.IsFailure)

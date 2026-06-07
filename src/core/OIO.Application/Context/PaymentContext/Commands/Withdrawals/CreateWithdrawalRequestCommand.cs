@@ -7,11 +7,13 @@ using OIO.Application.Context.UserContext.Services;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
 using OIO.Domain.Context.PaymentContext.Aggregates.Withdrawals;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.PaymentContext.ValueObjects;
 using OIO.Domain.Context.Shared.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects;
 using OIO.Domain.Context.UserContext.ValueObjects.Ids;
+using OIO.Domain.SeedWork.Checks.Extensions;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.PaymentContext.Commands.Withdrawals;
@@ -22,7 +24,22 @@ public sealed record CreateWithdrawalRequestCommand(
     decimal Amount,
     string BankName,
     string AccountNumber,
-    string AccountHolder) : ICommand<CreateWithdrawalRequestResponse>;
+    string AccountHolder) : ICommand<CreateWithdrawalRequestResponse>, IHasValidate
+{
+    public ViolationsError Validate()
+    {
+        // Bound lengths on the free-text fields — these flow into BankAccount and into
+        // the ledger description (where LedgerDescriptions.Safe additionally strips
+        // brackets/GUIDs). Charset is intentionally NOT restricted so Vietnamese
+        // diacritics in holder/bank names are accepted.
+        return CreateWithdrawalRequestCommand.Check()
+            .WithOwnerName("CreateWithdrawalRequest")
+            .Field(Amount).Positive()
+            .Field(BankName).NotWhiteSpace().MaxLength(100)
+            .Field(AccountNumber).NotWhiteSpace().MaxLength(34)
+            .Field(AccountHolder).NotWhiteSpace().MaxLength(100);
+    }
+}
 
 public sealed record CreateWithdrawalRequestResponse(
     Guid WithdrawalRequestId,
@@ -83,7 +100,7 @@ internal sealed class CreateWithdrawalRequestCommandHandler
             TransactionType.Withdrawal,
             amountMoneyResult.Value,
             wallet.WalletFunds.Currency.Id,
-            $"Withdrawal request - {request.Amount:N0} to {request.BankName} / {request.AccountHolder}",
+            LedgerDescriptions.WithdrawalRequest(request.Amount, request.BankName, request.AccountHolder),
             now);
 
         if (txResult.IsFailure)
@@ -102,7 +119,7 @@ internal sealed class CreateWithdrawalRequestCommandHandler
         var holdResult = wallet.Hold(
             request.Amount,
             transactionId: transaction.Id,
-            description: $"Withdrawal hold - {request.Amount}",
+            description: LedgerDescriptions.WithdrawalHold(request.Amount),
             nowUtc: now);
 
         if (holdResult.IsFailure)

@@ -7,6 +7,7 @@ using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions.Events;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 
 namespace OIO.Application.Context.AuctionContext.EventHandlers;
 
@@ -124,7 +125,7 @@ internal static class AuctionAutoBidFundsReleaseDispatch
             var unholdResult = wallet.Unhold(
                 candidate.Amount,
                 transactionId: null,
-                description: $"Released auto-bid reservation for auction {auctionId}. Reason: {reason}",
+                description: LedgerDescriptions.AutoBidReservationReleased(auctionId, reason),
                 nowUtc: now);
 
             if (unholdResult.IsSuccess)

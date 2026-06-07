@@ -9,6 +9,7 @@ using OIO.Domain.Context.OrderContext.Errors;
 using OIO.Domain.Context.PaymentContext.Aggregates.Escrows;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.PaymentContext.ValueObjects;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
@@ -97,7 +98,7 @@ public sealed class EscrowSettlementService
             type: TransactionType.Payout,
             grossAmount: settlement.GrossAmount,
             currency: currency,
-            description: $"Escrow release for order {order.OrderNumber.Value}. Reason: {reason}",
+            description: LedgerDescriptions.EscrowReleaseForOrder(order.OrderNumber.Value, reason),
             order: order,
             fee: settlement.PlatformCommission,
             netAmount: settlement.SellerPayoutBeforeInspection,
@@ -110,7 +111,7 @@ public sealed class EscrowSettlementService
             sellerWallet,
             settlement.SellerPayoutBeforeInspection,
             payoutTx.Id,
-            $"Escrow release for order {order.OrderNumber.Value}",
+            LedgerDescriptions.EscrowReleaseForOrder(order.OrderNumber.Value, reason),
             cancellationToken);
         if (sellerCreditResult.IsFailure)
             return sellerCreditResult.Error;
@@ -119,7 +120,7 @@ public sealed class EscrowSettlementService
             platformWalletResult.Value,
             settlement.PlatformCommission,
             payoutTx.Id,
-            $"Platform commission for order {order.OrderNumber.Value}",
+            LedgerDescriptions.PlatformCommissionForOrder(order.OrderNumber.Value),
             cancellationToken);
         if (platformCommissionResult.IsFailure)
             return platformCommissionResult.Error;
@@ -132,7 +133,7 @@ public sealed class EscrowSettlementService
                 platformWalletResult.Value,
                 settlement.InspectionFee,
                 transactionNumber: $"FEE-INSP-{order.Id.Value:N}",
-                description: $"Offline inspection fee for order {order.OrderNumber.Value}",
+                description: LedgerDescriptions.OfflineInspectionFee(order.OrderNumber.Value),
                 allowPendingWhenInsufficient: false,
                 cancellationToken: cancellationToken);
             if (feeResult.IsFailure)
@@ -206,7 +207,7 @@ public sealed class EscrowSettlementService
             type: TransactionType.Refund,
             grossAmount: refundAmount,
             currency: currency,
-            description: $"Escrow refund for order {order.OrderNumber.Value}. Reason: {reason}",
+            description: LedgerDescriptions.EscrowRefundForOrder(order.OrderNumber.Value, reason),
             order: order,
             fee: 0m,
             netAmount: refundAmount,
@@ -230,7 +231,7 @@ public sealed class EscrowSettlementService
             buyerWallet,
             refundAmount,
             refundTx.Id,
-            $"Escrow refund for order {order.OrderNumber.Value}",
+            LedgerDescriptions.EscrowRefundForOrder(order.OrderNumber.Value, reason),
             cancellationToken);
         if (buyerCreditResult.IsFailure)
             return buyerCreditResult.Error;
@@ -295,7 +296,7 @@ public sealed class EscrowSettlementService
         if (existingTx is not null && existingTx.Status == TransactionStatus.Completed)
             return new SellerFeeChargeResult(commissionAmount, Collected: true, Pending: false, currency);
 
-        var description = $"Platform commission charged to seller for buyer-win dispute on order {order.OrderNumber.Value}. Reason: {reason}";
+        var description = LedgerDescriptions.DisputeCommissionCharge(order.OrderNumber.Value, reason);
 
         if (sellerWallet is null || sellerWallet.WalletFunds.BalanceAmount < commissionAmount)
         {
@@ -348,7 +349,7 @@ public sealed class EscrowSettlementService
             platformWalletResult.Value,
             commissionAmount,
             feeTxResult.Value.Id,
-            $"Platform commission from seller for buyer-win dispute on order {order.OrderNumber.Value}",
+            LedgerDescriptions.DisputeCommissionFromSeller(order.OrderNumber.Value),
             cancellationToken);
         if (creditResult.IsFailure)
             return creditResult.Error;
@@ -397,7 +398,7 @@ public sealed class EscrowSettlementService
             platformWalletResult.Value,
             feeAmount,
             transactionNumber: $"FEE-INSP-DSP-{disputeId:N}",
-            description: $"Buyer-win dispute inspection fee for order {order.OrderNumber.Value}. Reason: {reason}",
+            description: LedgerDescriptions.BuyerWinDisputeInspectionFee(order.OrderNumber.Value, reason),
             allowPendingWhenInsufficient: true,
             cancellationToken: cancellationToken);
         if (feeResult.IsFailure)
@@ -434,7 +435,7 @@ public sealed class EscrowSettlementService
             type: TransactionType.Payout,
             grossAmount: settlement.GrossAmount,
             currency: currency,
-            description: $"Partial payout after refund for order {order.OrderNumber.Value}",
+            description: LedgerDescriptions.PartialPayoutAfterRefundForOrder(order.OrderNumber.Value),
             order: order,
             fee: settlement.PlatformCommission,
             netAmount: settlement.SellerPayoutBeforeInspection,
@@ -447,7 +448,7 @@ public sealed class EscrowSettlementService
             sellerWallet,
             settlement.SellerPayoutBeforeInspection,
             payoutTx.Id,
-            $"Partial payout after refund for order {order.OrderNumber.Value}",
+            LedgerDescriptions.PartialPayoutAfterRefundForOrder(order.OrderNumber.Value),
             cancellationToken);
         if (sellerCreditResult.IsFailure)
             return sellerCreditResult.Error;
@@ -456,7 +457,7 @@ public sealed class EscrowSettlementService
             platformWalletResult.Value,
             settlement.PlatformCommission,
             payoutTx.Id,
-            $"Platform commission for partial payout of order {order.OrderNumber.Value}",
+            LedgerDescriptions.PlatformCommissionForPartialPayout(order.OrderNumber.Value),
             cancellationToken);
         if (platformCommissionResult.IsFailure)
             return platformCommissionResult.Error;
@@ -469,7 +470,7 @@ public sealed class EscrowSettlementService
                 platformWalletResult.Value,
                 settlement.InspectionFee,
                 transactionNumber: $"FEE-INSP-PART-{order.Id.Value:N}",
-                description: $"Offline inspection fee for partial payout of order {order.OrderNumber.Value}",
+                description: LedgerDescriptions.OfflineInspectionFeeForPartialPayout(order.OrderNumber.Value),
                 allowPendingWhenInsufficient: false,
                 cancellationToken: cancellationToken);
             if (feeResult.IsFailure)
@@ -824,7 +825,7 @@ public sealed class EscrowSettlementService
             return new SellerFeeChargeResult(0m, Collected: false, Pending: false, currency);
 
         var transactionNumber = $"FEE-INSP-REJ-{inspectionId:N}";
-        var description = $"Inspection fee for rejected item \"{itemTitle}\" (inspection {inspectionId}).";
+        var description = LedgerDescriptions.InspectionFeeForRejectedItem(itemTitle, inspectionId);
 
         // Idempotency check — if this fee was already charged, skip.
         var existingTx = await FindTransactionAsync(transactionNumber, cancellationToken);
@@ -990,7 +991,7 @@ public sealed class EscrowSettlementService
             // Debit seller wallet.
             var debitResult = await EnsureWalletDebitAsync(
                 sellerWallet, feeAmount, feeTx.Id,
-                feeTx.Description ?? "Pending fee collection",
+                feeTx.Description ?? LedgerDescriptions.PendingFeeCollection(),
                 cancellationToken);
             if (debitResult.IsFailure)
             {
@@ -1013,7 +1014,7 @@ public sealed class EscrowSettlementService
             // Credit platform wallet.
             var creditResult = await CreditPlatformWalletAsync(
                 platformWallet, feeAmount, feeTx.Id,
-                feeTx.Description ?? "Pending fee collection",
+                feeTx.Description ?? LedgerDescriptions.PendingFeeCollection(),
                 cancellationToken);
             if (creditResult.IsFailure)
             {

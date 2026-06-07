@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OIO.Application.Abstractions.Data;
 using OIO.Application.Abstractions.Messaging;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.SeedWork.Errors;
 
@@ -131,15 +132,15 @@ internal sealed class GetPlatformRevenueHistoryQueryHandler(IDbContext dbContext
         var txDesc = wt.Transaction?.Description ?? string.Empty;
 
         // Inspection fee
-        if (desc.Contains("inspection", StringComparison.OrdinalIgnoreCase) ||
-            txDesc.Contains("inspection", StringComparison.OrdinalIgnoreCase))
+        if (desc.Contains(LedgerMarkers.Inspection, StringComparison.OrdinalIgnoreCase) ||
+            txDesc.Contains(LedgerMarkers.Inspection, StringComparison.OrdinalIgnoreCase))
             return "inspection_fee";
 
         // Forfeit / penalty
-        if (desc.Contains("forfeit", StringComparison.OrdinalIgnoreCase) ||
-            desc.Contains("penalty", StringComparison.OrdinalIgnoreCase) ||
-            txDesc.Contains("forfeit", StringComparison.OrdinalIgnoreCase) ||
-            txDesc.Contains("penalty", StringComparison.OrdinalIgnoreCase))
+        if (desc.Contains(LedgerMarkers.Forfeit, StringComparison.OrdinalIgnoreCase) ||
+            desc.Contains(LedgerMarkers.Penalty, StringComparison.OrdinalIgnoreCase) ||
+            txDesc.Contains(LedgerMarkers.Forfeit, StringComparison.OrdinalIgnoreCase) ||
+            txDesc.Contains(LedgerMarkers.Penalty, StringComparison.OrdinalIgnoreCase))
             return "forfeit";
 
         // Refund (debit from platform = giving money back)
@@ -147,8 +148,8 @@ internal sealed class GetPlatformRevenueHistoryQueryHandler(IDbContext dbContext
             return "refund";
 
         // Default: platform commission
-        if (desc.Contains("commission", StringComparison.OrdinalIgnoreCase) ||
-            desc.Contains("Platform", StringComparison.OrdinalIgnoreCase) ||
+        if (desc.Contains(LedgerMarkers.Commission, StringComparison.OrdinalIgnoreCase) ||
+            desc.Contains(LedgerMarkers.Platform, StringComparison.OrdinalIgnoreCase) ||
             wt.Type == WalletTransactionType.Credit)
             return "commission";
 

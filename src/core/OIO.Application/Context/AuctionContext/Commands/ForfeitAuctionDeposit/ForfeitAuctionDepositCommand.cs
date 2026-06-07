@@ -7,6 +7,7 @@ using OIO.Application.Abstractions.Messaging;
 using OIO.Domain.Context.AuctionContext.Aggregates.Auctions;
 using OIO.Domain.Context.AuctionContext.ValueObjects.Ids;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.SeedWork.Errors;
 
 namespace OIO.Application.Context.AuctionContext.Commands.ForfeitAuctionDeposit;
@@ -61,7 +62,7 @@ internal sealed class ForfeitAuctionDepositCommandHandler : ICommandHandler<Forf
         var debitResult = wallet.DebitPending(
             amount: deposit.Amount.Amount,
             transactionId: deposit.TransactionId,
-            description: $"Forfeited auction deposit - Reason: {request.Reason}",
+            description: LedgerDescriptions.ForfeitedAuctionDeposit(request.Reason),
             nowUtc: now);
 
         if (debitResult.IsFailure)

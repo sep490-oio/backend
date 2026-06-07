@@ -9,6 +9,7 @@ using OIO.Domain.Context.OrderContext.Aggregates.Orders;
 using OIO.Domain.Context.PaymentContext.Aggregates.Escrows;
 using OIO.Domain.Context.PaymentContext.Aggregates.Transactions;
 using OIO.Domain.Context.PaymentContext.Aggregates.Wallets;
+using OIO.Domain.Context.PaymentContext.Descriptions;
 using OIO.Domain.Context.PaymentContext.Enums;
 using OIO.Domain.Context.PaymentContext.ValueObjects;
 using OIO.Domain.Context.PaymentContext.ValueObjects.Ids;
@@ -77,7 +78,7 @@ internal sealed class RefundEscrowCommandHandler : ICommandHandler<RefundEscrowC
             TransactionType.Refund,
             escrow.Amount,
             escrow.Currency,
-            $"Admin force refund escrow to buyer for Order {order.OrderNumber.Value} - Reason: {request.Reason}",
+            LedgerDescriptions.AdminForceRefundEscrow(order.OrderNumber.Value, request.Reason),
             now,
             escrow.OrderId);
 
@@ -92,7 +93,7 @@ internal sealed class RefundEscrowCommandHandler : ICommandHandler<RefundEscrowC
         var creditResult = buyerWallet.Credit(
             amount: escrow.Amount.Amount,
             transactionId: transaction.Id,
-            description: $"Escrow refunded to buyer for Order {order.OrderNumber.Value} - Reason: {request.Reason}",
+            description: LedgerDescriptions.EscrowRefundedToBuyer(order.OrderNumber.Value, request.Reason),
             nowUtc: now);
 
         if (creditResult.IsFailure)
