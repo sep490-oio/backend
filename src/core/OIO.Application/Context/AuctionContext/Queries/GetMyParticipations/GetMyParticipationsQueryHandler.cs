@@ -50,6 +50,27 @@ internal sealed class GetMyParticipationsQueryHandler
                         b.BidderId == userId
                         && b.AuctionId == d.AuctionId)),
 
+                // Leading: auction still running and the user's latest bid is currently winning.
+                "leading" => query.Where(d =>
+                    d.Auction.Status == AuctionStatus.Active
+                    && _dbContext.Set<Bid>()
+                        .Where(b => b.BidderId == userId && b.AuctionId == d.AuctionId)
+                        .OrderByDescending(b => b.CreatedAt)
+                        .Select(b => b.Status.Id)
+                        .FirstOrDefault() == BidStatus.Winning.Id),
+
+                // Outbid: auction still running, the user has bid, but their latest bid is no longer winning.
+                "outbid" => query.Where(d =>
+                    d.Auction.Status == AuctionStatus.Active
+                    && _dbContext.Set<Bid>().Any(b =>
+                        b.BidderId == userId
+                        && b.AuctionId == d.AuctionId)
+                    && _dbContext.Set<Bid>()
+                        .Where(b => b.BidderId == userId && b.AuctionId == d.AuctionId)
+                        .OrderByDescending(b => b.CreatedAt)
+                        .Select(b => b.Status.Id)
+                        .FirstOrDefault() != BidStatus.Winning.Id),
+
                 "won" => query.Where(d =>
                     (d.Auction.Status == AuctionStatus.Sold
                      || d.Auction.Status == AuctionStatus.Completed)
