@@ -201,6 +201,19 @@ public sealed class AutoBidBudget : ValueObject
             currency: Currency);
     }
 
+    /// <summary>
+    /// Reset consumed/reserved amounts to zero, keeping max + increment + currency.
+    /// Used when re-enabling a cancelled auto-bid whose wallet hold was fully released,
+    /// so its prior bid consumption no longer constrains the fresh configuration.
+    /// </summary>
+    public AutoBidBudget WithCurrentReset() =>
+        new AutoBidBudget(
+            maxAmount: MaxAmount,
+            currentAmount: 0,
+            incrementAmount: IncrementAmount,
+            reservedAmount: 0,
+            currency: Currency);
+
     // ═════════════════════════════════════════════════════════════════
 
     protected override IEnumerable<object> GetEqualityComponents()

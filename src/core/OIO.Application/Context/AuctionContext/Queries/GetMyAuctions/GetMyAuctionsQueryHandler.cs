@@ -55,6 +55,13 @@ internal sealed class GetMyAuctionsQueryHandler
             }
         }
 
+        // Search by item title (case-insensitive, whitespace-trimmed)
+        if (!string.IsNullOrWhiteSpace(parameters.Search))
+        {
+            var term = parameters.Search.Trim().ToLower();
+            query = query.Where(a => a.Item.Title.Value.ToLower().Contains(term));
+        }
+
         query = query.ApplySort(parameters, AuctionMappings.AuctionListItemDtoSortMapping);
 
         var totalCount = await query.CountAsync(cancellationToken);

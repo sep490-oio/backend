@@ -134,24 +134,33 @@ public sealed class AutoBid : BaseEntity<AutoBidId>, IAuditableEntity
     {
         if (!IsEnabled &&
             Status != AutoBidStatus.Exhausted &&
-            Status != AutoBidStatus.Outbid)
+            Status != AutoBidStatus.Outbid &&
+            Status != AutoBidStatus.Cancelled)
             return AuctionErrors.AutoBid.IsDisabled;
 
         if (Status == AutoBidStatus.Won)
             return AuctionErrors.AutoBid.CannotModifyFinalStatus;
 
+        // A cancelled auto-bid had its wallet hold fully released on cancel, so its prior
+        // bid consumption no longer applies to a fresh enable. Reset consumed/reserved first
+        // so a fresh (possibly lower) max is accepted and re-engagement starts clean.
+        if (Status == AutoBidStatus.Cancelled)
+            Budget = Budget.WithCurrentReset();
+
         if (newMaxAmount.Amount < Budget.CurrentAmount)
             return AuctionErrors.AutoBid.NewMaxLessThanCurrent(Budget.CurrentAmount);
-        
+
         var result = Budget.WithConfiguration(newMaxAmount, newIncrementAmount);
-        
+
         if (result.IsFailure)
         {
             return result.Error;
         }
-        
+
         Budget = result.Value;
-        if (Status == AutoBidStatus.Exhausted || Status == AutoBidStatus.Outbid)
+        if (Status == AutoBidStatus.Exhausted ||
+            Status == AutoBidStatus.Outbid ||
+            Status == AutoBidStatus.Cancelled)
             Status = AutoBidStatus.Active;
         ModifiedAt = nowUtc;
         IsEnabled = true;
@@ -164,7 +173,9 @@ public sealed class AutoBid : BaseEntity<AutoBidId>, IAuditableEntity
     
     /// <summary>
     /// Cancel auto-bid — disables bidding and releases wallet hold immediately.
-    /// This is a terminal state; the auto-bid cannot be reactivated after cancellation.
+    /// The bidder may later re-enable a fresh auto-bid on the same auction via
+    /// <see cref="UpdateConfig"/>, which reactivates this record (the wallet hold is
+    /// re-established for the full new max by the grain).
     /// </summary>
     public UnitResult<Error> Cancel(DateTime nowUtc)
     {

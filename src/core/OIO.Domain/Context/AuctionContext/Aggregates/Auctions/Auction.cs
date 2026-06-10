@@ -1210,7 +1210,8 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         {
             if (!existing.IsEnabled &&
                 existing.Status != AutoBidStatus.Exhausted &&
-                existing.Status != AutoBidStatus.Outbid)
+                existing.Status != AutoBidStatus.Outbid &&
+                existing.Status != AutoBidStatus.Cancelled)
             {
                 return AuctionErrors.AutoBid.IsDisabled;
             }
@@ -1218,10 +1219,18 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
             if (existing.Status == AutoBidStatus.Won)
                 return AuctionErrors.AutoBid.CannotModifyFinalStatus;
 
-            if (maxAmount.Amount < existing.Budget.CurrentAmount)
+            // A cancelled auto-bid had its hold fully released and its prior consumption is
+            // reset on reactivation, so the "new max below already-consumed" guard does not
+            // apply — preview against a reset budget instead of the stale consumed amount.
+            var previewBudget = existing.Status == AutoBidStatus.Cancelled
+                ? existing.Budget.WithCurrentReset()
+                : existing.Budget;
+
+            if (existing.Status != AutoBidStatus.Cancelled &&
+                maxAmount.Amount < existing.Budget.CurrentAmount)
                 return AuctionErrors.AutoBid.NewMaxLessThanCurrent(existing.Budget.CurrentAmount);
 
-            var updatePreview = existing.Budget.WithConfiguration(maxAmount, incrementAmount);
+            var updatePreview = previewBudget.WithConfiguration(maxAmount, incrementAmount);
             return updatePreview.IsFailure
                 ? updatePreview.Error
                 : UnitResult.Success<Error>();
@@ -1415,9 +1424,14 @@ public sealed class Auction : AggregateRoot<AuctionId>, IAuditableEntity
         foreach (var loser in losingAutoBidders)
         {
             var bidAmount = loser.MaxAmount;
-            if (bidAmount >= simulatedPrice) 
+            if (bidAmount >= simulatedPrice)
             {
-                bidsToPlace.Add((loser.AutoBid!, bidAmount));
+                // The standing leader is already represented at the current price. Advance the
+                // simulated price using its max so the ultimate winner is priced correctly, but
+                // do NOT place a real bid for it — that would make the leader bid against itself,
+                // producing a redundant consecutive bid in the history.
+                if (loser.BidderId != currentLeaderId)
+                    bidsToPlace.Add((loser.AutoBid!, bidAmount));
                 simulatedPrice = bidAmount;
             }
         }

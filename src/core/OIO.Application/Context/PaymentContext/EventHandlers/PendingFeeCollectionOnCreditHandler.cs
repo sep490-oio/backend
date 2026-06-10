@@ -20,6 +20,7 @@ namespace OIO.Application.Context.PaymentContext.EventHandlers;
 /// </summary>
 internal sealed class PendingFeeCollectionOnCreditHandler(
     IDbContext dbContext,
+    IUnitOfWork unitOfWork,
     EscrowSettlementService escrowSettlementService,
     ILogger<PendingFeeCollectionOnCreditHandler> logger)
     : INotificationHandler<WalletCreditedDomainEvent>
@@ -59,6 +60,13 @@ internal sealed class PendingFeeCollectionOnCreditHandler(
 
             if (collected > 0)
             {
+                // EscrowSettlementService mutates the change tracker (wallet debit, fee
+                // completion, platform credit) but relies on its caller to persist. Domain
+                // events are dispatched out-of-band via the outbox processor, whose scope
+                // never flushes EF — so without this SaveChanges the settlement is silently
+                // discarded and the fees stay Pending forever.
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+
                 logger.LogInformation(
                     "PendingFeeCollection: auto-collected {Count} pending fee(s) from user {UserId} after wallet credit of {Amount} {Currency}",
                     collected,

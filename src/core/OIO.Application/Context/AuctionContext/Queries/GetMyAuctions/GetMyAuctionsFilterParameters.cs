@@ -6,4 +6,5 @@ public record GetMyAuctionsFilterParameters : PagedParameters, ISortByParameter
 {
     public string? Status { get; init; }
     public string? SortBy { get; init; }
+    public string? Search { get; init; }
 }

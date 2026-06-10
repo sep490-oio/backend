@@ -52,14 +52,22 @@ internal sealed class GetPendingSellerFeesQueryHandler(
 
             if (inspectionIds.Count > 0)
             {
+                // EF Core cannot translate `inspectionIds.Contains(w.Id.Value)` — member
+                // access on a value-converted Id inside Where is not translatable. Compare
+                // against the strongly-typed WarehouseItemId list instead so the value
+                // converter handles the SQL translation; unwrap `.Value` client-side.
+                var inspectionWarehouseItemIds = inspectionIds
+                    .Select(id => OIO.Domain.Context.WarehouseContext.ValueObjects.Ids.WarehouseItemId.From(id))
+                    .ToList();
+
                 // We use cross-context querying directly on DbContext because it's internal to the query handler
                 var inspections = await dbContext.Set<OIO.Domain.Context.WarehouseContext.Aggregates.WarehouseItems.WarehouseItem>()
                     .AsNoTracking()
-                    .Where(w => inspectionIds.Contains(w.Id.Value))
-                    .Select(w => new { InspectionId = w.Id.Value, ItemId = w.ItemId })
+                    .Where(w => inspectionWarehouseItemIds.Contains(w.Id))
+                    .Select(w => new { w.Id, w.ItemId })
                     .ToListAsync(ct);
 
-                var dict = inspections.ToDictionary(x => x.InspectionId, x => x.ItemId);
+                var dict = inspections.ToDictionary(x => x.Id.Value, x => x.ItemId);
 
                 for (int i = 0; i < pendingFees.Count; i++)
                 {

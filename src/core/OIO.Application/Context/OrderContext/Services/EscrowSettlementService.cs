@@ -1008,7 +1008,11 @@ public sealed class EscrowSettlementService
                 _logger.LogWarning(
                     "CollectPendingFees: MarkAsCompleted failed for tx {TxNumber} — {Error}",
                     feeTx.TransactionNumber.Value, completeResult.Error.Message);
-                continue;
+                // Stop (do not `continue`): the seller was already debited this iteration.
+                // Continuing could let a later fee succeed (collected>0) and persist this
+                // orphaned debit without its matching fee completion / platform credit.
+                // Remaining fees stay Pending and are retried on the next credit event.
+                break;
             }
 
             // Credit platform wallet.
@@ -1021,7 +1025,10 @@ public sealed class EscrowSettlementService
                 _logger.LogWarning(
                     "CollectPendingFees: platform credit failed for tx {TxNumber} — {Error}",
                     feeTx.TransactionNumber.Value, creditResult.Error.Message);
-                continue;
+                // Stop (do not `continue`): seller debit + fee completion already ran this
+                // iteration; bailing out prevents persisting them without the platform credit
+                // (or compounding further fees on top of a partially-applied settlement).
+                break;
             }
 
             collected++;

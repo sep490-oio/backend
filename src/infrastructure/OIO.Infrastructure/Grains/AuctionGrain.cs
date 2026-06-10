@@ -443,10 +443,18 @@ public sealed class AuctionGrain : Grain, IAuctionGrain
                 return validationResult.Error;
             }
 
-            // Capture previous max before domain update (for wallet holdDelta calculation)
+            // Capture previous max before domain update (for wallet holdDelta calculation).
+            // A cancelled auto-bid already had its hold fully released on cancel, so the re-hold
+            // baseline must be 0 (re-hold the FULL new max). For a live auto-bid the existing
+            // MaxAmount is the current hold and the delta is the incremental change; using
+            // MaxAmount as the baseline for a cancelled row would under-reserve (or wrongly
+            // attempt to Unhold funds that were already released on cancel).
             var existingAutoBid = auction.AutoBids
                 .FirstOrDefault(ab => ab.BidderId == bidderUserId);
-            var previousMaxAmount = existingAutoBid?.Budget.MaxAmount ?? 0m;
+            var previousMaxAmount =
+                (existingAutoBid is null || existingAutoBid.Status == AutoBidStatus.Cancelled)
+                    ? 0m
+                    : existingAutoBid.Budget.MaxAmount;
             var holdDelta = maxAmountDomain.Amount - previousMaxAmount;
 
             // Snapshot bid state before — auto-bid engagement may place opening / counter bids
