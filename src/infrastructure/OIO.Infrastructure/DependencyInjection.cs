@@ -153,8 +153,9 @@ public static class DependencyInjection
             services.AddSingleton<InsertOutboxMessagesInterceptor>();
             
             services.AddNpgsqlDataSource(connectionString);
-            // DbContext
-            services.AddDbContext<ApplicationDbContext>((sp, options) =>
+            // DbContext — pooled to bound memory on low-RAM deploys (see docs/BE_OOM_FIXES_FOR_TAN.md).
+            // Pool size 32 caps simultaneous EF contexts; default is 1024 which is far too large for a 2GB VPS.
+            services.AddDbContextPool<ApplicationDbContext>((sp, options) =>
             {
                 var dataSource = sp.GetRequiredService<NpgsqlDataSource>();
                 options.UseNpgsql(dataSource, npgsqlOptions =>
@@ -181,7 +182,7 @@ public static class DependencyInjection
                     options.EnableSensitiveDataLogging()
                         .EnableDetailedErrors();
                 }
-            });
+            }, poolSize: 32);
 
 
             // Unit of Work
